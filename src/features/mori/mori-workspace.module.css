@@ -1677,12 +1677,15 @@
 .settingsBackdrop {
   position: absolute;
   inset: 0;
+  z-index: 0;
+  display: block;
   background: rgba(54, 46, 70, 0.13);
   backdrop-filter: blur(8px);
 }
 
 .settingsWindow {
   position: relative;
+  z-index: 1;
   display: grid;
   width: min(1024px, 100%);
   height: min(774px, 100%);

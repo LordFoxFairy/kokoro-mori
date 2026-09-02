@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { Check, Headphones, Keyboard, Palette, Sparkles, UserRound, X } from "lucide-react"
-import { useEffect, useState, type ReactNode } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
 import { createPortal } from "react-dom"
 import { useMoriApp } from "./components/mori-app-provider"
 import styles from "./mori-workspace.module.css"
@@ -23,6 +23,7 @@ const sections: Array<{ key: SettingsSection; label: string; description: string
 export function MoriSettingsPage({ returnTo = "/" }: MoriSettingsPageProps = {}) {
   const [section, setSection] = useState<SettingsSection>("appearance")
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null)
+  const closeLinkRef = useRef<HTMLAnchorElement>(null)
   const { railCollapsed, setRailCollapsed, preferences, updatePreferences } = useMoriApp()
 
   useEffect(() => {
@@ -30,10 +31,29 @@ export function MoriSettingsPage({ returnTo = "/" }: MoriSettingsPageProps = {})
     return () => window.clearTimeout(timer)
   }, [])
 
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [])
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return
+      event.preventDefault()
+      closeLinkRef.current?.click()
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [])
+
   const settingsWindow = (
     <div className={styles.settingsPage} data-testid="settings-overlay">
-      <div className={styles.settingsBackdrop} aria-hidden="true" />
-      <section className={styles.settingsWindow} aria-labelledby="mori-settings-title">
+      <Link className={styles.settingsBackdrop} href={returnTo} aria-label="Close settings" />
+      <section className={styles.settingsWindow} role="dialog" aria-modal="true" aria-labelledby="mori-settings-title">
         <nav className={styles.settingsNav} aria-label="Settings sections">
           <div className={styles.settingsNavBrand}>
             <div className={styles.settingsNavBrandMark} aria-hidden="true">M</div>
@@ -69,7 +89,7 @@ export function MoriSettingsPage({ returnTo = "/" }: MoriSettingsPageProps = {})
               <h1 className={styles.settingsWindowTitle} id="mori-settings-title">Settings</h1>
               <p>Shape the way Mori creates, plays, and presents your music.</p>
             </div>
-            <Link className={styles.settingsClose} href={returnTo} aria-label="Back to studio">
+            <Link ref={closeLinkRef} className={styles.settingsClose} href={returnTo} aria-label="Back to studio">
               <span>Back to studio</span>
               <X size={17} strokeWidth={1.8} aria-hidden="true" />
             </Link>

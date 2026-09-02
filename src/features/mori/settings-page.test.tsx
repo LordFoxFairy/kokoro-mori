@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import { MoriAppProvider, useMoriApp } from "./components/mori-app-provider"
 import { MoriSettingsPage } from "./settings-page"
 
@@ -16,12 +16,30 @@ describe("Mori settings", () => {
     renderSettings()
 
     expect(screen.getByTestId("settings-overlay")).toBeInTheDocument()
+    expect(screen.getByRole("dialog", { name: "Settings" })).toHaveAttribute("aria-modal", "true")
+    expect(screen.getByRole("link", { name: "Close settings" })).toHaveAttribute("href", "/")
     expect(screen.getByRole("link", { name: "Back to studio" })).toHaveAttribute("href", "/")
     expect(screen.getByRole("heading", { name: "Settings" })).toBeInTheDocument()
     expect(screen.getByRole("heading", { name: "Appearance" })).toBeInTheDocument()
     expect(screen.getByText("Light gradient")).toBeInTheDocument()
     expect(screen.queryByText("My computer")).not.toBeInTheDocument()
     expect(screen.queryByText("Integrations")).not.toBeInTheDocument()
+  })
+
+  it("keeps the workspace behind the modal from scrolling", () => {
+    renderSettings()
+
+    expect(document.body.style.overflow).toBe("hidden")
+  })
+
+  it("lets Escape use the same close affordance as the window", () => {
+    renderSettings()
+
+    const closeSettings = screen.getByRole("link", { name: "Back to studio" })
+    const closeSpy = vi.spyOn(closeSettings, "click").mockImplementation(() => {})
+    fireEvent.keyDown(window, { key: "Escape" })
+
+    expect(closeSpy).toHaveBeenCalledTimes(1)
   })
 
   it("returns to the originating Mori surface when closed", () => {
