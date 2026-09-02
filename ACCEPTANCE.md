@@ -18,7 +18,7 @@ pnpm build
 
 - `pnpm lint`：通过，`--max-warnings=0`
 - `pnpm typecheck`：通过
-- `pnpm test`：通过，15 个测试文件、65 个测试
+- `pnpm test`：通过，15 个测试文件、68 个测试
 - `pnpm build`：通过，生成 `/`、`/create`、`/projects`、`/library`、`/settings`、Project Overview 和 Studio 路由
 
 ## 页面巡检
@@ -59,12 +59,14 @@ action；Arrangement 已提供 Take Lanes，可试听、选择方向并明确 Us
 Lyrics 已提供可编辑草稿和明确的 Saved locally 状态；Stems 已提供 Preview only 的逐轨 Mute/Solo
 控制，明确当前仍是音频渲染器接入前的交互层；
 Create 的 Smart 模式会先展示可编辑 Song Plan 摘要，用户确认后才持久化 Song Plan 并创建
-generation；未实现的 More/Edit 死按钮已移除，避免给用户错误预期。
+generation；未实现的 More/Edit 死按钮已移除，避免给用户错误预期。Library 对空的版本投影
+提供明确空状态，不再因为过滤器没有对应内容而渲染异常；项目列表从独立的 project projection
+合并，避免真实 Library 只返回版本时丢失 Projects 视图。
 
 Settings 已收敛为 Mori 自身需要的四组能力：Appearance、Playback、Creation、Account；采用
 参考 Kokoro Settings 的浮窗结构（固定左侧偏好导航、右侧独立滚动内容、Back to studio 关闭入口），
 不再把 Kokoro 的 computer、deployment、integration、team、skills、MCP 等通用能力带入
-音乐产品。全局 Rail 不再放置难以理解的 Current project 卡片，项目入口统一回到 Projects，
+音乐产品；音乐偏好会保存在当前浏览器中，刷新后仍保持。全局 Rail 不再放置难以理解的 Current project 卡片，项目入口统一回到 Projects，
 具体项目上下文只在 Project Overview 和 Studio 中出现。
 
 本轮改动范围仅为 `kokoro-mori`；未修改 BFF、`kokoro-app` 或其他服务仓库。

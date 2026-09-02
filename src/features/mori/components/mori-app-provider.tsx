@@ -13,6 +13,8 @@ export type MoriPreferences = {
   durationSeconds: number
 }
 
+const preferencesStorageKey = "mori.preferences.v1"
+
 const defaultPreferences: MoriPreferences = {
   reduceMotion: false,
   autoplay: false,
@@ -46,6 +48,7 @@ const MoriAppContext = createContext<MoriAppContextValue | null>(null)
 export function MoriAppProvider({ children }: { children: ReactNode }) {
   const [railCollapsed, setRailCollapsedState] = useState(false)
   const [preferences, setPreferences] = useState<MoriPreferences>(defaultPreferences)
+  const [preferencesLoaded, setPreferencesLoaded] = useState(false)
   const [playerCandidate, setPlayerCandidate] = useState(previewCandidates[0])
   const [playerCandidates, setPlayerCandidates] = useState(previewCandidates)
   const [playing, setPlaying] = useState(false)
@@ -64,6 +67,24 @@ export function MoriAppProvider({ children }: { children: ReactNode }) {
   const updatePreferences = useCallback((patch: Partial<MoriPreferences>) => {
     setPreferences((current) => ({ ...current, ...patch }))
   }, [])
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const storedPreferences = readStoredPreferences()
+      if (storedPreferences !== null) setPreferences(storedPreferences)
+      setPreferencesLoaded(true)
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [])
+
+  useEffect(() => {
+    if (!preferencesLoaded) return
+    try {
+      window.localStorage.setItem(preferencesStorageKey, JSON.stringify(preferences))
+    } catch {
+      // Preference state remains available for the current session when storage is unavailable.
+    }
+  }, [preferences, preferencesLoaded])
 
   const selectPlayerCandidate = useCallback((candidate: Candidate) => {
     setPlayerCandidate(candidate)
@@ -152,4 +173,35 @@ export function useMoriApp(): MoriAppContextValue {
     throw new Error("MoriAppProvider is required")
   }
   return context
+}
+
+function readStoredPreferences(): MoriPreferences | null {
+  try {
+    const raw = window.localStorage.getItem(preferencesStorageKey)
+    if (raw === null) return null
+    const parsed: unknown = JSON.parse(raw)
+    if (!isRecord(parsed)) return null
+
+    const { reduceMotion, autoplay, endBehavior, defaultMode, lyricsMode, durationSeconds } = parsed
+    if (
+      typeof reduceMotion !== "boolean" ||
+      typeof autoplay !== "boolean" ||
+      !isOneOf(endBehavior, ["stop", "next"]) ||
+      !isOneOf(defaultMode, ["smart", "custom"]) ||
+      !isOneOf(lyricsMode, ["lyrics", "instrumental"]) ||
+      !isOneOf(durationSeconds, [120, 180, 240, 300])
+    ) return null
+
+    return { reduceMotion, autoplay, endBehavior, defaultMode, lyricsMode, durationSeconds }
+  } catch {
+    return null
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+function isOneOf<T extends string | number>(value: unknown, values: readonly T[]): value is T {
+  return values.some((item) => item === value)
 }

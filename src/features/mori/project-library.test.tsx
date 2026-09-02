@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
-import type { MoriLibraryItem } from "@/lib/mori-api"
+import type { MoriLibraryItem, MoriProject } from "@/lib/mori-api"
 import { MoriAppProvider } from "./components/mori-app-provider"
 import { MoriCatalogShell } from "./components/mori-catalog-shell"
 import { LibraryPageContent } from "./library-list"
@@ -80,6 +80,49 @@ describe("Mori catalog surfaces", () => {
 
     await waitFor(() => expect(screen.getByText("First Light · Sunrise")).toBeInTheDocument())
     expect(screen.getByRole("link", { name: "Open First Light · Sunrise studio" })).toHaveAttribute("href", "/projects/project_preview_first_light/studio/version_mori_1")
+  })
+
+  it("renders a clear empty state for an empty version projection", async () => {
+    const api = {
+      listLibrary: async () => ({ data: { items: [], next_cursor: null }, meta: { request_id: "request_library_empty" } }),
+    }
+
+    render(
+      <MoriAppProvider>
+        <LibraryPageContent api={api} />
+      </MoriAppProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Versions" }))
+
+    await waitFor(() => expect(screen.getByText("No versions yet")).toBeInTheDocument())
+    expect(screen.getByText("Generate a direction and keep the version you want to return to.")).toBeInTheDocument()
+  })
+
+  it("keeps projects visible from the separate project projection", async () => {
+    const project: MoriProject = {
+      project_ref: "project_rain_room",
+      title: "Rain Room",
+      description: "A soft study in weather and distance.",
+      current_version_ref: null,
+      candidate_count: 0,
+      last_activity_at: "2026-09-02T12:00:00.000Z",
+    }
+    const api = {
+      listLibrary: async () => ({ data: { items: [], next_cursor: null }, meta: { request_id: "request_library_projects" } }),
+      listProjects: async () => ({ data: { projects: [project], next_cursor: null }, meta: { request_id: "request_projects_library" } }),
+    }
+
+    render(
+      <MoriAppProvider>
+        <LibraryPageContent api={api} />
+      </MoriAppProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Projects" }))
+
+    await waitFor(() => expect(screen.getByText("Rain Room")).toBeInTheDocument())
+    expect(screen.getByRole("link", { name: "Open Rain Room project" })).toHaveAttribute("href", "/projects/project_rain_room")
   })
 
   it("lets a library version start playback and open its studio", () => {

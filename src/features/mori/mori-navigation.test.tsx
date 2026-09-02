@@ -177,6 +177,40 @@ describe("Mori application navigation", () => {
     expect(document.querySelector('[data-reduce-motion="true"]')).toBeInTheDocument()
   })
 
+  it("restores music preferences from local storage", async () => {
+    localStorage.clear()
+
+    function PreferenceHarness() {
+      const { preferences, updatePreferences } = useMoriApp()
+
+      return (
+        <>
+          <output aria-label="stored preferences">{`${preferences.defaultMode}:${preferences.lyricsMode}:${preferences.durationSeconds}`}</output>
+          <button type="button" onClick={() => updatePreferences({ defaultMode: "custom", lyricsMode: "instrumental", durationSeconds: 240 })}>Save preferences</button>
+        </>
+      )
+    }
+
+    const firstRender = render(
+      <MoriAppProvider>
+        <PreferenceHarness />
+      </MoriAppProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Save preferences" }))
+    await waitFor(() => expect(localStorage.getItem("mori.preferences.v1")).toContain('"defaultMode":"custom"'))
+
+    firstRender.unmount()
+    render(
+      <MoriAppProvider>
+        <PreferenceHarness />
+      </MoriAppProvider>,
+    )
+
+    await waitFor(() => expect(screen.getByLabelText("stored preferences")).toHaveTextContent("custom:instrumental:240"))
+    localStorage.clear()
+  })
+
   it("keeps the active track playing while moving between product surfaces", () => {
     function PlayerSurfaceHarness() {
       const [surface, setSurface] = useState<"home" | "library">("home")
