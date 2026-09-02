@@ -20,18 +20,32 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
   const { playerCandidate, playing, selectPlayerCandidate, setPlaying } = useMoriApp()
   const defaultApi = useMemo(() => createMoriApiClient(), [])
   const overviewApi = api ?? defaultApi
-  const [project, setProject] = useState<Project>(previewProject)
-  const [candidates, setCandidates] = useState<Candidate[]>(previewCandidates)
+  const initialProjectRef = projectRef.trim() || previewProject.projectRef
+  const [projectState, setProjectState] = useState(() => ({
+    projectRef: initialProjectRef,
+    value: initialProjectRef === previewProject.projectRef ? previewProject : createUnavailableProject(initialProjectRef),
+  }))
+  const [candidateState, setCandidateState] = useState(() => ({
+    projectRef: initialProjectRef,
+    value: initialProjectRef === previewProject.projectRef ? previewCandidates : [],
+  }))
+  const requestedProject = projectState.projectRef === initialProjectRef ? projectState.value : createUnavailableProject(initialProjectRef)
+  const candidates = candidateState.projectRef === initialProjectRef ? candidateState.value : []
 
   useEffect(() => {
     const requestedProjectRef = projectRef.trim() || previewProject.projectRef
     let disposed = false
-    void Promise.all([overviewApi.getProject(requestedProjectRef), overviewApi.listCandidates(requestedProjectRef)]).then(([projectResponse, candidatesResponse]) => {
-      if (disposed) return
-      setProject(toDomainProject(projectResponse.data))
-      setCandidates(candidatesResponse.data.candidates.map(toDomainCandidate))
+
+    void overviewApi.getProject(requestedProjectRef).then((projectResponse) => {
+      if (!disposed) setProjectState({ projectRef: requestedProjectRef, value: toDomainProject(projectResponse.data) })
     }).catch(() => {
-      // Keep the deterministic fixture visible while the BFF is unavailable.
+      // Keep the deterministic preview or neutral project shell visible while the BFF is unavailable.
+    })
+
+    void overviewApi.listCandidates(requestedProjectRef).then((candidatesResponse) => {
+      if (!disposed) setCandidateState({ projectRef: requestedProjectRef, value: candidatesResponse.data.candidates.map(toDomainCandidate) })
+    }).catch(() => {
+      // Never attach preview candidates to a live project when its projection is unavailable.
     })
 
     return () => {
@@ -55,26 +69,26 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
         <div className={styles.projectOverviewArtwork}><span>01</span></div>
         <div className={styles.projectOverviewCopy}>
           <div className={styles.eyebrow}><span className={styles.eyebrowDot} />Active project</div>
-            <h1 className={styles.catalogTitle}>{project.title}</h1>
-          <p>{project.description}</p>
+            <h1 className={styles.catalogTitle}>{requestedProject.title}</h1>
+          <p>{requestedProject.description}</p>
           <div className={styles.projectOverviewActions}>
-            {candidates[0] ? <Link className={styles.generateButton} href={`/projects/${project.projectRef}/studio/${candidates[0].versionRef}`}><Play size={14} fill="currentColor" /> Open Studio</Link> : null}
+            {candidates[0] ? <Link className={styles.generateButton} href={`/projects/${requestedProject.projectRef}/studio/${candidates[0].versionRef}`}><Play size={14} fill="currentColor" /> Open Studio</Link> : null}
             <Link className={styles.ghostButton} href="/create"><Sparkles size={14} /> New direction</Link>
           </div>
         </div>
       </div>
 
       <div className={styles.overviewStats}>
-        <div><span>Current version</span><strong>{project.currentVersionRef ? (candidates.find((candidate) => candidate.versionRef === project.currentVersionRef)?.title ?? "Ready") : "Not started"}</strong></div>
-        <div><span>Directions</span><strong>{project.candidateCount}</strong></div>
-        <div><span>Last activity</span><strong>{project.lastActivity}</strong></div>
+        <div><span>Current version</span><strong>{requestedProject.currentVersionRef ? (candidates.find((candidate) => candidate.versionRef === requestedProject.currentVersionRef)?.title ?? "Ready") : "Not started"}</strong></div>
+        <div><span>Directions</span><strong>{requestedProject.candidateCount}</strong></div>
+        <div><span>Last activity</span><strong>{requestedProject.lastActivity}</strong></div>
         <div><span>Plan mood</span><strong>{previewSongPlan.mood}</strong></div>
       </div>
 
       <section className={styles.overviewSection} aria-labelledby="directions-heading">
         <div className={styles.overviewSectionHeader}><div><h2 id="directions-heading">Latest directions</h2><p>Compare the shape of the song before you commit to a version.</p></div><span>{candidates.length} {candidates.length === 1 ? "candidate" : "candidates"}</span></div>
         {candidates.length > 0 ? <div className={styles.overviewCandidateList}>
-          {candidates.map((candidate, index) => (
+            {candidates.map((candidate, index) => (
             <article className={styles.overviewCandidate} key={candidate.candidateRef}>
               <button className={`${styles.candidateArtwork} ${styles.overviewCandidateArtwork} ${index === 1 ? styles.candidateArtworkAlt : ""}`} type="button" onClick={() => playCandidate(candidate)} aria-label={`${playerCandidate.candidateRef === candidate.candidateRef && playing ? "Pause" : "Play"} ${candidate.title}`}>
                 <Play size={14} fill={playerCandidate.candidateRef === candidate.candidateRef && playing ? "currentColor" : "none"} />
@@ -82,7 +96,7 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
               <div className={styles.overviewCandidateInfo}><strong>{candidate.title}</strong><span>{candidate.subtitle}</span></div>
               <div className={styles.overviewCandidateWave}><Waveform seed={candidate.waveformSeed} compact progress={index === 0 ? 0.8 : 0.48} /></div>
               <span className={styles.candidateDuration}>{Math.floor(candidate.durationSeconds / 60)}:{String(candidate.durationSeconds % 60).padStart(2, "0")}</span>
-              <Link className={styles.overviewOpenLink} href={`/projects/${project.projectRef}/studio/${candidate.versionRef}`} aria-label={`Open Studio for ${candidate.title}`}><ArrowUpRight size={15} /></Link>
+              <Link className={styles.overviewOpenLink} href={`/projects/${requestedProject.projectRef}/studio/${candidate.versionRef}`} aria-label={`Open Studio for ${candidate.title}`}><ArrowUpRight size={15} /></Link>
             </article>
           ))}
         </div> : <div className={styles.libraryEmpty}>
@@ -114,6 +128,18 @@ function toDomainProject(project: MoriProject): Project {
     currentVersionRef: project.current_version_ref,
     candidateCount: project.candidate_count,
     lastActivity: formatActivity(project.last_activity_at),
+  }
+}
+
+function createUnavailableProject(projectRef: string): Project {
+  return {
+    projectRef,
+    title: "Project",
+    description: "Project details will appear here once the workspace is connected.",
+    coverAccent: "lavender",
+    currentVersionRef: null,
+    candidateCount: 0,
+    lastActivity: "Recently updated",
   }
 }
 

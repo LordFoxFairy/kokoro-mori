@@ -98,4 +98,36 @@ describe("Mori project overview", () => {
     expect(screen.getByRole("link", { name: "Create a direction" })).toHaveAttribute("href", "/create")
     expect(screen.queryByRole("link", { name: "Open Studio" })).not.toBeInTheDocument()
   })
+
+  it("keeps the live project when its candidate projection is temporarily unavailable", async () => {
+    const api = {
+      getProject: async () => ({
+        data: {
+          project_ref: "project_live_partial",
+          title: "Blue Hour",
+          description: "A restrained electronic study.",
+          current_version_ref: null,
+          candidate_count: 0,
+          last_activity_at: "2026-09-02T12:00:00.000Z",
+        },
+        meta: { request_id: "request_project_partial" },
+      }),
+      listCandidates: async () => {
+        throw new Error("candidate projection unavailable")
+      },
+    }
+
+    render(
+      <MoriAppProvider>
+        <MoriCatalogShell activeKey="projects" ariaLabel="Project overview">
+          <ProjectOverviewPageContent projectRef="project_live_partial" api={api} />
+        </MoriCatalogShell>
+      </MoriAppProvider>,
+    )
+
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Blue Hour" })).toBeInTheDocument())
+    expect(screen.getByText("A restrained electronic study.")).toBeInTheDocument()
+    expect(screen.getByText("No directions yet")).toBeInTheDocument()
+    expect(screen.queryByRole("link", { name: "Open Studio" })).not.toBeInTheDocument()
+  })
 })

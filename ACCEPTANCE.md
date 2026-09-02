@@ -18,7 +18,7 @@ pnpm build
 
 - `pnpm lint`：通过，`--max-warnings=0`
 - `pnpm typecheck`：通过
-- `pnpm test`：通过，15 个测试文件、79 个测试
+- `pnpm test`：通过，15 个测试文件、80 个测试
 - `pnpm build`：通过，生成 `/`、`/create`、`/projects`、`/library`、`/settings`、Project Overview 和 Studio 路由
 
 ## 页面巡检
@@ -62,7 +62,8 @@ Create 的 Smart 模式会先展示可编辑 Song Plan 摘要，用户确认后�
 generation；未实现的 More/Edit 死按钮已移除，避免给用户错误预期。Library 对空的版本投影
 提供明确空状态，不再因为过滤器没有对应内容而渲染异常；项目列表从独立的 project projection
 合并，避免真实 Library 只返回版本时丢失 Projects 视图；Projects 和 Project Overview 对成功返回的
-空 project/candidate projection 也展示明确空状态，不再保留过期的 First Light fixture。
+空 project/candidate projection 也展示明确空状态，不再保留过期的 First Light fixture；Project Overview
+对项目和候选 projection 分开收敛，单个投影暂时不可用时也不会把 First Light 候选错挂到实时项目上。
 
 Settings 已收敛为 Mori 自身需要的四组能力：Appearance、Playback、Creation、Account；采用
 参考 Kokoro Settings 的浮窗结构（固定左侧偏好导航、右侧独立滚动内容、回到来源工作区的关闭入口），
