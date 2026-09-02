@@ -69,6 +69,43 @@ describe("Mori same-origin API client", () => {
     expect(response.data.status).toBe("cancelled")
   })
 
+  it("replays generation events with the last-event cursor", async () => {
+    let capturedUrl = ""
+    let capturedHeaders: HeadersInit | undefined
+    const api = createMoriApiClient({
+      fetchImpl: async (input, init) => {
+        capturedUrl = String(input)
+        capturedHeaders = init?.headers
+        return new Response([
+          "id: generation_1:5",
+          "event: generation.generating",
+          'data: {"data":{"generation_ref":"generation_1","project_ref":"project_1","status":"generating","progress":52,"candidate_refs":[]},"meta":{"request_id":"request_event_1"}}',
+          "",
+          "",
+        ].join("\n"), { status: 200, headers: { "Content-Type": "text/event-stream" } })
+      },
+    })
+
+    const events = await api.getGenerationEvents("generation_1", "generation_1:4")
+
+    expect(capturedUrl).toBe("/api/v1/mori/generations/generation_1/events")
+    expect(capturedHeaders).toEqual({
+      Accept: "text/event-stream",
+      "Last-Event-ID": "generation_1:4",
+    })
+    expect(events).toEqual([{
+      id: "generation_1:5",
+      event: "generation.generating",
+      data: {
+        generation_ref: "generation_1",
+        project_ref: "project_1",
+        status: "generating",
+        progress: 52,
+        candidate_refs: [],
+      },
+    }])
+  })
+
   it("preserves the normalized API error for UI state mapping", async () => {
     const api = createMoriApiClient({
       fetchImpl: async () => new Response(JSON.stringify({

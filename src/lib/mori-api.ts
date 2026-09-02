@@ -81,6 +81,12 @@ export type GenerationSnapshot = {
   created_at: string
 }
 
+export type MoriGenerationEvent = {
+  id: string
+  event: string
+  data: Pick<GenerationSnapshot, "generation_ref" | "project_ref" | "status" | "progress" | "candidate_refs">
+}
+
 export type MoriCandidate = {
   candidate_ref: MoriRef
   generation_ref: MoriRef
@@ -129,6 +135,7 @@ export type MoriApi = {
   getProject: (projectRef: MoriRef) => Promise<ApiSuccess<MoriProject>>
   createGeneration: (projectRef: MoriRef, input: GenerationCreateInput, idempotencyKey: string) => Promise<ApiSuccess<GenerationReceipt>>
   getGeneration: (generationRef: MoriRef) => Promise<ApiSuccess<GenerationSnapshot>>
+  getGenerationEvents: (generationRef: MoriRef, lastEventId?: string | null) => Promise<MoriGenerationEvent[]>
   listCandidates: (projectRef: MoriRef) => Promise<ApiSuccess<{ candidates: MoriCandidate[]; next_cursor: string | null }>>
   cancelGeneration: (generationRef: MoriRef, idempotencyKey: string) => Promise<ApiSuccess<GenerationCancelReceipt>>
   listLibrary: (kind?: "all" | "version") => Promise<ApiSuccess<{ items: MoriLibraryItem[]; next_cursor: string | null }>>

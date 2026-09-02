@@ -103,6 +103,9 @@ export const previewMoriApi: MoriApi = {
       },
     }
   },
+  async getGenerationEvents() {
+    return []
+  },
   async listLibrary() {
     return {
       data: {

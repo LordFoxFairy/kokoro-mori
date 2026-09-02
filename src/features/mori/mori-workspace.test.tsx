@@ -80,7 +80,7 @@ describe("Mori workspace", () => {
       data: { generation_ref: "generation_live_1", status: "cancelled" as const },
       meta: { request_id: "request_cancel_1" },
     }))
-    const api: Pick<MoriApi, "createGeneration" | "getGeneration" | "listCandidates" | "cancelGeneration"> = {
+    const api: Pick<MoriApi, "createGeneration" | "getGeneration" | "getGenerationEvents" | "listCandidates" | "cancelGeneration"> = {
       createGeneration: async () => ({
         data: { generation_ref: "generation_live_1", status: "queued" as const },
         meta: { request_id: "request_create_1" },
@@ -98,6 +98,7 @@ describe("Mori workspace", () => {
         },
         meta: { request_id: "request_status_1" },
       }),
+      getGenerationEvents: async () => [],
       listCandidates: async () => ({
         data: { candidates: [], next_cursor: null },
         meta: { request_id: "request_candidates_1" },

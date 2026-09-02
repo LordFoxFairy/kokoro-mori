@@ -7,6 +7,7 @@ import {
   type GenerationCancelReceipt,
   type GenerationReceipt,
   type GenerationSnapshot,
+  type MoriGenerationEvent,
   type MoriExportReceipt,
   type MoriExportSnapshot,
   type MoriCandidate,
@@ -92,6 +93,22 @@ export function createMoriApiClient(options: MoriApiClientOptions = {}): MoriApi
       }
       return payload as ApiSuccess<GenerationSnapshot>
     },
+    async getGenerationEvents(generationRef: MoriRef, lastEventId = null) {
+      const headers: HeadersInit = { Accept: "text/event-stream" }
+      if (lastEventId !== null && lastEventId.trim() !== "") headers["Last-Event-ID"] = lastEventId
+      const response = await fetchImpl(`${apiBasePath}/generations/${encodeURIComponent(generationRef)}/events`, { headers })
+      const body = await response.text()
+      if (!response.ok) {
+        const payload = parseJson(body)
+        if (isApiError(payload)) throw new MoriApiRequestError(payload.error, payload.meta.request_id, response.status)
+        throw new MoriApiRequestError(
+          { code: "invalid_api_response", message: "Mori event stream returned an invalid response", retryable: response.status >= 500, details: null },
+          null,
+          response.status,
+        )
+      }
+      return parseGenerationEvents(body)
+    },
     async listCandidates(projectRef: MoriRef) {
       const response = await fetchImpl(`${apiBasePath}/projects/${encodeURIComponent(projectRef)}/candidates`)
       const payload = await readJson(response)
@@ -159,6 +176,55 @@ async function readJson(response: Response): Promise<unknown> {
   } catch {
     return null
   }
+}
+
+function parseJson(value: string): unknown {
+  try {
+    return JSON.parse(value) as unknown
+  } catch {
+    return null
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null
+}
+
+function parseGenerationEvents(body: string): MoriGenerationEvent[] {
+  return body.split(/\r?\n\r?\n/u).flatMap((frame) => {
+    let id: string | null = null
+    let event: string | null = null
+    const dataLines: string[] = []
+    for (const line of frame.split(/\r?\n/u)) {
+      if (line.startsWith("id:")) id = line.slice(3).trim()
+      else if (line.startsWith("event:")) event = line.slice(6).trim()
+      else if (line.startsWith("data:")) dataLines.push(line.slice(5).trimStart())
+    }
+    if (id === null || id === "" || event === null || event === "" || dataLines.length === 0) return []
+    const envelope = parseJson(dataLines.join("\n"))
+    if (!isRecord(envelope) || !isRecord(envelope.data)) return []
+    const data = envelope.data
+    if (
+      typeof data.generation_ref !== "string"
+      || typeof data.project_ref !== "string"
+      || typeof data.status !== "string"
+      || typeof data.progress !== "number"
+      || !Number.isFinite(data.progress)
+      || !Array.isArray(data.candidate_refs)
+      || !data.candidate_refs.every((value): value is string => typeof value === "string")
+    ) return []
+    return [{
+      id,
+      event,
+      data: {
+        generation_ref: data.generation_ref,
+        project_ref: data.project_ref,
+        status: data.status as MoriGenerationEvent["data"]["status"],
+        progress: data.progress,
+        candidate_refs: [...data.candidate_refs],
+      },
+    }]
+  })
 }
 
 function isApiError(value: unknown): value is ApiError {

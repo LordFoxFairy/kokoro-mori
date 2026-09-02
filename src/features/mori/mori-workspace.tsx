@@ -14,7 +14,7 @@ import { MoriAppShell } from "./components/mori-app-shell"
 import styles from "./mori-workspace.module.css"
 
 type MoriWorkspaceProps = {
-  api?: Pick<MoriApi, "createGeneration" | "getGeneration" | "listCandidates" | "cancelGeneration">
+  api?: Pick<MoriApi, "createGeneration" | "getGeneration" | "getGenerationEvents" | "listCandidates" | "cancelGeneration">
 }
 
 export function MoriWorkspace({ api: injectedApi }: MoriWorkspaceProps = {}) {
@@ -73,26 +73,50 @@ export function MoriWorkspace({ api: injectedApi }: MoriWorkspaceProps = {}) {
 
   useEffect(() => {
     const getGeneration = api.getGeneration
+    const getGenerationEvents = api.getGenerationEvents
     const listCandidates = api.listCandidates
-    if (generationRef === null || getGeneration === undefined || listCandidates === undefined) return
+    if (generationRef === null) return
     let disposed = false
     let timer: number | undefined
+    let lastEventId: string | null = null
 
     const sync = async () => {
       try {
         const snapshot = await getGeneration(generationRef)
         if (disposed) return
-        setGenerationStatus(snapshot.data.status)
-        setProgress(snapshot.data.progress)
-        setGenerationLabel(generationLabelFor(snapshot.data.status))
-        if (snapshot.data.status === "succeeded") {
-          const candidateResponse = await listCandidates(previewProject.projectRef)
+        let status = snapshot.data.status
+        let progressValue = snapshot.data.progress
+        let candidateRefs = snapshot.data.candidate_refs
+        setGenerationStatus(status)
+        setProgress(progressValue)
+        setGenerationLabel(generationLabelFor(status))
+
+        if (getGenerationEvents !== undefined) {
+          try {
+            const events = await getGenerationEvents(generationRef, lastEventId)
+            const latest = events.at(-1)
+            if (latest !== undefined) {
+              lastEventId = latest.id
+              status = latest.data.status
+              progressValue = latest.data.progress
+              candidateRefs = latest.data.candidate_refs
+              setGenerationStatus(status)
+              setProgress(progressValue)
+              setGenerationLabel(generationLabelFor(status))
+            }
+          } catch {
+            // Snapshot polling remains the recovery path when event replay is unavailable.
+          }
+        }
+
+        if (status === "succeeded") {
+          const candidateResponse = await listCandidates(snapshot.data.project_ref)
           if (disposed) return
-          const generated = candidateResponse.data.candidates.filter((candidate) => snapshot.data.candidate_refs.includes(candidate.candidate_ref))
+          const generated = candidateResponse.data.candidates.filter((candidate) => candidateRefs.includes(candidate.candidate_ref))
           if (generated.length > 0) setCandidates(generated.map(toDomainCandidate))
           return
         }
-        if (["failed", "cancelled", "expired"].includes(snapshot.data.status)) return
+        if (["failed", "cancelled", "expired"].includes(status)) return
         timer = window.setTimeout(() => { void sync() }, 220)
       } catch {
         if (!disposed) {
