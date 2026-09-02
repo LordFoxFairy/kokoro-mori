@@ -50,6 +50,23 @@ describe("Mori application navigation", () => {
     expect(screen.getByRole("group", { name: "Playback controls" })).toBeInTheDocument()
   })
 
+  it("lets a listener seek through the current version", () => {
+    render(
+      <MoriAppProvider>
+        <MoriCatalogShell activeKey="library" ariaLabel="Library">
+          <div>Library content</div>
+        </MoriCatalogShell>
+      </MoriAppProvider>,
+    )
+
+    const seek = screen.getByRole("slider", { name: "Seek through current version" })
+    fireEvent.change(seek, { target: { value: "90" } })
+    expect(seek).toHaveValue("90")
+
+    fireEvent.change(seek, { target: { value: "999" } })
+    expect(seek).toHaveValue("182")
+  })
+
   it("starts with a compact rail on narrow viewports", async () => {
     const originalWidth = window.innerWidth
     Object.defineProperty(window, "innerWidth", { configurable: true, value: 390 })

@@ -33,6 +33,7 @@ type MoriAppContextValue = {
   togglePlaying: () => void
   toggleMuted: () => void
   setPlaying: (playing: boolean) => void
+  seekPlayer: (positionSeconds: number) => void
   selectPlayerCandidate: (candidate: Candidate) => void
   previousPlayerCandidate: () => void
   nextPlayerCandidate: () => void
@@ -56,6 +57,10 @@ export function MoriAppProvider({ children }: { children: ReactNode }) {
   const toggleRail = useCallback(() => setRailCollapsedState((value) => !value), [])
   const togglePlaying = useCallback(() => setPlaying((value) => !value), [])
   const toggleMuted = useCallback(() => setMuted((value) => !value), [])
+  const seekPlayer = useCallback((position: number) => {
+    if (!Number.isFinite(position)) return
+    setPositionSeconds(Math.max(0, Math.min(playerCandidate.durationSeconds, Math.round(position))))
+  }, [playerCandidate.durationSeconds])
   const updatePreferences = useCallback((patch: Partial<MoriPreferences>) => {
     setPreferences((current) => ({ ...current, ...patch }))
   }, [])
@@ -122,12 +127,13 @@ export function MoriAppProvider({ children }: { children: ReactNode }) {
     togglePlaying,
     setPlaying,
     toggleMuted,
+    seekPlayer,
     selectPlayerCandidate,
     previousPlayerCandidate,
     nextPlayerCandidate,
     preferences,
     updatePreferences,
-  }), [muted, nextPlayerCandidate, playerCandidate, playing, positionSeconds, preferences, previousPlayerCandidate, railCollapsed, selectPlayerCandidate, setRailCollapsed, toggleMuted, togglePlaying, toggleRail, updatePreferences])
+  }), [muted, nextPlayerCandidate, playerCandidate, playing, positionSeconds, preferences, previousPlayerCandidate, railCollapsed, seekPlayer, selectPlayerCandidate, setRailCollapsed, toggleMuted, togglePlaying, toggleRail, updatePreferences])
 
   return <MoriAppContext.Provider value={value}>{children}</MoriAppContext.Provider>
 }

@@ -12,6 +12,7 @@ type PersistentPlayerProps = {
   positionSeconds: number
   onToggle: () => void
   onToggleMute: () => void
+  onSeek: (positionSeconds: number) => void
   onSelectQueue?: () => void
   onPrevious?: () => void
   onNext?: () => void
@@ -23,7 +24,7 @@ function formatDuration(seconds: number): string {
   return `${minutes}:${remaining}`
 }
 
-export function PersistentPlayer({ candidate, playing, muted, positionSeconds, onToggle, onToggleMute, onSelectQueue, onPrevious, onNext }: PersistentPlayerProps) {
+export function PersistentPlayer({ candidate, playing, muted, positionSeconds, onToggle, onToggleMute, onSeek, onSelectQueue, onPrevious, onNext }: PersistentPlayerProps) {
   return (
     <section className={styles.player} aria-label="Global player" data-player-surface="global-dock">
       <div className={styles.playerTrack}>
@@ -43,7 +44,19 @@ export function PersistentPlayer({ candidate, playing, muted, positionSeconds, o
         </div>
         <div className={styles.playerProgress} role="group" aria-label="Playback progress">
           <span className={styles.time}>{formatDuration(positionSeconds)}</span>
-          <Waveform seed={candidate.waveformSeed} compact progress={candidate.durationSeconds > 0 ? positionSeconds / candidate.durationSeconds : 0} />
+          <div className={styles.playerSeek}>
+            <Waveform seed={candidate.waveformSeed} compact progress={candidate.durationSeconds > 0 ? positionSeconds / candidate.durationSeconds : 0} />
+            <input
+              className={styles.playerSeekInput}
+              type="range"
+              min={0}
+              max={candidate.durationSeconds}
+              step={1}
+              value={Math.min(positionSeconds, candidate.durationSeconds)}
+              onChange={(event) => onSeek(Number(event.target.value))}
+              aria-label="Seek through current version"
+            />
+          </div>
           <span className={styles.time}>{formatDuration(candidate.durationSeconds)}</span>
         </div>
       </div>
