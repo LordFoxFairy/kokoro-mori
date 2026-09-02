@@ -129,6 +129,27 @@ describe("Mori workspace", () => {
     expect(screen.getByLabelText("Duration")).toHaveValue("240")
   })
 
+  it("hydrates persisted creation defaults before the canvas is used", async () => {
+    window.localStorage.setItem("mori.preferences.v1", JSON.stringify({
+      reduceMotion: false,
+      autoplay: false,
+      endBehavior: "stop",
+      defaultMode: "custom",
+      lyricsMode: "instrumental",
+      durationSeconds: 240,
+    }))
+
+    try {
+      renderWorkspace()
+
+      await waitFor(() => expect(screen.getByRole("tab", { name: /custom/i })).toHaveAttribute("aria-selected", "true"))
+      expect(screen.getByLabelText("Lyrics or instrumental")).toHaveValue("instrumental")
+      expect(screen.getByLabelText("Duration")).toHaveValue("240")
+    } finally {
+      window.localStorage.removeItem("mori.preferences.v1")
+    }
+  })
+
   it("turns creative shortcuts into visible draft actions", () => {
     renderWorkspace()
 

@@ -18,7 +18,7 @@ pnpm build
 
 - `pnpm lint`：通过，`--max-warnings=0`
 - `pnpm typecheck`：通过
-- `pnpm test`：通过，15 个测试文件、72 个测试
+- `pnpm test`：通过，15 个测试文件、76 个测试
 - `pnpm build`：通过，生成 `/`、`/create`、`/projects`、`/library`、`/settings`、Project Overview 和 Studio 路由
 
 ## 页面巡检
@@ -65,9 +65,10 @@ generation；未实现的 More/Edit 死按钮已移除，避免给用户错误�
 空 project/candidate projection 也展示明确空状态，不再保留过期的 First Light fixture。
 
 Settings 已收敛为 Mori 自身需要的四组能力：Appearance、Playback、Creation、Account；采用
-参考 Kokoro Settings 的浮窗结构（固定左侧偏好导航、右侧独立滚动内容、Back to studio 关闭入口），
+参考 Kokoro Settings 的浮窗结构（固定左侧偏好导航、右侧独立滚动内容、回到来源工作区的关闭入口），
 不再把 Kokoro 的 computer、deployment、integration、team、skills、MCP 等通用能力带入
-音乐产品；音乐偏好会保存在当前浏览器中，刷新后仍保持。全局 Rail 不再放置难以理解的 Current project 卡片，项目入口统一回到 Projects，
+音乐产品；音乐偏好和桌面 Rail 展开状态会保存在当前浏览器中，刷新后仍保持。Create 会在偏好
+hydration 完成后同步默认模式、输出类型和时长。全局 Rail 不再放置难以理解的 Current project 卡片，项目入口统一回到 Projects，
 具体项目上下文只在 Project Overview 和 Studio 中出现。
 
 本轮改动范围仅为 `kokoro-mori`；未修改 BFF、`kokoro-app` 或其他服务仓库。

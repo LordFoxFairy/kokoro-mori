@@ -137,6 +137,46 @@ describe("Mori application navigation", () => {
     expect(screen.getByRole("button", { name: /expand sidebar/i })).toBeInTheDocument()
   })
 
+  it("restores the desktop rail preference from local storage", async () => {
+    const originalWidth = window.innerWidth
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 1280 })
+    localStorage.setItem("mori.rail.v1", "collapsed")
+
+    try {
+      render(
+        <MoriAppProvider>
+          <MoriCatalogShell activeKey="library" ariaLabel="Library">
+            <div>Library content</div>
+          </MoriCatalogShell>
+        </MoriAppProvider>,
+      )
+
+      await waitFor(() => expect(screen.getByRole("button", { name: "Expand sidebar" })).toBeInTheDocument())
+    } finally {
+      localStorage.removeItem("mori.rail.v1")
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: originalWidth })
+    }
+  })
+
+  it("carries the current surface into the settings return path", async () => {
+    const originalPath = window.location.pathname
+    window.history.pushState({}, "", "/projects/project_live_1/studio/version_live_1")
+
+    try {
+      render(
+        <MoriAppProvider>
+          <MoriCatalogShell activeKey="projects" ariaLabel="Studio">
+            <div>Studio content</div>
+          </MoriCatalogShell>
+        </MoriAppProvider>,
+      )
+
+      await waitFor(() => expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/settings?return_to=%2Fprojects%2Fproject_live_1%2Fstudio%2Fversion_live_1"))
+    } finally {
+      window.history.pushState({}, "", originalPath)
+    }
+  })
+
   it("keeps the project catalog reachable when the rail is collapsed", () => {
     render(
       <MoriAppProvider>

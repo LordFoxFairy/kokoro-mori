@@ -14,6 +14,7 @@ export type MoriPreferences = {
 }
 
 const preferencesStorageKey = "mori.preferences.v1"
+const railStorageKey = "mori.rail.v1"
 
 const defaultPreferences: MoriPreferences = {
   reduceMotion: false,
@@ -47,6 +48,7 @@ const MoriAppContext = createContext<MoriAppContextValue | null>(null)
 
 export function MoriAppProvider({ children }: { children: ReactNode }) {
   const [railCollapsed, setRailCollapsedState] = useState(false)
+  const [railLoaded, setRailLoaded] = useState(false)
   const [preferences, setPreferences] = useState<MoriPreferences>(defaultPreferences)
   const [preferencesLoaded, setPreferencesLoaded] = useState(false)
   const [playerCandidate, setPlayerCandidate] = useState(previewCandidates[0])
@@ -67,6 +69,24 @@ export function MoriAppProvider({ children }: { children: ReactNode }) {
   const updatePreferences = useCallback((patch: Partial<MoriPreferences>) => {
     setPreferences((current) => ({ ...current, ...patch }))
   }, [])
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const storedRailState = readStoredRailState()
+      if (storedRailState !== null && window.innerWidth > 700) setRailCollapsedState(storedRailState)
+      setRailLoaded(true)
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [])
+
+  useEffect(() => {
+    if (!railLoaded) return
+    try {
+      window.localStorage.setItem(railStorageKey, railCollapsed ? "collapsed" : "expanded")
+    } catch {
+      // Rail state remains available for the current session when storage is unavailable.
+    }
+  }, [railCollapsed, railLoaded])
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -196,6 +216,17 @@ function readStoredPreferences(): MoriPreferences | null {
   } catch {
     return null
   }
+}
+
+function readStoredRailState(): boolean | null {
+  try {
+    const stored = window.localStorage.getItem(railStorageKey)
+    if (stored === "collapsed") return true
+    if (stored === "expanded") return false
+  } catch {
+    return null
+  }
+  return null
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

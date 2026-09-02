@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight, CircleHelp, FolderKanban, House, Library, Plus, Settings2, Sparkles } from "lucide-react"
 import Link from "next/link"
+import { useEffect, useState } from "react"
 import styles from "../mori-workspace.module.css"
 
 export type MoriNavigationKey = "home" | "create" | "projects" | "library" | "settings" | "help"
@@ -18,6 +19,18 @@ const navigation = [
 ]
 
 export function MoriRail({ activeKey = "create", collapsed = false, onToggle }: MoriRailProps) {
+  const [settingsHref, setSettingsHref] = useState("/settings?return_to=%2F")
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const currentPath = window.location.pathname
+      if (currentPath !== "/settings" && currentPath.startsWith("/")) {
+        setSettingsHref(`/settings?return_to=${encodeURIComponent(currentPath)}`)
+      }
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [])
+
   return (
     <nav className={`${styles.rail} ${collapsed ? styles.railCollapsed : ""}`} aria-label="Mori" data-rail-state={collapsed ? "collapsed" : "expanded"}>
       <div className={styles.brandRow}>
@@ -42,7 +55,7 @@ export function MoriRail({ activeKey = "create", collapsed = false, onToggle }: 
       </div>
 
       <div className={styles.railBottom}>
-        <Link className={styles.railFooterLink} href="/settings" aria-label="Settings" title={collapsed ? "Settings" : undefined}>
+        <Link className={styles.railFooterLink} href={settingsHref} aria-label="Settings" title={collapsed ? "Settings" : undefined}>
           <Settings2 size={16} />
           <span>Settings</span>
         </Link>

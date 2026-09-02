@@ -27,16 +27,19 @@ type CreateCanvasProps = {
 export function CreateCanvas({ projectRef, mode, onModeChange, onGenerate }: CreateCanvasProps) {
   const { preferences } = useMoriApp()
   const [prompt, setPrompt] = useState("A warm, late-night track for the drive home, slowly opening into sunrise.")
-  const [lyricsMode, setLyricsMode] = useState<LyricsMode>(() => preferences.lyricsMode)
+  const [lyricsModeOverride, setLyricsModeOverride] = useState<LyricsMode | null>(null)
   const [style, setStyle] = useState("Dream pop · intimate · organic")
   const [voice, setVoice] = useState("Natural lead")
-  const [durationSeconds, setDurationSeconds] = useState(() => preferences.durationSeconds)
+  const [durationOverride, setDurationOverride] = useState<number | null>(null)
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const [referenceAdded, setReferenceAdded] = useState(false)
   const [moodsOpen, setMoodsOpen] = useState(false)
   const [planPreview, setPlanPreview] = useState<ReturnType<typeof buildSongPlan> | null>(null)
   const [planEditing, setPlanEditing] = useState(false)
   const [planBackup, setPlanBackup] = useState<SongPlan | null>(null)
+
+  const lyricsMode = lyricsModeOverride ?? preferences.lyricsMode
+  const durationSeconds = durationOverride ?? preferences.durationSeconds
 
   function clearPlanPreview() {
     setPlanPreview(null)
@@ -62,7 +65,7 @@ export function CreateCanvas({ projectRef, mode, onModeChange, onGenerate }: Cre
 
   function startWithLyrics() {
     onModeChange("custom")
-    setLyricsMode("lyrics")
+    setLyricsModeOverride("lyrics")
     clearPlanPreview()
   }
 
@@ -121,7 +124,7 @@ export function CreateCanvas({ projectRef, mode, onModeChange, onGenerate }: Cre
             <div className={styles.fieldRow}>
               <div className={styles.field}>
                 <label htmlFor="lyrics-mode">Lyrics or instrumental</label>
-                <select className={styles.selectInput} id="lyrics-mode" value={lyricsMode} onChange={(event) => { setLyricsMode(event.target.value as LyricsMode); clearPlanPreview() }}>
+                <select className={styles.selectInput} id="lyrics-mode" value={lyricsMode} onChange={(event) => { setLyricsModeOverride(event.target.value as LyricsMode); clearPlanPreview() }}>
                   <option value="lyrics">Lyrics</option>
                   <option value="instrumental">Instrumental</option>
                 </select>
@@ -148,7 +151,7 @@ export function CreateCanvas({ projectRef, mode, onModeChange, onGenerate }: Cre
             <div className={styles.fieldRow}>
               <div className={styles.field}>
                 <label htmlFor="mori-duration">Duration</label>
-                <select className={styles.selectInput} id="mori-duration" value={durationSeconds} onChange={(event) => { setDurationSeconds(Number(event.target.value)); clearPlanPreview() }}>
+                <select className={styles.selectInput} id="mori-duration" value={durationSeconds} onChange={(event) => { setDurationOverride(Number(event.target.value)); clearPlanPreview() }}>
                   <option value={120}>2:00</option>
                   <option value={180}>3:00</option>
                   <option value={240}>4:00</option>

@@ -26,7 +26,7 @@ type GenerationAttempt = {
 
 export function MoriWorkspace({ api: injectedApi }: MoriWorkspaceProps = {}) {
   const { playing, playerCandidate, setPlaying, togglePlaying, selectPlayerCandidate, preferences } = useMoriApp()
-  const [mode, setMode] = useState<CreationMode>(() => preferences.defaultMode)
+  const [modeOverride, setModeOverride] = useState<CreationMode | null>(null)
   const [queueOpen, setQueueOpen] = useState(false)
   const [candidates, setCandidates] = useState(previewCandidates)
   const [songPlan, setSongPlan] = useState(previewSongPlan)
@@ -40,6 +40,7 @@ export function MoriWorkspace({ api: injectedApi }: MoriWorkspaceProps = {}) {
   const [shareFeedback, setShareFeedback] = useState(false)
   const defaultApi = useMemo(() => createMoriApiClient(), [])
   const api = injectedApi ?? defaultApi
+  const mode = modeOverride ?? preferences.defaultMode
   const generation = useMemo(() => ({
     ...previewGeneration,
     status: generationStatus,
@@ -213,6 +214,7 @@ export function MoriWorkspace({ api: injectedApi }: MoriWorkspaceProps = {}) {
   }, [])
 
   const currentCandidates = candidates.map((candidate) => ({ ...candidate, isCurrent: candidate.versionRef === currentVersionRef }))
+
   return (
     <main className={styles.app}>
       <MoriAppShell
@@ -233,7 +235,7 @@ export function MoriWorkspace({ api: injectedApi }: MoriWorkspaceProps = {}) {
               </div>
             </header>
             <div className={styles.canvasBody}>
-              <CreateCanvas projectRef={previewProject.projectRef} mode={mode} onModeChange={setMode} onGenerate={handleGenerate} />
+              <CreateCanvas projectRef={previewProject.projectRef} mode={mode} onModeChange={setModeOverride} onGenerate={handleGenerate} />
             </div>
           </section>
 

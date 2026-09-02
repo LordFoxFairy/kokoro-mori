@@ -9,6 +9,10 @@ import styles from "./mori-workspace.module.css"
 
 type SettingsSection = "appearance" | "playback" | "creation" | "account"
 
+type MoriSettingsPageProps = {
+  returnTo?: string
+}
+
 const sections: Array<{ key: SettingsSection; label: string; description: string; icon: typeof Palette }> = [
   { key: "appearance", label: "Appearance", description: "Workspace mood and shell", icon: Palette },
   { key: "playback", label: "Playback", description: "Player and listening behavior", icon: Headphones },
@@ -16,7 +20,7 @@ const sections: Array<{ key: SettingsSection; label: string; description: string
   { key: "account", label: "Account", description: "Profile and workspace plan", icon: UserRound },
 ]
 
-export function MoriSettingsPage() {
+export function MoriSettingsPage({ returnTo = "/" }: MoriSettingsPageProps = {}) {
   const [section, setSection] = useState<SettingsSection>("appearance")
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null)
   const { railCollapsed, setRailCollapsed, preferences, updatePreferences } = useMoriApp()
@@ -65,7 +69,7 @@ export function MoriSettingsPage() {
               <h1 className={styles.settingsWindowTitle} id="mori-settings-title">Settings</h1>
               <p>Shape the way Mori creates, plays, and presents your music.</p>
             </div>
-            <Link className={styles.settingsClose} href="/" aria-label="Back to studio">
+            <Link className={styles.settingsClose} href={returnTo} aria-label="Back to studio">
               <span>Back to studio</span>
               <X size={17} strokeWidth={1.8} aria-hidden="true" />
             </Link>
