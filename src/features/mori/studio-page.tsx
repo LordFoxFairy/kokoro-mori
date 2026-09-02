@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowLeft, Download, PanelLeft, Play, Share2, Sparkles } from "lucide-react"
+import { ArrowLeft, Check, Download, PanelLeft, Play, Save, Share2, Sparkles, Volume2, VolumeX } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import type { MoriApi, MoriCandidate, MoriExportSnapshot } from "@/lib/mori-api"
@@ -268,9 +268,62 @@ function LyricsCard() {
 }
 
 function LyricsEditor() {
-  return <section className={styles.editorPlaceholder} aria-label="Lyrics editor"><div className={styles.editorPlaceholderIcon}><Sparkles size={18} /></div><h3>Lyrics draft</h3><p>Keep the words close to the arrangement while the song finds its voice.</p><LyricsCard /></section>
+  const [lyrics, setLyrics] = useState("We were headlights in the quiet\nfinding a little gold in the blue\nand every road became a reason\nto carry the morning through")
+  const [saved, setSaved] = useState(true)
+  const wordCount = lyrics.trim() === "" ? 0 : lyrics.trim().split(/\s+/u).length
+
+  return (
+    <section className={styles.editorSurface} aria-label="Lyrics editor">
+      <header className={styles.editorSurfaceHeader}>
+        <div><span>Words stay close to the take</span><h3>Lyrics draft</h3></div>
+        <span className={saved ? styles.editorSaved : styles.editorUnsaved}>{saved ? "Saved locally" : "Unsaved changes"}</span>
+      </header>
+      <textarea className={styles.lyricsEditorArea} aria-label="Lyrics draft" value={lyrics} onChange={(event) => { setLyrics(event.target.value); setSaved(false) }} />
+      <footer className={styles.editorSurfaceFooter}>
+        <span>{wordCount} words · Draft 01</span>
+        <button className={styles.ghostButton} type="button" disabled={saved} onClick={() => setSaved(true)}>{saved ? <><Check size={14} /> Saved</> : <><Save size={14} /> Save draft</>}</button>
+      </footer>
+    </section>
+  )
 }
 
 function StemsEditor() {
-  return <section className={styles.editorPlaceholder} aria-label="Stems editor"><div className={styles.editorPlaceholderIcon}><PanelLeft size={18} /></div><h3>Stems are ready to shape</h3><p>Separate vocal, harmony, rhythm, and texture layers will live here.</p><div className={styles.stemList}><span>Lead vocal <b>Preview only</b></span><span>Harmony <b>Preview only</b></span><span>Rhythm <b>Preview only</b></span></div></section>
+  const stems = [
+    { name: "Lead vocal", detail: "Center · close", seed: 17 },
+    { name: "Harmony", detail: "Wide · soft", seed: 23 },
+    { name: "Rhythm", detail: "Room · organic", seed: 31 },
+    { name: "Texture", detail: "Air · low", seed: 37 },
+  ]
+  const [mutedStems, setMutedStems] = useState<string[]>([])
+  const [soloStem, setSoloStem] = useState<string | null>(null)
+
+  function toggleMute(name: string) {
+    setMutedStems((current) => current.includes(name) ? current.filter((item) => item !== name) : [...current, name])
+  }
+
+  return (
+    <section className={styles.stemsEditor} aria-label="Stems editor">
+      <header className={styles.editorSurfaceHeader}>
+        <div><span>Preview mix for the current take</span><h3>Stem balance</h3></div>
+        <span className={styles.stemPreviewBadge}>Preview only</span>
+      </header>
+      <div className={styles.stemTrackList}>
+        {stems.map((stem) => {
+          const muted = mutedStems.includes(stem.name)
+          const solo = soloStem === stem.name
+          return (
+            <div className={`${styles.stemTrack} ${muted ? styles.stemTrackMuted : ""}`} key={stem.name}>
+              <div className={styles.stemTrackCopy}><strong>{stem.name}</strong><span>{stem.detail}</span></div>
+              <div className={styles.stemTrackWave}><Waveform seed={stem.seed} compact progress={muted ? 0.1 : solo ? 0.9 : 0.56} /></div>
+              <div className={styles.stemActions}>
+                <button className={styles.stemAction} type="button" aria-pressed={muted} aria-label={`${muted ? "Unmute" : "Mute"} ${stem.name}`} onClick={() => toggleMute(stem.name)}>{muted ? <VolumeX size={14} /> : <Volume2 size={14} />}</button>
+                <button className={`${styles.stemSolo} ${solo ? styles.stemSoloActive : ""}`} type="button" aria-pressed={solo} aria-label={`${solo ? "Unsolo" : "Solo"} ${stem.name}`} onClick={() => setSoloStem(solo ? null : stem.name)}>Solo</button>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      <p className={styles.stemNote}>Mute and solo are ready for the connected audio renderer.</p>
+    </section>
+  )
 }

@@ -18,7 +18,7 @@ pnpm build
 
 - `pnpm lint`：通过，`--max-warnings=0`
 - `pnpm typecheck`：通过
-- `pnpm test`：通过，15 个测试文件、63 个测试
+- `pnpm test`：通过，15 个测试文件、65 个测试
 - `pnpm build`：通过，生成 `/`、`/create`、`/projects`、`/library`、`/settings`、Project Overview 和 Studio 路由
 
 ## 页面巡检
@@ -56,6 +56,8 @@ Project Overview 与 Studio 会读取 provider-neutral 项目/候选 projection�
 反馈；状态同步优先读取快照并通过 SSE `Last-Event-ID` 回放事件。Studio 已巡检
 Arrangement/Lyrics/Stems 切换、Preview、Share 反馈和 Export queued → completed download
 action；Arrangement 已提供 Take Lanes，可试听、选择方向并明确 Use take 后切换当前版本；
+Lyrics 已提供可编辑草稿和明确的 Saved locally 状态；Stems 已提供 Preview only 的逐轨 Mute/Solo
+控制，明确当前仍是音频渲染器接入前的交互层；
 Create 的 Smart 模式会先展示可编辑 Song Plan 摘要，用户确认后才持久化 Song Plan 并创建
 generation；未实现的 More/Edit 死按钮已移除，避免给用户错误预期。
 

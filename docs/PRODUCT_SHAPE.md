@@ -26,7 +26,8 @@ Mori 的落地：
 - Create 负责快速起意，Queue 负责承接生成状态和候选。
 - Global Player 在页面切换时保持不变，不把试听变成一次性弹窗。
 - Studio 只在 Project + Version 上下文内出现。
-- 当前先落地 Take Lanes：生成的方向可试听、对比，再明确提交为当前版本；后续 Remix、Edit、Stems 继续沿用这条闭环。
+- 当前先落地 Take Lanes：生成的方向可试听、对比，再明确提交为当前版本；Lyrics 草稿和 Stems
+  Preview 也沿用这条闭环，真实 Remix、Edit、音频分轨继续由服务端能力承接。
 
 ### 2. Figma First Draft：AI 先给可编辑的第一稿
 
@@ -90,8 +91,9 @@ Workspace nav    内容随项目上下文变化                     跨页面保
 - 已有：Project-first 导航、Contextual Queue、全局 Player、Candidate → Version → Studio。
 - 已有：Smart/Custom、浅色渐变视觉、浮窗式设置分组与 compact Rail。
 - 已落地第一版：Song Plan 从提示说明升级为可编辑、可确认的中间状态，并在确认后通过契约持久化再创建生成任务。
-- 已落地第一版：Studio Take Lanes 支持试听、选择和明确提交当前版本。
-- 后续：Song Plan 的服务端版本历史、音频上传、Stems、版本自动保存和更多导出格式。
+- 已落地第一版：Studio Take Lanes 支持试听、选择和明确提交当前版本；Lyrics 支持本地草稿保存，
+  Stems 支持 Preview only 的逐轨 Mute/Solo 交互。
+- 后续：Song Plan 的服务端版本历史、音频上传、连接真实音频渲染器、版本自动保存和更多导出格式。
 
 ## 五、明确不做的方向
 

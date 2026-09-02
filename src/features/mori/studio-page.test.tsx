@@ -43,6 +43,32 @@ describe("Mori studio page", () => {
     expect(within(firstTake).getByRole("button", { name: "Use First Light as current" })).toBeInTheDocument()
   })
 
+  it("keeps lyrics editable with an explicit local save state", () => {
+    renderStudio()
+
+    fireEvent.click(screen.getByRole("button", { name: "Lyrics" }))
+    const lyricsEditor = screen.getByRole("region", { name: "Lyrics editor" })
+    const lyrics = within(lyricsEditor).getByRole("textbox", { name: "Lyrics draft" })
+
+    fireEvent.change(lyrics, { target: { value: "A new line for the morning." } })
+    fireEvent.click(within(lyricsEditor).getByRole("button", { name: "Save draft" }))
+
+    expect(within(lyricsEditor).getByText("Saved locally")).toBeInTheDocument()
+    expect(lyrics).toHaveValue("A new line for the morning.")
+  })
+
+  it("provides explicit mute controls for the stem preview", () => {
+    renderStudio()
+
+    fireEvent.click(screen.getByRole("button", { name: "Stems" }))
+    const stemsEditor = screen.getByRole("region", { name: "Stems editor" })
+    const muteLead = within(stemsEditor).getByRole("button", { name: "Mute Lead vocal" })
+
+    fireEvent.click(muteLead)
+
+    expect(within(stemsEditor).getByRole("button", { name: "Unmute Lead vocal" })).toHaveAttribute("aria-pressed", "true")
+  })
+
   it("uses the global player for studio preview and gives share feedback", () => {
     renderStudio()
 

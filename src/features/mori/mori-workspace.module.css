@@ -2280,32 +2280,37 @@
   letter-spacing: -0.06em;
 }
 
-.editorPlaceholder {
-  display: flex;
-  min-height: 440px;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 34px;
-  border: 1px dashed rgba(109, 92, 231, 0.24);
+.editorSurface,
+.stemsEditor {
+  border: 1px solid var(--mori-border);
   border-radius: 17px;
-  text-align: center;
-  background: linear-gradient(145deg, rgba(240, 237, 255, 0.38), rgba(255, 247, 239, 0.36));
+  background: linear-gradient(145deg, rgba(240, 237, 255, 0.36), rgba(255, 247, 239, 0.32));
+  box-shadow: var(--mori-shadow-sm);
 }
 
-.editorPlaceholderIcon {
+.editorSurfaceHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 19px 20px 15px;
+  border-bottom: 1px solid rgba(109, 92, 231, 0.1);
+}
+
+.editorSurfaceHeader > div {
   display: grid;
-  width: 44px;
-  height: 44px;
-  margin-bottom: 14px;
-  place-items: center;
-  border: 1px solid rgba(109, 92, 231, 0.16);
-  border-radius: 50%;
-  color: var(--mori-primary);
-  background: #fff;
+  gap: 5px;
 }
 
-.editorPlaceholder h3 {
+.editorSurfaceHeader > div > span {
+  color: var(--mori-faint);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.editorSurfaceHeader h3 {
   margin: 0;
   font-family: var(--mori-font-display);
   font-size: 25px;
@@ -2313,43 +2318,172 @@
   letter-spacing: -0.04em;
 }
 
-.editorPlaceholder > p {
-  max-width: 310px;
-  margin: 8px 0 20px;
-  color: var(--mori-muted);
-  font-size: 12px;
-  line-height: 1.55;
+.editorSaved,
+.editorUnsaved,
+.stemPreviewBadge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 25px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
-.editorPlaceholder .lyricsCard {
-  width: min(100%, 430px);
-  text-align: left;
+.editorSaved {
+  color: var(--mori-success);
+  background: rgba(231, 246, 239, 0.82);
 }
 
-.stemList {
-  display: grid;
-  width: min(100%, 430px);
-  gap: 7px;
-  text-align: left;
+.editorUnsaved {
+  color: #9d6d59;
+  background: rgba(253, 231, 218, 0.8);
 }
 
-.stemList span {
+.lyricsEditorArea {
+  display: block;
+  width: 100%;
+  min-height: 310px;
+  padding: 23px 20px;
+  border: 0;
+  outline: 0;
+  resize: vertical;
+  color: #615b65;
+  font-family: var(--mori-font-display);
+  font-size: 20px;
+  line-height: 1.8;
+  background: transparent;
+}
+
+.lyricsEditorArea:focus {
+  box-shadow: inset 0 0 0 2px rgba(109, 92, 231, 0.18);
+}
+
+.editorSurfaceFooter {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 44px;
-  padding: 0 13px;
-  border: 1px solid var(--mori-border);
-  border-radius: 11px;
-  color: var(--mori-foreground);
-  font-size: 11px;
-  background: rgba(255, 255, 255, 0.78);
+  gap: 12px;
+  padding: 12px 15px 13px 20px;
+  border-top: 1px solid rgba(109, 92, 231, 0.1);
+  color: var(--mori-faint);
+  font-size: 10px;
 }
 
-.stemList b {
-  color: var(--mori-faint);
+.editorSurfaceFooter .ghostButton {
+  min-height: 32px;
+  font-size: 10px;
+}
+
+.editorSurfaceFooter .ghostButton:disabled {
+  cursor: default;
+  opacity: 0.72;
+}
+
+.stemsEditor {
+  padding-bottom: 18px;
+}
+
+.stemPreviewBadge {
+  color: var(--mori-primary);
+  background: rgba(240, 237, 255, 0.86);
+}
+
+.stemTrackList {
+  display: grid;
+  gap: 7px;
+  padding: 16px 18px 0;
+}
+
+.stemTrack {
+  display: grid;
+  grid-template-columns: 130px minmax(0, 1fr) auto;
+  gap: 13px;
+  align-items: center;
+  min-width: 0;
+  padding: 10px 11px;
+  border: 1px solid var(--mori-border);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.72);
+  transition: opacity var(--mori-motion-fast) ease, border-color var(--mori-motion-fast) ease;
+}
+
+.stemTrackMuted {
+  opacity: 0.55;
+}
+
+.stemTrackCopy {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.stemTrackCopy strong,
+.stemTrackCopy span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stemTrackCopy strong {
+  font-size: 11px;
+}
+
+.stemTrackCopy span {
+  color: var(--mori-muted);
   font-size: 9px;
-  font-weight: 600;
+}
+
+.stemTrackWave {
+  min-width: 0;
+}
+
+.stemActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stemAction,
+.stemSolo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 29px;
+  min-height: 27px;
+  padding: 0 7px;
+  border-radius: 8px;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.stemAction {
+  border: 1px solid var(--mori-border);
+  color: var(--mori-muted);
+  background: #fff;
+}
+
+.stemAction:hover {
+  border-color: var(--mori-border-strong);
+  color: var(--mori-foreground);
+}
+
+.stemSolo {
+  border: 0;
+  color: var(--mori-primary);
+  background: var(--mori-primary-soft);
+}
+
+.stemSoloActive {
+  color: #fff;
+  background: var(--mori-primary);
+}
+
+.stemNote {
+  margin: 13px 20px 0;
+  color: var(--mori-faint);
+  font-size: 10px;
 }
 
 .timelineCard,
@@ -2802,7 +2936,22 @@
     font-size: 18px;
   }
 
-  .studioToolList,
+  .studioToolList {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    margin-top: 2px;
+  }
+
+  .studioToolList button {
+    justify-content: center;
+    gap: 6px;
+    min-width: 0;
+    padding-inline: 5px;
+    font-size: 10px;
+  }
+
   .studioSidebarBottom {
     display: none;
   }
@@ -2845,6 +2994,44 @@
 
   .lyricsCard p {
     font-size: 16px;
+  }
+
+  .editorSurfaceHeader {
+    padding-inline: 16px;
+  }
+
+  .lyricsEditorArea {
+    min-height: 290px;
+    padding: 19px 16px;
+    font-size: 18px;
+  }
+
+  .editorSurfaceFooter {
+    padding-inline: 16px;
+  }
+
+  .stemTrackList {
+    padding-inline: 14px;
+  }
+
+  .stemTrack {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 9px;
+  }
+
+  .stemTrackWave {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .stemActions {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .stemNote {
+    margin-inline: 16px;
+    line-height: 1.45;
   }
 }
 
