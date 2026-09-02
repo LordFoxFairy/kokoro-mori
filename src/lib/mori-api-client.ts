@@ -4,17 +4,23 @@ import {
   type ApiError,
   type ApiSuccess,
   type GenerationCreateInput,
-  type GenerationCancelReceipt,
-  type GenerationReceipt,
-  type GenerationSnapshot,
   type MoriGenerationEvent,
-  type MoriExportReceipt,
-  type MoriExportSnapshot,
-  type MoriCandidate,
-  type MoriLibraryItem,
-  type MoriProjectPage,
   type MoriApi,
 } from "./mori-api"
+import {
+  parseApiError,
+  parseApiSuccess,
+  parseGenerationCancelReceipt,
+  parseGenerationEventData,
+  parseGenerationReceipt,
+  parseGenerationSnapshot,
+  parseMoriCandidatePage,
+  parseMoriExportReceipt,
+  parseMoriExportSnapshot,
+  parseMoriLibraryPage,
+  parseMoriProject,
+  parseMoriProjectPage,
+} from "./mori-api-validation"
 
 export type MoriApiClientOptions = {
   apiBasePath?: string
@@ -48,18 +54,12 @@ export function createMoriApiClient(options: MoriApiClientOptions = {}): MoriApi
       if (options.cursor !== undefined && options.cursor !== null && options.cursor.trim() !== "") query.set("cursor", options.cursor)
       const response = await fetchImpl(`${apiBasePath}/projects${query.size > 0 ? `?${query.toString()}` : ""}`)
       const payload = await readJson(response)
-      if (!response.ok || isApiError(payload)) {
-        throwRequestError(response, payload)
-      }
-      return payload as ApiSuccess<MoriProjectPage>
+      return parseSuccessResponse(response, payload, parseMoriProjectPage)
     },
     async getProject(projectRef: MoriRef) {
       const response = await fetchImpl(`${apiBasePath}/projects/${encodeURIComponent(projectRef)}`)
       const payload = await readJson(response)
-      if (!response.ok || isApiError(payload)) {
-        throwRequestError(response, payload)
-      }
-      return payload as ApiSuccess<import("./mori-api").MoriProject>
+      return parseSuccessResponse(response, payload, parseMoriProject)
     },
     async createGeneration(projectRef: MoriRef, input: GenerationCreateInput, idempotencyKey: string) {
       const response = await fetchImpl(
@@ -71,27 +71,12 @@ export function createMoriApiClient(options: MoriApiClientOptions = {}): MoriApi
         },
       )
       const payload = await readJson(response)
-
-      if (!response.ok || isApiError(payload)) {
-        if (isApiError(payload)) {
-          throw new MoriApiRequestError(payload.error, payload.meta.request_id, response.status)
-        }
-        throw new MoriApiRequestError(
-          { code: "invalid_api_response", message: "Mori API returned an invalid response", retryable: response.status >= 500, details: null },
-          null,
-          response.status,
-        )
-      }
-
-      return payload as ApiSuccess<GenerationReceipt>
+      return parseSuccessResponse(response, payload, parseGenerationReceipt)
     },
     async getGeneration(generationRef: MoriRef) {
       const response = await fetchImpl(`${apiBasePath}/generations/${encodeURIComponent(generationRef)}`)
       const payload = await readJson(response)
-      if (!response.ok || isApiError(payload)) {
-        throwRequestError(response, payload)
-      }
-      return payload as ApiSuccess<GenerationSnapshot>
+      return parseSuccessResponse(response, payload, parseGenerationSnapshot)
     },
     async getGenerationEvents(generationRef: MoriRef, lastEventId = null) {
       const headers: HeadersInit = { Accept: "text/event-stream" }
@@ -100,22 +85,35 @@ export function createMoriApiClient(options: MoriApiClientOptions = {}): MoriApi
       const body = await response.text()
       if (!response.ok) {
         const payload = parseJson(body)
-        if (isApiError(payload)) throw new MoriApiRequestError(payload.error, payload.meta.request_id, response.status)
+        const apiError = parseApiError(payload)
+        if (apiError !== null) throw new MoriApiRequestError(apiError.error, apiError.meta.request_id, response.status)
         throw new MoriApiRequestError(
           { code: "invalid_api_response", message: "Mori event stream returned an invalid response", retryable: response.status >= 500, details: null },
           null,
           response.status,
         )
       }
-      return parseGenerationEvents(body)
+      if (!(response.headers.get("content-type") || "").toLowerCase().startsWith("text/event-stream")) {
+        throw new MoriApiRequestError(
+          { code: "invalid_api_response", message: "Mori event stream returned an invalid content type", retryable: false, details: null },
+          null,
+          response.status,
+        )
+      }
+      const events = parseGenerationEvents(body)
+      if (events === null) {
+        throw new MoriApiRequestError(
+          { code: "invalid_api_response", message: "Mori event stream returned an invalid response", retryable: response.status >= 500, details: null },
+          null,
+          response.status,
+        )
+      }
+      return events
     },
     async listCandidates(projectRef: MoriRef) {
       const response = await fetchImpl(`${apiBasePath}/projects/${encodeURIComponent(projectRef)}/candidates`)
       const payload = await readJson(response)
-      if (!response.ok || isApiError(payload)) {
-        throwRequestError(response, payload)
-      }
-      return payload as ApiSuccess<{ candidates: MoriCandidate[]; next_cursor: string | null }>
+      return parseSuccessResponse(response, payload, parseMoriCandidatePage)
     },
     async cancelGeneration(generationRef: MoriRef, idempotencyKey: string) {
       const response = await fetchImpl(`${apiBasePath}/generations/${encodeURIComponent(generationRef)}/cancel`, {
@@ -123,18 +121,12 @@ export function createMoriApiClient(options: MoriApiClientOptions = {}): MoriApi
         headers: createMutationHeaders(idempotencyKey),
       })
       const payload = await readJson(response)
-      if (!response.ok || isApiError(payload)) {
-        throwRequestError(response, payload)
-      }
-      return payload as ApiSuccess<GenerationCancelReceipt>
+      return parseSuccessResponse(response, payload, parseGenerationCancelReceipt)
     },
     async listLibrary(kind = "all") {
       const response = await fetchImpl(`${apiBasePath}/library?kind=${encodeURIComponent(kind)}`)
       const payload = await readJson(response)
-      if (!response.ok || isApiError(payload)) {
-        throwRequestError(response, payload)
-      }
-      return payload as ApiSuccess<{ items: MoriLibraryItem[]; next_cursor: string | null }>
+      return parseSuccessResponse(response, payload, parseMoriLibraryPage)
     },
     async createExport(versionRef, format, idempotencyKey) {
       const response = await fetchImpl(`${apiBasePath}/versions/${encodeURIComponent(versionRef)}/exports`, {
@@ -143,31 +135,39 @@ export function createMoriApiClient(options: MoriApiClientOptions = {}): MoriApi
         body: JSON.stringify({ format }),
       })
       const payload = await readJson(response)
-      if (!response.ok || isApiError(payload)) {
-        throwRequestError(response, payload)
-      }
-      return payload as ApiSuccess<MoriExportReceipt>
+      return parseSuccessResponse(response, payload, parseMoriExportReceipt)
     },
     async getExport(exportRef) {
       const response = await fetchImpl(`${apiBasePath}/exports/${encodeURIComponent(exportRef)}`)
       const payload = await readJson(response)
-      if (!response.ok || isApiError(payload)) {
-        throwRequestError(response, payload)
-      }
-      return payload as ApiSuccess<MoriExportSnapshot>
+      return parseSuccessResponse(response, payload, parseMoriExportSnapshot)
     },
   }
 }
 
 function throwRequestError(response: Response, payload: unknown): never {
-  if (isApiError(payload)) {
-    throw new MoriApiRequestError(payload.error, payload.meta.request_id, response.status)
+  const apiError = parseApiError(payload)
+  if (apiError !== null) {
+    throw new MoriApiRequestError(apiError.error, apiError.meta.request_id, response.status)
   }
   throw new MoriApiRequestError(
     { code: "invalid_api_response", message: "Mori API returned an invalid response", retryable: response.status >= 500, details: null },
     null,
     response.status,
   )
+}
+
+function parseSuccessResponse<T>(response: Response, payload: unknown, parser: (value: unknown) => T | null): ApiSuccess<T> {
+  if (!response.ok || parseApiError(payload) !== null) throwRequestError(response, payload)
+  const result = parseApiSuccess(payload, parser)
+  if (result === null) {
+    throw new MoriApiRequestError(
+      { code: "invalid_api_response", message: "Mori API returned an invalid response", retryable: response.status >= 500, details: null },
+      null,
+      response.status,
+    )
+  }
+  return result
 }
 
 async function readJson(response: Response): Promise<unknown> {
@@ -186,12 +186,10 @@ function parseJson(value: string): unknown {
   }
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null
-}
-
-function parseGenerationEvents(body: string): MoriGenerationEvent[] {
-  return body.split(/\r?\n\r?\n/u).flatMap((frame) => {
+function parseGenerationEvents(body: string): MoriGenerationEvent[] | null {
+  const events: MoriGenerationEvent[] = []
+  for (const frame of body.split(/\r?\n\r?\n/u)) {
+    if (frame.trim() === "" || frame.split(/\r?\n/u).every((line) => line.startsWith(":"))) continue
     let id: string | null = null
     let event: string | null = null
     const dataLines: string[] = []
@@ -200,41 +198,14 @@ function parseGenerationEvents(body: string): MoriGenerationEvent[] {
       else if (line.startsWith("event:")) event = line.slice(6).trim()
       else if (line.startsWith("data:")) dataLines.push(line.slice(5).trimStart())
     }
-    if (id === null || id === "" || event === null || event === "" || dataLines.length === 0) return []
-    const envelope = parseJson(dataLines.join("\n"))
-    if (!isRecord(envelope) || !isRecord(envelope.data)) return []
-    const data = envelope.data
-    if (
-      typeof data.generation_ref !== "string"
-      || typeof data.project_ref !== "string"
-      || typeof data.status !== "string"
-      || typeof data.progress !== "number"
-      || !Number.isFinite(data.progress)
-      || !Array.isArray(data.candidate_refs)
-      || !data.candidate_refs.every((value): value is string => typeof value === "string")
-    ) return []
-    return [{
+    if (id === null || id === "" || event === null || event === "" || dataLines.length === 0) return null
+    const envelope = parseApiSuccess(parseJson(dataLines.join("\n")), parseGenerationEventData)
+    if (envelope === null) return null
+    events.push({
       id,
       event,
-      data: {
-        generation_ref: data.generation_ref,
-        project_ref: data.project_ref,
-        status: data.status as MoriGenerationEvent["data"]["status"],
-        progress: data.progress,
-        candidate_refs: [...data.candidate_refs],
-      },
-    }]
-  })
-}
-
-function isApiError(value: unknown): value is ApiError {
-  if (typeof value !== "object" || value === null || !("error" in value) || !("meta" in value)) {
-    return false
+      data: envelope.data,
+    })
   }
-
-  const candidate = value as { error?: unknown; meta?: unknown }
-  return typeof candidate.error === "object" && candidate.error !== null
-    && typeof candidate.meta === "object" && candidate.meta !== null
-    && "code" in candidate.error && "message" in candidate.error && "retryable" in candidate.error
-    && "request_id" in candidate.meta
+  return events
 }

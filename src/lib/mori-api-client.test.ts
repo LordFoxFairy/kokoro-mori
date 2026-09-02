@@ -217,4 +217,39 @@ describe("Mori same-origin API client", () => {
     ])
     expect(snapshot.data.download_url).toContain("export_1.mp3")
   })
+
+  it("rejects a malformed success payload instead of trusting a type assertion", async () => {
+    const api = createMoriApiClient({
+      fetchImpl: async () => new Response(JSON.stringify({
+        data: {
+          project_ref: "project_1",
+          title: "Missing fields",
+          provider_task_id: "provider-secret",
+        },
+        meta: { request_id: "request_invalid" },
+      }), { status: 200, headers: { "Content-Type": "application/json" } }),
+    })
+
+    await expect(api.getProject("project_1")).rejects.toMatchObject({
+      code: "invalid_api_response",
+      status: 200,
+    })
+  })
+
+  it("rejects malformed generation event frames", async () => {
+    const api = createMoriApiClient({
+      fetchImpl: async () => new Response([
+        "id: generation_1:1",
+        "event: generation.progress",
+        'data: {"data":{"generation_ref":"generation_1","status":"generating"}}',
+        "",
+        "",
+      ].join("\n"), { status: 200, headers: { "Content-Type": "text/event-stream" } }),
+    })
+
+    await expect(api.getGenerationEvents("generation_1")).rejects.toMatchObject({
+      code: "invalid_api_response",
+      status: 200,
+    })
+  })
 })
