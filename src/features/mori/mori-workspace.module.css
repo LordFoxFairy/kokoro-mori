@@ -2304,7 +2304,7 @@
   position: fixed;
   right: 14px;
   bottom: 14px;
-  left: calc(var(--mori-rail-width) + 14px);
+  left: 14px;
   z-index: 20;
   pointer-events: none;
 }
@@ -2651,7 +2651,7 @@
   }
 
   .globalPlayerSlot {
-    left: calc(var(--mori-rail-width) + 14px);
+    left: 14px;
   }
 }
 
