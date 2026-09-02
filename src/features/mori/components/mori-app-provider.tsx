@@ -9,7 +9,10 @@ type MoriAppContextValue = {
   toggleRail: () => void
   playerCandidate: Candidate
   playing: boolean
+  muted: boolean
+  positionSeconds: number
   togglePlaying: () => void
+  toggleMuted: () => void
   setPlaying: (playing: boolean) => void
   selectPlayerCandidate: (candidate: Candidate) => void
   previousPlayerCandidate: () => void
@@ -21,7 +24,10 @@ const MoriAppContext = createContext<MoriAppContextValue | null>(null)
 export function MoriAppProvider({ children }: { children: ReactNode }) {
   const [railCollapsed, setRailCollapsed] = useState(false)
   const [playerCandidate, setPlayerCandidate] = useState(previewCandidates[0])
+  const [playerCandidates, setPlayerCandidates] = useState(previewCandidates)
   const [playing, setPlaying] = useState(false)
+  const [muted, setMuted] = useState(false)
+  const [positionSeconds, setPositionSeconds] = useState(0)
 
   useEffect(() => {
     if (window.innerWidth <= 700) {
@@ -30,27 +36,54 @@ export function MoriAppProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  useEffect(() => {
+    if (!playing) return
+    const timer = window.setInterval(() => {
+      setPositionSeconds((position) => {
+        if (position + 1 >= playerCandidate.durationSeconds) {
+          setPlaying(false)
+          return 0
+        }
+        return position + 1
+      })
+    }, 1000)
+    return () => window.clearInterval(timer)
+  }, [playing, playerCandidate.durationSeconds])
+
   const value = useMemo<MoriAppContextValue>(() => ({
     railCollapsed,
     toggleRail: () => setRailCollapsed((value) => !value),
     playerCandidate,
     playing,
+    muted,
+    positionSeconds,
     togglePlaying: () => setPlaying((value) => !value),
     setPlaying,
-    selectPlayerCandidate: setPlayerCandidate,
-    previousPlayerCandidate: () => setPlayerCandidate((candidate) => stepCandidate(candidate, -1)),
-    nextPlayerCandidate: () => setPlayerCandidate((candidate) => stepCandidate(candidate, 1)),
-  }), [playing, playerCandidate, railCollapsed])
+    toggleMuted: () => setMuted((value) => !value),
+    selectPlayerCandidate: (candidate) => {
+      setPlayerCandidate(candidate)
+      setPositionSeconds(0)
+      setPlayerCandidates((items) => items.some((item) => item.candidateRef === candidate.candidateRef) ? items : [...items, candidate])
+    },
+    previousPlayerCandidate: () => setPlayerCandidate((candidate) => {
+      setPositionSeconds(0)
+      return stepCandidate(candidate, playerCandidates, -1)
+    }),
+    nextPlayerCandidate: () => setPlayerCandidate((candidate) => {
+      setPositionSeconds(0)
+      return stepCandidate(candidate, playerCandidates, 1)
+    }),
+  }), [muted, playerCandidate, playerCandidates, playing, positionSeconds, railCollapsed])
 
   return <MoriAppContext.Provider value={value}>{children}</MoriAppContext.Provider>
 }
 
-function stepCandidate(candidate: Candidate, direction: -1 | 1): Candidate {
-  const currentIndex = previewCandidates.findIndex((item) => item.candidateRef === candidate.candidateRef)
+function stepCandidate(candidate: Candidate, candidates: Candidate[], direction: -1 | 1): Candidate {
+  const currentIndex = candidates.findIndex((item) => item.candidateRef === candidate.candidateRef)
   const nextIndex = currentIndex < 0
     ? 0
-    : (currentIndex + direction + previewCandidates.length) % previewCandidates.length
-  return previewCandidates[nextIndex] ?? previewCandidates[0]
+    : (currentIndex + direction + candidates.length) % candidates.length
+  return candidates[nextIndex] ?? candidates[0] ?? previewCandidates[0]
 }
 
 export function useMoriApp(): MoriAppContextValue {

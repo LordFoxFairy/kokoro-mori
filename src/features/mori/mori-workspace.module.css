@@ -55,6 +55,27 @@
   padding: 0 8px 24px;
 }
 
+.railToggleGlobal {
+  position: fixed;
+  top: 39px;
+  left: calc(var(--mori-rail-width) - 8px);
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border: 1px solid var(--mori-border);
+  border-radius: 50%;
+  color: var(--mori-muted);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 5px 13px rgba(62, 45, 86, 0.1);
+  z-index: 30;
+}
+
+.railToggleGlobal:hover {
+  color: var(--mori-primary);
+  border-color: rgba(109, 92, 231, 0.25);
+}
+
 .brandMark {
   display: grid;
   width: 34px;
@@ -142,11 +163,17 @@
 }
 
 .projectMini {
+  display: block;
   margin-top: 26px;
   padding: 13px;
   border: 1px solid var(--mori-border);
   border-radius: 14px;
   background: linear-gradient(145deg, rgba(240, 237, 255, 0.72), rgba(255, 255, 255, 0.8));
+}
+
+.projectMini:hover {
+  border-color: rgba(109, 92, 231, 0.22);
+  background: linear-gradient(145deg, rgba(240, 237, 255, 0.92), rgba(255, 255, 255, 0.92));
 }
 
 .projectMiniHeader {
@@ -2244,6 +2271,13 @@
 .appShell .rail {
   grid-row: 1;
   min-height: calc(100vh - 28px);
+  height: calc(100vh - 28px);
+  align-self: start;
+  position: sticky;
+  top: 0;
+  overflow: hidden;
+  z-index: 2;
+  padding-bottom: 92px;
   border-right: 0;
   border-radius: var(--mori-radius-lg) 0 0 var(--mori-radius-lg);
   box-shadow: var(--mori-shadow-sm);
@@ -2313,6 +2347,10 @@
   pointer-events: auto;
 }
 
+.railBackdrop {
+  display: none;
+}
+
 .workspaceLayout {
   position: relative;
   display: grid;
@@ -2321,7 +2359,7 @@
 }
 
 .workspaceLayoutWithDrawer {
-  grid-template-columns: minmax(0, 1fr) 336px;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .createSurface {
@@ -2334,8 +2372,39 @@
   border-left: 1px solid var(--mori-border);
   border-radius: 0;
   box-shadow: none;
-  background: rgba(255, 255, 255, 0.4);
-  backdrop-filter: none;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(18px);
+}
+
+.drawerLayer {
+  position: fixed;
+  inset: 0;
+  z-index: 17;
+  pointer-events: none;
+}
+
+.drawerBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  border: 0;
+  background: rgba(38, 34, 48, 0.06);
+  backdrop-filter: blur(1px);
+  pointer-events: auto;
+}
+
+.drawerLayer .inspector {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  bottom: 86px;
+  z-index: 1;
+  width: min(336px, calc(100vw - 28px));
+  min-height: 0;
+  border: 1px solid rgba(234, 231, 227, 0.96);
+  border-radius: var(--mori-radius-lg);
+  box-shadow: -18px 18px 50px rgba(62, 45, 86, 0.16);
+  transform: none;
 }
 
 .inspectorActions {
@@ -2422,6 +2491,13 @@
 
 .catalogShell .rail {
   min-height: calc(100vh - 28px);
+  height: calc(100vh - 28px);
+  align-self: start;
+  position: sticky;
+  top: 0;
+  overflow: hidden;
+  z-index: 2;
+  padding-bottom: 92px;
   border-right: 0;
   border-radius: var(--mori-radius-lg) 0 0 var(--mori-radius-lg);
 }
@@ -2646,16 +2722,26 @@
     min-height: calc(100vh - 28px);
   }
 
-  .workspaceLayoutWithDrawer {
-    grid-template-columns: minmax(0, 1fr) 310px;
-  }
-
   .globalPlayerSlot {
     left: 14px;
   }
 }
 
 @media (max-width: 700px) {
+  .railToggleGlobal {
+    top: 20px;
+  }
+
+  .railBackdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 7;
+    display: block;
+    border: 0;
+    background: rgba(38, 34, 48, 0.08);
+    backdrop-filter: blur(1px);
+  }
+
   .appShell,
   .catalogShell {
     grid-template-columns: 72px minmax(0, 1fr);
@@ -2667,15 +2753,74 @@
     padding-left: 72px;
   }
 
+  .appShell .canvasHeader {
+    gap: 8px;
+    padding-inline: 16px;
+  }
+
+  .appShell .breadcrumb {
+    min-width: 0;
+    white-space: nowrap;
+  }
+
+  .appShell .breadcrumb > span {
+    display: none;
+  }
+
+  .appShell .breadcrumb strong {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .appShell .headerActions {
+    flex: 0 0 auto;
+    gap: 4px;
+  }
+
+  .appShell .headerActions .ghostButton {
+    display: none;
+  }
+
   .appShell .rail,
   .appShell:not([data-rail-collapsed="true"]) .rail {
     position: absolute;
-    inset: 0 auto 0 0;
+    inset: 0 auto auto 0;
     z-index: 8;
     grid-column: auto;
     width: 72px;
-    min-height: 100%;
+    height: 100vh;
+    min-height: 0;
     border-radius: var(--mori-radius-lg);
+  }
+
+  .appShell:not([data-rail-collapsed="true"]) .brandRow {
+    justify-content: flex-start;
+    padding-inline: 8px;
+  }
+
+  .appShell:not([data-rail-collapsed="true"]) .brandName,
+  .appShell:not([data-rail-collapsed="true"]) .newButton span,
+  .appShell:not([data-rail-collapsed="true"]) .navLabel,
+  .appShell:not([data-rail-collapsed="true"]) .navItem span,
+  .appShell:not([data-rail-collapsed="true"]) .projectMini,
+  .appShell:not([data-rail-collapsed="true"]) .railFooterLink span {
+    display: revert;
+  }
+
+  .appShell:not([data-rail-collapsed="true"]) .newButton {
+    width: 100%;
+    margin-inline: 0;
+  }
+
+  .appShell:not([data-rail-collapsed="true"]) .navItem {
+    justify-content: flex-start;
+    padding-inline: 11px;
+  }
+
+  .appShell:not([data-rail-collapsed="true"]) .railFooterLink {
+    justify-content: flex-start;
+    padding-inline: 11px;
   }
 
   .appShell:not([data-rail-collapsed="true"]) .rail {
@@ -2691,12 +2836,13 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .workspaceLayoutWithDrawer .inspector {
-    position: absolute;
-    inset: 0 0 0 auto;
-    z-index: 6;
-    width: min(336px, 92vw);
-    min-height: 100%;
+  .drawerLayer .inspector {
+    top: 8px;
+    right: 8px;
+    bottom: 76px;
+    z-index: 18;
+    width: min(336px, calc(100vw - 16px));
+    transform: none;
     box-shadow: -18px 0 45px rgba(62, 45, 86, 0.12);
   }
 
@@ -2707,7 +2853,7 @@
   }
 
   .appShellWithPlayer .surface {
-    padding-bottom: 82px;
+    padding-bottom: 112px;
   }
 
   .player {

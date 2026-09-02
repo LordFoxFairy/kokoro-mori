@@ -2,9 +2,10 @@
 
 import { type ReactNode } from "react"
 import { MoriAppShell } from "./mori-app-shell"
+import type { MoriNavigationKey } from "./mori-rail"
 
 type MoriCatalogShellProps = {
-  activeKey: "home" | "projects" | "library"
+  activeKey: MoriNavigationKey
   ariaLabel: string
   children: ReactNode
 }

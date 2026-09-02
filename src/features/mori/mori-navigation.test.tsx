@@ -32,6 +32,8 @@ describe("Mori application navigation", () => {
     expect(screen.getByRole("region", { name: "Global player" })).toBeInTheDocument()
     fireEvent.click(screen.getByRole("button", { name: "Play" }))
     expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: "Mute" }))
+    expect(screen.getByRole("button", { name: "Unmute" })).toBeInTheDocument()
   })
 
   it("starts with a compact rail on narrow viewports", async () => {

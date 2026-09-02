@@ -48,5 +48,8 @@ describe("Mori workspace", () => {
 
     expect(screen.getByRole("region", { name: /generation queue/i })).toBeInTheDocument()
     expect(screen.getByRole("button", { name: /close generation queue/i })).toBeInTheDocument()
+
+    fireEvent.keyDown(window, { key: "Escape" })
+    expect(screen.queryByRole("region", { name: /generation queue/i })).not.toBeInTheDocument()
   })
 })

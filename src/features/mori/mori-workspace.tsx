@@ -1,6 +1,7 @@
 "use client"
 
 import { MoreHorizontal, PanelRight, Share2 } from "lucide-react"
+import { createPortal } from "react-dom"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { createGenerationRequest } from "@/lib/mori-api"
 import { createMoriApiClient, MoriApiRequestError } from "@/lib/mori-api-client"
@@ -102,6 +103,15 @@ export function MoriWorkspace() {
     }
   }, [api, generationRef])
 
+  useEffect(() => {
+    if (!queueOpen) return
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setQueueOpen(false)
+    }
+    window.addEventListener("keydown", closeOnEscape)
+    return () => window.removeEventListener("keydown", closeOnEscape)
+  }, [queueOpen])
+
   const handlePromote = useCallback((candidate: Candidate) => {
     setCurrentVersionRef(candidate.versionRef)
     setCandidates((items) => items.map((item) => ({ ...item, isCurrent: item.candidateRef === candidate.candidateRef })))
@@ -136,25 +146,29 @@ export function MoriWorkspace() {
             </div>
           </section>
 
-          {queueOpen ? (
-            <InspectorPanel
-              generation={generation}
-              candidates={currentCandidates}
-              songPlan={previewSongPlan}
-              selectedCandidateRef={selectedCandidateRef}
-              playing={playing}
-              onSelect={(candidate) => { setSelectedCandidateRef(candidate.candidateRef); selectPlayerCandidate(candidate); setPlaying(false) }}
-              onPromote={handlePromote}
-              onPlay={(candidate) => {
-                setSelectedCandidateRef(candidate.candidateRef)
-                if (playerCandidate.candidateRef === candidate.candidateRef) togglePlaying()
-                else { selectPlayerCandidate(candidate); setPlaying(true) }
-              }}
-              onClose={() => setQueueOpen(false)}
-            />
-          ) : null}
         </div>
       </MoriAppShell>
+      {queueOpen && typeof document !== "undefined" ? createPortal(
+        <div className={styles.drawerLayer}>
+          <button className={styles.drawerBackdrop} type="button" aria-label="Dismiss generation queue" onClick={() => setQueueOpen(false)} />
+          <InspectorPanel
+            generation={generation}
+            candidates={currentCandidates}
+            songPlan={previewSongPlan}
+            selectedCandidateRef={selectedCandidateRef}
+            playing={playing}
+            onSelect={(candidate) => { setSelectedCandidateRef(candidate.candidateRef); selectPlayerCandidate(candidate); setPlaying(false) }}
+            onPromote={handlePromote}
+            onPlay={(candidate) => {
+              setSelectedCandidateRef(candidate.candidateRef)
+              if (playerCandidate.candidateRef === candidate.candidateRef) togglePlaying()
+              else { selectPlayerCandidate(candidate); setPlaying(true) }
+            }}
+            onClose={() => setQueueOpen(false)}
+          />
+        </div>,
+        document.body,
+      ) : null}
     </main>
   )
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { ListMusic, Pause, Play, SkipBack, SkipForward, Volume2 } from "lucide-react"
+import { ListMusic, Pause, Play, SkipBack, SkipForward, Volume2, VolumeX } from "lucide-react"
 import type { Candidate } from "../domain"
 import { Waveform } from "./waveform"
 import styles from "../mori-workspace.module.css"
@@ -8,7 +8,10 @@ import styles from "../mori-workspace.module.css"
 type PersistentPlayerProps = {
   candidate: Candidate
   playing: boolean
+  muted: boolean
+  positionSeconds: number
   onToggle: () => void
+  onToggleMute: () => void
   onSelectQueue?: () => void
   onPrevious?: () => void
   onNext?: () => void
@@ -20,7 +23,7 @@ function formatDuration(seconds: number): string {
   return `${minutes}:${remaining}`
 }
 
-export function PersistentPlayer({ candidate, playing, onToggle, onSelectQueue, onPrevious, onNext }: PersistentPlayerProps) {
+export function PersistentPlayer({ candidate, playing, muted, positionSeconds, onToggle, onToggleMute, onSelectQueue, onPrevious, onNext }: PersistentPlayerProps) {
   return (
     <section className={styles.player} aria-label="Global player">
       <div className={styles.playerTrack}>
@@ -31,8 +34,8 @@ export function PersistentPlayer({ candidate, playing, onToggle, onSelectQueue, 
         </div>
       </div>
       <div className={styles.playerWave}>
-        <span className={styles.time}>0:36</span>
-        <Waveform seed={candidate.waveformSeed} compact progress={0.2} />
+        <span className={styles.time}>{formatDuration(positionSeconds)}</span>
+        <Waveform seed={candidate.waveformSeed} compact progress={candidate.durationSeconds > 0 ? positionSeconds / candidate.durationSeconds : 0} />
         <span className={styles.time}>{formatDuration(candidate.durationSeconds)}</span>
       </div>
       <div className={styles.playerControls}>
@@ -41,7 +44,7 @@ export function PersistentPlayer({ candidate, playing, onToggle, onSelectQueue, 
           {playing ? <Pause fill="currentColor" /> : <Play fill="currentColor" />}
         </button>
         <button className={styles.playerButton} type="button" onClick={onNext} aria-label="Next version"><SkipForward /></button>
-        <button className={styles.playerButton} type="button" aria-label="Volume"><Volume2 /></button>
+        <button className={styles.playerButton} type="button" onClick={onToggleMute} aria-label={muted ? "Unmute" : "Mute"}>{muted ? <VolumeX /> : <Volume2 />}</button>
         {onSelectQueue ? <button className={styles.playerTool} type="button" onClick={onSelectQueue} aria-label="Open playback queue"><ListMusic /> <span>Queue</span></button> : null}
       </div>
     </section>
