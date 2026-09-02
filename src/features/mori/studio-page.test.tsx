@@ -9,7 +9,7 @@ describe("Mori studio page", () => {
     createExport: (versionRef: string, format: "mp3" | "wav", idempotencyKey: string) => Promise<{ data: { export_ref: string; status: "queued" | "processing" }; meta: { request_id: string } }>
     getExport?: (exportRef: string) => Promise<{ data: { export_ref: string; project_ref: string; version_ref: string; format: "mp3" | "wav"; status: "queued" | "processing" | "succeeded" | "failed"; download_url: string | null; created_at: string }; meta: { request_id: string } }>
   }) {
-    render(
+    return render(
       <MoriAppProvider>
         <StudioPageContent candidate={previewCandidates[0]} api={api} />
       </MoriAppProvider>,
@@ -55,6 +55,24 @@ describe("Mori studio page", () => {
 
     expect(within(lyricsEditor).getByText("Saved locally")).toBeInTheDocument()
     expect(lyrics).toHaveValue("A new line for the morning.")
+  })
+
+  it("restores a saved lyric draft for the same version", () => {
+    localStorage.clear()
+    const firstRender = renderStudio()
+
+    fireEvent.click(screen.getByRole("button", { name: "Lyrics" }))
+    const lyricsEditor = screen.getByRole("region", { name: "Lyrics editor" })
+    const lyrics = within(lyricsEditor).getByRole("textbox", { name: "Lyrics draft" })
+    fireEvent.change(lyrics, { target: { value: "A saved line for the next take." } })
+    fireEvent.click(within(lyricsEditor).getByRole("button", { name: "Save draft" }))
+
+    firstRender.unmount()
+    renderStudio()
+    fireEvent.click(screen.getByRole("button", { name: "Lyrics" }))
+
+    expect(screen.getByRole("textbox", { name: "Lyrics draft" })).toHaveValue("A saved line for the next take.")
+    localStorage.clear()
   })
 
   it("provides explicit mute controls for the stem preview", () => {

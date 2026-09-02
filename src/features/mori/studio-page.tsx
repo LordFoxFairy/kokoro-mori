@@ -187,7 +187,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api }: St
         <section className={styles.studioCanvas} aria-label="Studio editor">
           <div className={styles.studioCanvasTop}><div><span className={styles.eyebrow}><span className={styles.eyebrowDot} />Editing with intention</span><h2>Shape the feeling.</h2></div><button className={styles.generateButton} type="button" onClick={preview}><Play size={14} fill="currentColor" /> {playerCandidate.versionRef === activeCandidate.versionRef && playing ? "Pause" : "Preview"}</button></div>
           {activeTool === "arrangement" ? <ArrangementEditor candidate={activeCandidate} takes={studioCandidates} currentVersionRef={currentVersionRef} playerVersionRef={playerCandidate.versionRef} playing={playing} onSelectTake={selectTake} onPreviewTake={previewTake} onPromoteTake={promoteTake} /> : null}
-          {activeTool === "lyrics" ? <LyricsEditor /> : null}
+          {activeTool === "lyrics" ? <LyricsEditor key={activeCandidate.versionRef} versionRef={activeCandidate.versionRef} /> : null}
           {activeTool === "stems" ? <StemsEditor /> : null}
         </section>
         <aside className={styles.versionRail} aria-label="Version history"><div className={styles.versionRailHeader}><div><span>Project history</span><h2>Versions</h2></div></div>{studioCandidates.map((item, index) => <Link className={`${styles.versionItem} ${item.versionRef === activeCandidate.versionRef ? styles.versionItemActive : ""}`} href={`/projects/${activeProjectRef}/studio/${item.versionRef}`} key={item.versionRef}><div className={`${styles.versionThumb} ${index === 1 ? styles.versionThumbAlt : ""}`}><Play size={12} fill="currentColor" /></div><div><strong>{item.title}</strong><span>{index === 0 ? "Current" : "Draft"} · {Math.floor(item.durationSeconds / 60)}:{String(item.durationSeconds % 60).padStart(2, "0")}</span></div></Link>)}</aside>
@@ -267,8 +267,11 @@ function LyricsCard() {
   return <div className={styles.lyricsCard}><div className={styles.lyricsHeader}><div><span>Lyrics</span><strong>Draft 01</strong></div></div><p>We were headlights in the quiet<br />finding a little gold in the blue<br /><em>and every road became a reason<br />to carry the morning through</em></p></div>
 }
 
-function LyricsEditor() {
-  const [lyrics, setLyrics] = useState("We were headlights in the quiet\nfinding a little gold in the blue\nand every road became a reason\nto carry the morning through")
+const defaultLyrics = "We were headlights in the quiet\nfinding a little gold in the blue\nand every road became a reason\nto carry the morning through"
+
+function LyricsEditor({ versionRef }: { versionRef: string }) {
+  const storageKey = `mori.lyrics.${versionRef}`
+  const [lyrics, setLyrics] = useState(() => readStoredLyrics(storageKey) ?? defaultLyrics)
   const [saved, setSaved] = useState(true)
   const wordCount = lyrics.trim() === "" ? 0 : lyrics.trim().split(/\s+/u).length
 
@@ -281,10 +284,28 @@ function LyricsEditor() {
       <textarea className={styles.lyricsEditorArea} aria-label="Lyrics draft" value={lyrics} onChange={(event) => { setLyrics(event.target.value); setSaved(false) }} />
       <footer className={styles.editorSurfaceFooter}>
         <span>{wordCount} words · Draft 01</span>
-        <button className={styles.ghostButton} type="button" disabled={saved} onClick={() => setSaved(true)}>{saved ? <><Check size={14} /> Saved</> : <><Save size={14} /> Save draft</>}</button>
+        <button className={styles.ghostButton} type="button" disabled={saved} onClick={() => saveLyricsDraft(storageKey, lyrics, setSaved)}>{saved ? <><Check size={14} /> Saved</> : <><Save size={14} /> Save draft</>}</button>
       </footer>
     </section>
   )
+}
+
+function readStoredLyrics(storageKey: string): string | null {
+  if (typeof window === "undefined") return null
+  try {
+    return window.localStorage.getItem(storageKey)
+  } catch {
+    return null
+  }
+}
+
+function saveLyricsDraft(storageKey: string, lyrics: string, setSaved: (saved: boolean) => void): void {
+  try {
+    window.localStorage.setItem(storageKey, lyrics)
+    setSaved(true)
+  } catch {
+    setSaved(false)
+  }
 }
 
 function StemsEditor() {
