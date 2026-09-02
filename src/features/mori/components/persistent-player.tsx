@@ -10,6 +10,8 @@ type PersistentPlayerProps = {
   playing: boolean
   onToggle: () => void
   onSelectQueue?: () => void
+  onPrevious?: () => void
+  onNext?: () => void
 }
 
 function formatDuration(seconds: number): string {
@@ -18,7 +20,7 @@ function formatDuration(seconds: number): string {
   return `${minutes}:${remaining}`
 }
 
-export function PersistentPlayer({ candidate, playing, onToggle, onSelectQueue }: PersistentPlayerProps) {
+export function PersistentPlayer({ candidate, playing, onToggle, onSelectQueue, onPrevious, onNext }: PersistentPlayerProps) {
   return (
     <section className={styles.player} aria-label="Global player">
       <div className={styles.playerTrack}>
@@ -34,11 +36,11 @@ export function PersistentPlayer({ candidate, playing, onToggle, onSelectQueue }
         <span className={styles.time}>{formatDuration(candidate.durationSeconds)}</span>
       </div>
       <div className={styles.playerControls}>
-        <button className={styles.playerButton} type="button" aria-label="Previous version"><SkipBack /></button>
+        <button className={styles.playerButton} type="button" onClick={onPrevious} aria-label="Previous version"><SkipBack /></button>
         <button className={`${styles.playerButton} ${styles.playerButtonPrimary}`} type="button" onClick={onToggle} aria-label={playing ? "Pause" : "Play"}>
           {playing ? <Pause fill="currentColor" /> : <Play fill="currentColor" />}
         </button>
-        <button className={styles.playerButton} type="button" aria-label="Next version"><SkipForward /></button>
+        <button className={styles.playerButton} type="button" onClick={onNext} aria-label="Next version"><SkipForward /></button>
         <button className={styles.playerButton} type="button" aria-label="Volume"><Volume2 /></button>
         {onSelectQueue ? <button className={styles.playerTool} type="button" onClick={onSelectQueue} aria-label="Open playback queue"><ListMusic /> <span>Queue</span></button> : null}
       </div>

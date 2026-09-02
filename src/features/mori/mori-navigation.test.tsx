@@ -103,4 +103,21 @@ describe("Mori application navigation", () => {
 
     expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument()
   })
+
+  it("moves between preview versions from the global player", () => {
+    render(
+      <MoriAppProvider>
+        <MoriCatalogShell activeKey="home" ariaLabel="Home">
+          <div>Home content</div>
+        </MoriCatalogShell>
+      </MoriAppProvider>,
+    )
+
+    const player = screen.getByRole("region", { name: "Global player" })
+    expect(player).toHaveTextContent("First Light")
+    fireEvent.click(screen.getByRole("button", { name: "Next version" }))
+    expect(player).toHaveTextContent("First Light · Afterglow")
+    fireEvent.click(screen.getByRole("button", { name: "Previous version" }))
+    expect(player).toHaveTextContent("First Light")
+  })
 })

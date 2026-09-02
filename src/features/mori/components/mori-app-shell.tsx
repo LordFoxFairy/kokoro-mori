@@ -18,7 +18,7 @@ type MoriAppShellProps = {
 }
 
 export function MoriAppShell({ activeKey, ariaLabel, children, onQueueOpen, project = previewProject, showQueueButton = false }: MoriAppShellProps) {
-  const { railCollapsed, toggleRail, playerCandidate, playing, togglePlaying } = useMoriApp()
+  const { railCollapsed, toggleRail, playerCandidate, playing, togglePlaying, previousPlayerCandidate, nextPlayerCandidate } = useMoriApp()
 
   const shellStyle = { "--mori-rail-width": railCollapsed ? "76px" : "224px" } as CSSProperties
   const className = `${styles.appShell} ${styles.appShellWithPlayer}`
@@ -39,6 +39,8 @@ export function MoriAppShell({ activeKey, ariaLabel, children, onQueueOpen, proj
           candidate={playerCandidate}
           playing={playing}
           onToggle={togglePlaying}
+          onPrevious={previousPlayerCandidate}
+          onNext={nextPlayerCandidate}
           onSelectQueue={showQueueButton ? onQueueOpen : undefined}
         />
       </div>

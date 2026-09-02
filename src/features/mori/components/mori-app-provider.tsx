@@ -12,6 +12,8 @@ type MoriAppContextValue = {
   togglePlaying: () => void
   setPlaying: (playing: boolean) => void
   selectPlayerCandidate: (candidate: Candidate) => void
+  previousPlayerCandidate: () => void
+  nextPlayerCandidate: () => void
 }
 
 const MoriAppContext = createContext<MoriAppContextValue | null>(null)
@@ -36,9 +38,19 @@ export function MoriAppProvider({ children }: { children: ReactNode }) {
     togglePlaying: () => setPlaying((value) => !value),
     setPlaying,
     selectPlayerCandidate: setPlayerCandidate,
+    previousPlayerCandidate: () => setPlayerCandidate((candidate) => stepCandidate(candidate, -1)),
+    nextPlayerCandidate: () => setPlayerCandidate((candidate) => stepCandidate(candidate, 1)),
   }), [playing, playerCandidate, railCollapsed])
 
   return <MoriAppContext.Provider value={value}>{children}</MoriAppContext.Provider>
+}
+
+function stepCandidate(candidate: Candidate, direction: -1 | 1): Candidate {
+  const currentIndex = previewCandidates.findIndex((item) => item.candidateRef === candidate.candidateRef)
+  const nextIndex = currentIndex < 0
+    ? 0
+    : (currentIndex + direction + previewCandidates.length) % previewCandidates.length
+  return previewCandidates[nextIndex] ?? previewCandidates[0]
 }
 
 export function useMoriApp(): MoriAppContextValue {
