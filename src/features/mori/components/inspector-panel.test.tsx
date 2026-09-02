@@ -25,4 +25,26 @@ describe("Mori generation queue", () => {
 
     expect(onCancel).toHaveBeenCalledOnce()
   })
+
+  it("explains a completed run with no playable directions", () => {
+    const onRetry = vi.fn()
+
+    render(
+      <InspectorPanel
+        generation={{ ...previewGeneration, status: "succeeded", progress: 100 }}
+        candidates={[]}
+        songPlan={previewSongPlan}
+        selectedCandidateRef=""
+        playing={false}
+        onSelect={vi.fn()}
+        onPromote={vi.fn()}
+        onPlay={vi.fn()}
+        onRetry={onRetry}
+      />,
+    )
+
+    expect(screen.getByText("No playable directions yet")).toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }))
+    expect(onRetry).toHaveBeenCalledOnce()
+  })
 })

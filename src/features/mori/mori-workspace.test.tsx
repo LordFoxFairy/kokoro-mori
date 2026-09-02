@@ -301,4 +301,50 @@ describe("Mori workspace", () => {
     fireEvent.click(screen.getByRole("button", { name: "Try again" }))
     await waitFor(() => expect(createGeneration).toHaveBeenCalledTimes(2))
   })
+
+  it("clears preview directions when a completed generation has no candidates", async () => {
+    const api: Pick<MoriApi, "createSongPlan" | "createGeneration" | "getGeneration" | "getGenerationEvents" | "listCandidates" | "cancelGeneration"> = {
+      createSongPlan: async (projectRef, input) => ({
+        data: {
+          ...input,
+          song_plan_ref: "song_plan_empty_result",
+          project_ref: projectRef,
+          created_at: "2026-09-02T12:00:00.000Z",
+        },
+        meta: { request_id: "request_empty_result_plan" },
+      }),
+      createGeneration: async () => ({
+        data: { generation_ref: "generation_empty_result", status: "queued" as const },
+        meta: { request_id: "request_empty_result_create" },
+      }),
+      getGeneration: async () => ({
+        data: {
+          generation_ref: "generation_empty_result",
+          project_ref: "project_preview_first_light",
+          song_plan_ref: null,
+          mode: "custom" as const,
+          status: "succeeded" as const,
+          progress: 100,
+          candidate_refs: [],
+          created_at: "2026-09-02T12:00:00.000Z",
+        },
+        meta: { request_id: "request_empty_result_status" },
+      }),
+      getGenerationEvents: async () => [],
+      listCandidates: async () => ({ data: { candidates: [], next_cursor: null }, meta: { request_id: "request_empty_result_candidates" } }),
+      cancelGeneration: async () => ({ data: { generation_ref: "generation_empty_result", status: "cancelled" as const }, meta: { request_id: "request_empty_result_cancel" } }),
+    }
+
+    render(
+      <MoriAppProvider>
+        <MoriWorkspace api={api} />
+      </MoriAppProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("tab", { name: /custom/i }))
+    fireEvent.submit(screen.getByRole("textbox", { name: "Song idea" }).closest("form") as HTMLFormElement)
+
+    await waitFor(() => expect(screen.getByText("No playable directions yet")).toBeInTheDocument())
+    expect(screen.getByText("0 directions")).toBeInTheDocument()
+  })
 })

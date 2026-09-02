@@ -27,6 +27,7 @@ function formatDuration(seconds: number): string {
 export function InspectorPanel({ generation, candidates, songPlan, selectedCandidateRef, playing, onSelect, onPromote, onPlay, onCancel, onRetry, onClose }: InspectorPanelProps) {
   const generationActive = ["queued", "preparing", "generating", "post_processing"].includes(generation.status)
   const generationFailed = generation.status === "failed" || generation.status === "expired"
+  const generationEmpty = generation.status === "succeeded" && candidates.length === 0
   const panelRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
@@ -54,9 +55,9 @@ export function InspectorPanel({ generation, candidates, songPlan, selectedCandi
           <div className={styles.progressTrack} aria-label={`${generation.progress}% complete`} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={generation.progress}>
             <div className={styles.progressValue} style={{ width: `${generation.progress}%` }} />
           </div>
-          <p className={styles.queueText}>{generationActive ? "Mori is shaping the next direction. You can keep working while it runs." : generationFailed ? "Your idea is still here. Nothing was added to the library." : "Ready to compare. Pick a direction and make it yours."}</p>
+          <p className={styles.queueText}>{generationActive ? "Mori is shaping the next direction. You can keep working while it runs." : generationFailed ? "Your idea is still here. Nothing was added to the library." : generationEmpty ? "Mori finished this run without a playable direction. Try again or adjust the idea." : "Ready to compare. Pick a direction and make it yours."}</p>
           {onCancel && generationActive ? <div className={styles.queueActions}><span>Need to change the idea?</span><button className={styles.cancelButton} type="button" onClick={onCancel}>Cancel generation</button></div> : null}
-          {onRetry && generationFailed ? <div className={styles.queueActions}><span>Keep the same idea?</span><button className={styles.retryButton} type="button" onClick={onRetry}>Try again</button></div> : null}
+          {onRetry && (generationFailed || generationEmpty) ? <div className={styles.queueActions}><span>Keep the same idea?</span><button className={styles.retryButton} type="button" onClick={onRetry}>Try again</button></div> : null}
         </section>
 
         <section className={styles.candidateList} aria-labelledby="candidate-heading">
@@ -64,7 +65,11 @@ export function InspectorPanel({ generation, candidates, songPlan, selectedCandi
             <h3 id="candidate-heading">Candidates</h3>
             <span>{candidates.length} directions</span>
           </div>
-          {candidates.map((candidate, index) => {
+          {candidates.length === 0 ? <div className={styles.candidateEmpty} role="status">
+            <div className={styles.candidateEmptyIcon}><Sparkles size={16} /></div>
+            <strong>No playable directions yet</strong>
+            <span>When a take is ready, it will appear here for comparison.</span>
+          </div> : candidates.map((candidate, index) => {
             const isCurrent = candidate.isCurrent
             const isSelected = selectedCandidateRef === candidate.candidateRef
             return (

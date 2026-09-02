@@ -140,15 +140,14 @@ export function MoriWorkspace({ api: injectedApi }: MoriWorkspaceProps = {}) {
           const candidateResponse = await listCandidates(snapshot.data.project_ref)
           if (disposed) return
           const generated = candidateResponse.data.candidates.filter((candidate) => candidateRefs.includes(candidate.candidate_ref))
-          if (generated.length > 0) {
-            const generatedCandidates = generated.map(toDomainCandidate)
-            setCandidates(generatedCandidates)
-            if (preferences.autoplay) {
-              const firstCandidate = generatedCandidates[0]
-              if (firstCandidate) {
-                selectPlayerCandidate(firstCandidate)
-                setPlaying(true)
-              }
+          const generatedCandidates = generated.map(toDomainCandidate)
+          setCandidates(generatedCandidates)
+          setSelectedCandidateRef(generatedCandidates[0]?.candidateRef ?? "")
+          if (preferences.autoplay) {
+            const firstCandidate = generatedCandidates[0]
+            if (firstCandidate) {
+              selectPlayerCandidate(firstCandidate)
+              setPlaying(true)
             }
           }
           return
