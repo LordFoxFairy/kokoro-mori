@@ -5,6 +5,8 @@ import {
   type ApiSuccess,
   type GenerationCreateInput,
   type GenerationReceipt,
+  type GenerationSnapshot,
+  type MoriCandidate,
   type MoriApi,
 } from "./mori-api"
 
@@ -58,7 +60,34 @@ export function createMoriApiClient(options: MoriApiClientOptions = {}): MoriApi
 
       return payload as ApiSuccess<GenerationReceipt>
     },
+    async getGeneration(generationRef: MoriRef) {
+      const response = await fetchImpl(`${apiBasePath}/generations/${encodeURIComponent(generationRef)}`)
+      const payload = await readJson(response)
+      if (!response.ok || isApiError(payload)) {
+        throwRequestError(response, payload)
+      }
+      return payload as ApiSuccess<GenerationSnapshot>
+    },
+    async listCandidates(projectRef: MoriRef) {
+      const response = await fetchImpl(`${apiBasePath}/projects/${encodeURIComponent(projectRef)}/candidates`)
+      const payload = await readJson(response)
+      if (!response.ok || isApiError(payload)) {
+        throwRequestError(response, payload)
+      }
+      return payload as ApiSuccess<{ candidates: MoriCandidate[]; next_cursor: string | null }>
+    },
   }
+}
+
+function throwRequestError(response: Response, payload: unknown): never {
+  if (isApiError(payload)) {
+    throw new MoriApiRequestError(payload.error, payload.meta.request_id, response.status)
+  }
+  throw new MoriApiRequestError(
+    { code: "invalid_api_response", message: "Mori API returned an invalid response", retryable: response.status >= 500, details: null },
+    null,
+    response.status,
+  )
 }
 
 async function readJson(response: Response): Promise<unknown> {

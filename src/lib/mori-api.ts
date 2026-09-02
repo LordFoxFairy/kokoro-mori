@@ -46,8 +46,34 @@ export type GenerationReceipt = {
   status: Extract<GenerationStatus, "queued" | "preparing" | "generating">
 }
 
+export type GenerationSnapshot = {
+  generation_ref: MoriRef
+  project_ref: MoriRef
+  song_plan_ref: MoriRef | null
+  mode: CreationMode
+  status: GenerationStatus
+  progress: number
+  candidate_refs: MoriRef[]
+  created_at: string
+}
+
+export type MoriCandidate = {
+  candidate_ref: MoriRef
+  generation_ref: MoriRef
+  version_ref: MoriRef
+  project_ref: MoriRef
+  title: string
+  duration_seconds: number
+  audio_asset_ref: string
+  waveform_asset_ref: string
+  style_tags: string[]
+  created_at: string
+}
+
 export type MoriApi = {
   createGeneration: (projectRef: MoriRef, input: GenerationCreateInput, idempotencyKey: string) => Promise<ApiSuccess<GenerationReceipt>>
+  getGeneration?: (generationRef: MoriRef) => Promise<ApiSuccess<GenerationSnapshot>>
+  listCandidates?: (projectRef: MoriRef) => Promise<ApiSuccess<{ candidates: MoriCandidate[]; next_cursor: string | null }>>
 }
 
 export type MoriGenerationDraft = {

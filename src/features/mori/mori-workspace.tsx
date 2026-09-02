@@ -1,7 +1,9 @@
 "use client"
 
 import { MoreHorizontal, PanelRight, Share2 } from "lucide-react"
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { createGenerationRequest } from "@/lib/mori-api"
+import { createMoriApiClient, MoriApiRequestError } from "@/lib/mori-api-client"
 import type { Candidate, CreationMode, GenerationStatus } from "./domain"
 import { previewCandidates, previewGeneration, previewProject, previewSongPlan } from "./preview-data"
 import { CreateCanvas, type CreationDraft } from "./components/create-canvas"
@@ -19,6 +21,8 @@ export function MoriWorkspace() {
   const [generationStatus, setGenerationStatus] = useState<GenerationStatus>(previewGeneration.status)
   const [generationLabel, setGenerationLabel] = useState(previewGeneration.label)
   const [progress, setProgress] = useState(previewGeneration.progress)
+  const [generationRef, setGenerationRef] = useState<string | null>(null)
+  const api = useMemo(() => createMoriApiClient(), [])
   const { playing, playerCandidate, setPlaying, togglePlaying, selectPlayerCandidate } = useMoriApp()
 
   const generation = useMemo(() => ({
@@ -29,18 +33,74 @@ export function MoriWorkspace() {
     candidateRefs: candidates.map((candidate) => candidate.candidateRef),
   }), [candidates, generationLabel, generationStatus, progress])
 
-  const handleGenerate = useCallback((draft: CreationDraft) => {
-    setGenerationStatus("generating")
-    setGenerationLabel(draft.prompt.trim() ? "Shaping your next direction" : "Adding a new direction")
-    setProgress(42)
+  const handleGenerate = useCallback(async (draft: CreationDraft) => {
+    setGenerationStatus("preparing")
+    setGenerationLabel(draft.prompt.trim() ? "Preparing your next direction" : "Preparing a new direction")
+    setProgress(8)
     setPlaying(false)
     setQueueOpen(true)
-    window.setTimeout(() => {
-      setGenerationStatus("succeeded")
-      setGenerationLabel("Two new directions")
-      setProgress(100)
-    }, 650)
-  }, [setPlaying])
+    try {
+      const response = await api.createGeneration(
+        previewProject.projectRef,
+        createGenerationRequest({
+          mode,
+          prompt: draft.prompt,
+          songPlanRef: previewSongPlan.songPlanRef,
+          lyricsMode: draft.lyricsMode,
+          style: draft.style,
+          voiceRef: draft.voice,
+          durationSeconds: draft.durationSeconds,
+        }),
+        `mori-create-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      )
+      setGenerationRef(response.data.generation_ref)
+      setGenerationStatus(response.data.status)
+      setGenerationLabel("Queued for your workspace")
+      setProgress(response.data.status === "queued" ? 0 : 12)
+    } catch (error) {
+      setGenerationStatus("failed")
+      setGenerationLabel(error instanceof MoriApiRequestError ? error.code : "Generation request failed")
+      setProgress(0)
+    }
+  }, [api, mode, setPlaying])
+
+  useEffect(() => {
+    const getGeneration = api.getGeneration
+    const listCandidates = api.listCandidates
+    if (generationRef === null || getGeneration === undefined || listCandidates === undefined) return
+    let disposed = false
+    let timer: number | undefined
+
+    const sync = async () => {
+      try {
+        const snapshot = await getGeneration(generationRef)
+        if (disposed) return
+        setGenerationStatus(snapshot.data.status)
+        setProgress(snapshot.data.progress)
+        setGenerationLabel(generationLabelFor(snapshot.data.status))
+        if (snapshot.data.status === "succeeded") {
+          const candidateResponse = await listCandidates(previewProject.projectRef)
+          if (disposed) return
+          const generated = candidateResponse.data.candidates.filter((candidate) => snapshot.data.candidate_refs.includes(candidate.candidate_ref))
+          if (generated.length > 0) setCandidates(generated.map(toDomainCandidate))
+          return
+        }
+        if (["failed", "cancelled", "expired"].includes(snapshot.data.status)) return
+        timer = window.setTimeout(() => { void sync() }, 220)
+      } catch {
+        if (!disposed) {
+          setGenerationStatus("failed")
+          setGenerationLabel("Generation status unavailable")
+        }
+      }
+    }
+
+    void sync()
+    return () => {
+      disposed = true
+      if (timer !== undefined) window.clearTimeout(timer)
+    }
+  }, [api, generationRef])
 
   const handlePromote = useCallback((candidate: Candidate) => {
     setCurrentVersionRef(candidate.versionRef)
@@ -97,4 +157,32 @@ export function MoriWorkspace() {
       </MoriAppShell>
     </main>
   )
+}
+
+function generationLabelFor(status: GenerationStatus): string {
+  switch (status) {
+    case "queued": return "Queued for your workspace"
+    case "preparing": return "Preparing the arrangement"
+    case "generating": return "Shaping your next direction"
+    case "post_processing": return "Polishing the new takes"
+    case "succeeded": return "New directions ready"
+    case "cancelled": return "Generation cancelled"
+    case "expired": return "Generation expired"
+    case "failed": return "Generation failed"
+  }
+}
+
+function toDomainCandidate(candidate: import("@/lib/mori-api").MoriCandidate, index: number): Candidate {
+  const tags = candidate.style_tags.length > 0 ? candidate.style_tags : ["new direction"]
+  return {
+    candidateRef: candidate.candidate_ref,
+    versionRef: candidate.version_ref,
+    generationRef: candidate.generation_ref,
+    title: candidate.title,
+    subtitle: tags.join(" · "),
+    durationSeconds: candidate.duration_seconds,
+    mood: tags[0] ?? "new direction",
+    waveformSeed: index + 5,
+    isCurrent: false,
+  }
 }
