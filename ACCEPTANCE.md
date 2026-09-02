@@ -40,10 +40,12 @@ pnpm dev --hostname 127.0.0.1 --port 3001
 /library
 ```
 
-每个页面均存在 Mori Rail 和 Global Player，且没有 Next Runtime Error。Global Player 是
-跨页面、跨 Rail 的固定底部 transport dock；桌面端提供歌曲、波形、进度和 transport，
-小屏幕收敛为歌曲信息、播放和队列入口。Create 的 Queue 默认关闭，可通过 Queue 动作
-打开并通过 Close generation queue 关闭；移动端 390px 视口默认收起 Rail，内容仍保持可见。
+每个页面均存在 Mori Rail 和 Global Player，且没有 Next Runtime Error。Web 桌面端采用
+类似 Codex 的整高固定 Rail + 内容面布局，展开状态不再使用悬浮窗口；Rail 折叠按钮位于
+品牌行内，桌面宽度下始终可见。Global Player 是跨页面、跨 Rail 的固定底部 transport
+dock；桌面端提供歌曲、波形、进度和 transport，小屏幕收敛为歌曲信息、播放和队列入口。
+Create 的 Queue 默认关闭，可通过 Queue 动作打开并通过 Close generation queue 关闭；
+移动端 390px 视口默认收起 Rail，内容仍保持可见。
 
 Library 已巡检 All、Versions、Lyrics、Exports 过滤器，以及版本 Play/Pause、项目和
 Studio 链接。Home 与 Project Overview 的候选歌曲均可直接接入 Global Player；Projects、

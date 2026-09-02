@@ -31,8 +31,7 @@
 
 .rail,
 .canvas,
-.inspector,
-.player {
+.inspector {
   border: 1px solid rgba(234, 231, 227, 0.9);
   background: rgba(255, 255, 255, 0.83);
   box-shadow: var(--mori-shadow-sm);
@@ -55,27 +54,6 @@
   padding: 0 8px 24px;
 }
 
-.railToggleGlobal {
-  position: fixed;
-  top: 39px;
-  left: calc(var(--mori-rail-width) - 8px);
-  display: grid;
-  width: 32px;
-  height: 32px;
-  place-items: center;
-  border: 1px solid var(--mori-border);
-  border-radius: 50%;
-  color: var(--mori-muted);
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 5px 13px rgba(62, 45, 86, 0.1);
-  z-index: 30;
-}
-
-.railToggleGlobal:hover {
-  color: var(--mori-primary);
-  border-color: rgba(109, 92, 231, 0.25);
-}
-
 .brandMark {
   display: grid;
   width: 34px;
@@ -83,14 +61,14 @@
   place-items: center;
   border-radius: 12px;
   color: #fff;
-  font-family: Georgia, serif;
+  font-family: var(--mori-font-display);
   font-size: 20px;
   background: linear-gradient(145deg, #9a87f0, #f0a681 78%);
   box-shadow: 0 6px 16px rgba(109, 92, 231, 0.2);
 }
 
 .brandName {
-  font-family: Georgia, "DM Serif Display", serif;
+  font-family: var(--mori-font-display);
   font-size: 21px;
   letter-spacing: -0.04em;
 }
@@ -156,7 +134,6 @@
 .projectMini:focus-visible,
 .railFooterLink:focus-visible,
 .newButton:focus-visible,
-.railToggleGlobal:focus-visible,
 .homeTrackArtwork:focus-visible,
 .playerButton:focus-visible,
 .playerTool:focus-visible {
@@ -345,7 +322,7 @@
 .heroTitle {
   max-width: 620px;
   margin: 0;
-  font-family: Georgia, "DM Serif Display", serif;
+  font-family: var(--mori-font-display);
   font-size: clamp(37px, 4.2vw, 58px);
   font-weight: 400;
   letter-spacing: -0.065em;
@@ -1353,7 +1330,7 @@
 
 .catalogTitle {
   margin: 0;
-  font-family: Georgia, "DM Serif Display", serif;
+  font-family: var(--mori-font-display);
   font-size: clamp(42px, 5vw, 64px);
   font-weight: 400;
   letter-spacing: -0.065em;
@@ -1391,7 +1368,7 @@
   height: 190px;
   padding: 21px;
   color: rgba(55, 43, 80, 0.66);
-  font-family: Georgia, serif;
+  font-family: var(--mori-font-display);
   font-size: 50px;
   letter-spacing: -0.08em;
 }
@@ -1679,7 +1656,7 @@
   padding: 18px;
   border-radius: 18px;
   color: rgba(55, 43, 80, 0.66);
-  font-family: Georgia, serif;
+  font-family: var(--mori-font-display);
   font-size: 44px;
   letter-spacing: -0.08em;
   background:
@@ -1947,7 +1924,7 @@
   padding: 16px;
   border-radius: 15px;
   color: rgba(55, 43, 80, 0.66);
-  font-family: Georgia, serif;
+  font-family: var(--mori-font-display);
   font-size: 42px;
   background: linear-gradient(145deg, #b7a5f5, #f8c2a9 72%, #fae5d6);
 }
@@ -1970,7 +1947,7 @@
 
 .studioSidebarCopy h1 {
   margin: 0;
-  font-family: Georgia, serif;
+  font-family: var(--mori-font-display);
   font-size: 24px;
   font-weight: 400;
   letter-spacing: -0.05em;
@@ -2022,7 +1999,7 @@
 .studioSidebarBottom strong {
   overflow: hidden;
   color: var(--mori-muted);
-  font-family: var(--font-mono, ui-monospace, monospace);
+  font-family: var(--mori-font-mono);
   font-size: 9px;
   font-weight: 500;
   text-overflow: ellipsis;
@@ -2048,7 +2025,7 @@
 
 .studioCanvasTop h2 {
   margin: 0;
-  font-family: Georgia, serif;
+  font-family: var(--mori-font-display);
   font-size: clamp(31px, 4vw, 48px);
   font-weight: 400;
   letter-spacing: -0.06em;
@@ -2081,7 +2058,7 @@
 
 .editorPlaceholder h3 {
   margin: 0;
-  font-family: Georgia, serif;
+  font-family: var(--mori-font-display);
   font-size: 25px;
   font-weight: 400;
   letter-spacing: -0.04em;
@@ -2223,7 +2200,7 @@
 .lyricsCard p {
   margin: 22px 0 4px;
   color: #615b65;
-  font-family: Georgia, serif;
+  font-family: var(--mori-font-display);
   font-size: 18px;
   line-height: 1.7;
 }
@@ -2240,7 +2217,7 @@
 
 .versionRailHeader h2 {
   margin: 5px 0 0;
-  font-family: Georgia, serif;
+  font-family: var(--mori-font-display);
   font-size: 25px;
   font-weight: 400;
   letter-spacing: -0.05em;
@@ -2465,37 +2442,205 @@
   }
 }
 
-/* Product shell revision: one continuous surface, contextual drawers, and a global player. */
+/*
+ * Mori application shell
+ *
+ * One viewport, one persistent rail, one content surface, and one transport
+ * dock. Keep these layout rules together so page-specific cards cannot turn
+ * the shell into a collection of floating windows.
+ */
+.app,
+.catalogApp,
+.studioApp {
+  min-height: 100dvh;
+  padding: 0;
+  background:
+    radial-gradient(circle at 82% -12%, rgba(237, 233, 254, 0.7), transparent 31rem),
+    radial-gradient(circle at 18% 105%, rgba(231, 246, 239, 0.48), transparent 29rem),
+    var(--mori-background);
+}
+
+.app {
+  overflow: hidden;
+}
+
 .appShell {
   position: relative;
   display: grid;
   grid-template-columns: var(--mori-rail-width) minmax(0, 1fr);
-  min-height: calc(100vh - 28px);
+  min-height: 100dvh;
+  height: 100dvh;
+  overflow: hidden;
   transition: grid-template-columns var(--mori-motion-base) ease;
 }
 
 .appShell .rail {
+  grid-column: 1;
   grid-row: 1;
-  min-height: calc(100vh - 28px);
-  height: calc(100vh - 28px);
-  align-self: start;
-  position: sticky;
-  top: 0;
-  overflow: hidden;
+  position: relative;
   z-index: 2;
-  padding-bottom: 92px;
-  border-right: 0;
-  border-radius: var(--mori-radius-lg) 0 0 var(--mori-radius-lg);
-  box-shadow: var(--mori-shadow-sm);
-  transition: padding var(--mori-motion-base) ease, border-radius var(--mori-motion-base) ease;
+  display: flex;
+  width: auto;
+  min-height: 100dvh;
+  height: 100dvh;
+  overflow: hidden;
+  padding: 20px 16px 98px;
+  border: 0;
+  border-right: 1px solid var(--mori-border);
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 8px 0 24px rgba(62, 45, 86, 0.035);
+  backdrop-filter: blur(18px);
+  transition: padding var(--mori-motion-base) ease;
 }
 
-.appShell .railCollapsed {
-  padding-inline: 10px;
+.brandRow {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 0 4px 32px;
+}
+
+.brandMark {
+  width: 40px;
+  height: 40px;
+  border-radius: 13px;
+  font-family: var(--mori-font-display);
+  font-size: 23px;
+  line-height: 1;
+  background: linear-gradient(145deg, #9a87f0, #f0a681 78%);
+  box-shadow: 0 7px 18px rgba(109, 92, 231, 0.18);
+}
+
+.brandName {
+  color: var(--mori-foreground);
+  font-family: var(--mori-font-display);
+  font-size: 22px;
+  letter-spacing: -0.04em;
+}
+
+.railToggle {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding: 0;
+  place-items: center;
+  border: 1px solid var(--mori-border);
+  border-radius: 50%;
+  color: var(--mori-muted);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 3px 10px rgba(62, 45, 86, 0.06);
+  transition: color var(--mori-motion-fast) ease, border-color var(--mori-motion-fast) ease, background var(--mori-motion-fast) ease;
+}
+
+.railToggle:hover {
+  border-color: rgba(109, 92, 231, 0.28);
+  color: var(--mori-primary);
+  background: var(--mori-primary-soft);
+}
+
+.railToggle svg {
+  width: 17px;
+  height: 17px;
+  stroke-width: 1.8;
+}
+
+.newButton {
+  min-height: 50px;
+  margin: 0 0 30px;
+  border-radius: 15px;
+  font-size: 13px;
+  letter-spacing: -0.01em;
+  box-shadow: 0 10px 20px rgba(109, 92, 231, 0.16);
+}
+
+.navGroup {
+  display: grid;
+  gap: 5px;
+}
+
+.navLabel {
+  padding: 0 12px 8px;
+  color: var(--mori-faint);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+}
+
+.navItem {
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.navItem svg {
+  width: 18px;
+  height: 18px;
+  stroke-width: 1.8;
+}
+
+.navItem:hover,
+.navItemActive {
+  color: var(--mori-primary-deep);
+  background: var(--mori-primary-soft);
+}
+
+.navItemActive {
+  border-color: rgba(109, 92, 231, 0.12);
+  box-shadow: inset 3px 0 0 var(--mori-primary);
+}
+
+.projectMini {
+  margin-top: 28px;
+  padding: 13px;
+  border-color: rgba(109, 92, 231, 0.12);
+  border-radius: 15px;
+  background: linear-gradient(145deg, rgba(240, 237, 255, 0.68), rgba(255, 255, 255, 0.82));
+}
+
+.projectMini:hover {
+  border-color: rgba(109, 92, 231, 0.26);
+  background: linear-gradient(145deg, rgba(240, 237, 255, 0.9), rgba(255, 255, 255, 0.92));
+}
+
+.railBottom {
+  gap: 5px;
+  padding-top: 24px;
+}
+
+.railFooterLink {
+  min-height: 38px;
+  padding: 0 12px;
+  border-radius: 10px;
+  font-size: 12px;
+}
+
+.railFooterLink:hover {
+  color: var(--mori-foreground);
+  background: #f8f7f6;
+}
+
+.railToggle:focus-visible,
+.navItem:focus-visible,
+.projectMini:focus-visible,
+.railFooterLink:focus-visible,
+.newButton:focus-visible,
+.playerButton:focus-visible,
+.playerTool:focus-visible {
+  outline: 3px solid rgba(109, 92, 231, 0.26);
+  outline-offset: 2px;
 }
 
 .railCollapsed .brandRow {
-  justify-content: center;
+  display: grid;
+  grid-template-columns: 40px 32px;
+  justify-content: space-between;
+  gap: 4px;
   padding-inline: 0;
 }
 
@@ -2503,80 +2648,111 @@
 .railCollapsed .newButton span,
 .railCollapsed .navLabel,
 .railCollapsed .navItem span,
+.railCollapsed .projectMini,
 .railCollapsed .railFooterLink span {
   display: none;
 }
 
 .railCollapsed .newButton {
-  width: 42px;
+  width: 50px;
   margin-inline: auto;
-}
-
-.railCollapsed .navItem {
-  justify-content: center;
   padding-inline: 0;
 }
 
+.railCollapsed .navItem,
 .railCollapsed .railFooterLink {
   justify-content: center;
   padding-inline: 0;
 }
 
-.railCollapsed .projectMini {
-  display: block;
-  margin-top: 22px;
-  padding: 5px;
-  border-color: transparent;
-  background: transparent;
-}
-
-.railCollapsed .projectMini:hover {
-  border-color: var(--mori-border);
-  background: var(--mori-primary-soft);
-}
-
-.railCollapsed .projectMiniHeader,
-.railCollapsed .miniArtworkText {
-  display: none;
-}
-
-.railCollapsed .projectMiniCover {
-  justify-content: center;
-}
-
-.railCollapsed .miniArtwork {
-  width: 42px;
-  height: 42px;
+.railCollapsed .navItemActive {
+  box-shadow: none;
 }
 
 .surface {
   position: relative;
+  grid-column: 2;
+  grid-row: 1;
   min-width: 0;
-  min-height: calc(100vh - 28px);
+  min-height: 100dvh;
+  height: 100dvh;
   overflow: auto;
-  border: 1px solid rgba(234, 231, 227, 0.92);
-  border-left: 0;
-  border-radius: 0 var(--mori-radius-lg) var(--mori-radius-lg) 0;
-  background: rgba(255, 255, 255, 0.62);
-  box-shadow: var(--mori-shadow-sm);
+  border: 0;
+  border-left: 1px solid rgba(234, 231, 227, 0.72);
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.48);
+  box-shadow: none;
   backdrop-filter: blur(18px);
 }
 
 .appShellWithPlayer .surface {
-  padding-bottom: 86px;
+  padding-bottom: 92px;
 }
 
 .globalPlayerSlot {
   position: fixed;
-  right: 14px;
-  bottom: 14px;
-  left: 14px;
+  right: 0;
+  bottom: 0;
+  left: 0;
   z-index: 20;
   pointer-events: none;
 }
 
 .globalPlayerSlot > * {
   pointer-events: auto;
+}
+
+.player {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.72fr) minmax(260px, 1.28fr) auto;
+  align-items: center;
+  gap: 24px;
+  width: 100%;
+  min-height: 76px;
+  padding: 10px clamp(18px, 3vw, 40px);
+  border: 0;
+  border-top: 1px solid rgba(222, 217, 213, 0.9);
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.93);
+  box-shadow: 0 -12px 32px rgba(62, 45, 86, 0.08);
+  backdrop-filter: blur(22px);
+}
+
+.player::before {
+  top: 0;
+  right: 24%;
+  left: 24%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(109, 92, 231, 0.58), rgba(230, 156, 120, 0.58), transparent);
+}
+
+.playerArtwork {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+}
+
+.playerInfo strong {
+  font-size: 12px;
+}
+
+.playerControls {
+  gap: 7px;
+}
+
+.playerButton {
+  width: 34px;
+  height: 34px;
+}
+
+.playerButtonPrimary {
+  width: 42px;
+  height: 42px;
+}
+
+.playerTool {
+  min-height: 32px;
+  border-radius: 9px;
 }
 
 .railBackdrop {
@@ -2587,25 +2763,20 @@
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  min-height: calc(100vh - 28px);
+  min-height: 100%;
 }
 
 .workspaceLayoutWithDrawer {
   grid-template-columns: minmax(0, 1fr);
 }
 
-.createSurface {
-  min-width: 0;
-}
-
 .workspaceLayout .inspector {
-  min-height: calc(100vh - 28px);
+  min-height: 100%;
   border: 0;
   border-left: 1px solid var(--mori-border);
   border-radius: 0;
-  box-shadow: none;
   background: rgba(255, 255, 255, 0.96);
-  backdrop-filter: blur(18px);
+  box-shadow: none;
 }
 
 .drawerLayer {
@@ -2619,24 +2790,27 @@
   position: fixed;
   inset: 0;
   z-index: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
   border: 0;
-  background: rgba(38, 34, 48, 0.06);
-  backdrop-filter: blur(1px);
+  background: rgba(38, 34, 48, 0.07);
   pointer-events: auto;
 }
 
 .drawerLayer .inspector {
   position: absolute;
-  top: 14px;
-  right: 14px;
-  bottom: 86px;
+  top: 0;
+  right: 0;
+  bottom: 76px;
   z-index: 1;
-  width: min(336px, calc(100vw - 28px));
+  width: min(370px, calc(100vw - 24px));
   min-height: 0;
-  border: 1px solid rgba(234, 231, 227, 0.96);
-  border-radius: var(--mori-radius-lg);
-  box-shadow: -18px 18px 50px rgba(62, 45, 86, 0.16);
-  transform: none;
+  border: 0;
+  border-left: 1px solid var(--mori-border);
+  border-radius: 0;
+  box-shadow: -18px 0 45px rgba(62, 45, 86, 0.12);
+  pointer-events: auto;
 }
 
 .inspectorActions {
@@ -2648,8 +2822,8 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  min-height: 34px;
-  padding: 0 10px;
+  min-height: 36px;
+  padding: 0 11px;
   border: 1px solid rgba(109, 92, 231, 0.18);
   border-radius: 10px;
   color: var(--mori-primary);
@@ -2676,82 +2850,28 @@
   background: var(--mori-primary);
 }
 
-.player {
-  grid-column: auto;
-  grid-row: auto;
-  width: 100%;
-  min-height: 64px;
-  position: relative;
-  overflow: hidden;
-  padding: 9px 13px 9px 15px;
-  border: 1px solid rgba(234, 231, 227, 0.96);
-  border-radius: 17px;
-  background: linear-gradient(102deg, rgba(255, 255, 255, 0.97), rgba(248, 245, 255, 0.95) 62%, rgba(255, 247, 239, 0.95));
-  box-shadow: 0 16px 38px rgba(62, 45, 86, 0.13);
-  backdrop-filter: blur(22px);
+/* Catalog and Studio use the same full-viewport shell as Create. */
+.studioPage {
+  min-height: 100%;
 }
 
-.player::before {
-  position: absolute;
-  top: 0;
-  right: 18%;
-  left: 18%;
-  height: 2px;
-  content: "";
-  background: linear-gradient(90deg, transparent, rgba(109, 92, 231, 0.62), rgba(230, 156, 120, 0.66), transparent);
+.studioPage .studioHeader {
+  min-height: 68px;
+  padding: 0 32px;
+  border-bottom: 1px solid rgba(234, 231, 227, 0.76);
 }
 
-.playerTool {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  min-height: 29px;
-  padding: 0 8px;
-  border: 1px solid var(--mori-border);
-  border-radius: 8px;
-  color: var(--mori-muted);
-  font-size: 10px;
-  font-weight: 700;
-  background: #fff;
+.studioPage .studioLayout {
+  min-height: calc(100dvh - 68px);
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
 }
 
-.playerTool:hover {
-  color: var(--mori-primary);
-  border-color: rgba(109, 92, 231, 0.2);
-  background: var(--mori-primary-soft);
-}
-
-.playerTool svg {
-  width: 14px;
-  height: 14px;
-}
-
-.catalogShell {
-  grid-template-columns: var(--mori-rail-width) minmax(0, 1fr);
-  gap: 0;
-  min-height: calc(100vh - 28px);
-  transition: grid-template-columns var(--mori-motion-base) ease;
-}
-
-.catalogShell .rail {
-  min-height: calc(100vh - 28px);
-  height: calc(100vh - 28px);
-  align-self: start;
-  position: sticky;
-  top: 0;
-  overflow: hidden;
-  z-index: 2;
-  padding-bottom: 92px;
-  border-right: 0;
-  border-radius: var(--mori-radius-lg) 0 0 var(--mori-radius-lg);
-}
-
-.catalogShell .catalogMain {
-  min-height: calc(100vh - 28px);
-  border-left: 0;
-  border-radius: 0 var(--mori-radius-lg) var(--mori-radius-lg) 0;
-  background: rgba(255, 255, 255, 0.62);
-  box-shadow: var(--mori-shadow-sm);
+.studioPage .studioSidebar,
+.studioPage .versionRail {
+  background: rgba(250, 249, 248, 0.52);
 }
 
 .homeWelcome {
@@ -2790,7 +2910,7 @@
   padding: 22px;
   overflow: hidden;
   color: rgba(55, 43, 80, 0.65);
-  font-family: Georgia, serif;
+  font-family: var(--mori-font-display);
   font-size: 58px;
   letter-spacing: -0.1em;
   background: linear-gradient(140deg, #b6a2f4, #eeb6bd 58%, #f7c49e);
@@ -2962,26 +3082,28 @@
   font-variant-numeric: tabular-nums;
 }
 
-@media (max-width: 900px) {
-  .appShell,
-  .catalogShell {
-    grid-template-columns: minmax(72px, var(--mori-rail-width)) minmax(0, 1fr);
+@media (max-width: 1120px) {
+  .appShell {
+    grid-template-columns: var(--mori-rail-width) minmax(0, 1fr);
   }
 
-  .surface,
-  .catalogShell .catalogMain {
-    min-height: calc(100vh - 28px);
+  .player {
+    grid-template-columns: minmax(190px, 0.8fr) minmax(220px, 1.2fr) auto;
+    gap: 14px;
   }
 
-  .globalPlayerSlot {
-    left: 14px;
+  .studioPage .studioHeader {
+    padding-inline: 24px;
   }
 }
 
 @media (min-width: 701px) and (max-width: 900px) {
+  .appShell:not([data-rail-collapsed="true"]) .rail {
+    padding-inline: 12px;
+  }
+
   .appShell:not([data-rail-collapsed="true"]) .brandRow {
-    justify-content: flex-start;
-    padding-inline: 8px;
+    padding-inline: 4px;
   }
 
   .appShell:not([data-rail-collapsed="true"]) .brandName,
@@ -3001,17 +3123,41 @@
   .appShell:not([data-rail-collapsed="true"]) .navItem,
   .appShell:not([data-rail-collapsed="true"]) .railFooterLink {
     justify-content: flex-start;
-    padding-inline: 11px;
-  }
-
-  .appShell .railCollapsed .projectMini {
-    display: block;
+    padding-inline: 12px;
   }
 }
 
 @media (max-width: 700px) {
-  .railToggleGlobal {
-    top: 20px;
+  .appShell {
+    grid-template-columns: 96px minmax(0, 1fr);
+  }
+
+  .appShell .rail {
+    grid-column: 1;
+    position: relative;
+    width: 96px;
+    min-height: 100dvh;
+    height: 100dvh;
+    padding: 16px 12px 84px;
+  }
+
+  .appShell .surface {
+    grid-column: 2;
+    min-height: 100dvh;
+    height: 100dvh;
+  }
+
+  .appShell:not([data-rail-collapsed="true"]) .rail {
+    position: absolute;
+    inset: 0 auto auto 0;
+    z-index: 8;
+    width: 248px;
+    border-right: 1px solid var(--mori-border);
+    box-shadow: 14px 0 36px rgba(62, 45, 86, 0.1);
+  }
+
+  .appShell:not([data-rail-collapsed="true"]) .surface {
+    grid-column: 1 / -1;
   }
 
   .railBackdrop {
@@ -3019,140 +3165,90 @@
     inset: 0;
     z-index: 7;
     display: block;
+    width: 100%;
+    height: 100%;
     border: 0;
     background: rgba(38, 34, 48, 0.08);
     backdrop-filter: blur(1px);
   }
 
-  .appShell,
-  .catalogShell {
-    grid-template-columns: 72px minmax(0, 1fr);
-  }
-
-  .appShell .surface {
-    grid-column: 1 / -1;
-    grid-row: 1;
-    padding-left: 72px;
-  }
-
-  .appShell .canvasHeader {
-    gap: 8px;
-    padding-inline: 16px;
-  }
-
-  .appShell .breadcrumb {
-    min-width: 0;
-    white-space: nowrap;
-  }
-
-  .appShell .breadcrumb > span {
-    display: none;
-  }
-
-  .appShell .breadcrumb strong {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .appShell .headerActions {
-    flex: 0 0 auto;
-    gap: 4px;
-  }
-
-  .appShell .headerActions .ghostButton {
-    display: none;
-  }
-
-  .appShell .rail,
-  .appShell:not([data-rail-collapsed="true"]) .rail {
-    position: absolute;
-    inset: 0 auto auto 0;
-    z-index: 8;
-    grid-column: auto;
-    width: 72px;
-    height: 100vh;
-    min-height: 0;
-    border-radius: var(--mori-radius-lg);
-  }
-
-  .appShell:not([data-rail-collapsed="true"]) .brandRow {
-    justify-content: flex-start;
-    padding-inline: 8px;
-  }
-
-  .appShell:not([data-rail-collapsed="true"]) .brandName,
-  .appShell:not([data-rail-collapsed="true"]) .newButton span,
-  .appShell:not([data-rail-collapsed="true"]) .navLabel,
-  .appShell:not([data-rail-collapsed="true"]) .navItem span,
-  .appShell:not([data-rail-collapsed="true"]) .projectMini,
-  .appShell:not([data-rail-collapsed="true"]) .railFooterLink span {
-    display: revert;
-  }
-
-  .appShell:not([data-rail-collapsed="true"]) .newButton {
-    width: 100%;
-    margin-inline: 0;
-  }
-
-  .appShell:not([data-rail-collapsed="true"]) .navItem {
-    justify-content: flex-start;
-    padding-inline: 11px;
-  }
-
-  .appShell:not([data-rail-collapsed="true"]) .railFooterLink {
-    justify-content: flex-start;
-    padding-inline: 11px;
-  }
-
-  .appShell:not([data-rail-collapsed="true"]) .rail {
-    width: 224px;
-    border-radius: var(--mori-radius-lg);
-  }
-
-  .catalogShell .catalogMain {
-    grid-column: 1 / -1;
-  }
-
-  .workspaceLayoutWithDrawer {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .drawerLayer .inspector {
-    top: 8px;
-    right: 8px;
-    bottom: 76px;
-    z-index: 18;
-    width: min(336px, calc(100vw - 16px));
-    transform: none;
-    box-shadow: -18px 0 45px rgba(62, 45, 86, 0.12);
+  .appShellWithPlayer .surface {
+    padding-bottom: 102px;
   }
 
   .globalPlayerSlot {
-    right: 8px;
-    bottom: 8px;
-    left: 8px;
-  }
-
-  .appShellWithPlayer .surface {
-    padding-bottom: 112px;
+    bottom: 0;
   }
 
   .player {
     grid-template-columns: minmax(0, 1fr) auto;
-    min-height: 58px;
+    gap: 10px;
+    min-height: 70px;
+    padding: 8px 14px max(8px, env(safe-area-inset-bottom));
   }
 
-  .playerWave {
+  .playerArtwork {
+    width: 36px;
+    height: 36px;
+  }
+
+  .playerInfo strong {
+    font-size: 11px;
+  }
+
+  .playerInfo span {
+    max-width: 31vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .playerWave,
+  .playerSkipButton,
+  .playerMuteButton {
     display: none;
   }
 
   .playerControls {
     justify-content: flex-end;
+    gap: 4px;
+  }
+
+  .playerButton {
+    width: 32px;
+    height: 32px;
+  }
+
+  .playerButtonPrimary {
+    width: 38px;
+    height: 38px;
+  }
+
+  .playerTool {
+    width: 32px;
+    min-height: 32px;
+    justify-content: center;
+    padding: 0;
   }
 
   .playerTool span {
     display: none;
+  }
+
+  .drawerLayer .inspector {
+    top: 0;
+    right: 0;
+    bottom: 70px;
+    width: min(348px, calc(100vw - 16px));
+  }
+
+  .studioPage .studioHeader {
+    min-height: 58px;
+    padding-inline: 16px;
+  }
+
+  .studioPage .studioLayout {
+    min-height: calc(100dvh - 58px);
   }
 
   .homeWelcome {
@@ -3182,166 +3278,29 @@
   }
 }
 
-.studioPage {
-  min-height: calc(100vh - 28px);
-}
-
-.studioPage .studioHeader {
-  min-height: 64px;
-  padding: 0 28px;
-  border-bottom: 1px solid rgba(234, 231, 227, 0.75);
-}
-
-.studioPage .studioLayout {
-  min-height: calc(100vh - 92px);
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-  background: transparent;
-}
-
-.studioPage .studioSidebar,
-.studioPage .versionRail {
-  background: rgba(250, 249, 248, 0.5);
-}
-
 @media (max-width: 620px) {
-  .studioPage .studioHeader {
+  .catalogContent {
     padding-inline: 16px;
   }
 
-  .studioPage .studioLayout {
-    min-height: calc(100vh - 70px);
+  .studioPage .studioHeaderActions .ghostButton {
+    padding-inline: 7px;
+    font-size: 0;
+  }
+
+  .studioPage .studioHeaderActions .ghostButton svg {
+    width: 15px;
+    height: 15px;
   }
 }
 
-/* The player is a single global transport dock, not a floating card attached to a page. */
-.globalPlayerSlot {
-  right: 0;
-  bottom: 0;
-  left: 0;
-}
-
-.player {
-  grid-template-columns: minmax(220px, 0.72fr) minmax(260px, 1.28fr) auto;
-  gap: 24px;
-  min-height: 74px;
-  padding: 10px clamp(16px, 2vw, 30px);
-  border-right: 0;
-  border-bottom: 0;
-  border-left: 0;
-  border-radius: 0;
-  box-shadow: 0 -12px 32px rgba(62, 45, 86, 0.1);
-}
-
-.player::before {
-  right: 24%;
-  left: 24%;
-}
-
-.playerArtwork {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-}
-
-.playerInfo strong {
-  font-size: 12px;
-}
-
-.playerControls {
-  gap: 7px;
-}
-
-.playerButton {
-  width: 34px;
-  height: 34px;
-}
-
-.playerButtonPrimary {
-  width: 40px;
-  height: 40px;
-}
-
-.drawerLayer .inspector {
-  bottom: 74px;
-}
-
-.appShellWithPlayer .surface {
-  padding-bottom: 90px;
-}
-
-@media (max-width: 700px) {
-  .globalPlayerSlot {
-    right: 0;
-    bottom: 0;
-    left: 0;
-  }
-
-  .player {
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 10px;
-    min-height: 70px;
-    padding: 8px 14px max(8px, env(safe-area-inset-bottom));
-  }
-
-  .playerArtwork {
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
-  }
-
-  .playerTrack {
-    gap: 9px;
-  }
-
-  .playerInfo strong {
-    font-size: 11px;
-  }
-
-  .playerInfo span {
-    max-width: 31vw;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .playerWave,
-  .playerSkipButton,
-  .playerMuteButton {
-    display: none;
-  }
-
-  .playerControls {
-    gap: 4px;
-  }
-
-  .playerButton {
-    width: 32px;
-    height: 32px;
-  }
-
-  .playerButtonPrimary {
-    width: 38px;
-    height: 38px;
-  }
-
+@media (prefers-reduced-motion: reduce) {
+  .appShell,
+  .appShell .rail,
+  .railToggle,
+  .navItem,
+  .playerButton,
   .playerTool {
-    width: 32px;
-    min-height: 32px;
-    justify-content: center;
-    padding: 0;
-  }
-
-  .playerTool span {
-    display: none;
-  }
-
-  .drawerLayer .inspector {
-    bottom: 70px;
-  }
-
-  .appShellWithPlayer .surface {
-    padding-bottom: 100px;
+    transition: none;
   }
 }

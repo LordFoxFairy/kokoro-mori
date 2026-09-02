@@ -1,6 +1,5 @@
 "use client"
 
-import { ChevronLeft, ChevronRight } from "lucide-react"
 import { useEffect, type CSSProperties, type ReactNode } from "react"
 import { previewProject } from "../preview-data"
 import type { Project } from "../domain"
@@ -37,7 +36,7 @@ export function MoriAppShell({ activeKey, ariaLabel, children, onQueueOpen, proj
     }
   }, [railCollapsed, toggleRail])
 
-  const shellStyle = { "--mori-rail-width": railCollapsed ? "76px" : "224px" } as CSSProperties
+  const shellStyle = { "--mori-rail-width": railCollapsed ? "96px" : "248px" } as CSSProperties
   const className = `${styles.appShell} ${styles.appShellWithPlayer}`
 
   return (
@@ -46,10 +45,8 @@ export function MoriAppShell({ activeKey, ariaLabel, children, onQueueOpen, proj
         project={project}
         activeKey={activeKey}
         collapsed={railCollapsed}
+        onToggle={toggleRail}
       />
-      <button className={styles.railToggleGlobal} type="button" onClick={toggleRail} aria-expanded={!railCollapsed} aria-label={railCollapsed ? "Expand sidebar" : "Collapse sidebar"} title={railCollapsed ? "Expand sidebar" : "Collapse sidebar"}>
-        {railCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
-      </button>
       {!railCollapsed ? <button className={styles.railBackdrop} type="button" onClick={toggleRail} aria-label="Close sidebar" /> : null}
       <section className={styles.surface} aria-label={ariaLabel}>
         {children}

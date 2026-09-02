@@ -1,4 +1,4 @@
-import { CircleHelp, FolderKanban, House, Library, Music2, Plus, Settings2, Sparkles } from "lucide-react"
+import { ChevronLeft, ChevronRight, CircleHelp, FolderKanban, House, Library, Music2, Plus, Settings2, Sparkles } from "lucide-react"
 import Link from "next/link"
 import styles from "../mori-workspace.module.css"
 import type { Project } from "../domain"
@@ -9,6 +9,7 @@ type MoriRailProps = {
   project: Project
   activeKey?: MoriNavigationKey
   collapsed?: boolean
+  onToggle?: () => void
 }
 
 const navigation = [
@@ -18,12 +19,13 @@ const navigation = [
   { key: "library" as const, label: "Library", href: "/library", icon: Library },
 ]
 
-export function MoriRail({ project, activeKey = "create", collapsed = false }: MoriRailProps) {
+export function MoriRail({ project, activeKey = "create", collapsed = false, onToggle }: MoriRailProps) {
   return (
     <nav className={`${styles.rail} ${collapsed ? styles.railCollapsed : ""}`} aria-label="Mori" data-rail-state={collapsed ? "collapsed" : "expanded"}>
       <div className={styles.brandRow}>
         <div className={styles.brandMark} aria-hidden="true">M</div>
         <span className={styles.brandName}>Mori</span>
+        {onToggle ? <button className={styles.railToggle} type="button" onClick={onToggle} aria-expanded={!collapsed} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} title={collapsed ? "Expand sidebar" : "Collapse sidebar"}>{collapsed ? <ChevronRight /> : <ChevronLeft />}</button> : null}
       </div>
 
       <Link className={styles.newButton} href="/create" aria-label="New creation" title={collapsed ? "New creation" : undefined}>

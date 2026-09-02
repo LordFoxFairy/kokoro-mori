@@ -1,5 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display:ital@0;1&display=swap");
-
 :root {
   --mori-background: #fbfaf8;
   --mori-surface: #ffffff;
@@ -25,6 +23,9 @@
   --mori-radius-lg: 24px;
   --mori-motion-fast: 140ms;
   --mori-motion-base: 220ms;
+  --mori-font-sans: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --mori-font-display: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --mori-font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   color-scheme: light;
 }
 
@@ -41,7 +42,8 @@ body {
   margin: 0;
   background: var(--mori-background);
   color: var(--mori-foreground);
-  font-family: "DM Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--mori-font-sans);
+  font-synthesis: none;
   -webkit-font-smoothing: antialiased;
 }
 
