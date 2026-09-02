@@ -6,8 +6,8 @@ import type { Candidate, CreationMode, GenerationStatus } from "./domain"
 import { previewCandidates, previewGeneration, previewProject, previewSongPlan } from "./preview-data"
 import { CreateCanvas, type CreationDraft } from "./components/create-canvas"
 import { InspectorPanel } from "./components/inspector-panel"
+import { useMoriApp } from "./components/mori-app-provider"
 import { MoriAppShell } from "./components/mori-app-shell"
-import { PersistentPlayer } from "./components/persistent-player"
 import styles from "./mori-workspace.module.css"
 
 export function MoriWorkspace() {
@@ -16,15 +16,10 @@ export function MoriWorkspace() {
   const [candidates, setCandidates] = useState(previewCandidates)
   const [currentVersionRef, setCurrentVersionRef] = useState(previewProject.currentVersionRef)
   const [selectedCandidateRef, setSelectedCandidateRef] = useState(previewCandidates[0].candidateRef)
-  const [playing, setPlaying] = useState(false)
   const [generationStatus, setGenerationStatus] = useState<GenerationStatus>(previewGeneration.status)
   const [generationLabel, setGenerationLabel] = useState(previewGeneration.label)
   const [progress, setProgress] = useState(previewGeneration.progress)
-
-  const selectedCandidate = useMemo(
-    () => candidates.find((candidate) => candidate.candidateRef === selectedCandidateRef) ?? candidates[0],
-    [candidates, selectedCandidateRef],
-  )
+  const { playing, playerCandidate, setPlaying, togglePlaying, selectPlayerCandidate } = useMoriApp()
 
   const generation = useMemo(() => ({
     ...previewGeneration,
@@ -45,30 +40,24 @@ export function MoriWorkspace() {
       setGenerationLabel("Two new directions")
       setProgress(100)
     }, 650)
-  }, [])
+  }, [setPlaying])
 
   const handlePromote = useCallback((candidate: Candidate) => {
     setCurrentVersionRef(candidate.versionRef)
     setCandidates((items) => items.map((item) => ({ ...item, isCurrent: item.candidateRef === candidate.candidateRef })))
     setSelectedCandidateRef(candidate.candidateRef)
-  }, [])
+    selectPlayerCandidate(candidate)
+  }, [selectPlayerCandidate])
 
   const currentCandidates = candidates.map((candidate) => ({ ...candidate, isCurrent: candidate.versionRef === currentVersionRef }))
-  const activeCandidate = currentCandidates.find((candidate) => candidate.candidateRef === selectedCandidate.candidateRef) ?? currentCandidates[0]
   return (
     <main className={styles.app}>
       <MoriAppShell
         activeKey="create"
         ariaLabel="Create workspace"
         project={previewProject}
-        player={
-          <PersistentPlayer
-            candidate={activeCandidate}
-            playing={playing}
-            onToggle={() => setPlaying((value) => !value)}
-            onSelectQueue={() => setQueueOpen(true)}
-          />
-        }
+        showQueueButton
+        onQueueOpen={() => setQueueOpen(true)}
       >
         <div className={`${styles.workspaceLayout} ${queueOpen ? styles.workspaceLayoutWithDrawer : ""}`}>
           <section className={styles.createSurface} aria-label="Create canvas">
@@ -94,9 +83,13 @@ export function MoriWorkspace() {
               songPlan={previewSongPlan}
               selectedCandidateRef={selectedCandidateRef}
               playing={playing}
-              onSelect={(candidate) => { setSelectedCandidateRef(candidate.candidateRef); setPlaying(false) }}
+              onSelect={(candidate) => { setSelectedCandidateRef(candidate.candidateRef); selectPlayerCandidate(candidate); setPlaying(false) }}
               onPromote={handlePromote}
-              onPlay={(candidate) => { setSelectedCandidateRef(candidate.candidateRef); setPlaying((value) => selectedCandidateRef === candidate.candidateRef ? !value : true) }}
+              onPlay={(candidate) => {
+                setSelectedCandidateRef(candidate.candidateRef)
+                if (playerCandidate.candidateRef === candidate.candidateRef) togglePlaying()
+                else { selectPlayerCandidate(candidate); setPlaying(true) }
+              }}
               onClose={() => setQueueOpen(false)}
             />
           ) : null}

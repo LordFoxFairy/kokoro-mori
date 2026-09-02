@@ -1,13 +1,17 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { useState } from "react"
 import { describe, expect, it } from "vitest"
 import { MoriCatalogShell } from "./components/mori-catalog-shell"
+import { MoriAppProvider } from "./components/mori-app-provider"
 
 describe("Mori application navigation", () => {
   it("keeps product-level destinations in one shared shell", () => {
     render(
-      <MoriCatalogShell activeKey="home" ariaLabel="Home">
-        <div>Home content</div>
-      </MoriCatalogShell>,
+      <MoriAppProvider>
+        <MoriCatalogShell activeKey="home" ariaLabel="Home">
+          <div>Home content</div>
+        </MoriCatalogShell>
+      </MoriAppProvider>,
     )
 
     expect(screen.getByRole("link", { name: "Home" })).toHaveAttribute("href", "/")
@@ -18,9 +22,11 @@ describe("Mori application navigation", () => {
 
   it("keeps playback controls available below catalog content", () => {
     render(
-      <MoriCatalogShell activeKey="library" ariaLabel="Library">
-        <div>Library content</div>
-      </MoriCatalogShell>,
+      <MoriAppProvider>
+        <MoriCatalogShell activeKey="library" ariaLabel="Library">
+          <div>Library content</div>
+        </MoriCatalogShell>
+      </MoriAppProvider>,
     )
 
     expect(screen.getByRole("region", { name: "Global player" })).toBeInTheDocument()
@@ -34,13 +40,67 @@ describe("Mori application navigation", () => {
 
     try {
       render(
-        <MoriCatalogShell activeKey="library" ariaLabel="Library">
-          <div>Library content</div>
-        </MoriCatalogShell>,
+        <MoriAppProvider>
+          <MoriCatalogShell activeKey="library" ariaLabel="Library">
+            <div>Library content</div>
+          </MoriCatalogShell>
+        </MoriAppProvider>,
       )
       await waitFor(() => expect(screen.getByRole("button", { name: "Expand sidebar" })).toBeInTheDocument())
     } finally {
       Object.defineProperty(window, "innerWidth", { configurable: true, value: originalWidth })
     }
+  })
+
+  it("persists the rail state while moving between product surfaces", () => {
+    function SurfaceHarness() {
+      const [surface, setSurface] = useState<"home" | "library">("home")
+
+      return (
+        <>
+          <button type="button" onClick={() => setSurface((value) => value === "home" ? "library" : "home")}>Switch surface</button>
+          <MoriCatalogShell activeKey={surface} ariaLabel={surface}>
+            <div>{surface} content</div>
+          </MoriCatalogShell>
+        </>
+      )
+    }
+
+    render(
+      <MoriAppProvider>
+        <SurfaceHarness />
+      </MoriAppProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: /collapse sidebar/i }))
+    fireEvent.click(screen.getByRole("button", { name: "Switch surface" }))
+
+    expect(screen.getByRole("button", { name: /expand sidebar/i })).toBeInTheDocument()
+  })
+
+  it("keeps the active track playing while moving between product surfaces", () => {
+    function PlayerSurfaceHarness() {
+      const [surface, setSurface] = useState<"home" | "library">("home")
+
+      return (
+        <>
+          <button type="button" onClick={() => setSurface((value) => value === "home" ? "library" : "home")}>Switch surface</button>
+          <MoriCatalogShell activeKey={surface} ariaLabel={surface}>
+            <div>{surface} content</div>
+          </MoriCatalogShell>
+        </>
+      )
+    }
+
+    render(
+      <MoriAppProvider>
+        <PlayerSurfaceHarness />
+      </MoriAppProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Play" }))
+    fireEvent.click(screen.getByRole("button", { name: "Switch surface" }))
+
+    expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument()
   })
 })

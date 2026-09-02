@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import "./globals.css"
+import { MoriAppProvider } from "@/features/mori/components/mori-app-provider"
 
 export const metadata: Metadata = {
   title: "Mori — Make something you can feel",
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body><MoriAppProvider>{children}</MoriAppProvider></body>
     </html>
   )
 }

@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, type ReactNode } from "react"
+import { useEffect, type ReactNode } from "react"
 import type { Candidate } from "../domain"
+import { useMoriApp } from "./mori-app-provider"
 import { MoriAppShell } from "./mori-app-shell"
-import { PersistentPlayer } from "./persistent-player"
 import styles from "../mori-workspace.module.css"
 
 type MoriStudioShellProps = {
@@ -12,13 +12,17 @@ type MoriStudioShellProps = {
 }
 
 export function MoriStudioShell({ candidate, children }: MoriStudioShellProps) {
-  const [playing, setPlaying] = useState(false)
+  const { selectPlayerCandidate } = useMoriApp()
+
+  useEffect(() => {
+    const selectionTimer = window.setTimeout(() => selectPlayerCandidate(candidate), 0)
+    return () => window.clearTimeout(selectionTimer)
+  }, [candidate, selectPlayerCandidate])
 
   return (
     <MoriAppShell
       activeKey="projects"
       ariaLabel="Studio"
-      player={<PersistentPlayer candidate={candidate} playing={playing} onToggle={() => setPlaying((value) => !value)} />}
     >
       <div className={styles.studioPage}>{children}</div>
     </MoriAppShell>
