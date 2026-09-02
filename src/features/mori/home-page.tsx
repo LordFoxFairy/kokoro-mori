@@ -1,10 +1,24 @@
+"use client"
+
 import { ArrowRight, Clock3, Play, Sparkles } from "lucide-react"
 import Link from "next/link"
+import { useMoriApp } from "./components/mori-app-provider"
 import { previewCandidates, previewProject } from "./preview-data"
 import { Waveform } from "./components/waveform"
 import styles from "./mori-workspace.module.css"
 
 export function HomePageContent() {
+  const { playerCandidate, playing, selectPlayerCandidate, setPlaying } = useMoriApp()
+
+  function playCandidate(candidate: (typeof previewCandidates)[number]) {
+    if (playerCandidate.candidateRef === candidate.candidateRef) {
+      setPlaying(!playing)
+      return
+    }
+    selectPlayerCandidate(candidate)
+    setPlaying(true)
+  }
+
   return (
     <div className={`${styles.catalogContent} ${styles.homeContent}`}>
       <header className={styles.homeWelcome}>
@@ -32,7 +46,7 @@ export function HomePageContent() {
         <div className={styles.homeTrackList}>
           {previewCandidates.map((candidate, index) => (
             <article className={styles.homeTrack} key={candidate.candidateRef}>
-              <div className={`${styles.homeTrackArtwork} ${index === 1 ? styles.homeTrackArtworkAlt : ""}`}><Play size={14} fill="currentColor" /></div>
+              <button className={`${styles.homeTrackArtwork} ${index === 1 ? styles.homeTrackArtworkAlt : ""}`} type="button" onClick={() => playCandidate(candidate)} aria-label={`${playerCandidate.candidateRef === candidate.candidateRef && playing ? "Pause" : "Play"} ${candidate.title}`}><Play size={14} fill={playerCandidate.candidateRef === candidate.candidateRef && playing ? "currentColor" : "none"} /></button>
               <div className={styles.homeTrackCopy}><strong>{candidate.title}</strong><span>{candidate.subtitle}</span></div>
               <div className={styles.homeTrackWave}><Waveform seed={candidate.waveformSeed} compact progress={index === 0 ? 0.62 : 0.28} /></div>
               <span className={styles.homeTrackDuration}>{Math.floor(candidate.durationSeconds / 60)}:{String(candidate.durationSeconds % 60).padStart(2, "0")}</span>

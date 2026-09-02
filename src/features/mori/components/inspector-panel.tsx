@@ -1,4 +1,4 @@
-import { Check, Clock3, MoreHorizontal, Play, Sparkles, X } from "lucide-react"
+import { Check, Clock3, Play, Sparkles, X } from "lucide-react"
 import type { Candidate, Generation, SongPlan } from "../domain"
 import { Waveform } from "./waveform"
 import styles from "../mori-workspace.module.css"
@@ -30,7 +30,6 @@ export function InspectorPanel({ generation, candidates, songPlan, selectedCandi
           <p className={styles.sectionCaption}>Your newest directions, in one place.</p>
         </div>
         <div className={styles.inspectorActions}>
-          <button className={styles.iconButton} type="button" aria-label="More queue options"><MoreHorizontal /></button>
           {onClose ? <button className={styles.iconButton} type="button" onClick={onClose} aria-label="Close generation queue"><X /></button> : null}
         </div>
       </header>
@@ -86,7 +85,6 @@ export function InspectorPanel({ generation, candidates, songPlan, selectedCandi
         <section className={styles.planDetail} aria-labelledby="plan-heading">
           <div className={styles.planDetailHeader}>
             <h3 id="plan-heading">Song plan</h3>
-            <button type="button">Edit plan</button>
           </div>
           <div className={styles.planStats}>
             <div className={styles.planStat}><span>Mood</span><strong>{songPlan.mood}</strong></div>

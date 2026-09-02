@@ -157,6 +157,7 @@
 .railFooterLink:focus-visible,
 .newButton:focus-visible,
 .railToggleGlobal:focus-visible,
+.homeTrackArtwork:focus-visible,
 .playerButton:focus-visible,
 .playerTool:focus-visible {
   outline: 3px solid rgba(109, 92, 231, 0.3);
@@ -513,6 +514,34 @@
   height: 13px;
 }
 
+.moodPicker {
+  display: grid;
+  gap: 4px;
+  width: min(420px, 100%);
+  margin-top: 10px;
+  padding: 6px;
+  border: 1px solid var(--mori-border);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: var(--mori-shadow-sm);
+}
+
+.moodPicker button {
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 8px;
+  color: var(--mori-muted);
+  font-size: 11px;
+  text-align: left;
+  background: transparent;
+}
+
+.moodPicker button:hover,
+.moodPicker button[aria-selected="true"] {
+  color: var(--mori-foreground);
+  background: var(--mori-primary-soft);
+}
+
 .customFields {
   display: grid;
   gap: 13px;
@@ -794,6 +823,23 @@
 
 .candidateArtworkAlt {
   background: linear-gradient(145deg, #ccecdf, #fbe1cb);
+}
+
+.overviewCandidateArtwork {
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.overviewCandidateArtwork:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 12px rgba(109, 92, 231, 0.18);
+}
+
+.overviewCandidateArtwork:focus-visible {
+  outline: 3px solid rgba(109, 92, 231, 0.3);
+  outline-offset: 2px;
 }
 
 .candidateArtwork::after {
@@ -2839,10 +2885,17 @@
   display: grid;
   width: 42px;
   height: 42px;
+  padding: 0;
   place-items: center;
+  border: 0;
   border-radius: 12px;
   color: #6454c7;
   background: linear-gradient(145deg, #ddd5ff, #f5c9b3);
+}
+
+.homeTrackArtwork:hover {
+  color: #5645cf;
+  box-shadow: 0 6px 14px rgba(109, 92, 231, 0.14);
 }
 
 .homeTrackArtworkAlt {

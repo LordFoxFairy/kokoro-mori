@@ -27,6 +27,24 @@ export function CreateCanvas({ mode, onModeChange, onGenerate }: CreateCanvasPro
   const [voice, setVoice] = useState("Natural lead")
   const [durationSeconds, setDurationSeconds] = useState(180)
   const [advancedOpen, setAdvancedOpen] = useState(false)
+  const [referenceAdded, setReferenceAdded] = useState(false)
+  const [moodsOpen, setMoodsOpen] = useState(false)
+
+  function startWithLyrics() {
+    onModeChange("custom")
+    setLyricsMode("lyrics")
+  }
+
+  function addReference() {
+    onModeChange("custom")
+    setReferenceAdded((value) => !value)
+  }
+
+  function chooseMood(mood: string) {
+    onModeChange("custom")
+    setStyle(mood)
+    setMoodsOpen(false)
+  }
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -75,7 +93,7 @@ export function CreateCanvas({ mode, onModeChange, onGenerate }: CreateCanvasPro
             <div className={styles.fieldRow}>
               <div className={styles.field}>
                 <span className={styles.fieldLegend}>Reference</span>
-                <button className={styles.referenceButton} type="button" aria-label="Reference audio"><Link2 /> Add audio reference</button>
+                <button className={styles.referenceButton} type="button" onClick={() => setReferenceAdded((value) => !value)} aria-pressed={referenceAdded} aria-label={referenceAdded ? "Reference audio ready" : "Reference audio"}><Link2 /> {referenceAdded ? "Reference ready" : "Add audio reference"}</button>
               </div>
               <div className={styles.field}>
                 <label htmlFor="mori-voice">Voice</label>
@@ -123,10 +141,17 @@ export function CreateCanvas({ mode, onModeChange, onGenerate }: CreateCanvasPro
       </div>
 
       <div className={styles.quickChips} aria-label="Creative shortcuts">
-        <button className={styles.quickChip} type="button"><Mic2 /> Start with lyrics</button>
-        <button className={styles.quickChip} type="button"><Plus /> Add a reference</button>
-        <button className={styles.quickChip} type="button"><ChevronDown /> Browse moods</button>
+        <button className={styles.quickChip} type="button" onClick={startWithLyrics}><Mic2 /> Start with lyrics</button>
+        <button className={styles.quickChip} type="button" onClick={addReference}><Plus /> {referenceAdded ? "Reference ready" : "Add a reference"}</button>
+        <button className={styles.quickChip} type="button" onClick={() => setMoodsOpen((value) => !value)} aria-expanded={moodsOpen}><ChevronDown /> Browse moods</button>
       </div>
+      {moodsOpen ? <div className={styles.moodPicker} role="listbox" aria-label="Browse moods">
+        {[
+          "Dream pop · intimate · organic",
+          "Warm soul · live drums · close vocal",
+          "Cinematic folk · open horizon · strings",
+        ].map((mood) => <button key={mood} type="button" role="option" aria-selected={style === mood} onClick={() => chooseMood(mood)}>{mood}</button>)}
+      </div> : null}
     </section>
   )
 }

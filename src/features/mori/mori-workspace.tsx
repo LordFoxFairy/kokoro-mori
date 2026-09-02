@@ -1,6 +1,6 @@
 "use client"
 
-import { MoreHorizontal, PanelRight, Share2 } from "lucide-react"
+import { PanelRight, Share2 } from "lucide-react"
 import { createPortal } from "react-dom"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { createGenerationRequest } from "@/lib/mori-api"
@@ -23,6 +23,7 @@ export function MoriWorkspace() {
   const [generationLabel, setGenerationLabel] = useState(previewGeneration.label)
   const [progress, setProgress] = useState(previewGeneration.progress)
   const [generationRef, setGenerationRef] = useState<string | null>(null)
+  const [shareFeedback, setShareFeedback] = useState(false)
   const api = useMemo(() => createMoriApiClient(), [])
   const { playing, playerCandidate, setPlaying, togglePlaying, selectPlayerCandidate } = useMoriApp()
 
@@ -119,6 +120,13 @@ export function MoriWorkspace() {
     selectPlayerCandidate(candidate)
   }, [selectPlayerCandidate])
 
+  const handleShare = useCallback(() => {
+    const clipboardWrite = navigator.clipboard?.writeText(window.location.href)
+    if (clipboardWrite !== undefined) void clipboardWrite.catch(() => undefined)
+    setShareFeedback(true)
+    window.setTimeout(() => setShareFeedback(false), 1800)
+  }, [])
+
   const currentCandidates = candidates.map((candidate) => ({ ...candidate, isCurrent: candidate.versionRef === currentVersionRef }))
   return (
     <main className={styles.app}>
@@ -137,8 +145,7 @@ export function MoriWorkspace() {
                 <button className={styles.queueButton} type="button" onClick={() => setQueueOpen((value) => !value)} aria-expanded={queueOpen} aria-label={queueOpen ? "Hide generation queue" : "Open generation queue"}>
                   <PanelRight size={14} /> <span>Queue</span><b>{currentCandidates.length}</b>
                 </button>
-                <button className={styles.ghostButton} type="button"><Share2 size={14} /> Share</button>
-                <button className={styles.iconButton} type="button" aria-label="More workspace options"><MoreHorizontal /></button>
+                <button className={styles.ghostButton} type="button" onClick={handleShare}><Share2 size={14} /> {shareFeedback ? "Link copied" : "Share"}</button>
               </div>
             </header>
             <div className={styles.canvasBody}>

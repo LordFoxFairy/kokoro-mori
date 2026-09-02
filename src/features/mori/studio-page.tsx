@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowLeft, Download, MoreHorizontal, PanelLeft, Play, Share2, Sparkles } from "lucide-react"
+import { ArrowLeft, Download, PanelLeft, Play, Share2, Sparkles } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import type { MoriApi, MoriExportSnapshot } from "@/lib/mori-api"
@@ -108,7 +108,6 @@ export function StudioPageContent({ candidate, api }: StudioPageContentProps) {
           <div className={styles.studioHeaderActions}>
             <button className={styles.ghostButton} type="button" onClick={share}><Share2 size={14} /> {shareFeedback ? "Link copied" : "Share"}</button>
           {exportReady ? <a className={styles.ghostButton} href={downloadUrl} download aria-label={`Download ${exportSnapshot?.format.toUpperCase() ?? "MP3"}`}><Download size={14} /> Download {exportSnapshot?.format.toUpperCase() ?? "MP3"}</a> : <button className={styles.ghostButton} type="button" onClick={() => { void exportVersion() }} disabled={exportFeedback === "queued" || exportFeedback === "processing"}>{exportFeedback === "queued" || exportFeedback === "processing" ? exportLabel : exportFeedback === "failed" ? "Retry export" : <><Download size={14} /> Export</>}</button>}
-          <button className={styles.iconButton} type="button" aria-label="More Studio options"><MoreHorizontal size={16} /></button>
         </div>
       </header>
       <div className={styles.studioLayout}>
@@ -128,7 +127,7 @@ export function StudioPageContent({ candidate, api }: StudioPageContentProps) {
           {activeTool === "lyrics" ? <LyricsEditor /> : null}
           {activeTool === "stems" ? <StemsEditor /> : null}
         </section>
-        <aside className={styles.versionRail} aria-label="Version history"><div className={styles.versionRailHeader}><div><span>Project history</span><h2>Versions</h2></div><button className={styles.iconButton} type="button" aria-label="More version options"><MoreHorizontal size={16} /></button></div>{previewCandidates.map((item, index) => <Link className={`${styles.versionItem} ${item.versionRef === candidate.versionRef ? styles.versionItemActive : ""}`} href={`/projects/${previewProject.projectRef}/studio/${item.versionRef}`} key={item.versionRef}><div className={`${styles.versionThumb} ${index === 1 ? styles.versionThumbAlt : ""}`}><Play size={12} fill="currentColor" /></div><div><strong>{item.title}</strong><span>{index === 0 ? "Current" : "Draft"} · {Math.floor(item.durationSeconds / 60)}:{String(item.durationSeconds % 60).padStart(2, "0")}</span></div></Link>)}</aside>
+        <aside className={styles.versionRail} aria-label="Version history"><div className={styles.versionRailHeader}><div><span>Project history</span><h2>Versions</h2></div></div>{previewCandidates.map((item, index) => <Link className={`${styles.versionItem} ${item.versionRef === candidate.versionRef ? styles.versionItemActive : ""}`} href={`/projects/${previewProject.projectRef}/studio/${item.versionRef}`} key={item.versionRef}><div className={`${styles.versionThumb} ${index === 1 ? styles.versionThumbAlt : ""}`}><Play size={12} fill="currentColor" /></div><div><strong>{item.title}</strong><span>{index === 0 ? "Current" : "Draft"} · {Math.floor(item.durationSeconds / 60)}:{String(item.durationSeconds % 60).padStart(2, "0")}</span></div></Link>)}</aside>
       </div>
     </MoriStudioShell>
   )
@@ -149,7 +148,7 @@ function ArrangementEditor({ candidate }: { candidate: Candidate }) {
 }
 
 function LyricsCard() {
-  return <div className={styles.lyricsCard}><div className={styles.lyricsHeader}><div><span>Lyrics</span><strong>Draft 01</strong></div><button className={styles.ghostButton} type="button">Edit lyrics</button></div><p>We were headlights in the quiet<br />finding a little gold in the blue<br /><em>and every road became a reason<br />to carry the morning through</em></p></div>
+  return <div className={styles.lyricsCard}><div className={styles.lyricsHeader}><div><span>Lyrics</span><strong>Draft 01</strong></div></div><p>We were headlights in the quiet<br />finding a little gold in the blue<br /><em>and every road became a reason<br />to carry the morning through</em></p></div>
 }
 
 function LyricsEditor() {

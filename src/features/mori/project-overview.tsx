@@ -1,10 +1,24 @@
-import { ArrowLeft, ArrowUpRight, Clock3, MoreHorizontal, Play, Sparkles } from "lucide-react"
+"use client"
+
+import { ArrowLeft, ArrowUpRight, Clock3, Play, Sparkles } from "lucide-react"
 import Link from "next/link"
+import { useMoriApp } from "./components/mori-app-provider"
 import { previewCandidates, previewProject, previewSongPlan } from "./preview-data"
 import { Waveform } from "./components/waveform"
 import styles from "./mori-workspace.module.css"
 
 export function ProjectOverviewPageContent() {
+  const { playerCandidate, playing, selectPlayerCandidate, setPlaying } = useMoriApp()
+
+  function playCandidate(candidate: (typeof previewCandidates)[number]) {
+    if (playerCandidate.candidateRef === candidate.candidateRef) {
+      setPlaying(!playing)
+      return
+    }
+    selectPlayerCandidate(candidate)
+    setPlaying(true)
+  }
+
   return (
     <div className={styles.catalogContent}>
       <Link className={styles.backLink} href="/projects"><ArrowLeft size={14} /> All projects</Link>
@@ -17,7 +31,6 @@ export function ProjectOverviewPageContent() {
           <div className={styles.projectOverviewActions}>
             <Link className={styles.generateButton} href={`/projects/${previewProject.projectRef}/studio/${previewCandidates[0].versionRef}`}><Play size={14} fill="currentColor" /> Open Studio</Link>
             <Link className={styles.ghostButton} href="/create"><Sparkles size={14} /> New direction</Link>
-            <button className={styles.iconButton} type="button" aria-label="More project options"><MoreHorizontal size={16} /></button>
           </div>
         </div>
       </div>
@@ -34,7 +47,9 @@ export function ProjectOverviewPageContent() {
         <div className={styles.overviewCandidateList}>
           {previewCandidates.map((candidate, index) => (
             <article className={styles.overviewCandidate} key={candidate.candidateRef}>
-              <div className={`${styles.candidateArtwork} ${index === 1 ? styles.candidateArtworkAlt : ""}`}><Play size={14} fill="currentColor" /></div>
+              <button className={`${styles.candidateArtwork} ${styles.overviewCandidateArtwork} ${index === 1 ? styles.candidateArtworkAlt : ""}`} type="button" onClick={() => playCandidate(candidate)} aria-label={`${playerCandidate.candidateRef === candidate.candidateRef && playing ? "Pause" : "Play"} ${candidate.title}`}>
+                <Play size={14} fill={playerCandidate.candidateRef === candidate.candidateRef && playing ? "currentColor" : "none"} />
+              </button>
               <div className={styles.overviewCandidateInfo}><strong>{candidate.title}</strong><span>{candidate.subtitle}</span></div>
               <div className={styles.overviewCandidateWave}><Waveform seed={candidate.waveformSeed} compact progress={index === 0 ? 0.8 : 0.48} /></div>
               <span className={styles.candidateDuration}>{Math.floor(candidate.durationSeconds / 60)}:{String(candidate.durationSeconds % 60).padStart(2, "0")}</span>
@@ -45,7 +60,7 @@ export function ProjectOverviewPageContent() {
       </section>
 
       <section className={styles.overviewSection} aria-labelledby="plan-overview-heading">
-        <div className={styles.overviewSectionHeader}><div><h2 id="plan-overview-heading">Song plan</h2><p>The intention behind this project, kept visible as you refine it.</p></div><button className={styles.ghostButton} type="button">Edit plan</button></div>
+        <div className={styles.overviewSectionHeader}><div><h2 id="plan-overview-heading">Song plan</h2><p>The intention behind this project, kept visible as you refine it.</p></div></div>
         <div className={styles.overviewPlanCard}>
           <div className={styles.overviewPlanStats}><span><b>Mood</b>{previewSongPlan.mood}</span><span><b>Tempo</b>{previewSongPlan.tempo}</span><span><b>Voice</b>Intimate lead</span></div>
           <div className={styles.tagRow}>{previewSongPlan.structure.map((item) => <span className={`${styles.tag} ${styles.tagSelected}`} key={item}>{item}</span>)}</div>

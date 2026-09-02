@@ -29,6 +29,27 @@ describe("Mori workspace", () => {
     expect(screen.getByRole("button", { name: /reference audio/i })).toBeInTheDocument()
   })
 
+  it("turns creative shortcuts into visible draft actions", () => {
+    renderWorkspace()
+
+    fireEvent.click(screen.getByRole("button", { name: "Start with lyrics" }))
+    expect(screen.getByRole("tab", { name: /custom/i })).toHaveAttribute("aria-selected", "true")
+    expect(screen.getByLabelText("Lyrics or instrumental")).toHaveValue("lyrics")
+
+    fireEvent.click(screen.getByRole("button", { name: "Add a reference" }))
+    expect(screen.getByRole("button", { name: "Reference audio ready" })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole("button", { name: "Browse moods" }))
+    expect(screen.getByRole("listbox", { name: "Browse moods" })).toBeInTheDocument()
+  })
+
+  it("gives Create share feedback instead of leaving a dead action", () => {
+    renderWorkspace()
+
+    fireEvent.click(screen.getByRole("button", { name: "Share" }))
+    expect(screen.getByRole("button", { name: "Link copied" })).toBeInTheDocument()
+  })
+
   it("keeps the sidebar state at the application shell level", () => {
     renderWorkspace()
     const navigation = screen.getByRole("navigation", { name: "Mori" })
