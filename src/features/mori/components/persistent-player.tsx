@@ -33,7 +33,7 @@ export function PersistentPlayer({ candidate, playing, muted, positionSeconds, o
         <div className={`${styles.playerArtwork} ${hasCandidate ? "" : styles.playerArtworkEmpty}`} aria-hidden="true">{hasCandidate ? null : <Music2 size={18} />}</div>
         <div className={styles.playerInfo}>
           <strong>{candidate?.title ?? "Nothing playing"}</strong>
-          <span>{candidate?.subtitle ?? "Choose a version to start listening"}</span>
+          <span>{candidate?.subtitle ?? "No version selected"}</span>
         </div>
       </div>
       <div className={styles.playerCenter}>
