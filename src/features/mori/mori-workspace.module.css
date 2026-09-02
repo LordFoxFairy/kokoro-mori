@@ -3654,8 +3654,30 @@
 }
 
 .playerTool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
   min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--mori-border);
   border-radius: 9px;
+  color: var(--mori-muted);
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.82);
+  transition: color var(--mori-motion-fast) ease, border-color var(--mori-motion-fast) ease, background var(--mori-motion-fast) ease;
+}
+
+.playerTool:hover {
+  border-color: var(--mori-border-strong);
+  color: var(--mori-foreground);
+  background: #fff;
+}
+
+.playerTool svg {
+  width: 15px;
+  height: 15px;
 }
 
 .railBackdrop {
