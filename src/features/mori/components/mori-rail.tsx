@@ -55,11 +55,11 @@ export function MoriRail({ activeKey = "create", collapsed = false, onToggle }: 
       </div>
 
       <div className={styles.railBottom}>
-        <Link className={styles.railFooterLink} href={settingsHref} aria-label="Settings" title={collapsed ? "Settings" : undefined}>
+        <Link className={`${styles.railFooterLink} ${activeKey === "settings" ? styles.railFooterLinkActive : ""}`} href={settingsHref} aria-label="Settings" aria-current={activeKey === "settings" ? "page" : undefined} title={collapsed ? "Settings" : undefined}>
           <Settings2 size={16} />
           <span>Settings</span>
         </Link>
-        <Link className={styles.railFooterLink} href="/help" aria-label="Help and feedback" title={collapsed ? "Help and feedback" : undefined}>
+        <Link className={`${styles.railFooterLink} ${activeKey === "help" ? styles.railFooterLinkActive : ""}`} href="/help" aria-label="Help and feedback" aria-current={activeKey === "help" ? "page" : undefined} title={collapsed ? "Help and feedback" : undefined}>
           <CircleHelp size={16} />
           <span>Help &amp; feedback</span>
         </Link>

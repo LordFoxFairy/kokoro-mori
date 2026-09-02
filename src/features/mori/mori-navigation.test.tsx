@@ -177,6 +177,18 @@ describe("Mori application navigation", () => {
     }
   })
 
+  it("marks the current utility surface in the rail", () => {
+    render(
+      <MoriAppProvider>
+        <MoriCatalogShell activeKey="settings" ariaLabel="Settings">
+          <div>Settings content</div>
+        </MoriCatalogShell>
+      </MoriAppProvider>,
+    )
+
+    expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute("aria-current", "page")
+  })
+
   it("keeps the project catalog reachable when the rail is collapsed", () => {
     render(
       <MoriAppProvider>

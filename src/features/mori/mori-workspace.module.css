@@ -3397,6 +3397,12 @@
   background: #f8f7f6;
 }
 
+.railFooterLinkActive {
+  color: var(--mori-primary-deep);
+  background: var(--mori-primary-soft);
+  box-shadow: inset 3px 0 0 var(--mori-primary);
+}
+
 .railToggle:focus-visible,
 .navItem:focus-visible,
 .railFooterLink:focus-visible,
@@ -3436,6 +3442,10 @@
 }
 
 .railCollapsed .navItemActive {
+  box-shadow: none;
+}
+
+.railCollapsed .railFooterLinkActive {
   box-shadow: none;
 }
 
