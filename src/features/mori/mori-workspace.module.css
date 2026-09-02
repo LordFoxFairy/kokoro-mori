@@ -247,6 +247,12 @@
   letter-spacing: -0.04em;
 }
 
+.songPlanHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
 .songPlanKicker,
 .songPlanReady,
 .planReadyLabel {
@@ -271,6 +277,22 @@
   font-size: 10px;
   font-weight: 750;
   background: rgba(231, 246, 239, 0.85);
+}
+
+.planEditButton {
+  min-height: 25px;
+  padding: 0 7px;
+  border: 1px solid rgba(109, 92, 231, 0.16);
+  border-radius: 7px;
+  color: var(--mori-primary);
+  font-size: 10px;
+  font-weight: 750;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.planEditButton:hover {
+  border-color: rgba(109, 92, 231, 0.3);
+  background: #fff;
 }
 
 .songPlanPrompt {
@@ -321,6 +343,54 @@
   gap: 7px;
 }
 
+.songPlanEditGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 11px;
+}
+
+.songPlanEditField {
+  display: grid;
+  gap: 6px;
+}
+
+.songPlanEditFieldWide {
+  grid-column: 1 / -1;
+}
+
+.songPlanEditField > span {
+  color: var(--mori-faint);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.songPlanEditField small {
+  color: var(--mori-faint);
+  font-size: 10px;
+}
+
+.planEditArea {
+  width: 100%;
+  min-height: 58px;
+  padding: 9px 11px;
+  border: 1px solid var(--mori-border);
+  border-radius: 10px;
+  outline: 0;
+  resize: vertical;
+  color: var(--mori-foreground);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.45;
+  background: #fff;
+}
+
+.planEditArea:focus {
+  border-color: rgba(109, 92, 231, 0.5);
+  box-shadow: 0 0 0 3px rgba(109, 92, 231, 0.1);
+}
+
 .songPlanDirection {
   margin: 0;
   color: var(--mori-muted);
@@ -334,6 +404,12 @@
   justify-content: flex-end;
   gap: 8px;
   padding-top: 2px;
+}
+
+.planEditHint {
+  margin-right: auto;
+  color: var(--mori-faint);
+  font-size: 10px;
 }
 
 .songPlanActions .ghostButton,
@@ -3454,6 +3530,19 @@
   .songPlanActions {
     align-items: stretch;
     flex-direction: column-reverse;
+  }
+
+  .songPlanEditGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .songPlanEditFieldWide {
+    grid-column: auto;
+  }
+
+  .planEditHint {
+    margin: 0;
+    text-align: center;
   }
 
   .songPlanActions .ghostButton,

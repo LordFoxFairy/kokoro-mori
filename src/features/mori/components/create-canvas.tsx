@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react"
 import { AudioLines, Check, ChevronDown, Link2, Mic2, Plus, SlidersHorizontal, Sparkles, WandSparkles } from "lucide-react"
-import type { CreationMode, LyricsMode } from "../domain"
+import type { CreationMode, LyricsMode, SongPlan } from "../domain"
 import { t } from "../copy"
 import { buildSongPlan } from "../song-plan"
 import { useMoriApp } from "./mori-app-provider"
@@ -14,6 +14,7 @@ export type CreationDraft = {
   style: string
   voice: string
   durationSeconds: number
+  songPlan?: SongPlan
 }
 
 type CreateCanvasProps = {
@@ -34,24 +35,48 @@ export function CreateCanvas({ projectRef, mode, onModeChange, onGenerate }: Cre
   const [referenceAdded, setReferenceAdded] = useState(false)
   const [moodsOpen, setMoodsOpen] = useState(false)
   const [planPreview, setPlanPreview] = useState<ReturnType<typeof buildSongPlan> | null>(null)
+  const [planEditing, setPlanEditing] = useState(false)
+  const [planBackup, setPlanBackup] = useState<SongPlan | null>(null)
+
+  function clearPlanPreview() {
+    setPlanPreview(null)
+    setPlanEditing(false)
+    setPlanBackup(null)
+  }
+
+  function openPlanEditor() {
+    if (planPreview === null) return
+    setPlanBackup(planPreview)
+    setPlanEditing(true)
+  }
+
+  function discardPlanEdits() {
+    if (planBackup !== null) setPlanPreview(planBackup)
+    setPlanBackup(null)
+    setPlanEditing(false)
+  }
+
+  function updatePlan(patch: Partial<SongPlan>) {
+    setPlanPreview((current) => current === null ? current : { ...current, ...patch })
+  }
 
   function startWithLyrics() {
     onModeChange("custom")
     setLyricsMode("lyrics")
-    setPlanPreview(null)
+    clearPlanPreview()
   }
 
   function addReference() {
     onModeChange("custom")
     setReferenceAdded((value) => !value)
-    setPlanPreview(null)
+    clearPlanPreview()
   }
 
   function chooseMood(mood: string) {
     onModeChange("custom")
     setStyle(mood)
     setMoodsOpen(false)
-    setPlanPreview(null)
+    clearPlanPreview()
   }
 
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -64,7 +89,7 @@ export function CreateCanvas({ projectRef, mode, onModeChange, onGenerate }: Cre
   }
 
   function confirmPlan() {
-    onGenerate({ prompt, lyricsMode, style, voice, durationSeconds })
+    onGenerate({ prompt, lyricsMode, style, voice, durationSeconds, songPlan: planPreview ?? undefined })
   }
 
   return (
@@ -74,10 +99,10 @@ export function CreateCanvas({ projectRef, mode, onModeChange, onGenerate }: Cre
       <p className={styles.heroDescription}>{t("heroDescription")}</p>
 
       <div className={styles.modeTabs} role="tablist" aria-label="Creation mode">
-        <button className={styles.modeTab} type="button" role="tab" aria-selected={mode === "smart"} onClick={() => { onModeChange("smart"); setPlanPreview(null) }}>
+        <button className={styles.modeTab} type="button" role="tab" aria-selected={mode === "smart"} onClick={() => { onModeChange("smart"); clearPlanPreview() }}>
           <Sparkles size={13} /> {t("smartLabel")}
         </button>
-        <button className={styles.modeTab} type="button" role="tab" aria-selected={mode === "custom"} onClick={() => { onModeChange("custom"); setPlanPreview(null) }}>
+        <button className={styles.modeTab} type="button" role="tab" aria-selected={mode === "custom"} onClick={() => { onModeChange("custom"); clearPlanPreview() }}>
           <SlidersHorizontal size={13} /> {t("customLabel")}
         </button>
       </div>
@@ -86,7 +111,7 @@ export function CreateCanvas({ projectRef, mode, onModeChange, onGenerate }: Cre
         <textarea
           className={styles.promptArea}
           value={prompt}
-          onChange={(event) => { setPrompt(event.target.value); setPlanPreview(null) }}
+          onChange={(event) => { setPrompt(event.target.value); clearPlanPreview() }}
           placeholder={t("promptPlaceholder")}
           aria-label="Song idea"
         />
@@ -96,24 +121,24 @@ export function CreateCanvas({ projectRef, mode, onModeChange, onGenerate }: Cre
             <div className={styles.fieldRow}>
               <div className={styles.field}>
                 <label htmlFor="lyrics-mode">Lyrics or instrumental</label>
-                <select className={styles.selectInput} id="lyrics-mode" value={lyricsMode} onChange={(event) => { setLyricsMode(event.target.value as LyricsMode); setPlanPreview(null) }}>
+                <select className={styles.selectInput} id="lyrics-mode" value={lyricsMode} onChange={(event) => { setLyricsMode(event.target.value as LyricsMode); clearPlanPreview() }}>
                   <option value="lyrics">Lyrics</option>
                   <option value="instrumental">Instrumental</option>
                 </select>
               </div>
               <div className={styles.field}>
                 <label htmlFor="mori-style">Style</label>
-                <input className={styles.textInput} id="mori-style" value={style} onChange={(event) => { setStyle(event.target.value); setPlanPreview(null) }} />
+                <input className={styles.textInput} id="mori-style" value={style} onChange={(event) => { setStyle(event.target.value); clearPlanPreview() }} />
               </div>
             </div>
             <div className={styles.fieldRow}>
               <div className={styles.field}>
                 <span className={styles.fieldLegend}>Reference</span>
-                <button className={styles.referenceButton} type="button" onClick={() => { setReferenceAdded((value) => !value); setPlanPreview(null) }} aria-pressed={referenceAdded} aria-label={referenceAdded ? "Reference audio ready" : "Reference audio"}><Link2 /> {referenceAdded ? "Reference ready" : "Add audio reference"}</button>
+                <button className={styles.referenceButton} type="button" onClick={() => { setReferenceAdded((value) => !value); clearPlanPreview() }} aria-pressed={referenceAdded} aria-label={referenceAdded ? "Reference audio ready" : "Reference audio"}><Link2 /> {referenceAdded ? "Reference ready" : "Add audio reference"}</button>
               </div>
               <div className={styles.field}>
                 <label htmlFor="mori-voice">Voice</label>
-                <select className={styles.selectInput} id="mori-voice" value={voice} onChange={(event) => { setVoice(event.target.value); setPlanPreview(null) }}>
+                <select className={styles.selectInput} id="mori-voice" value={voice} onChange={(event) => { setVoice(event.target.value); clearPlanPreview() }}>
                   <option>Natural lead</option>
                   <option>Airy alto</option>
                   <option>Warm tenor</option>
@@ -123,7 +148,7 @@ export function CreateCanvas({ projectRef, mode, onModeChange, onGenerate }: Cre
             <div className={styles.fieldRow}>
               <div className={styles.field}>
                 <label htmlFor="mori-duration">Duration</label>
-                <select className={styles.selectInput} id="mori-duration" value={durationSeconds} onChange={(event) => { setDurationSeconds(Number(event.target.value)); setPlanPreview(null) }}>
+                <select className={styles.selectInput} id="mori-duration" value={durationSeconds} onChange={(event) => { setDurationSeconds(Number(event.target.value)); clearPlanPreview() }}>
                   <option value={120}>2:00</option>
                   <option value={180}>3:00</option>
                   <option value={240}>4:00</option>
@@ -153,21 +178,58 @@ export function CreateCanvas({ projectRef, mode, onModeChange, onGenerate }: Cre
                 <div className={styles.songPlanKicker}><Sparkles size={13} /> AI draft</div>
                 <h2>Song plan</h2>
               </div>
-              <span className={styles.songPlanReady}><Check size={13} /> Ready to review</span>
+              <div className={styles.songPlanHeaderActions}>
+                <span className={styles.songPlanReady}><Check size={13} /> {planEditing ? "Editing" : "Ready to review"}</span>
+                <button className={styles.planEditButton} type="button" onClick={planEditing ? discardPlanEdits : openPlanEditor}>
+                  {planEditing ? "Cancel edits" : "Edit plan"}
+                </button>
+              </div>
             </header>
             <p className={styles.songPlanPrompt}>{planPreview.prompt}</p>
-            <div className={styles.songPlanStats}>
-              <div><span>Mood</span><strong>{planPreview.mood}</strong></div>
-              <div><span>Tempo</span><strong>{planPreview.tempoBpm} BPM</strong></div>
-              <div><span>Output</span><strong>{lyricsMode === "instrumental" ? "Instrumental" : "Lyrics"}</strong></div>
-            </div>
-            <div className={styles.songPlanRows}>
-              <div><span>Structure</span><div className={styles.tagRow}>{planPreview.structure.map((item) => <span className={`${styles.tag} ${styles.tagSelected}`} key={item}>{item}</span>)}</div></div>
-              <div><span>Palette</span><div className={styles.tagRow}>{planPreview.instruments.map((item) => <span className={styles.tag} key={item}>{item}</span>)}</div></div>
-            </div>
-            <p className={styles.songPlanDirection}>{planPreview.vocalDirection}</p>
+            {planEditing ? (
+              <div className={styles.songPlanEditGrid}>
+                <label className={styles.songPlanEditField}>
+                  <span>Mood</span>
+                  <input aria-label="Plan mood" className={styles.textInput} value={planPreview.mood} onChange={(event) => updatePlan({ mood: event.target.value })} />
+                </label>
+                <label className={styles.songPlanEditField}>
+                  <span>Tempo (BPM)</span>
+                  <input aria-label="Plan tempo" className={styles.textInput} type="number" min={40} max={240} step={1} value={planPreview.tempoBpm} onChange={(event) => updatePlan({ tempoBpm: boundedTempo(event.target.value, planPreview.tempoBpm) })} />
+                </label>
+                <label className={`${styles.songPlanEditField} ${styles.songPlanEditFieldWide}`}>
+                  <span>Structure</span>
+                  <input aria-label="Plan structure" className={styles.textInput} value={planPreview.structure.join(", ")} onChange={(event) => updatePlan({ structure: parsePlanList(event.target.value, planPreview.structure) })} />
+                  <small>Separate sections with commas.</small>
+                </label>
+                <label className={`${styles.songPlanEditField} ${styles.songPlanEditFieldWide}`}>
+                  <span>Palette</span>
+                  <input aria-label="Plan palette" className={styles.textInput} value={planPreview.instruments.join(", ")} onChange={(event) => updatePlan({ instruments: parsePlanList(event.target.value, planPreview.instruments) })} />
+                </label>
+                <label className={`${styles.songPlanEditField} ${styles.songPlanEditFieldWide}`}>
+                  <span>Vocal direction</span>
+                  <textarea aria-label="Vocal direction" className={styles.planEditArea} value={planPreview.vocalDirection} onChange={(event) => updatePlan({ vocalDirection: event.target.value })} />
+                </label>
+                <label className={`${styles.songPlanEditField} ${styles.songPlanEditFieldWide}`}>
+                  <span>Lyrics intent</span>
+                  <textarea aria-label="Lyrics intent" className={styles.planEditArea} value={planPreview.lyricsIntent} onChange={(event) => updatePlan({ lyricsIntent: event.target.value })} />
+                </label>
+              </div>
+            ) : (
+              <>
+                <div className={styles.songPlanStats}>
+                  <div><span>Mood</span><strong>{planPreview.mood}</strong></div>
+                  <div><span>Tempo</span><strong>{planPreview.tempoBpm} BPM</strong></div>
+                  <div><span>Output</span><strong>{lyricsMode === "instrumental" ? "Instrumental" : "Lyrics"}</strong></div>
+                </div>
+                <div className={styles.songPlanRows}>
+                  <div><span>Structure</span><div className={styles.tagRow}>{planPreview.structure.map((item) => <span className={`${styles.tag} ${styles.tagSelected}`} key={item}>{item}</span>)}</div></div>
+                  <div><span>Palette</span><div className={styles.tagRow}>{planPreview.instruments.map((item) => <span className={styles.tag} key={item}>{item}</span>)}</div></div>
+                </div>
+                <p className={styles.songPlanDirection}>{planPreview.vocalDirection}</p>
+              </>
+            )}
             <footer className={styles.songPlanActions}>
-              <button className={styles.ghostButton} type="button" onClick={() => setPlanPreview(null)}>Edit idea</button>
+              {planEditing ? <span className={styles.planEditHint}>Changes apply to this creation only.</span> : null}
               <button className={styles.generateButton} type="button" onClick={confirmPlan}><Check size={14} /> Create from this plan</button>
             </footer>
           </section>
@@ -198,4 +260,14 @@ export function CreateCanvas({ projectRef, mode, onModeChange, onGenerate }: Cre
       </div> : null}
     </section>
   )
+}
+
+function boundedTempo(value: string, fallback: number): number {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? Math.max(40, Math.min(240, Math.round(parsed))) : fallback
+}
+
+function parsePlanList(value: string, fallback: readonly string[]): string[] {
+  const items = value.split(",").map((item) => item.trim()).filter((item) => item !== "")
+  return items.length > 0 ? items : [...fallback]
 }

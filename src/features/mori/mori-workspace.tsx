@@ -51,7 +51,7 @@ export function MoriWorkspace({ api: injectedApi }: MoriWorkspaceProps = {}) {
     try {
       let songPlanRef: string | undefined
       if (mode === "smart") {
-        const draftPlan = buildSongPlan(previewProject.projectRef, draft)
+        const draftPlan = draft.songPlan ?? buildSongPlan(previewProject.projectRef, draft)
         const planResponse = await api.createSongPlan(
           previewProject.projectRef,
           toSongPlanCreateInput(draftPlan),

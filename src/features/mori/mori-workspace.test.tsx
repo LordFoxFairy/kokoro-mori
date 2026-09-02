@@ -81,9 +81,22 @@ describe("Mori workspace", () => {
     expect(createGeneration).not.toHaveBeenCalled()
     expect(screen.getByRole("button", { name: "Create from this plan" })).toBeInTheDocument()
 
+    fireEvent.click(screen.getByRole("button", { name: "Edit plan" }))
+    fireEvent.change(screen.getByRole("textbox", { name: "Plan mood" }), { target: { value: "Quiet folk" } })
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Plan tempo" }), { target: { value: "84" } })
+    fireEvent.change(screen.getByRole("textbox", { name: "Vocal direction" }), { target: { value: "Natural lead, close and unhurried" } })
     fireEvent.click(screen.getByRole("button", { name: "Create from this plan" }))
     await waitFor(() => expect(createSongPlan).toHaveBeenCalledOnce())
     await waitFor(() => expect(createGeneration).toHaveBeenCalledOnce())
+    expect(createSongPlan).toHaveBeenCalledWith(
+      "project_preview_first_light",
+      expect.objectContaining({
+        mood: "Quiet folk",
+        tempo_bpm: 84,
+        vocal_direction: "Natural lead, close and unhurried",
+      }),
+      expect.stringMatching(/^mori-plan-/u),
+    )
     expect(createGeneration.mock.calls[0]?.[1].song_plan_ref).toMatch(/^song_plan_mori-plan-/u)
   })
 
