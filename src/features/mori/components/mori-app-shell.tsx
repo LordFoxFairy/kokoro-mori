@@ -1,8 +1,6 @@
 "use client"
 
 import { useEffect, type CSSProperties, type ReactNode } from "react"
-import { previewProject } from "../preview-data"
-import type { Project } from "../domain"
 import { useMoriApp } from "./mori-app-provider"
 import { MoriRail, type MoriNavigationKey } from "./mori-rail"
 import { PersistentPlayer } from "./persistent-player"
@@ -13,11 +11,10 @@ type MoriAppShellProps = {
   ariaLabel: string
   children: ReactNode
   onQueueOpen?: () => void
-  project?: Project
   showQueueButton?: boolean
 }
 
-export function MoriAppShell({ activeKey, ariaLabel, children, onQueueOpen, project = previewProject, showQueueButton = false }: MoriAppShellProps) {
+export function MoriAppShell({ activeKey, ariaLabel, children, onQueueOpen, showQueueButton = false }: MoriAppShellProps) {
   const { railCollapsed, toggleRail, playerCandidate, playing, muted, positionSeconds, togglePlaying, toggleMuted, previousPlayerCandidate, nextPlayerCandidate } = useMoriApp()
 
   useEffect(() => {
@@ -42,7 +39,6 @@ export function MoriAppShell({ activeKey, ariaLabel, children, onQueueOpen, proj
   return (
     <div className={className} data-rail-collapsed={railCollapsed} style={shellStyle}>
       <MoriRail
-        project={project}
         activeKey={activeKey}
         collapsed={railCollapsed}
         onToggle={toggleRail}

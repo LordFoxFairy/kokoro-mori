@@ -177,7 +177,6 @@ export function MoriWorkspace({ api: injectedApi }: MoriWorkspaceProps = {}) {
       <MoriAppShell
         activeKey="create"
         ariaLabel="Create workspace"
-        project={previewProject}
         showQueueButton
         onQueueOpen={() => setQueueOpen(true)}
       >

@@ -18,8 +18,8 @@ pnpm build
 
 - `pnpm lint`：通过，`--max-warnings=0`
 - `pnpm typecheck`：通过
-- `pnpm test`：通过，13 个测试文件、48 个测试
-- `pnpm build`：通过，生成 `/`、`/create`、`/projects`、`/library`、Project Overview 和 Studio 路由
+- `pnpm test`：通过，14 个测试文件、53 个测试
+- `pnpm build`：通过，生成 `/`、`/create`、`/projects`、`/library`、`/settings`、Project Overview 和 Studio 路由
 
 ## 页面巡检
 
@@ -38,6 +38,7 @@ pnpm dev --hostname 127.0.0.1 --port 3001
 /projects/project_preview_first_light
 /projects/project_preview_first_light/studio/version_preview_first_light_a
 /library
+/settings
 ```
 
 每个页面均存在 Mori Rail 和 Global Player，且没有 Next Runtime Error。Web 桌面端采用
@@ -54,6 +55,13 @@ Project Overview 与 Studio 会读取 provider-neutral 项目/候选 projection�
 反馈；状态同步优先读取快照并通过 SSE `Last-Event-ID` 回放事件。Studio 已巡检
 Arrangement/Lyrics/Stems 切换、Preview、Share 反馈和 Export queued → completed download
 action；未实现的 More/Edit 死按钮已移除，避免给用户错误预期。
+
+Settings 已收敛为 Mori 自身需要的四组能力：Appearance、Playback、Creation、Account；
+不再把 Kokoro 的 computer、deployment、integration、team、skills、MCP 等通用能力带入
+音乐产品。全局 Rail 不再放置难以理解的 Current project 卡片，项目入口统一回到 Projects，
+具体项目上下文只在 Project Overview 和 Studio 中出现。
+
+本轮改动范围仅为 `kokoro-mori`；未修改 BFF、`kokoro-app` 或其他服务仓库。
 
 ## 产品边界
 

@@ -119,7 +119,7 @@ describe("Mori application navigation", () => {
     expect(screen.getByRole("button", { name: /expand sidebar/i })).toBeInTheDocument()
   })
 
-  it("keeps the current project reachable when the rail is collapsed", () => {
+  it("keeps the project catalog reachable when the rail is collapsed", () => {
     render(
       <MoriAppProvider>
         <MoriCatalogShell activeKey="library" ariaLabel="Library">
@@ -131,7 +131,7 @@ describe("Mori application navigation", () => {
     fireEvent.click(screen.getByRole("button", { name: /collapse sidebar/i }))
 
     expect(screen.getByRole("navigation", { name: "Mori" })).toHaveAttribute("data-rail-state", "collapsed")
-    expect(screen.getByRole("link", { name: "Open First Light project" })).toBeVisible()
+    expect(screen.getByRole("link", { name: "Projects" })).toBeVisible()
   })
 
   it("keeps the active track playing while moving between product surfaces", () => {

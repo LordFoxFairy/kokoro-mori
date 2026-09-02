@@ -1,12 +1,10 @@
-import { ChevronLeft, ChevronRight, CircleHelp, FolderKanban, House, Library, Music2, Plus, Settings2, Sparkles } from "lucide-react"
+import { ChevronLeft, ChevronRight, CircleHelp, FolderKanban, House, Library, Plus, Settings2, Sparkles } from "lucide-react"
 import Link from "next/link"
 import styles from "../mori-workspace.module.css"
-import type { Project } from "../domain"
 
 export type MoriNavigationKey = "home" | "create" | "projects" | "library" | "settings" | "help"
 
 type MoriRailProps = {
-  project: Project
   activeKey?: MoriNavigationKey
   collapsed?: boolean
   onToggle?: () => void
@@ -19,7 +17,7 @@ const navigation = [
   { key: "library" as const, label: "Library", href: "/library", icon: Library },
 ]
 
-export function MoriRail({ project, activeKey = "create", collapsed = false, onToggle }: MoriRailProps) {
+export function MoriRail({ activeKey = "create", collapsed = false, onToggle }: MoriRailProps) {
   return (
     <nav className={`${styles.rail} ${collapsed ? styles.railCollapsed : ""}`} aria-label="Mori" data-rail-state={collapsed ? "collapsed" : "expanded"}>
       <div className={styles.brandRow}>
@@ -42,20 +40,6 @@ export function MoriRail({ project, activeKey = "create", collapsed = false, onT
           </Link>
         ))}
       </div>
-
-      <Link className={styles.projectMini} href={`/projects/${project.projectRef}`} aria-label={`Open ${project.title} project`}>
-        <div className={styles.projectMiniHeader}>
-          <span className={styles.projectMiniTitle}>Current project</span>
-          <span className={styles.projectMiniStatus}>Active</span>
-        </div>
-        <div className={styles.projectMiniCover}>
-          <div className={styles.miniArtwork} aria-hidden="true"><Music2 size={16} /></div>
-          <div className={styles.miniArtworkText}>
-            <strong>{project.title}</strong>
-            <span>{project.candidateCount} directions</span>
-          </div>
-        </div>
-      </Link>
 
       <div className={styles.railBottom}>
         <Link className={styles.railFooterLink} href="/settings" aria-label="Settings" title={collapsed ? "Settings" : undefined}>

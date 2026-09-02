@@ -1,12 +1,13 @@
 "use client"
 
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
 import { previewCandidates } from "../preview-data"
 import type { Candidate } from "../domain"
 
 type MoriAppContextValue = {
   railCollapsed: boolean
   toggleRail: () => void
+  setRailCollapsed: (collapsed: boolean) => void
   playerCandidate: Candidate
   playing: boolean
   muted: boolean
@@ -22,19 +23,22 @@ type MoriAppContextValue = {
 const MoriAppContext = createContext<MoriAppContextValue | null>(null)
 
 export function MoriAppProvider({ children }: { children: ReactNode }) {
-  const [railCollapsed, setRailCollapsed] = useState(false)
+  const [railCollapsed, setRailCollapsedState] = useState(false)
   const [playerCandidate, setPlayerCandidate] = useState(previewCandidates[0])
   const [playerCandidates, setPlayerCandidates] = useState(previewCandidates)
   const [playing, setPlaying] = useState(false)
   const [muted, setMuted] = useState(false)
   const [positionSeconds, setPositionSeconds] = useState(0)
 
+  const setRailCollapsed = useCallback((collapsed: boolean) => setRailCollapsedState(collapsed), [])
+  const toggleRail = useCallback(() => setRailCollapsedState((value) => !value), [])
+
   useEffect(() => {
     if (window.innerWidth <= 700) {
       const compactTimer = window.setTimeout(() => setRailCollapsed(true), 0)
       return () => window.clearTimeout(compactTimer)
     }
-  }, [])
+  }, [setRailCollapsed])
 
   useEffect(() => {
     if (!playing) return
@@ -52,7 +56,8 @@ export function MoriAppProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<MoriAppContextValue>(() => ({
     railCollapsed,
-    toggleRail: () => setRailCollapsed((value) => !value),
+    toggleRail,
+    setRailCollapsed,
     playerCandidate,
     playing,
     muted,
@@ -73,7 +78,7 @@ export function MoriAppProvider({ children }: { children: ReactNode }) {
       setPositionSeconds(0)
       return stepCandidate(candidate, playerCandidates, 1)
     }),
-  }), [muted, playerCandidate, playerCandidates, playing, positionSeconds, railCollapsed])
+  }), [muted, playerCandidate, playerCandidates, playing, positionSeconds, railCollapsed, setRailCollapsed, toggleRail])
 
   return <MoriAppContext.Provider value={value}>{children}</MoriAppContext.Provider>
 }
