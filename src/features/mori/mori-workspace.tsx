@@ -77,6 +77,7 @@ export function MoriWorkspace({ api: injectedApi }: MoriWorkspaceProps = {}) {
           songPlanRef,
           lyricsMode: draft.lyricsMode,
           style: draft.style,
+          referenceAssetRefs: draft.referenceAssetRefs,
           voiceRef: draft.voice,
           durationSeconds: draft.durationSeconds,
         }),

@@ -12,6 +12,7 @@ export type CreationDraft = {
   prompt: string
   lyricsMode: LyricsMode
   style: string
+  referenceAssetRefs: string[]
   voice: string
   durationSeconds: number
   songPlan?: SongPlan
@@ -88,11 +89,11 @@ export function CreateCanvas({ projectRef, mode, onModeChange, onGenerate }: Cre
       setPlanPreview(buildSongPlan(projectRef, { prompt, lyricsMode, style, voice, durationSeconds }))
       return
     }
-    onGenerate({ prompt, lyricsMode, style, voice, durationSeconds })
+    onGenerate({ prompt, lyricsMode, style, referenceAssetRefs: referenceAdded ? ["asset_preview_reference"] : [], voice, durationSeconds })
   }
 
   function confirmPlan() {
-    onGenerate({ prompt, lyricsMode, style, voice, durationSeconds, songPlan: planPreview ?? undefined })
+    onGenerate({ prompt, lyricsMode, style, referenceAssetRefs: referenceAdded ? ["asset_preview_reference"] : [], voice, durationSeconds, songPlan: planPreview ?? undefined })
   }
 
   return (

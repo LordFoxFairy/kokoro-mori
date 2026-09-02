@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { useState } from "react"
 import { describe, expect, it, vi } from "vitest"
-import type { MoriApi } from "@/lib/mori-api"
+import type { GenerationCreateInput, MoriApi } from "@/lib/mori-api"
 import { MoriAppProvider, useMoriApp } from "./components/mori-app-provider"
 import { MoriWorkspace } from "./mori-workspace"
 
@@ -162,6 +162,51 @@ describe("Mori workspace", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Browse moods" }))
     expect(screen.getByRole("listbox", { name: "Browse moods" })).toBeInTheDocument()
+  })
+
+  it("carries the selected reference asset into the generation command", async () => {
+    let request: GenerationCreateInput | null = null
+    const api: Pick<MoriApi, "createSongPlan" | "createGeneration" | "getGeneration" | "getGenerationEvents" | "listCandidates" | "cancelGeneration"> = {
+      createSongPlan: async (projectRef, input) => ({
+        data: { ...input, song_plan_ref: "song_plan_reference", project_ref: projectRef, created_at: "2026-09-02T12:00:00.000Z" },
+        meta: { request_id: "request_reference_plan" },
+      }),
+      createGeneration: async (_projectRef, input) => {
+        request = input
+        return { data: { generation_ref: "generation_reference", status: "queued" as const }, meta: { request_id: "request_reference_create" } }
+      },
+      getGeneration: async () => ({
+        data: {
+          generation_ref: "generation_reference",
+          project_ref: "project_preview_first_light",
+          song_plan_ref: null,
+          mode: "custom" as const,
+          status: "queued" as const,
+          progress: 0,
+          candidate_refs: [],
+          created_at: "2026-09-02T12:00:00.000Z",
+        },
+        meta: { request_id: "request_reference_status" },
+      }),
+      getGenerationEvents: async () => [],
+      listCandidates: async () => ({ data: { candidates: [], next_cursor: null }, meta: { request_id: "request_reference_candidates" } }),
+      cancelGeneration: async () => ({ data: { generation_ref: "generation_reference", status: "cancelled" as const }, meta: { request_id: "request_reference_cancel" } }),
+    }
+
+    render(
+      <MoriAppProvider>
+        <MoriWorkspace api={api} />
+      </MoriAppProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("tab", { name: /custom/i }))
+    fireEvent.click(screen.getByRole("button", { name: "Reference audio" }))
+    fireEvent.submit(screen.getByRole("textbox", { name: "Song idea" }).closest("form") as HTMLFormElement)
+
+    await waitFor(() => {
+      expect(request).not.toBeNull()
+      expect(request?.reference_asset_refs).toEqual(["asset_preview_reference"])
+    })
   })
 
   it("gives Create share feedback instead of leaving a dead action", () => {
