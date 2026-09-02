@@ -46,7 +46,7 @@ export type GenerationReceipt = {
 }
 
 export type MoriApi = {
-  createGeneration: (input: GenerationCreateInput, idempotencyKey: string) => Promise<ApiSuccess<GenerationReceipt>>
+  createGeneration: (projectRef: MoriRef, input: GenerationCreateInput, idempotencyKey: string) => Promise<ApiSuccess<GenerationReceipt>>
 }
 
 export type MoriGenerationDraft = {

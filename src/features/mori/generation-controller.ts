@@ -1,5 +1,6 @@
 import type { GenerationStatus } from "./domain"
 import { createGenerationRequest, type GenerationCreateInput, type GenerationReceipt, type MoriApi, type MoriGenerationDraft } from "@/lib/mori-api"
+import type { MoriRef } from "./domain"
 
 export type GenerationControllerState = {
   status: GenerationStatus
@@ -20,7 +21,7 @@ const idleState: GenerationControllerState = {
   errorCode: null,
 }
 
-export function createGenerationController(api: MoriApi): GenerationController {
+export function createGenerationController(api: MoriApi, projectRef: MoriRef): GenerationController {
   let state = idleState
 
   return {
@@ -28,7 +29,7 @@ export function createGenerationController(api: MoriApi): GenerationController {
     async submit(draft, idempotencyKey) {
       state = { ...state, status: "preparing", errorCode: null }
       try {
-        const response = await api.createGeneration(createGenerationRequest(draft), idempotencyKey)
+        const response = await api.createGeneration(projectRef, createGenerationRequest(draft), idempotencyKey)
         state = receiptState(response.data, response.meta.request_id)
       } catch {
         state = { ...state, status: "failed", errorCode: "generation_request_failed" }
@@ -48,7 +49,7 @@ function receiptState(receipt: GenerationReceipt, requestId: string): Generation
 }
 
 export const previewMoriApi: MoriApi = {
-  async createGeneration(_input: GenerationCreateInput, idempotencyKey: string) {
+  async createGeneration(_projectRef: MoriRef, _input: GenerationCreateInput, idempotencyKey: string) {
     return {
       data: {
         generation_ref: "generation_preview_first_light_next",
