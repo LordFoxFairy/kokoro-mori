@@ -24,6 +24,16 @@ describe("Mori settings", () => {
     expect(screen.queryByText("Integrations")).not.toBeInTheDocument()
   })
 
+  it("returns to the originating Mori surface when closed", () => {
+    render(
+      <MoriAppProvider>
+        <MoriSettingsPage returnTo="/projects/project_live_1/studio/version_live_1" />
+      </MoriAppProvider>,
+    )
+
+    expect(screen.getByRole("link", { name: "Back to studio" })).toHaveAttribute("href", "/projects/project_live_1/studio/version_live_1")
+  })
+
   it("switches between focused settings sections", () => {
     renderSettings()
 
