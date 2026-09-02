@@ -1,5 +1,5 @@
 import type { GenerationStatus } from "./domain"
-import { createGenerationRequest, type GenerationCreateInput, type GenerationReceipt, type MoriApi, type MoriGenerationDraft } from "@/lib/mori-api"
+import { createGenerationRequest, type GenerationCreateInput, type GenerationReceipt, type MoriApi, type MoriGenerationDraft, type SongPlanCreateInput } from "@/lib/mori-api"
 import type { MoriRef } from "./domain"
 
 export type GenerationControllerState = {
@@ -72,6 +72,19 @@ export const previewMoriApi: MoriApi = {
       },
       meta: {
         request_id: "preview-project-request",
+      },
+    }
+  },
+  async createSongPlan(projectRef: MoriRef, input: SongPlanCreateInput, idempotencyKey: string) {
+    return {
+      data: {
+        ...input,
+        song_plan_ref: `song_plan_preview_${idempotencyKey}`,
+        project_ref: projectRef,
+        created_at: "2026-09-02T12:00:00.000Z",
+      },
+      meta: {
+        request_id: `preview-song-plan-request-${idempotencyKey}`,
       },
     }
   },

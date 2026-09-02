@@ -92,7 +92,7 @@ export function InspectorPanel({ generation, candidates, songPlan, selectedCandi
           </div>
           <div className={styles.planStats}>
             <div className={styles.planStat}><span>Mood</span><strong>{songPlan.mood}</strong></div>
-            <div className={styles.planStat}><span>Tempo</span><strong>{songPlan.tempo}</strong></div>
+            <div className={styles.planStat}><span>Tempo</span><strong>{songPlan.tempoBpm} BPM</strong></div>
           </div>
           <div className={styles.tagRow} aria-label="Song plan structure">
             {songPlan.structure.map((item) => <span className={`${styles.tag} ${styles.tagSelected}`} key={item}>{item}</span>)}

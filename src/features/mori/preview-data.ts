@@ -15,7 +15,7 @@ export const previewSongPlan: SongPlan = {
   projectRef: previewProject.projectRef,
   prompt: "A warm, late-night track for the drive home, slowly opening into sunrise.",
   mood: "Warm · hopeful",
-  tempo: "102 BPM",
+  tempoBpm: 102,
   structure: ["Intro", "Verse", "Lift", "Chorus", "Outro"],
   instruments: ["Soft synth", "Muted guitar", "Brush drums"],
   vocalDirection: "Intimate lead vocal with a gentle lift in the chorus",

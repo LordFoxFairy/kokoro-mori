@@ -20,6 +20,7 @@ import {
   parseMoriLibraryPage,
   parseMoriProject,
   parseMoriProjectPage,
+  parseMoriSongPlan,
 } from "./mori-api-validation"
 
 export type MoriApiClientOptions = {
@@ -60,6 +61,18 @@ export function createMoriApiClient(options: MoriApiClientOptions = {}): MoriApi
       const response = await fetchImpl(`${apiBasePath}/projects/${encodeURIComponent(projectRef)}`)
       const payload = await readJson(response)
       return parseSuccessResponse(response, payload, parseMoriProject)
+    },
+    async createSongPlan(projectRef, input, idempotencyKey) {
+      const response = await fetchImpl(
+        `${apiBasePath}/projects/${encodeURIComponent(projectRef)}/song_plans`,
+        {
+          method: "POST",
+          headers: createMutationHeaders(idempotencyKey),
+          body: JSON.stringify(input),
+        },
+      )
+      const payload = await readJson(response)
+      return parseSuccessResponse(response, payload, parseMoriSongPlan)
     },
     async createGeneration(projectRef: MoriRef, input: GenerationCreateInput, idempotencyKey: string) {
       const response = await fetchImpl(

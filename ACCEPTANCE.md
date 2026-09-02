@@ -18,7 +18,7 @@ pnpm build
 
 - `pnpm lint`：通过，`--max-warnings=0`
 - `pnpm typecheck`：通过
-- `pnpm test`：通过，14 个测试文件、57 个测试
+- `pnpm test`：通过，15 个测试文件、61 个测试
 - `pnpm build`：通过，生成 `/`、`/create`、`/projects`、`/library`、`/settings`、Project Overview 和 Studio 路由
 
 ## 页面巡检
@@ -55,7 +55,8 @@ Project Overview 与 Studio 会读取 provider-neutral 项目/候选 projection�
 请求的 `projectRef`/`versionRef` hydration 当前版本。Create Queue 支持活动生成的取消
 反馈；状态同步优先读取快照并通过 SSE `Last-Event-ID` 回放事件。Studio 已巡检
 Arrangement/Lyrics/Stems 切换、Preview、Share 反馈和 Export queued → completed download
-action；未实现的 More/Edit 死按钮已移除，避免给用户错误预期。
+action；Create 的 Smart 模式会先展示 Song Plan 摘要，用户确认后才持久化 Song Plan 并创建
+generation；未实现的 More/Edit 死按钮已移除，避免给用户错误预期。
 
 Settings 已收敛为 Mori 自身需要的四组能力：Appearance、Playback、Creation、Account；采用
 参考 Kokoro Settings 的浮窗结构（固定左侧偏好导航、右侧独立滚动内容、Back to studio 关闭入口），

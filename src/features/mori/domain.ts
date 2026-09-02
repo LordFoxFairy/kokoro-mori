@@ -20,7 +20,7 @@ export type SongPlan = {
   projectRef: MoriRef
   prompt: string
   mood: string
-  tempo: string
+  tempoBpm: number
   structure: string[]
   instruments: string[]
   vocalDirection: string

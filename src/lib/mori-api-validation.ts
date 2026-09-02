@@ -11,6 +11,7 @@ import type {
   MoriLibraryItem,
   MoriProject,
   MoriProjectPage,
+  MoriSongPlan,
 } from "./mori-api"
 import type { GenerationStatus } from "@/features/mori/domain"
 
@@ -114,6 +115,22 @@ export function parseMoriProjectPage(value: unknown): MoriProjectPage | null {
   if (!isRecord(value) || !Array.isArray(value.projects) || !nullableString(value.next_cursor)) return null
   const projects = value.projects.map(parseMoriProject)
   return projects.every(present) ? { projects, next_cursor: value.next_cursor } : null
+}
+
+export function parseMoriSongPlan(value: unknown): MoriSongPlan | null {
+  if (!isRecord(value) || !nonEmptyString(value.song_plan_ref) || !nonEmptyString(value.project_ref) || !nonEmptyString(value.prompt) || !nonEmptyString(value.mood) || !integer(value.tempo_bpm, 40, 240) || !stringArray(value.structure) || value.structure.length === 0 || !stringArray(value.instruments) || !nonEmptyString(value.vocal_direction) || !nonEmptyString(value.lyrics_intent) || !dateString(value.created_at)) return null
+  return {
+    song_plan_ref: value.song_plan_ref,
+    project_ref: value.project_ref,
+    prompt: value.prompt,
+    mood: value.mood,
+    tempo_bpm: value.tempo_bpm,
+    structure: value.structure,
+    instruments: value.instruments,
+    vocal_direction: value.vocal_direction,
+    lyrics_intent: value.lyrics_intent,
+    created_at: value.created_at,
+  }
 }
 
 export function parseGenerationReceipt(value: unknown): GenerationReceipt | null {

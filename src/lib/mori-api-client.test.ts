@@ -3,6 +3,51 @@ import { createGenerationRequest } from "./mori-api"
 import { createMoriApiClient } from "./mori-api-client"
 
 describe("Mori same-origin API client", () => {
+  it("persists a reviewed song plan before creating directions", async () => {
+    let capturedUrl = ""
+    let capturedInit: RequestInit | undefined
+    const api = createMoriApiClient({
+      fetchImpl: async (input, init) => {
+        capturedUrl = String(input)
+        capturedInit = init
+        return new Response(JSON.stringify({
+          data: {
+            song_plan_ref: "song_plan_reviewed_1",
+            project_ref: "project_preview_first_light",
+            prompt: "A quiet piano song",
+            mood: "Quiet",
+            tempo_bpm: 82,
+            structure: ["Intro", "Verse", "Chorus", "Outro"],
+            instruments: ["Piano"],
+            vocal_direction: "Natural lead",
+            lyrics_intent: "A gentle return home",
+            created_at: "2026-09-02T12:00:00.000Z",
+          },
+          meta: { request_id: "request_song_plan_1" },
+        }), { status: 201, headers: { "Content-Type": "application/json" } })
+      },
+    })
+
+    const response = await api.createSongPlan("project_preview_first_light", {
+      prompt: "A quiet piano song",
+      mood: "Quiet",
+      tempo_bpm: 82,
+      structure: ["Intro", "Verse", "Chorus", "Outro"],
+      instruments: ["Piano"],
+      vocal_direction: "Natural lead",
+      lyrics_intent: "A gentle return home",
+    }, "idem-song-plan-1")
+
+    expect(capturedUrl).toBe("/api/v1/mori/projects/project_preview_first_light/song_plans")
+    expect(capturedInit?.method).toBe("POST")
+    expect(capturedInit?.headers).toEqual({
+      "Content-Type": "application/json",
+      "Idempotency-Key": "idem-song-plan-1",
+    })
+    expect(JSON.parse(String(capturedInit?.body))).toMatchObject({ prompt: "A quiet piano song", tempo_bpm: 82 })
+    expect(response.data.song_plan_ref).toBe("song_plan_reviewed_1")
+  })
+
   it("posts a project-bound generation request with the public envelope", async () => {
     let capturedUrl = ""
     let capturedInit: RequestInit | undefined

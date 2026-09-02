@@ -36,6 +36,16 @@ export type GenerationCreateInput = {
   lyrics_mode: LyricsMode
 }
 
+export type SongPlanCreateInput = {
+  prompt: string
+  mood: string
+  tempo_bpm: number
+  structure: string[]
+  instruments: string[]
+  vocal_direction: string
+  lyrics_intent: string
+}
+
 export type MoriMutationHeaders = {
   "Content-Type": "application/json"
   "Idempotency-Key": string
@@ -58,6 +68,12 @@ export type MoriProject = {
   current_version_ref: MoriRef | null
   candidate_count: number
   last_activity_at: string
+}
+
+export type MoriSongPlan = SongPlanCreateInput & {
+  song_plan_ref: MoriRef
+  project_ref: MoriRef
+  created_at: string
 }
 
 export type MoriProjectListOptions = {
@@ -133,6 +149,7 @@ export type MoriExportSnapshot = {
 export type MoriApi = {
   listProjects: (options?: MoriProjectListOptions) => Promise<ApiSuccess<MoriProjectPage>>
   getProject: (projectRef: MoriRef) => Promise<ApiSuccess<MoriProject>>
+  createSongPlan: (projectRef: MoriRef, input: SongPlanCreateInput, idempotencyKey: string) => Promise<ApiSuccess<MoriSongPlan>>
   createGeneration: (projectRef: MoriRef, input: GenerationCreateInput, idempotencyKey: string) => Promise<ApiSuccess<GenerationReceipt>>
   getGeneration: (generationRef: MoriRef) => Promise<ApiSuccess<GenerationSnapshot>>
   getGenerationEvents: (generationRef: MoriRef, lastEventId?: string | null) => Promise<MoriGenerationEvent[]>

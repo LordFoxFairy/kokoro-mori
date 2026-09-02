@@ -63,7 +63,7 @@ Workspace nav    内容随项目上下文变化                     跨页面保
 ```
 
 - Rail 是应用骨架，不是悬浮卡片；展开/收起不改变内容的语义位置。
-- Create 的第一主操作只有一个：Generate；Queue 是当前任务的上下文入口。
+- Create 的第一主操作只有一个：Smart 先 Review plan、Custom 直接 Generate；Queue 是当前任务的上下文入口。
 - Studio 的工具和版本历史属于项目，不提升到全局 Rail。
 - Player 使用独立的全宽 transport dock：左侧当前作品，中部 transport + progress，右侧
   音量和队列。
@@ -89,7 +89,7 @@ Workspace nav    内容随项目上下文变化                     跨页面保
 
 - 已有：Project-first 导航、Contextual Queue、全局 Player、Candidate → Version → Studio。
 - 已有：Smart/Custom、浅色渐变视觉、浮窗式设置分组与 compact Rail。
-- 正在收口：Song Plan 从提示说明升级为可检查、可确认的中间状态；生成目标项目需要显式展示。
+- 已落地第一步：Song Plan 从提示说明升级为可检查、可确认的中间状态，并在确认后通过契约持久化再创建生成任务。
 - 后续：真正的 Song Plan 编辑、Take Lanes、音频上传、Stems、版本自动保存和导出格式选择。
 
 ## 五、明确不做的方向

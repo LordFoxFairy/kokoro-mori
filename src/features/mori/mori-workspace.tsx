@@ -6,8 +6,9 @@ import Link from "next/link"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { createGenerationRequest, type MoriApi } from "@/lib/mori-api"
 import { createMoriApiClient, MoriApiRequestError } from "@/lib/mori-api-client"
-import type { Candidate, CreationMode, GenerationStatus } from "./domain"
+import type { Candidate, CreationMode, GenerationStatus, SongPlan } from "./domain"
 import { previewCandidates, previewGeneration, previewProject, previewSongPlan } from "./preview-data"
+import { buildSongPlan, toSongPlanCreateInput } from "./song-plan"
 import { CreateCanvas, type CreationDraft } from "./components/create-canvas"
 import { InspectorPanel } from "./components/inspector-panel"
 import { useMoriApp } from "./components/mori-app-provider"
@@ -15,7 +16,7 @@ import { MoriAppShell } from "./components/mori-app-shell"
 import styles from "./mori-workspace.module.css"
 
 type MoriWorkspaceProps = {
-  api?: Pick<MoriApi, "createGeneration" | "getGeneration" | "getGenerationEvents" | "listCandidates" | "cancelGeneration">
+  api?: Pick<MoriApi, "createSongPlan" | "createGeneration" | "getGeneration" | "getGenerationEvents" | "listCandidates" | "cancelGeneration">
 }
 
 export function MoriWorkspace({ api: injectedApi }: MoriWorkspaceProps = {}) {
@@ -23,6 +24,7 @@ export function MoriWorkspace({ api: injectedApi }: MoriWorkspaceProps = {}) {
   const [mode, setMode] = useState<CreationMode>(() => preferences.defaultMode)
   const [queueOpen, setQueueOpen] = useState(false)
   const [candidates, setCandidates] = useState(previewCandidates)
+  const [songPlan, setSongPlan] = useState(previewSongPlan)
   const [currentVersionRef, setCurrentVersionRef] = useState(previewProject.currentVersionRef)
   const [selectedCandidateRef, setSelectedCandidateRef] = useState(previewCandidates[0].candidateRef)
   const [generationStatus, setGenerationStatus] = useState<GenerationStatus>(previewGeneration.status)
@@ -47,12 +49,23 @@ export function MoriWorkspace({ api: injectedApi }: MoriWorkspaceProps = {}) {
     setPlaying(false)
     setQueueOpen(true)
     try {
+      let songPlanRef: string | undefined
+      if (mode === "smart") {
+        const draftPlan = buildSongPlan(previewProject.projectRef, draft)
+        const planResponse = await api.createSongPlan(
+          previewProject.projectRef,
+          toSongPlanCreateInput(draftPlan),
+          `mori-plan-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        )
+        songPlanRef = planResponse.data.song_plan_ref
+        setSongPlan(toDomainSongPlan(planResponse.data))
+      }
       const response = await api.createGeneration(
         previewProject.projectRef,
         createGenerationRequest({
           mode,
           prompt: draft.prompt,
-          songPlanRef: previewSongPlan.songPlanRef,
+          songPlanRef,
           lyricsMode: draft.lyricsMode,
           style: draft.style,
           voiceRef: draft.voice,
@@ -202,7 +215,7 @@ export function MoriWorkspace({ api: injectedApi }: MoriWorkspaceProps = {}) {
               </div>
             </header>
             <div className={styles.canvasBody}>
-              <CreateCanvas mode={mode} onModeChange={setMode} onGenerate={handleGenerate} />
+              <CreateCanvas projectRef={previewProject.projectRef} mode={mode} onModeChange={setMode} onGenerate={handleGenerate} />
             </div>
           </section>
 
@@ -214,7 +227,7 @@ export function MoriWorkspace({ api: injectedApi }: MoriWorkspaceProps = {}) {
           <InspectorPanel
             generation={generation}
             candidates={currentCandidates}
-            songPlan={previewSongPlan}
+            songPlan={songPlan}
             selectedCandidateRef={selectedCandidateRef}
             playing={playing}
             onSelect={(candidate) => { setSelectedCandidateRef(candidate.candidateRef); selectPlayerCandidate(candidate); setPlaying(false) }}
@@ -259,5 +272,19 @@ function toDomainCandidate(candidate: import("@/lib/mori-api").MoriCandidate, in
     mood: tags[0] ?? "new direction",
     waveformSeed: index + 5,
     isCurrent: false,
+  }
+}
+
+function toDomainSongPlan(plan: import("@/lib/mori-api").MoriSongPlan): SongPlan {
+  return {
+    songPlanRef: plan.song_plan_ref,
+    projectRef: plan.project_ref,
+    prompt: plan.prompt,
+    mood: plan.mood,
+    tempoBpm: plan.tempo_bpm,
+    structure: plan.structure,
+    instruments: plan.instruments,
+    vocalDirection: plan.vocal_direction,
+    lyricsIntent: plan.lyrics_intent,
   }
 }

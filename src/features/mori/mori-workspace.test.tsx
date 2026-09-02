@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { useState } from "react"
 import { describe, expect, it, vi } from "vitest"
 import type { MoriApi } from "@/lib/mori-api"
@@ -30,6 +30,61 @@ describe("Mori workspace", () => {
     expect(screen.getByLabelText(/lyrics or instrumental/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/style/i)).toBeInTheDocument()
     expect(screen.getByRole("button", { name: /reference audio/i })).toBeInTheDocument()
+  })
+
+  it("reviews a Smart song plan before sending a generation command", async () => {
+    const createSongPlan = vi.fn(async (_projectRef: string, input: Parameters<MoriApi["createSongPlan"]>[1], idempotencyKey: string) => ({
+      data: {
+        ...input,
+        song_plan_ref: `song_plan_${idempotencyKey}`,
+        project_ref: "project_preview_first_light",
+        created_at: "2026-09-02T12:00:00.000Z",
+      },
+      meta: { request_id: "request_plan_create" },
+    }))
+    const createGeneration = vi.fn<MoriApi["createGeneration"]>(async () => ({
+      data: { generation_ref: "generation_plan_review", status: "queued" as const },
+      meta: { request_id: "request_plan_review" },
+    }))
+    const api = {
+      createSongPlan,
+      createGeneration,
+      getGeneration: async () => ({
+        data: {
+          generation_ref: "generation_plan_review",
+          project_ref: "project_preview_first_light",
+          song_plan_ref: "song_plan_preview_first_light",
+          mode: "smart" as const,
+          status: "queued" as const,
+          progress: 0,
+          candidate_refs: [],
+          created_at: "2026-09-02T12:00:00.000Z",
+        },
+        meta: { request_id: "request_plan_status" },
+      }),
+      getGenerationEvents: async () => [],
+      listCandidates: async () => ({ data: { candidates: [], next_cursor: null }, meta: { request_id: "request_plan_candidates" } }),
+      cancelGeneration: async () => ({ data: { generation_ref: "generation_plan_review", status: "cancelled" as const }, meta: { request_id: "request_plan_cancel" } }),
+    }
+
+    render(
+      <MoriAppProvider>
+        <MoriWorkspace api={api} />
+      </MoriAppProvider>,
+    )
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Song idea" }), { target: { value: "A quiet piano song for the first train home." } })
+    fireEvent.submit(screen.getByRole("textbox", { name: "Song idea" }).closest("form") as HTMLFormElement)
+
+    expect(screen.getByRole("region", { name: "Song plan preview" })).toBeInTheDocument()
+    expect(within(screen.getByRole("region", { name: "Song plan preview" })).getByText("A quiet piano song for the first train home.")).toBeInTheDocument()
+    expect(createGeneration).not.toHaveBeenCalled()
+    expect(screen.getByRole("button", { name: "Create from this plan" })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole("button", { name: "Create from this plan" }))
+    await waitFor(() => expect(createSongPlan).toHaveBeenCalledOnce())
+    await waitFor(() => expect(createGeneration).toHaveBeenCalledOnce())
+    expect(createGeneration.mock.calls[0]?.[1].song_plan_ref).toMatch(/^song_plan_mori-plan-/u)
   })
 
   it("opens Create with the defaults chosen in Mori settings", () => {
@@ -111,7 +166,16 @@ describe("Mori workspace", () => {
       data: { generation_ref: "generation_live_1", status: "cancelled" as const },
       meta: { request_id: "request_cancel_1" },
     }))
-    const api: Pick<MoriApi, "createGeneration" | "getGeneration" | "getGenerationEvents" | "listCandidates" | "cancelGeneration"> = {
+    const api: Pick<MoriApi, "createSongPlan" | "createGeneration" | "getGeneration" | "getGenerationEvents" | "listCandidates" | "cancelGeneration"> = {
+      createSongPlan: async (projectRef, input, idempotencyKey) => ({
+        data: {
+          ...input,
+          song_plan_ref: `song_plan_${idempotencyKey}`,
+          project_ref: projectRef,
+          created_at: "2026-09-02T12:00:00.000Z",
+        },
+        meta: { request_id: "request_plan_create" },
+      }),
       createGeneration: async () => ({
         data: { generation_ref: "generation_live_1", status: "queued" as const },
         meta: { request_id: "request_create_1" },
@@ -144,6 +208,7 @@ describe("Mori workspace", () => {
     )
 
     fireEvent.submit(screen.getByRole("textbox", { name: "Song idea" }).closest("form") as HTMLFormElement)
+    fireEvent.click(screen.getByRole("button", { name: "Create from this plan" }))
     await waitFor(() => expect(screen.getByRole("button", { name: "Cancel generation" })).toBeInTheDocument())
     fireEvent.click(screen.getByRole("button", { name: "Cancel generation" }))
 

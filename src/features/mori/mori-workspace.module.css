@@ -223,6 +223,131 @@
   color: var(--mori-primary);
 }
 
+.songPlanPreview {
+  display: grid;
+  gap: 15px;
+  margin: 18px;
+  padding: 18px;
+  border: 1px solid rgba(109, 92, 231, 0.18);
+  border-radius: 15px;
+  background: linear-gradient(145deg, rgba(240, 237, 255, 0.72), rgba(231, 246, 239, 0.5) 60%, rgba(253, 231, 218, 0.38));
+  box-shadow: 0 10px 22px rgba(62, 45, 86, 0.06);
+}
+
+.songPlanPreviewHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.songPlanPreviewHeader h2 {
+  margin: 5px 0 0;
+  font-size: 18px;
+  letter-spacing: -0.04em;
+}
+
+.songPlanKicker,
+.songPlanReady,
+.planReadyLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.songPlanKicker {
+  color: var(--mori-primary);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.songPlanReady {
+  min-height: 25px;
+  padding: 0 8px;
+  border-radius: 999px;
+  color: var(--mori-success);
+  font-size: 10px;
+  font-weight: 750;
+  background: rgba(231, 246, 239, 0.85);
+}
+
+.songPlanPrompt {
+  margin: 0;
+  padding: 12px 13px;
+  border: 1px solid rgba(109, 92, 231, 0.11);
+  border-radius: 10px;
+  color: var(--mori-foreground);
+  font-size: 12px;
+  line-height: 1.5;
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.songPlanStats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.songPlanStats > div {
+  display: grid;
+  gap: 4px;
+  padding: 10px 11px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.66);
+}
+
+.songPlanStats span,
+.songPlanRows > div > span {
+  color: var(--mori-faint);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.songPlanStats strong {
+  font-size: 11px;
+}
+
+.songPlanRows {
+  display: grid;
+  gap: 11px;
+}
+
+.songPlanRows > div {
+  display: grid;
+  gap: 7px;
+}
+
+.songPlanDirection {
+  margin: 0;
+  color: var(--mori-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.songPlanActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.songPlanActions .ghostButton,
+.songPlanActions .generateButton {
+  min-height: 34px;
+  font-size: 11px;
+}
+
+.planReadyLabel {
+  color: var(--mori-success);
+  font-size: 11px;
+  font-weight: 750;
+}
+
 .quickChips {
   display: flex;
   flex-wrap: wrap;
@@ -3316,6 +3441,24 @@
   .generateButton {
     width: 100%;
     justify-content: center;
+  }
+
+  .songPlanStats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .songPlanStats > div:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .songPlanActions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .songPlanActions .ghostButton,
+  .songPlanActions .generateButton {
+    width: 100%;
   }
 
   .fieldRow {

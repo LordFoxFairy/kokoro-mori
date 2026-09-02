@@ -93,7 +93,7 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
       <section className={styles.overviewSection} aria-labelledby="plan-overview-heading">
         <div className={styles.overviewSectionHeader}><div><h2 id="plan-overview-heading">Song plan</h2><p>The intention behind this project, kept visible as you refine it.</p></div></div>
         <div className={styles.overviewPlanCard}>
-          <div className={styles.overviewPlanStats}><span><b>Mood</b>{previewSongPlan.mood}</span><span><b>Tempo</b>{previewSongPlan.tempo}</span><span><b>Voice</b>Intimate lead</span></div>
+          <div className={styles.overviewPlanStats}><span><b>Mood</b>{previewSongPlan.mood}</span><span><b>Tempo</b>{previewSongPlan.tempoBpm} BPM</span><span><b>Voice</b>Intimate lead</span></div>
           <div className={styles.tagRow}>{previewSongPlan.structure.map((item) => <span className={`${styles.tag} ${styles.tagSelected}`} key={item}>{item}</span>)}</div>
           <p><Clock3 size={14} /> {previewSongPlan.vocalDirection}</p>
         </div>

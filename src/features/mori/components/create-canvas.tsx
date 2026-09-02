@@ -1,9 +1,10 @@
 "use client"
 
 import { useState, type FormEvent } from "react"
-import { AudioLines, ChevronDown, Link2, Mic2, Plus, SlidersHorizontal, Sparkles, WandSparkles } from "lucide-react"
+import { AudioLines, Check, ChevronDown, Link2, Mic2, Plus, SlidersHorizontal, Sparkles, WandSparkles } from "lucide-react"
 import type { CreationMode, LyricsMode } from "../domain"
 import { t } from "../copy"
+import { buildSongPlan } from "../song-plan"
 import { useMoriApp } from "./mori-app-provider"
 import styles from "../mori-workspace.module.css"
 
@@ -16,12 +17,13 @@ export type CreationDraft = {
 }
 
 type CreateCanvasProps = {
+  projectRef: string
   mode: CreationMode
   onModeChange: (mode: CreationMode) => void
   onGenerate: (draft: CreationDraft) => void
 }
 
-export function CreateCanvas({ mode, onModeChange, onGenerate }: CreateCanvasProps) {
+export function CreateCanvas({ projectRef, mode, onModeChange, onGenerate }: CreateCanvasProps) {
   const { preferences } = useMoriApp()
   const [prompt, setPrompt] = useState("A warm, late-night track for the drive home, slowly opening into sunrise.")
   const [lyricsMode, setLyricsMode] = useState<LyricsMode>(() => preferences.lyricsMode)
@@ -31,25 +33,37 @@ export function CreateCanvas({ mode, onModeChange, onGenerate }: CreateCanvasPro
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const [referenceAdded, setReferenceAdded] = useState(false)
   const [moodsOpen, setMoodsOpen] = useState(false)
+  const [planPreview, setPlanPreview] = useState<ReturnType<typeof buildSongPlan> | null>(null)
 
   function startWithLyrics() {
     onModeChange("custom")
     setLyricsMode("lyrics")
+    setPlanPreview(null)
   }
 
   function addReference() {
     onModeChange("custom")
     setReferenceAdded((value) => !value)
+    setPlanPreview(null)
   }
 
   function chooseMood(mood: string) {
     onModeChange("custom")
     setStyle(mood)
     setMoodsOpen(false)
+    setPlanPreview(null)
   }
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (mode === "smart" && planPreview === null) {
+      setPlanPreview(buildSongPlan(projectRef, { prompt, lyricsMode, style, voice, durationSeconds }))
+      return
+    }
+    onGenerate({ prompt, lyricsMode, style, voice, durationSeconds })
+  }
+
+  function confirmPlan() {
     onGenerate({ prompt, lyricsMode, style, voice, durationSeconds })
   }
 
@@ -60,10 +74,10 @@ export function CreateCanvas({ mode, onModeChange, onGenerate }: CreateCanvasPro
       <p className={styles.heroDescription}>{t("heroDescription")}</p>
 
       <div className={styles.modeTabs} role="tablist" aria-label="Creation mode">
-        <button className={styles.modeTab} type="button" role="tab" aria-selected={mode === "smart"} onClick={() => onModeChange("smart")}>
+        <button className={styles.modeTab} type="button" role="tab" aria-selected={mode === "smart"} onClick={() => { onModeChange("smart"); setPlanPreview(null) }}>
           <Sparkles size={13} /> {t("smartLabel")}
         </button>
-        <button className={styles.modeTab} type="button" role="tab" aria-selected={mode === "custom"} onClick={() => onModeChange("custom")}>
+        <button className={styles.modeTab} type="button" role="tab" aria-selected={mode === "custom"} onClick={() => { onModeChange("custom"); setPlanPreview(null) }}>
           <SlidersHorizontal size={13} /> {t("customLabel")}
         </button>
       </div>
@@ -72,7 +86,7 @@ export function CreateCanvas({ mode, onModeChange, onGenerate }: CreateCanvasPro
         <textarea
           className={styles.promptArea}
           value={prompt}
-          onChange={(event) => setPrompt(event.target.value)}
+          onChange={(event) => { setPrompt(event.target.value); setPlanPreview(null) }}
           placeholder={t("promptPlaceholder")}
           aria-label="Song idea"
         />
@@ -82,24 +96,24 @@ export function CreateCanvas({ mode, onModeChange, onGenerate }: CreateCanvasPro
             <div className={styles.fieldRow}>
               <div className={styles.field}>
                 <label htmlFor="lyrics-mode">Lyrics or instrumental</label>
-                <select className={styles.selectInput} id="lyrics-mode" value={lyricsMode} onChange={(event) => setLyricsMode(event.target.value as LyricsMode)}>
+                <select className={styles.selectInput} id="lyrics-mode" value={lyricsMode} onChange={(event) => { setLyricsMode(event.target.value as LyricsMode); setPlanPreview(null) }}>
                   <option value="lyrics">Lyrics</option>
                   <option value="instrumental">Instrumental</option>
                 </select>
               </div>
               <div className={styles.field}>
                 <label htmlFor="mori-style">Style</label>
-                <input className={styles.textInput} id="mori-style" value={style} onChange={(event) => setStyle(event.target.value)} />
+                <input className={styles.textInput} id="mori-style" value={style} onChange={(event) => { setStyle(event.target.value); setPlanPreview(null) }} />
               </div>
             </div>
             <div className={styles.fieldRow}>
               <div className={styles.field}>
                 <span className={styles.fieldLegend}>Reference</span>
-                <button className={styles.referenceButton} type="button" onClick={() => setReferenceAdded((value) => !value)} aria-pressed={referenceAdded} aria-label={referenceAdded ? "Reference audio ready" : "Reference audio"}><Link2 /> {referenceAdded ? "Reference ready" : "Add audio reference"}</button>
+                <button className={styles.referenceButton} type="button" onClick={() => { setReferenceAdded((value) => !value); setPlanPreview(null) }} aria-pressed={referenceAdded} aria-label={referenceAdded ? "Reference audio ready" : "Reference audio"}><Link2 /> {referenceAdded ? "Reference ready" : "Add audio reference"}</button>
               </div>
               <div className={styles.field}>
                 <label htmlFor="mori-voice">Voice</label>
-                <select className={styles.selectInput} id="mori-voice" value={voice} onChange={(event) => setVoice(event.target.value)}>
+                <select className={styles.selectInput} id="mori-voice" value={voice} onChange={(event) => { setVoice(event.target.value); setPlanPreview(null) }}>
                   <option>Natural lead</option>
                   <option>Airy alto</option>
                   <option>Warm tenor</option>
@@ -109,7 +123,7 @@ export function CreateCanvas({ mode, onModeChange, onGenerate }: CreateCanvasPro
             <div className={styles.fieldRow}>
               <div className={styles.field}>
                 <label htmlFor="mori-duration">Duration</label>
-                <select className={styles.selectInput} id="mori-duration" value={durationSeconds} onChange={(event) => setDurationSeconds(Number(event.target.value))}>
+                <select className={styles.selectInput} id="mori-duration" value={durationSeconds} onChange={(event) => { setDurationSeconds(Number(event.target.value)); setPlanPreview(null) }}>
                   <option value={120}>2:00</option>
                   <option value={180}>3:00</option>
                   <option value={240}>4:00</option>
@@ -132,9 +146,36 @@ export function CreateCanvas({ mode, onModeChange, onGenerate }: CreateCanvasPro
           </div>
         ) : null}
 
+        {planPreview !== null ? (
+          <section className={styles.songPlanPreview} role="region" aria-label="Song plan preview">
+            <header className={styles.songPlanPreviewHeader}>
+              <div>
+                <div className={styles.songPlanKicker}><Sparkles size={13} /> AI draft</div>
+                <h2>Song plan</h2>
+              </div>
+              <span className={styles.songPlanReady}><Check size={13} /> Ready to review</span>
+            </header>
+            <p className={styles.songPlanPrompt}>{planPreview.prompt}</p>
+            <div className={styles.songPlanStats}>
+              <div><span>Mood</span><strong>{planPreview.mood}</strong></div>
+              <div><span>Tempo</span><strong>{planPreview.tempoBpm} BPM</strong></div>
+              <div><span>Output</span><strong>{lyricsMode === "instrumental" ? "Instrumental" : "Lyrics"}</strong></div>
+            </div>
+            <div className={styles.songPlanRows}>
+              <div><span>Structure</span><div className={styles.tagRow}>{planPreview.structure.map((item) => <span className={`${styles.tag} ${styles.tagSelected}`} key={item}>{item}</span>)}</div></div>
+              <div><span>Palette</span><div className={styles.tagRow}>{planPreview.instruments.map((item) => <span className={styles.tag} key={item}>{item}</span>)}</div></div>
+            </div>
+            <p className={styles.songPlanDirection}>{planPreview.vocalDirection}</p>
+            <footer className={styles.songPlanActions}>
+              <button className={styles.ghostButton} type="button" onClick={() => setPlanPreview(null)}>Edit idea</button>
+              <button className={styles.generateButton} type="button" onClick={confirmPlan}><Check size={14} /> Create from this plan</button>
+            </footer>
+          </section>
+        ) : null}
+
         <div className={styles.composerBottom}>
-          <div className={styles.promptHint}><AudioLines /> <span>We&apos;ll turn this into an editable song plan first.</span></div>
-          <button className={styles.generateButton} type="submit"><Sparkles /> {t("generateLabel")}</button>
+          <div className={styles.promptHint}><AudioLines /> <span>{planPreview === null ? "We'll turn this into an editable song plan first." : "Your plan is ready for one last look."}</span></div>
+          {planPreview === null ? <button className={styles.generateButton} type="submit"><Sparkles /> {mode === "smart" ? "Review plan" : t("generateLabel")}</button> : <span className={styles.planReadyLabel}><Check size={14} /> Plan ready</span>}
         </div>
       </form>
 
