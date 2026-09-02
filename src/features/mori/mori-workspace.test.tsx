@@ -3,6 +3,7 @@ import { useState } from "react"
 import { describe, expect, it, vi } from "vitest"
 import type { GenerationCreateInput, MoriApi } from "@/lib/mori-api"
 import { MoriAppProvider, useMoriApp } from "./components/mori-app-provider"
+import { CreateCanvas, type CreationDraft } from "./components/create-canvas"
 import { MoriWorkspace } from "./mori-workspace"
 
 function renderWorkspace() {
@@ -207,6 +208,22 @@ describe("Mori workspace", () => {
       expect(request).not.toBeNull()
       expect(request?.reference_asset_refs).toEqual(["asset_preview_reference"])
     })
+  })
+
+  it("keeps optional user lyrics in the custom creation draft", () => {
+    const onGenerate = vi.fn<(draft: CreationDraft) => void>()
+
+    render(
+      <MoriAppProvider>
+        <CreateCanvas projectRef="project_preview_first_light" mode="custom" onModeChange={() => undefined} onGenerate={onGenerate} />
+      </MoriAppProvider>,
+    )
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Lyrics" }), { target: { value: "  Hold the light until the morning comes.  " } })
+    fireEvent.submit(screen.getByRole("textbox", { name: "Song idea" }).closest("form") as HTMLFormElement)
+
+    expect(onGenerate).toHaveBeenCalledOnce()
+    expect(onGenerate.mock.calls[0]?.[0].lyrics).toBe("Hold the light until the morning comes.")
   })
 
   it("gives Create share feedback instead of leaving a dead action", () => {

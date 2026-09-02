@@ -503,6 +503,10 @@
   gap: 7px;
 }
 
+.fieldWide {
+  grid-column: 1 / -1;
+}
+
 .field label,
 .fieldLegend {
   color: var(--mori-muted);
@@ -525,8 +529,23 @@
   background: #fff;
 }
 
+.lyricsInput {
+  width: 100%;
+  min-height: 82px;
+  padding: 10px 11px;
+  border: 1px solid var(--mori-border);
+  border-radius: 10px;
+  outline: 0;
+  resize: vertical;
+  color: var(--mori-foreground);
+  font-size: 12px;
+  line-height: 1.5;
+  background: #fff;
+}
+
 .textInput:focus,
 .selectInput:focus,
+.lyricsInput:focus,
 .promptArea:focus-visible {
   border-color: rgba(109, 92, 231, 0.5);
   box-shadow: 0 0 0 3px rgba(109, 92, 231, 0.1);

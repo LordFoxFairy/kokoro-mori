@@ -18,7 +18,7 @@ pnpm build
 
 - `pnpm lint`：通过，`--max-warnings=0`
 - `pnpm typecheck`：通过
-- `pnpm test`：通过，15 个测试文件、81 个测试
+- `pnpm test`：通过，15 个测试文件、82 个测试
 - `pnpm build`：通过，生成 `/`、`/create`、`/projects`、`/library`、`/settings`、Project Overview 和 Studio 路由
 
 ## 页面巡检
@@ -66,6 +66,8 @@ generation；未实现的 More/Edit 死按钮已移除，避免给用户错误�
 对项目和候选 projection 分开收敛，单个投影暂时不可用时也不会把 First Light 候选错挂到实时项目上。
 Create 的 Reference 快捷入口会把当前预览资产以 `reference_asset_refs` 写入 generation command，
 让界面选择与 API 契约保持一致；真实上传接入仍由后续 storage/music owner adapter 承接。
+Custom 模式在选择 Lyrics 时提供可选的用户歌词输入，提交时会按 `lyrics_mode` 和公共契约传递
+到 generation command；切换为 Instrumental 后该输入从当前创作界面收起。
 
 Settings 已收敛为 Mori 自身需要的四组能力：Appearance、Playback、Creation、Account；采用
 参考 Kokoro Settings 的浮窗结构（固定左侧偏好导航、右侧独立滚动内容、回到来源工作区的关闭入口），

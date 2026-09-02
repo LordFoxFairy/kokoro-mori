@@ -11,6 +11,7 @@ import styles from "../mori-workspace.module.css"
 export type CreationDraft = {
   prompt: string
   lyricsMode: LyricsMode
+  lyrics?: string
   style: string
   referenceAssetRefs: string[]
   voice: string
@@ -28,6 +29,7 @@ type CreateCanvasProps = {
 export function CreateCanvas({ projectRef, mode, onModeChange, onGenerate }: CreateCanvasProps) {
   const { preferences } = useMoriApp()
   const [prompt, setPrompt] = useState("A warm, late-night track for the drive home, slowly opening into sunrise.")
+  const [lyrics, setLyrics] = useState("")
   const [lyricsModeOverride, setLyricsModeOverride] = useState<LyricsMode | null>(null)
   const [style, setStyle] = useState("Dream pop · intimate · organic")
   const [voice, setVoice] = useState("Natural lead")
@@ -89,11 +91,11 @@ export function CreateCanvas({ projectRef, mode, onModeChange, onGenerate }: Cre
       setPlanPreview(buildSongPlan(projectRef, { prompt, lyricsMode, style, voice, durationSeconds }))
       return
     }
-    onGenerate({ prompt, lyricsMode, style, referenceAssetRefs: referenceAdded ? ["asset_preview_reference"] : [], voice, durationSeconds })
+    onGenerate({ prompt, lyricsMode, lyrics: lyrics.trim() || undefined, style, referenceAssetRefs: referenceAdded ? ["asset_preview_reference"] : [], voice, durationSeconds })
   }
 
   function confirmPlan() {
-    onGenerate({ prompt, lyricsMode, style, referenceAssetRefs: referenceAdded ? ["asset_preview_reference"] : [], voice, durationSeconds, songPlan: planPreview ?? undefined })
+    onGenerate({ prompt, lyricsMode, lyrics: lyrics.trim() || undefined, style, referenceAssetRefs: referenceAdded ? ["asset_preview_reference"] : [], voice, durationSeconds, songPlan: planPreview ?? undefined })
   }
 
   return (
@@ -122,7 +124,7 @@ export function CreateCanvas({ projectRef, mode, onModeChange, onGenerate }: Cre
 
         {mode === "custom" ? (
           <div className={styles.customFields}>
-            <div className={styles.fieldRow}>
+          <div className={styles.fieldRow}>
               <div className={styles.field}>
                 <label htmlFor="lyrics-mode">Lyrics or instrumental</label>
                 <select className={styles.selectInput} id="lyrics-mode" value={lyricsMode} onChange={(event) => { setLyricsModeOverride(event.target.value as LyricsMode); clearPlanPreview() }}>
@@ -135,6 +137,12 @@ export function CreateCanvas({ projectRef, mode, onModeChange, onGenerate }: Cre
                 <input className={styles.textInput} id="mori-style" value={style} onChange={(event) => { setStyle(event.target.value); clearPlanPreview() }} />
               </div>
             </div>
+            {lyricsMode === "lyrics" ? <div className={styles.fieldRow}>
+              <div className={`${styles.field} ${styles.fieldWide}`}>
+                <label htmlFor="mori-lyrics">Lyrics</label>
+                <textarea className={styles.lyricsInput} id="mori-lyrics" value={lyrics} onChange={(event) => { setLyrics(event.target.value); clearPlanPreview() }} placeholder="Add your words, or leave this empty for Mori to write them." />
+              </div>
+            </div> : null}
             <div className={styles.fieldRow}>
               <div className={styles.field}>
                 <span className={styles.fieldLegend}>Reference</span>
