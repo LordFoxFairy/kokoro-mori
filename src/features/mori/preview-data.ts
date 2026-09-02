@@ -79,6 +79,7 @@ export const previewLibrary: LibraryItem[] = [
   ...previewVersions.map((version, index) => ({
     kind: "version" as const,
     ref: version.versionRef,
+    projectRef: version.projectRef,
     title: version.title,
     subtitle: index === 0 ? "Current version · First Light" : "Draft version · First Light",
     durationSeconds: version.durationSeconds,

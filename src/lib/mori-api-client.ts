@@ -6,7 +6,10 @@ import {
   type GenerationCreateInput,
   type GenerationReceipt,
   type GenerationSnapshot,
+  type MoriExportReceipt,
+  type MoriExportSnapshot,
   type MoriCandidate,
+  type MoriLibraryItem,
   type MoriApi,
 } from "./mori-api"
 
@@ -75,6 +78,34 @@ export function createMoriApiClient(options: MoriApiClientOptions = {}): MoriApi
         throwRequestError(response, payload)
       }
       return payload as ApiSuccess<{ candidates: MoriCandidate[]; next_cursor: string | null }>
+    },
+    async listLibrary(kind = "all") {
+      const response = await fetchImpl(`${apiBasePath}/library?kind=${encodeURIComponent(kind)}`)
+      const payload = await readJson(response)
+      if (!response.ok || isApiError(payload)) {
+        throwRequestError(response, payload)
+      }
+      return payload as ApiSuccess<{ items: MoriLibraryItem[]; next_cursor: string | null }>
+    },
+    async createExport(versionRef, format, idempotencyKey) {
+      const response = await fetchImpl(`${apiBasePath}/versions/${encodeURIComponent(versionRef)}/exports`, {
+        method: "POST",
+        headers: createMutationHeaders(idempotencyKey),
+        body: JSON.stringify({ format }),
+      })
+      const payload = await readJson(response)
+      if (!response.ok || isApiError(payload)) {
+        throwRequestError(response, payload)
+      }
+      return payload as ApiSuccess<MoriExportReceipt>
+    },
+    async getExport(exportRef) {
+      const response = await fetchImpl(`${apiBasePath}/exports/${encodeURIComponent(exportRef)}`)
+      const payload = await readJson(response)
+      if (!response.ok || isApiError(payload)) {
+        throwRequestError(response, payload)
+      }
+      return payload as ApiSuccess<MoriExportSnapshot>
     },
   }
 }

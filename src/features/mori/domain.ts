@@ -71,6 +71,7 @@ export type LibraryItem =
   | {
       kind: "version"
       ref: MoriRef
+      projectRef: MoriRef
       title: string
       subtitle: string
       durationSeconds: number

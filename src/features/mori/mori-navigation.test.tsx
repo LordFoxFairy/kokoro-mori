@@ -36,6 +36,19 @@ describe("Mori application navigation", () => {
     expect(screen.getByRole("button", { name: "Unmute" })).toBeInTheDocument()
   })
 
+  it("presents the player as one global dock with an explicit control group", () => {
+    render(
+      <MoriAppProvider>
+        <MoriCatalogShell activeKey="library" ariaLabel="Library">
+          <div>Library content</div>
+        </MoriCatalogShell>
+      </MoriAppProvider>,
+    )
+
+    expect(screen.getByRole("region", { name: "Global player" })).toHaveAttribute("data-player-surface", "global-dock")
+    expect(screen.getByRole("group", { name: "Playback controls" })).toBeInTheDocument()
+  })
+
   it("starts with a compact rail on narrow viewports", async () => {
     const originalWidth = window.innerWidth
     Object.defineProperty(window, "innerWidth", { configurable: true, value: 390 })

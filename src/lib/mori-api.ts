@@ -70,10 +70,43 @@ export type MoriCandidate = {
   created_at: string
 }
 
+export type MoriLibraryItem = {
+  library_item_ref: MoriRef
+  kind: "version"
+  project_ref: MoriRef
+  project_title: string
+  version_ref: MoriRef
+  title: string
+  duration_seconds: number
+  audio_asset_ref: string
+  waveform_asset_ref: string
+  created_at: string
+}
+
+export type MoriExportStatus = "queued" | "processing" | "succeeded" | "failed"
+
+export type MoriExportReceipt = {
+  export_ref: MoriRef
+  status: Extract<MoriExportStatus, "queued" | "processing">
+}
+
+export type MoriExportSnapshot = {
+  export_ref: MoriRef
+  project_ref: MoriRef
+  version_ref: MoriRef
+  format: "mp3" | "wav"
+  status: MoriExportStatus
+  download_url: string | null
+  created_at: string
+}
+
 export type MoriApi = {
   createGeneration: (projectRef: MoriRef, input: GenerationCreateInput, idempotencyKey: string) => Promise<ApiSuccess<GenerationReceipt>>
   getGeneration?: (generationRef: MoriRef) => Promise<ApiSuccess<GenerationSnapshot>>
   listCandidates?: (projectRef: MoriRef) => Promise<ApiSuccess<{ candidates: MoriCandidate[]; next_cursor: string | null }>>
+  listLibrary: (kind?: "all" | "version") => Promise<ApiSuccess<{ items: MoriLibraryItem[]; next_cursor: string | null }>>
+  createExport: (versionRef: MoriRef, format: "mp3" | "wav", idempotencyKey: string) => Promise<ApiSuccess<MoriExportReceipt>>
+  getExport: (exportRef: MoriRef) => Promise<ApiSuccess<MoriExportSnapshot>>
 }
 
 export type MoriGenerationDraft = {

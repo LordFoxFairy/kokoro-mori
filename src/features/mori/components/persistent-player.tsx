@@ -25,7 +25,7 @@ function formatDuration(seconds: number): string {
 
 export function PersistentPlayer({ candidate, playing, muted, positionSeconds, onToggle, onToggleMute, onSelectQueue, onPrevious, onNext }: PersistentPlayerProps) {
   return (
-    <section className={styles.player} aria-label="Global player">
+    <section className={styles.player} aria-label="Global player" data-player-surface="global-dock">
       <div className={styles.playerTrack}>
         <div className={styles.playerArtwork} aria-hidden="true" />
         <div className={styles.playerInfo}>
@@ -33,18 +33,18 @@ export function PersistentPlayer({ candidate, playing, muted, positionSeconds, o
           <span>{candidate.subtitle}</span>
         </div>
       </div>
-      <div className={styles.playerWave}>
+      <div className={styles.playerWave} role="group" aria-label="Playback progress">
         <span className={styles.time}>{formatDuration(positionSeconds)}</span>
         <Waveform seed={candidate.waveformSeed} compact progress={candidate.durationSeconds > 0 ? positionSeconds / candidate.durationSeconds : 0} />
         <span className={styles.time}>{formatDuration(candidate.durationSeconds)}</span>
       </div>
-      <div className={styles.playerControls}>
-        <button className={styles.playerButton} type="button" onClick={onPrevious} aria-label="Previous version"><SkipBack /></button>
+      <div className={styles.playerControls} role="group" aria-label="Playback controls">
+        <button className={`${styles.playerButton} ${styles.playerSkipButton}`} type="button" onClick={onPrevious} aria-label="Previous version"><SkipBack /></button>
         <button className={`${styles.playerButton} ${styles.playerButtonPrimary}`} type="button" onClick={onToggle} aria-label={playing ? "Pause" : "Play"}>
           {playing ? <Pause fill="currentColor" /> : <Play fill="currentColor" />}
         </button>
-        <button className={styles.playerButton} type="button" onClick={onNext} aria-label="Next version"><SkipForward /></button>
-        <button className={styles.playerButton} type="button" onClick={onToggleMute} aria-label={muted ? "Unmute" : "Mute"}>{muted ? <VolumeX /> : <Volume2 />}</button>
+        <button className={`${styles.playerButton} ${styles.playerSkipButton}`} type="button" onClick={onNext} aria-label="Next version"><SkipForward /></button>
+        <button className={`${styles.playerButton} ${styles.playerMuteButton}`} type="button" onClick={onToggleMute} aria-label={muted ? "Unmute" : "Mute"}>{muted ? <VolumeX /> : <Volume2 />}</button>
         {onSelectQueue ? <button className={styles.playerTool} type="button" onClick={onSelectQueue} aria-label="Open playback queue"><ListMusic /> <span>Queue</span></button> : null}
       </div>
     </section>

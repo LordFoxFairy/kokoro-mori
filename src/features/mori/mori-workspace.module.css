@@ -1526,6 +1526,55 @@
   font-size: 11px;
 }
 
+.libraryActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 4px;
+}
+
+.libraryActions .iconButton {
+  flex: 0 0 auto;
+}
+
+.libraryEmpty {
+  display: flex;
+  min-height: 260px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-top: 17px;
+  padding: 30px;
+  border: 1px dashed rgba(109, 92, 231, 0.24);
+  border-radius: 16px;
+  text-align: center;
+  background: linear-gradient(145deg, rgba(240, 237, 255, 0.42), rgba(255, 247, 239, 0.42));
+}
+
+.libraryEmptyIcon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  margin-bottom: 12px;
+  place-items: center;
+  border: 1px solid rgba(109, 92, 231, 0.18);
+  border-radius: 50%;
+  color: var(--mori-primary);
+  background: #fff;
+}
+
+.libraryEmpty strong {
+  font-size: 14px;
+}
+
+.libraryEmpty p {
+  max-width: 260px;
+  margin: 7px 0 16px;
+  color: var(--mori-muted);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
 .backLink {
   display: inline-flex;
   align-items: center;
@@ -1929,6 +1978,78 @@
   font-size: clamp(31px, 4vw, 48px);
   font-weight: 400;
   letter-spacing: -0.06em;
+}
+
+.editorPlaceholder {
+  display: flex;
+  min-height: 440px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 34px;
+  border: 1px dashed rgba(109, 92, 231, 0.24);
+  border-radius: 17px;
+  text-align: center;
+  background: linear-gradient(145deg, rgba(240, 237, 255, 0.38), rgba(255, 247, 239, 0.36));
+}
+
+.editorPlaceholderIcon {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 14px;
+  place-items: center;
+  border: 1px solid rgba(109, 92, 231, 0.16);
+  border-radius: 50%;
+  color: var(--mori-primary);
+  background: #fff;
+}
+
+.editorPlaceholder h3 {
+  margin: 0;
+  font-family: Georgia, serif;
+  font-size: 25px;
+  font-weight: 400;
+  letter-spacing: -0.04em;
+}
+
+.editorPlaceholder > p {
+  max-width: 310px;
+  margin: 8px 0 20px;
+  color: var(--mori-muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.editorPlaceholder .lyricsCard {
+  width: min(100%, 430px);
+  text-align: left;
+}
+
+.stemList {
+  display: grid;
+  width: min(100%, 430px);
+  gap: 7px;
+  text-align: left;
+}
+
+.stemList span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  padding: 0 13px;
+  border: 1px solid var(--mori-border);
+  border-radius: 11px;
+  color: var(--mori-foreground);
+  font-size: 11px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.stemList b {
+  color: var(--mori-faint);
+  font-size: 9px;
+  font-weight: 600;
 }
 
 .timelineCard,
@@ -3010,5 +3131,136 @@
 
   .studioPage .studioLayout {
     min-height: calc(100vh - 70px);
+  }
+}
+
+/* The player is a single global transport dock, not a floating card attached to a page. */
+.globalPlayerSlot {
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+
+.player {
+  grid-template-columns: minmax(220px, 0.72fr) minmax(260px, 1.28fr) auto;
+  gap: 24px;
+  min-height: 74px;
+  padding: 10px clamp(16px, 2vw, 30px);
+  border-right: 0;
+  border-bottom: 0;
+  border-left: 0;
+  border-radius: 0;
+  box-shadow: 0 -12px 32px rgba(62, 45, 86, 0.1);
+}
+
+.player::before {
+  right: 24%;
+  left: 24%;
+}
+
+.playerArtwork {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+}
+
+.playerInfo strong {
+  font-size: 12px;
+}
+
+.playerControls {
+  gap: 7px;
+}
+
+.playerButton {
+  width: 34px;
+  height: 34px;
+}
+
+.playerButtonPrimary {
+  width: 40px;
+  height: 40px;
+}
+
+.drawerLayer .inspector {
+  bottom: 74px;
+}
+
+.appShellWithPlayer .surface {
+  padding-bottom: 90px;
+}
+
+@media (max-width: 700px) {
+  .globalPlayerSlot {
+    right: 0;
+    bottom: 0;
+    left: 0;
+  }
+
+  .player {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    min-height: 70px;
+    padding: 8px 14px max(8px, env(safe-area-inset-bottom));
+  }
+
+  .playerArtwork {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+  }
+
+  .playerTrack {
+    gap: 9px;
+  }
+
+  .playerInfo strong {
+    font-size: 11px;
+  }
+
+  .playerInfo span {
+    max-width: 31vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .playerWave,
+  .playerSkipButton,
+  .playerMuteButton {
+    display: none;
+  }
+
+  .playerControls {
+    gap: 4px;
+  }
+
+  .playerButton {
+    width: 32px;
+    height: 32px;
+  }
+
+  .playerButtonPrimary {
+    width: 38px;
+    height: 38px;
+  }
+
+  .playerTool {
+    width: 32px;
+    min-height: 32px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .playerTool span {
+    display: none;
+  }
+
+  .drawerLayer .inspector {
+    bottom: 70px;
+  }
+
+  .appShellWithPlayer .surface {
+    padding-bottom: 100px;
   }
 }

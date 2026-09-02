@@ -74,4 +74,56 @@ describe("Mori same-origin API client", () => {
       status: 429,
     })
   })
+
+  it("reads the provider-neutral Mori library projection", async () => {
+    let capturedUrl = ""
+    const api = createMoriApiClient({
+      fetchImpl: async (input) => {
+        capturedUrl = String(input)
+        return new Response(JSON.stringify({
+          data: { items: [], next_cursor: null },
+          meta: { request_id: "request_3" },
+        }), { status: 200, headers: { "Content-Type": "application/json" } })
+      },
+    })
+
+    const response = await api.listLibrary?.("version")
+
+    expect(capturedUrl).toBe("/api/v1/mori/library?kind=version")
+    expect(response?.data.items).toEqual([])
+  })
+
+  it("queues and reads a version export through the Mori contract", async () => {
+    const calls: Array<{ url: string; method: string | undefined }> = []
+    const api = createMoriApiClient({
+      fetchImpl: async (input, init) => {
+        calls.push({ url: String(input), method: init?.method })
+        const isCreate = init?.method === "POST"
+        return new Response(JSON.stringify(isCreate ? {
+          data: { export_ref: "export_1", status: "queued" },
+          meta: { request_id: "request_4" },
+        } : {
+          data: {
+            export_ref: "export_1",
+            project_ref: "project_preview_first_light",
+            version_ref: "version_preview_first_light_a",
+            format: "mp3",
+            status: "succeeded",
+            download_url: "https://download.kokoro.invalid/export_1.mp3",
+            created_at: "2026-09-02T12:00:00.000Z",
+          },
+          meta: { request_id: "request_5" },
+        }), { status: isCreate ? 202 : 200, headers: { "Content-Type": "application/json" } })
+      },
+    })
+
+    const receipt = await api.createExport("version_preview_first_light_a", "mp3", "idem-export-1")
+    const snapshot = await api.getExport(receipt.data.export_ref)
+
+    expect(calls).toEqual([
+      { url: "/api/v1/mori/versions/version_preview_first_light_a/exports", method: "POST" },
+      { url: "/api/v1/mori/exports/export_1", method: undefined },
+    ])
+    expect(snapshot.data.download_url).toContain("export_1.mp3")
+  })
 })

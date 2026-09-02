@@ -21,7 +21,7 @@ const idleState: GenerationControllerState = {
   errorCode: null,
 }
 
-export function createGenerationController(api: MoriApi, projectRef: MoriRef): GenerationController {
+export function createGenerationController(api: Pick<MoriApi, "createGeneration">, projectRef: MoriRef): GenerationController {
   let state = idleState
 
   return {
@@ -57,6 +57,44 @@ export const previewMoriApi: MoriApi = {
       },
       meta: {
         request_id: `preview-request-${idempotencyKey}`,
+      },
+    }
+  },
+  async listLibrary() {
+    return {
+      data: {
+        items: [],
+        next_cursor: null,
+      },
+      meta: {
+        request_id: "preview-library-request",
+      },
+    }
+  },
+  async createExport(_versionRef: MoriRef, _format: "mp3" | "wav", idempotencyKey: string) {
+    return {
+      data: {
+        export_ref: `export_${idempotencyKey}`,
+        status: "queued" as const,
+      },
+      meta: {
+        request_id: `preview-export-request-${idempotencyKey}`,
+      },
+    }
+  },
+  async getExport(exportRef: MoriRef) {
+    return {
+      data: {
+        export_ref: exportRef,
+        project_ref: "project_preview_first_light",
+        version_ref: "version_preview_first_light_a",
+        format: "mp3" as const,
+        status: "queued" as const,
+        download_url: null,
+        created_at: "2026-09-02T12:00:00.000Z",
+      },
+      meta: {
+        request_id: "preview-export-status-request",
       },
     }
   },
