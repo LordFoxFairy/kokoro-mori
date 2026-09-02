@@ -18,7 +18,7 @@ pnpm build
 
 - `pnpm lint`：通过，`--max-warnings=0`
 - `pnpm typecheck`：通过
-- `pnpm test`：通过，15 个测试文件、69 个测试
+- `pnpm test`：通过，15 个测试文件、70 个测试
 - `pnpm build`：通过，生成 `/`、`/create`、`/projects`、`/library`、`/settings`、Project Overview 和 Studio 路由
 
 ## 页面巡检
@@ -53,7 +53,7 @@ Library 已巡检 All、Versions、Lyrics、Exports 过滤器，以及版本 Pla
 Studio 链接。Home 与 Project Overview 的候选歌曲均可直接接入 Global Player；Projects、
 Project Overview 与 Studio 会读取 provider-neutral 项目/候选 projection，Studio 会按
 请求的 `projectRef`/`versionRef` hydration 当前版本。Create Queue 支持活动生成的取消
-反馈；状态同步优先读取快照并通过 SSE `Last-Event-ID` 回放事件。Studio 已巡检
+反馈和失败后的 Try again 重试入口；打开时焦点进入 Queue、背景滚动锁定，移动端使用全宽工作表；状态同步优先读取快照并通过 SSE `Last-Event-ID` 回放事件。Studio 已巡检
 Arrangement/Lyrics/Stems 切换、Preview、Share 反馈和 Export queued → completed download
 action；Arrangement 已提供 Take Lanes，可试听、选择方向并明确 Use take 后切换当前版本；
 Lyrics 已提供可编辑草稿、按版本恢复的本地保存和明确的 Saved locally 状态；Stems 已提供 Preview only 的逐轨 Mute/Solo

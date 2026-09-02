@@ -19,6 +19,11 @@ type MoriWorkspaceProps = {
   api?: Pick<MoriApi, "createSongPlan" | "createGeneration" | "getGeneration" | "getGenerationEvents" | "listCandidates" | "cancelGeneration">
 }
 
+type GenerationAttempt = {
+  mode: CreationMode
+  draft: CreationDraft
+}
+
 export function MoriWorkspace({ api: injectedApi }: MoriWorkspaceProps = {}) {
   const { playing, playerCandidate, setPlaying, togglePlaying, selectPlayerCandidate, preferences } = useMoriApp()
   const [mode, setMode] = useState<CreationMode>(() => preferences.defaultMode)
@@ -31,6 +36,7 @@ export function MoriWorkspace({ api: injectedApi }: MoriWorkspaceProps = {}) {
   const [generationLabel, setGenerationLabel] = useState(previewGeneration.label)
   const [progress, setProgress] = useState(previewGeneration.progress)
   const [generationRef, setGenerationRef] = useState<string | null>(null)
+  const [lastGenerationAttempt, setLastGenerationAttempt] = useState<GenerationAttempt | null>(null)
   const [shareFeedback, setShareFeedback] = useState(false)
   const defaultApi = useMemo(() => createMoriApiClient(), [])
   const api = injectedApi ?? defaultApi
@@ -42,7 +48,9 @@ export function MoriWorkspace({ api: injectedApi }: MoriWorkspaceProps = {}) {
     candidateRefs: candidates.map((candidate) => candidate.candidateRef),
   }), [candidates, generationLabel, generationStatus, progress])
 
-  const handleGenerate = useCallback(async (draft: CreationDraft) => {
+  const handleGenerate = useCallback(async (draft: CreationDraft, generationMode = mode) => {
+    setLastGenerationAttempt({ mode: generationMode, draft })
+    setGenerationRef(null)
     setGenerationStatus("preparing")
     setGenerationLabel(draft.prompt.trim() ? "Preparing your next direction" : "Preparing a new direction")
     setProgress(8)
@@ -50,7 +58,7 @@ export function MoriWorkspace({ api: injectedApi }: MoriWorkspaceProps = {}) {
     setQueueOpen(true)
     try {
       let songPlanRef: string | undefined
-      if (mode === "smart") {
+      if (generationMode === "smart") {
         const draftPlan = draft.songPlan ?? buildSongPlan(previewProject.projectRef, draft)
         const planResponse = await api.createSongPlan(
           previewProject.projectRef,
@@ -63,7 +71,7 @@ export function MoriWorkspace({ api: injectedApi }: MoriWorkspaceProps = {}) {
       const response = await api.createGeneration(
         previewProject.projectRef,
         createGenerationRequest({
-          mode,
+          mode: generationMode,
           prompt: draft.prompt,
           songPlanRef,
           lyricsMode: draft.lyricsMode,
@@ -79,10 +87,15 @@ export function MoriWorkspace({ api: injectedApi }: MoriWorkspaceProps = {}) {
       setProgress(response.data.status === "queued" ? 0 : 12)
     } catch (error) {
       setGenerationStatus("failed")
-      setGenerationLabel(error instanceof MoriApiRequestError ? error.code : "Generation request failed")
+      setGenerationLabel(generationFailureLabel(error))
       setProgress(0)
     }
   }, [api, mode, setPlaying])
+
+  const retryLastGeneration = useCallback(() => {
+    if (lastGenerationAttempt === null) return
+    void handleGenerate(lastGenerationAttempt.draft, lastGenerationAttempt.mode)
+  }, [handleGenerate, lastGenerationAttempt])
 
   useEffect(() => {
     const getGeneration = api.getGeneration
@@ -158,11 +171,16 @@ export function MoriWorkspace({ api: injectedApi }: MoriWorkspaceProps = {}) {
 
   useEffect(() => {
     if (!queueOpen) return
+    const previousOverflow = document.body.style.overflow
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") setQueueOpen(false)
     }
+    document.body.style.overflow = "hidden"
     window.addEventListener("keydown", closeOnEscape)
-    return () => window.removeEventListener("keydown", closeOnEscape)
+    return () => {
+      window.removeEventListener("keydown", closeOnEscape)
+      document.body.style.overflow = previousOverflow
+    }
   }, [queueOpen])
 
   const handlePromote = useCallback((candidate: Candidate) => {
@@ -233,6 +251,7 @@ export function MoriWorkspace({ api: injectedApi }: MoriWorkspaceProps = {}) {
             onSelect={(candidate) => { setSelectedCandidateRef(candidate.candidateRef); selectPlayerCandidate(candidate); setPlaying(false) }}
             onPromote={handlePromote}
             onCancel={() => { void handleCancel() }}
+            onRetry={retryLastGeneration}
             onPlay={(candidate) => {
               setSelectedCandidateRef(candidate.candidateRef)
               if (playerCandidate.candidateRef === candidate.candidateRef) togglePlaying()
@@ -258,6 +277,11 @@ function generationLabelFor(status: GenerationStatus): string {
     case "expired": return "Generation expired"
     case "failed": return "Generation failed"
   }
+}
+
+function generationFailureLabel(error: unknown): string {
+  if (error instanceof MoriApiRequestError && error.code === "mori_bff_unavailable") return "Mori is offline right now. Try again."
+  return "We couldn't start this direction. Try again."
 }
 
 function toDomainCandidate(candidate: import("@/lib/mori-api").MoriCandidate, index: number): Candidate {

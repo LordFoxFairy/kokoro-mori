@@ -169,9 +169,12 @@ describe("Mori workspace", () => {
 
     expect(screen.getByRole("region", { name: /generation queue/i })).toBeInTheDocument()
     expect(screen.getByRole("button", { name: /close generation queue/i })).toBeInTheDocument()
+    expect(screen.getByRole("region", { name: /generation queue/i })).toHaveFocus()
+    expect(document.body.style.overflow).toBe("hidden")
 
     fireEvent.keyDown(window, { key: "Escape" })
     expect(screen.queryByRole("region", { name: /generation queue/i })).not.toBeInTheDocument()
+    expect(document.body.style.overflow).toBe("")
   })
 
   it("lets a user cancel an active generation from the queue", async () => {
@@ -227,5 +230,54 @@ describe("Mori workspace", () => {
 
     await waitFor(() => expect(cancelGeneration).toHaveBeenCalledOnce())
     expect(screen.getByText("Generation cancelled")).toBeInTheDocument()
+  })
+
+  it("offers a human retry path when generation fails", async () => {
+    const createGeneration = vi.fn<MoriApi["createGeneration"]>(async () => {
+      throw new Error("provider unavailable")
+    })
+    const api: Pick<MoriApi, "createSongPlan" | "createGeneration" | "getGeneration" | "getGenerationEvents" | "listCandidates" | "cancelGeneration"> = {
+      createSongPlan: async (projectRef, input) => ({
+        data: {
+          ...input,
+          song_plan_ref: "song_plan_retry",
+          project_ref: projectRef,
+          created_at: "2026-09-02T12:00:00.000Z",
+        },
+        meta: { request_id: "request_retry_plan" },
+      }),
+      createGeneration,
+      getGeneration: async () => ({
+        data: {
+          generation_ref: "generation_retry",
+          project_ref: "project_preview_first_light",
+          song_plan_ref: null,
+          mode: "custom" as const,
+          status: "failed" as const,
+          progress: 0,
+          candidate_refs: [],
+          created_at: "2026-09-02T12:00:00.000Z",
+        },
+        meta: { request_id: "request_retry_status" },
+      }),
+      getGenerationEvents: async () => [],
+      listCandidates: async () => ({ data: { candidates: [], next_cursor: null }, meta: { request_id: "request_retry_candidates" } }),
+      cancelGeneration: async () => ({ data: { generation_ref: "generation_retry", status: "cancelled" as const }, meta: { request_id: "request_retry_cancel" } }),
+    }
+
+    render(
+      <MoriAppProvider>
+        <MoriWorkspace api={api} />
+      </MoriAppProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("tab", { name: /custom/i }))
+    fireEvent.submit(screen.getByRole("textbox", { name: "Song idea" }).closest("form") as HTMLFormElement)
+
+    await waitFor(() => expect(screen.getByText("We couldn't start this direction. Try again.")).toBeInTheDocument())
+    expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }))
+    await waitFor(() => expect(createGeneration).toHaveBeenCalledTimes(2))
   })
 })

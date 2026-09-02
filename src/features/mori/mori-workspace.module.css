@@ -691,6 +691,22 @@
   background: #fff0f0;
 }
 
+.retryButton {
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid rgba(109, 92, 231, 0.2);
+  border-radius: 8px;
+  color: var(--mori-primary);
+  font-size: 10px;
+  font-weight: 700;
+  background: var(--mori-primary-soft);
+}
+
+.retryButton:hover {
+  border-color: rgba(109, 92, 231, 0.36);
+  background: #e9e4ff;
+}
+
 .candidatesHeader {
   display: flex;
   align-items: center;
@@ -4089,8 +4105,10 @@
   .drawerLayer .inspector {
     top: 0;
     right: 0;
+    left: 0;
     bottom: 70px;
-    width: min(348px, calc(100vw - 16px));
+    width: 100%;
+    background: #fff;
   }
 
   .studioPage .studioHeader {

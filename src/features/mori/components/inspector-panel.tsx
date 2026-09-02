@@ -1,4 +1,5 @@
 import { Check, Clock3, Play, Sparkles, X } from "lucide-react"
+import { useEffect, useRef } from "react"
 import type { Candidate, Generation, SongPlan } from "../domain"
 import { Waveform } from "./waveform"
 import styles from "../mori-workspace.module.css"
@@ -13,6 +14,7 @@ type InspectorPanelProps = {
   onPromote: (candidate: Candidate) => void
   onPlay: (candidate: Candidate) => void
   onCancel?: () => void
+  onRetry?: () => void
   onClose?: () => void
 }
 
@@ -22,11 +24,17 @@ function formatDuration(seconds: number): string {
   return `${minutes}:${remaining}`
 }
 
-export function InspectorPanel({ generation, candidates, songPlan, selectedCandidateRef, playing, onSelect, onPromote, onPlay, onCancel, onClose }: InspectorPanelProps) {
+export function InspectorPanel({ generation, candidates, songPlan, selectedCandidateRef, playing, onSelect, onPromote, onPlay, onCancel, onRetry, onClose }: InspectorPanelProps) {
   const generationActive = ["queued", "preparing", "generating", "post_processing"].includes(generation.status)
+  const generationFailed = generation.status === "failed" || generation.status === "expired"
+  const panelRef = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    panelRef.current?.focus()
+  }, [])
 
   return (
-    <aside className={styles.inspector} aria-label="Generation queue" role="region" tabIndex={-1}>
+    <aside ref={panelRef} className={styles.inspector} aria-label="Generation queue" role="region" tabIndex={-1}>
       <header className={styles.inspectorHeader}>
         <div>
           <h2 className={styles.sectionTitle}>Generation queue</h2>
@@ -46,8 +54,9 @@ export function InspectorPanel({ generation, candidates, songPlan, selectedCandi
           <div className={styles.progressTrack} aria-label={`${generation.progress}% complete`} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={generation.progress}>
             <div className={styles.progressValue} style={{ width: `${generation.progress}%` }} />
           </div>
-          <p className={styles.queueText}>Ready to compare. Pick a direction and make it yours.</p>
+          <p className={styles.queueText}>{generationActive ? "Mori is shaping the next direction. You can keep working while it runs." : generationFailed ? "Your idea is still here. Nothing was added to the library." : "Ready to compare. Pick a direction and make it yours."}</p>
           {onCancel && generationActive ? <div className={styles.queueActions}><span>Need to change the idea?</span><button className={styles.cancelButton} type="button" onClick={onCancel}>Cancel generation</button></div> : null}
+          {onRetry && generationFailed ? <div className={styles.queueActions}><span>Keep the same idea?</span><button className={styles.retryButton} type="button" onClick={onRetry}>Try again</button></div> : null}
         </section>
 
         <section className={styles.candidateList} aria-labelledby="candidate-heading">
