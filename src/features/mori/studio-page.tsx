@@ -2,8 +2,8 @@
 
 import { ArrowLeft, Download, MoreHorizontal, PanelLeft, Play, Share2, Sparkles } from "lucide-react"
 import Link from "next/link"
-import { useMemo, useState } from "react"
-import type { MoriApi } from "@/lib/mori-api"
+import { useEffect, useMemo, useState } from "react"
+import type { MoriApi, MoriExportSnapshot } from "@/lib/mori-api"
 import { createMoriApiClient } from "@/lib/mori-api-client"
 import type { Candidate } from "./domain"
 import { MoriStudioShell } from "./components/mori-studio-shell"
@@ -16,7 +16,7 @@ type StudioTool = "arrangement" | "lyrics" | "stems"
 
 type StudioPageContentProps = {
   candidate: Candidate
-  api?: Pick<MoriApi, "createExport">
+  api?: Pick<MoriApi, "createExport"> & Partial<Pick<MoriApi, "getExport">>
 }
 
 export function StudioPageContent({ candidate, api }: StudioPageContentProps) {
@@ -25,7 +25,9 @@ export function StudioPageContent({ candidate, api }: StudioPageContentProps) {
   const studioApi = api ?? defaultApi
   const [activeTool, setActiveTool] = useState<StudioTool>("arrangement")
   const [shareFeedback, setShareFeedback] = useState(false)
-  const [exportFeedback, setExportFeedback] = useState<"idle" | "queued" | "failed">("idle")
+  const [exportFeedback, setExportFeedback] = useState<"idle" | "queued" | "processing" | "succeeded" | "failed">("idle")
+  const [exportRef, setExportRef] = useState<string | null>(null)
+  const [exportSnapshot, setExportSnapshot] = useState<MoriExportSnapshot | null>(null)
 
   const preview = () => {
     if (playerCandidate.versionRef === candidate.versionRef) {
@@ -45,20 +47,67 @@ export function StudioPageContent({ candidate, api }: StudioPageContentProps) {
 
   const exportVersion = async () => {
     setExportFeedback("queued")
+    setExportRef(null)
+    setExportSnapshot(null)
     try {
-      await studioApi.createExport(candidate.versionRef, "mp3", `mori-export-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
+      const response = await studioApi.createExport(candidate.versionRef, "mp3", `mori-export-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
+      setExportRef(response.data.export_ref)
+      setExportFeedback(response.data.status === "processing" ? "processing" : "queued")
     } catch {
       setExportFeedback("failed")
     }
   }
 
+  useEffect(() => {
+    const getExport = studioApi.getExport
+    if (exportRef === null || getExport === undefined) return
+    let disposed = false
+    let timer: number | undefined
+
+    const syncExport = async () => {
+      try {
+        const response = await getExport(exportRef)
+        if (disposed) return
+        setExportSnapshot(response.data)
+        if (response.data.status === "succeeded") {
+          setExportFeedback("succeeded")
+          return
+        }
+        if (response.data.status === "failed") {
+          setExportFeedback("failed")
+          return
+        }
+        setExportFeedback(response.data.status)
+        timer = window.setTimeout(() => { void syncExport() }, 220)
+      } catch {
+        if (!disposed) setExportFeedback("failed")
+      }
+    }
+
+    void syncExport()
+    return () => {
+      disposed = true
+      if (timer !== undefined) window.clearTimeout(timer)
+    }
+  }, [exportRef, studioApi])
+
+  const downloadUrl = exportSnapshot?.download_url
+  const exportReady = exportFeedback === "succeeded" && typeof downloadUrl === "string"
+  const exportLabel = exportFeedback === "queued"
+    ? "Export queued"
+    : exportFeedback === "processing"
+      ? "Exporting…"
+      : exportFeedback === "failed"
+        ? "Retry export"
+        : "Export"
+
   return (
     <MoriStudioShell candidate={candidate}>
       <header className={styles.studioHeader}>
-        <div className={styles.studioHeaderLeft}><Link className={styles.studioBack} href={`/projects/${previewProject.projectRef}`}><ArrowLeft size={15} /> {previewProject.title}</Link><span>/</span><strong>Studio</strong></div>
-        <div className={styles.studioHeaderActions}>
-          <button className={styles.ghostButton} type="button" onClick={share}><Share2 size={14} /> {shareFeedback ? "Link copied" : "Share"}</button>
-          <button className={styles.ghostButton} type="button" onClick={() => { void exportVersion() }} disabled={exportFeedback === "queued"}>{exportFeedback === "queued" ? "Export queued" : exportFeedback === "failed" ? "Retry export" : <><Download size={14} /> Export</>}</button>
+          <div className={styles.studioHeaderLeft}><Link className={styles.studioBack} href={`/projects/${previewProject.projectRef}`}><ArrowLeft size={15} /> {previewProject.title}</Link><span>/</span><strong>Studio</strong></div>
+          <div className={styles.studioHeaderActions}>
+            <button className={styles.ghostButton} type="button" onClick={share}><Share2 size={14} /> {shareFeedback ? "Link copied" : "Share"}</button>
+          {exportReady ? <a className={styles.ghostButton} href={downloadUrl} download aria-label={`Download ${exportSnapshot?.format.toUpperCase() ?? "MP3"}`}><Download size={14} /> Download {exportSnapshot?.format.toUpperCase() ?? "MP3"}</a> : <button className={styles.ghostButton} type="button" onClick={() => { void exportVersion() }} disabled={exportFeedback === "queued" || exportFeedback === "processing"}>{exportFeedback === "queued" || exportFeedback === "processing" ? exportLabel : exportFeedback === "failed" ? "Retry export" : <><Download size={14} /> Export</>}</button>}
           <button className={styles.iconButton} type="button" aria-label="More Studio options"><MoreHorizontal size={16} /></button>
         </div>
       </header>

@@ -5,7 +5,10 @@ import { previewCandidates } from "./preview-data"
 import { StudioPageContent } from "./studio-page"
 
 describe("Mori studio page", () => {
-  function renderStudio(api?: { createExport: (versionRef: string, format: "mp3" | "wav", idempotencyKey: string) => Promise<{ data: { export_ref: string; status: "queued" | "processing" }; meta: { request_id: string } }> }) {
+  function renderStudio(api?: {
+    createExport: (versionRef: string, format: "mp3" | "wav", idempotencyKey: string) => Promise<{ data: { export_ref: string; status: "queued" | "processing" }; meta: { request_id: string } }>
+    getExport?: (exportRef: string) => Promise<{ data: { export_ref: string; project_ref: string; version_ref: string; format: "mp3" | "wav"; status: "queued" | "processing" | "succeeded" | "failed"; download_url: string | null; created_at: string }; meta: { request_id: string } }>
+  }) {
     render(
       <MoriAppProvider>
         <StudioPageContent candidate={previewCandidates[0]} api={api} />
@@ -49,5 +52,28 @@ describe("Mori studio page", () => {
 
     expect(exportedVersion).toBe("version_preview_first_light_a")
     expect(await screen.findByText("Export queued")).toBeInTheDocument()
+  })
+
+  it("turns a completed export into a download action", async () => {
+    renderStudio({
+      createExport: async () => ({ data: { export_ref: "export_1", status: "queued" }, meta: { request_id: "request_export_1" } }),
+      getExport: async () => ({
+        data: {
+          export_ref: "export_1",
+          project_ref: "project_preview_first_light",
+          version_ref: "version_preview_first_light_a",
+          format: "mp3",
+          status: "succeeded",
+          download_url: "https://download.kokoro.invalid/export_1.mp3",
+          created_at: "2026-09-02T12:00:00.000Z",
+        },
+        meta: { request_id: "request_export_2" },
+      }),
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: "Export" }))
+
+    const download = await screen.findByRole("link", { name: "Download MP3" })
+    expect(download).toHaveAttribute("href", "https://download.kokoro.invalid/export_1.mp3")
   })
 })
