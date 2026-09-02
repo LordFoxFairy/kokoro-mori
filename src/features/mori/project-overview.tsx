@@ -17,7 +17,7 @@ type ProjectOverviewPageContentProps = {
 }
 
 export function ProjectOverviewPageContent({ projectRef = previewProject.projectRef, api }: ProjectOverviewPageContentProps = {}) {
-  const { clearPlayerCandidate, playerCandidate, playing, selectPlayerCandidate, setPlaying } = useMoriApp()
+  const { clearPlayerCandidate, playerCandidate, playing, replacePlayerCandidates, selectPlayerCandidate, setPlaying } = useMoriApp()
   const defaultApi = useMemo(() => createMoriApiClient(), [])
   const overviewApi = api ?? defaultApi
   const initialProjectRef = projectRef.trim() || previewProject.projectRef
@@ -46,7 +46,8 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
       if (disposed) return
       const nextCandidates = candidatesResponse.data.candidates.map(toDomainCandidate)
       setCandidateState({ projectRef: requestedProjectRef, value: nextCandidates })
-      if (requestedProjectRef !== previewProject.projectRef && nextCandidates.length === 0) clearPlayerCandidate()
+      if (nextCandidates.length === 0) clearPlayerCandidate()
+      else replacePlayerCandidates(nextCandidates)
     }).catch(() => {
       if (!disposed && requestedProjectRef !== previewProject.projectRef) clearPlayerCandidate()
       // Never attach preview candidates to a live project when its projection is unavailable.
@@ -55,7 +56,7 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
     return () => {
       disposed = true
     }
-  }, [clearPlayerCandidate, overviewApi, projectRef])
+  }, [clearPlayerCandidate, overviewApi, projectRef, replacePlayerCandidates])
 
   function playCandidate(candidate: (typeof previewCandidates)[number]) {
     if (playerCandidate?.candidateRef === candidate.candidateRef) {

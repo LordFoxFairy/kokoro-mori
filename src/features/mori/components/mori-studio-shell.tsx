@@ -8,19 +8,22 @@ import styles from "../mori-workspace.module.css"
 
 type MoriStudioShellProps = {
   candidate: Candidate | null
+  playerCandidates?: Candidate[]
   children: ReactNode
 }
 
-export function MoriStudioShell({ candidate, children }: MoriStudioShellProps) {
-  const { clearPlayerCandidate, selectPlayerCandidate } = useMoriApp()
+export function MoriStudioShell({ candidate, playerCandidates, children }: MoriStudioShellProps) {
+  const { clearPlayerCandidate, replacePlayerCandidates, selectPlayerCandidate } = useMoriApp()
 
   useEffect(() => {
     const selectionTimer = window.setTimeout(() => {
+      const candidateCollection = playerCandidates ?? (candidate === null ? [] : [candidate])
+      replacePlayerCandidates(candidateCollection)
       if (candidate === null) clearPlayerCandidate()
       else selectPlayerCandidate(candidate)
     }, 0)
     return () => window.clearTimeout(selectionTimer)
-  }, [candidate, clearPlayerCandidate, selectPlayerCandidate])
+  }, [candidate, clearPlayerCandidate, playerCandidates, replacePlayerCandidates, selectPlayerCandidate])
 
   return (
     <MoriAppShell

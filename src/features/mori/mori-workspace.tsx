@@ -28,7 +28,7 @@ type GenerationAttempt = {
 export function MoriWorkspace({ projectRef: requestedProjectRef, api: injectedApi }: MoriWorkspaceProps = {}) {
   const workspaceProjectRef = requestedProjectRef?.trim() || previewProject.projectRef
   const initialCandidates = workspaceProjectRef === previewProject.projectRef ? previewCandidates : []
-  const { playing, playerCandidate, setPlaying, togglePlaying, selectPlayerCandidate, preferences } = useMoriApp()
+  const { playing, playerCandidate, replacePlayerCandidates, setPlaying, togglePlaying, selectPlayerCandidate, preferences } = useMoriApp()
   const [modeOverride, setModeOverride] = useState<CreationMode | null>(null)
   const [queueOpen, setQueueOpen] = useState(false)
   const [candidates, setCandidates] = useState(initialCandidates)
@@ -164,6 +164,7 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, api: injectedAp
           const generatedCandidates = generated.map(toDomainCandidate)
           setCandidates(generatedCandidates)
           setSelectedCandidateRef(generatedCandidates[0]?.candidateRef ?? "")
+          replacePlayerCandidates(generatedCandidates)
           if (preferences.autoplay) {
             const firstCandidate = generatedCandidates[0]
             if (firstCandidate) {
@@ -188,7 +189,7 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, api: injectedAp
       disposed = true
       if (timer !== undefined) window.clearTimeout(timer)
     }
-  }, [api, generationRef, preferences.autoplay, selectPlayerCandidate, setPlaying])
+  }, [api, generationRef, preferences.autoplay, replacePlayerCandidates, selectPlayerCandidate, setPlaying])
 
   useEffect(() => {
     if (!queueOpen) return

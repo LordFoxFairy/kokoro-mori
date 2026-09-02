@@ -39,6 +39,7 @@ type MoriAppContextValue = {
   setPlaying: (playing: boolean) => void
   seekPlayer: (positionSeconds: number) => void
   selectPlayerCandidate: (candidate: Candidate) => void
+  replacePlayerCandidates: (candidates: Candidate[]) => void
   previousPlayerCandidate: () => void
   nextPlayerCandidate: () => void
   preferences: MoriPreferences
@@ -73,6 +74,7 @@ export function MoriAppProvider({ children }: { children: ReactNode }) {
   }, [])
   const clearPlayerCandidate = useCallback(() => {
     setPlayerCandidate(null)
+    setPlayerCandidates([])
     setPlaying(false)
     setPositionSeconds(0)
   }, [])
@@ -117,6 +119,11 @@ export function MoriAppProvider({ children }: { children: ReactNode }) {
     setPlayerCandidate(candidate)
     setPositionSeconds(0)
     setPlayerCandidates((items) => items.some((item) => item.candidateRef === candidate.candidateRef) ? items : [...items, candidate])
+  }, [])
+
+  const replacePlayerCandidates = useCallback((candidates: Candidate[]) => {
+    const uniqueCandidates = candidates.filter((candidate, index, items) => items.findIndex((item) => item.candidateRef === candidate.candidateRef) === index)
+    setPlayerCandidates(uniqueCandidates)
   }, [])
 
   const previousPlayerCandidate = useCallback(() => {
@@ -182,21 +189,23 @@ export function MoriAppProvider({ children }: { children: ReactNode }) {
     toggleMuted,
     seekPlayer,
     selectPlayerCandidate,
+    replacePlayerCandidates,
     previousPlayerCandidate,
     nextPlayerCandidate,
     preferences,
     updatePreferences,
-  }), [clearPlayerCandidate, muted, nextPlayerCandidate, playerCandidate, playing, positionSeconds, preferences, previousPlayerCandidate, railCollapsed, seekPlayer, selectPlayerCandidate, setRailCollapsed, toggleMuted, togglePlaying, toggleRail, updatePreferences])
+  }), [clearPlayerCandidate, muted, nextPlayerCandidate, playerCandidate, playing, positionSeconds, preferences, previousPlayerCandidate, railCollapsed, replacePlayerCandidates, seekPlayer, selectPlayerCandidate, setRailCollapsed, toggleMuted, togglePlaying, toggleRail, updatePreferences])
 
   return <MoriAppContext.Provider value={value}>{children}</MoriAppContext.Provider>
 }
 
 function stepCandidate(candidate: Candidate, candidates: Candidate[], direction: -1 | 1): Candidate {
+  if (candidates.length === 0) return candidate
   const currentIndex = candidates.findIndex((item) => item.candidateRef === candidate.candidateRef)
   const nextIndex = currentIndex < 0
     ? 0
     : (currentIndex + direction + candidates.length) % candidates.length
-  return candidates[nextIndex] ?? candidates[0] ?? previewCandidates[0]
+  return candidates[nextIndex] ?? candidates[0] ?? candidate
 }
 
 export function useMoriApp(): MoriAppContextValue {

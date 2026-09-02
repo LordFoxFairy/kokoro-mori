@@ -345,6 +345,41 @@ describe("Mori application navigation", () => {
     expect(player).toHaveTextContent("First Light")
   })
 
+  it("keeps global transport navigation inside the active candidate collection", () => {
+    const liveCandidates = [
+      { ...previewCandidates[0], candidateRef: "candidate_live_a", versionRef: "version_live_a", title: "Window Seat" },
+      { ...previewCandidates[1], candidateRef: "candidate_live_b", versionRef: "version_live_b", title: "Window Seat · Afterglow" },
+    ]
+    const firstLiveCandidate = liveCandidates.at(0)
+
+    function CandidateCollectionHarness() {
+      const { nextPlayerCandidate, replacePlayerCandidates, selectPlayerCandidate } = useMoriApp()
+      return (
+        <>
+          <button type="button" onClick={() => replacePlayerCandidates(liveCandidates)}>Use live collection</button>
+          <button type="button" onClick={() => { if (firstLiveCandidate !== undefined) selectPlayerCandidate(firstLiveCandidate) }}>Play live take</button>
+          <button type="button" onClick={nextPlayerCandidate}>Next live take</button>
+          <MoriCatalogShell activeKey="home" ariaLabel="Home">
+            <div>Home content</div>
+          </MoriCatalogShell>
+        </>
+      )
+    }
+
+    render(
+      <MoriAppProvider>
+        <CandidateCollectionHarness />
+      </MoriAppProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Use live collection" }))
+    fireEvent.click(screen.getByRole("button", { name: "Play live take" }))
+    fireEvent.click(screen.getByRole("button", { name: "Next live take" }))
+
+    expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("Window Seat · Afterglow")
+    expect(screen.getByRole("region", { name: "Global player" })).not.toHaveTextContent("First Light")
+  })
+
   it("plays the next version when the playback preference is enabled", () => {
     vi.useFakeTimers()
 

@@ -41,17 +41,21 @@ type LibraryPageContentProps = {
 }
 
 export function LibraryPageContent({ api }: LibraryPageContentProps = {}) {
-  const { playerCandidate, playing, selectPlayerCandidate, setPlaying } = useMoriApp()
+  const { playerCandidate, playing, replacePlayerCandidates, selectPlayerCandidate, setPlaying } = useMoriApp()
   const defaultApi = useMemo(() => createMoriApiClient(), [])
   const libraryApi = api ?? defaultApi
   const [libraryItems, setLibraryItems] = useState<LibraryItem[]>(previewLibrary)
+  const [libraryLoaded, setLibraryLoaded] = useState(false)
   const [projects, setProjects] = useState<Project[] | null>(null)
   const [filter, setFilter] = useState<LibraryFilter>("All")
 
   useEffect(() => {
     let disposed = false
     void libraryApi.listLibrary("all").then((response) => {
-      if (!disposed) setLibraryItems(toDomainLibrary(response.data.items))
+      if (!disposed) {
+        setLibraryItems(toDomainLibrary(response.data.items))
+        setLibraryLoaded(true)
+      }
     }).catch(() => {
       // Keep the deterministic fixture visible while the BFF is unavailable.
     })
@@ -69,6 +73,14 @@ export function LibraryPageContent({ api }: LibraryPageContentProps = {}) {
       disposed = true
     }
   }, [libraryApi])
+
+  const playerLibraryCandidates = useMemo(() => libraryItems
+    .filter((item): item is Extract<LibraryItem, { kind: "version" }> => item.kind === "version")
+    .map((item) => previewCandidates.find((candidate) => candidate.versionRef === item.ref) ?? toPlayerCandidate(item)), [libraryItems])
+
+  useEffect(() => {
+    if (libraryLoaded) replacePlayerCandidates(playerLibraryCandidates)
+  }, [libraryLoaded, playerLibraryCandidates, replacePlayerCandidates])
 
   const itemsWithProjects = projects === null
     ? libraryItems

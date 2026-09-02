@@ -174,7 +174,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api }: St
   const activeProjectTitle = projectTitle ?? (activeProjectRef === previewProject.projectRef ? previewProject.title : "Project")
 
   return (
-    <MoriStudioShell candidate={activeCandidate}>
+    <MoriStudioShell candidate={activeCandidate} playerCandidates={studioCandidates}>
       <header className={styles.studioHeader}>
           <div className={styles.studioHeaderLeft}><Link className={styles.studioBack} href={`/projects/${activeProjectRef}`}><ArrowLeft size={15} /> {activeProjectTitle}</Link><span>/</span><strong>Studio</strong></div>
           <div className={styles.studioHeaderActions}>
