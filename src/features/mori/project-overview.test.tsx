@@ -65,4 +65,37 @@ describe("Mori project overview", () => {
     expect(screen.getByText("A quiet, forward-moving sketch.")).toBeInTheDocument()
     expect(screen.getByRole("link", { name: "Open Studio" })).toHaveAttribute("href", "/projects/project_live_1/studio/version_live_1")
   })
+
+  it("shows an empty state when a project has no directions", async () => {
+    const api = {
+      getProject: async () => ({
+        data: {
+          project_ref: "project_empty_1",
+          title: "Rain Room",
+          description: "A small room of reflected light.",
+          current_version_ref: null,
+          candidate_count: 0,
+          last_activity_at: "2026-09-02T12:00:00.000Z",
+        },
+        meta: { request_id: "request_project_empty" },
+      }),
+      listCandidates: async () => ({
+        data: { candidates: [], next_cursor: null },
+        meta: { request_id: "request_candidates_empty" },
+      }),
+    }
+
+    render(
+      <MoriAppProvider>
+        <MoriCatalogShell activeKey="projects" ariaLabel="Project overview">
+          <ProjectOverviewPageContent projectRef="project_empty_1" api={api} />
+        </MoriCatalogShell>
+      </MoriAppProvider>,
+    )
+
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Rain Room" })).toBeInTheDocument())
+    expect(screen.getByText("No directions yet")).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "Create a direction" })).toHaveAttribute("href", "/create")
+    expect(screen.queryByRole("link", { name: "Open Studio" })).not.toBeInTheDocument()
+  })
 })

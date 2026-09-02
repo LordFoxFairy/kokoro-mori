@@ -21,7 +21,7 @@ export function ProjectsPageContent({ api }: ProjectsPageContentProps = {}) {
   useEffect(() => {
     let disposed = false
     void projectsApi.listProjects({ limit: 20 }).then((response) => {
-      if (!disposed && response.data.projects.length > 0) {
+      if (!disposed) {
         setProjects(response.data.projects.map(toDomainProject))
       }
     }).catch(() => {
@@ -44,12 +44,19 @@ export function ProjectsPageContent({ api }: ProjectsPageContentProps = {}) {
         <Link className={styles.generateButton} href="/create"><Music2 size={15} /> New project</Link>
       </div>
       <div className={styles.projectGrid}>
-        {projects.map((project, index) => <ProjectCard key={project.projectRef} project={project} index={index} />)}
-        <Link className={styles.newProjectCard} href="/create" aria-label="Create another project">
-          <span className={styles.newProjectIcon}>+</span>
-          <strong>Start another idea</strong>
-          <span>Begin with a thought, a mood, or a reference.</span>
-        </Link>
+        {projects.length > 0 ? <>
+          {projects.map((project, index) => <ProjectCard key={project.projectRef} project={project} index={index} />)}
+          <Link className={styles.newProjectCard} href="/create" aria-label="Create another project">
+            <span className={styles.newProjectIcon}>+</span>
+            <strong>Start another idea</strong>
+            <span>Begin with a thought, a mood, or a reference.</span>
+          </Link>
+        </> : <div className={styles.libraryEmpty}>
+          <div className={styles.libraryEmptyIcon}><Music2 size={18} /></div>
+          <strong>No projects yet</strong>
+          <p>Start with a thought, a mood, or a reference. Mori will keep every direction together.</p>
+          <Link className={styles.ghostButton} href="/create">Start a project</Link>
+        </div>}
       </div>
     </div>
   )

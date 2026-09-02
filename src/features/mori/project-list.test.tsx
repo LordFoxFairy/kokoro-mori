@@ -28,4 +28,19 @@ describe("Mori projects", () => {
     expect(screen.getByText("A quiet, forward-moving sketch.")).toBeInTheDocument()
     expect(screen.getByRole("link", { name: "Continue creating" })).toHaveAttribute("href", "/projects/project_live_1")
   })
+
+  it("shows an empty state when the projection has no projects", async () => {
+    const api: Pick<MoriApi, "listProjects"> = {
+      listProjects: async () => ({
+        data: { projects: [], next_cursor: null },
+        meta: { request_id: "request_projects_empty" },
+      }),
+    }
+
+    render(<ProjectsPageContent api={api} />)
+
+    await waitFor(() => expect(screen.getByText("No projects yet")).toBeInTheDocument())
+    expect(screen.queryByRole("heading", { name: "First Light" })).not.toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "Start a project" })).toHaveAttribute("href", "/create")
+  })
 })

@@ -29,9 +29,7 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
     void Promise.all([overviewApi.getProject(requestedProjectRef), overviewApi.listCandidates(requestedProjectRef)]).then(([projectResponse, candidatesResponse]) => {
       if (disposed) return
       setProject(toDomainProject(projectResponse.data))
-      if (candidatesResponse.data.candidates.length > 0) {
-        setCandidates(candidatesResponse.data.candidates.map(toDomainCandidate))
-      }
+      setCandidates(candidatesResponse.data.candidates.map(toDomainCandidate))
     }).catch(() => {
       // Keep the deterministic fixture visible while the BFF is unavailable.
     })
@@ -75,7 +73,7 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
 
       <section className={styles.overviewSection} aria-labelledby="directions-heading">
         <div className={styles.overviewSectionHeader}><div><h2 id="directions-heading">Latest directions</h2><p>Compare the shape of the song before you commit to a version.</p></div><span>{candidates.length} {candidates.length === 1 ? "candidate" : "candidates"}</span></div>
-        <div className={styles.overviewCandidateList}>
+        {candidates.length > 0 ? <div className={styles.overviewCandidateList}>
           {candidates.map((candidate, index) => (
             <article className={styles.overviewCandidate} key={candidate.candidateRef}>
               <button className={`${styles.candidateArtwork} ${styles.overviewCandidateArtwork} ${index === 1 ? styles.candidateArtworkAlt : ""}`} type="button" onClick={() => playCandidate(candidate)} aria-label={`${playerCandidate.candidateRef === candidate.candidateRef && playing ? "Pause" : "Play"} ${candidate.title}`}>
@@ -87,7 +85,12 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
               <Link className={styles.overviewOpenLink} href={`/projects/${project.projectRef}/studio/${candidate.versionRef}`} aria-label={`Open Studio for ${candidate.title}`}><ArrowUpRight size={15} /></Link>
             </article>
           ))}
-        </div>
+        </div> : <div className={styles.libraryEmpty}>
+          <div className={styles.libraryEmptyIcon}><Sparkles size={18} /></div>
+          <strong>No directions yet</strong>
+          <p>Shape the first direction for this project, then compare versions here.</p>
+          <Link className={styles.ghostButton} href="/create">Create a direction</Link>
+        </div>}
       </section>
 
       <section className={styles.overviewSection} aria-labelledby="plan-overview-heading">
