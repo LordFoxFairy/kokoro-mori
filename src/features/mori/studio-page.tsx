@@ -25,8 +25,9 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api }: St
   const { playerCandidate, playing, selectPlayerCandidate, setPlaying } = useMoriApp()
   const defaultApi = useMemo(() => createMoriApiClient(), [])
   const studioApi = api ?? defaultApi
-  const [activeCandidate, setActiveCandidate] = useState(candidate)
-  const [studioCandidates, setStudioCandidates] = useState(() => [candidate, ...previewCandidates.filter((item) => item.versionRef !== candidate.versionRef)])
+  const initialCandidate = resolveInitialCandidate(candidate, projectRef, versionRef)
+  const [activeCandidate, setActiveCandidate] = useState<Candidate | null>(() => initialCandidate)
+  const [studioCandidates, setStudioCandidates] = useState(() => initialCandidate === null ? [] : [initialCandidate, ...previewCandidates.filter((item) => item.versionRef !== initialCandidate.versionRef)])
   const [currentVersionRef, setCurrentVersionRef] = useState(() => previewCandidates.find((item) => item.isCurrent)?.versionRef ?? candidate.versionRef)
   const [projectTitle, setProjectTitle] = useState<string | null>(null)
   const [activeTool, setActiveTool] = useState<StudioTool>("arrangement")
@@ -53,25 +54,32 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api }: St
 
     if (listCandidates) {
       void listCandidates(requestedProjectRef).then((response) => {
-        if (disposed || response.data.candidates.length === 0) return
+        if (disposed) return
         const nextCandidates = response.data.candidates.map(toDomainCandidate)
         const requestedVersionRef = versionRef?.trim()
         const nextActiveCandidate = requestedVersionRef
           ? nextCandidates.find((item) => item.versionRef === requestedVersionRef)
           : nextCandidates[0]
         setStudioCandidates(nextCandidates)
-        if (nextActiveCandidate) setActiveCandidate(nextActiveCandidate)
+        setActiveCandidate(nextActiveCandidate ?? null)
+        setCurrentVersionRef(nextCandidates.find((item) => item.isCurrent)?.versionRef ?? nextActiveCandidate?.versionRef ?? "")
       }).catch(() => {
-        // Keep the deterministic fixture visible while the BFF is unavailable.
+        if (initialCandidate === null) {
+          setStudioCandidates([])
+          setActiveCandidate(null)
+          setCurrentVersionRef("")
+        }
+        // Keep the deterministic fixture visible for the known preview route.
       })
     }
 
     return () => {
       disposed = true
     }
-  }, [projectRef, studioApi, versionRef])
+  }, [initialCandidate, projectRef, studioApi, versionRef])
 
   const preview = () => {
+    if (activeCandidate === null) return
     if (playerCandidate.versionRef === activeCandidate.versionRef) {
       setPlaying(!playing)
       return
@@ -106,6 +114,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api }: St
   }
 
   const exportVersion = async () => {
+    if (activeCandidate === null) return
     setExportFeedback("queued")
     setExportRef(null)
     setExportSnapshot(null)
@@ -170,10 +179,15 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api }: St
           <div className={styles.studioHeaderLeft}><Link className={styles.studioBack} href={`/projects/${activeProjectRef}`}><ArrowLeft size={15} /> {activeProjectTitle}</Link><span>/</span><strong>Studio</strong></div>
           <div className={styles.studioHeaderActions}>
             <button className={styles.ghostButton} type="button" onClick={share}><Share2 size={14} /> {shareFeedback ? "Link copied" : "Share"}</button>
-          {exportReady ? <a className={styles.ghostButton} href={downloadUrl} download aria-label={`Download ${exportSnapshot?.format.toUpperCase() ?? "MP3"}`}><Download size={14} /> Download {exportSnapshot?.format.toUpperCase() ?? "MP3"}</a> : <button className={styles.ghostButton} type="button" onClick={() => { void exportVersion() }} disabled={exportFeedback === "queued" || exportFeedback === "processing"}>{exportFeedback === "queued" || exportFeedback === "processing" ? exportLabel : exportFeedback === "failed" ? "Retry export" : <><Download size={14} /> Export</>}</button>}
+          {activeCandidate !== null ? exportReady ? <a className={styles.ghostButton} href={downloadUrl} download aria-label={`Download ${exportSnapshot?.format.toUpperCase() ?? "MP3"}`}><Download size={14} /> Download {exportSnapshot?.format.toUpperCase() ?? "MP3"}</a> : <button className={styles.ghostButton} type="button" onClick={() => { void exportVersion() }} disabled={exportFeedback === "queued" || exportFeedback === "processing"}>{exportFeedback === "queued" || exportFeedback === "processing" ? exportLabel : exportFeedback === "failed" ? "Retry export" : <><Download size={14} /> Export</>}</button> : null}
         </div>
       </header>
-      <div className={styles.studioLayout}>
+      {activeCandidate === null ? <section className={styles.studioUnavailable} aria-label="Studio version unavailable">
+        <div className={styles.studioUnavailableIcon}><Sparkles size={20} /></div>
+        <h1>This version is not available yet</h1>
+        <p>Mori could not find a playable version for this project. Return to the project and choose another direction.</p>
+        <Link className={styles.generateButton} href={`/projects/${activeProjectRef}`}><ArrowLeft size={14} /> Back to projects</Link>
+      </section> : <div className={styles.studioLayout}>
         <aside className={styles.studioSidebar} aria-label="Studio tools">
           <div className={styles.studioArtwork}><span>01</span></div>
           <div className={styles.studioSidebarCopy}><span>Current version</span><h1>{activeCandidate.title}</h1><p>{activeCandidate.subtitle}</p></div>
@@ -191,9 +205,17 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api }: St
           {activeTool === "stems" ? <StemsEditor /> : null}
         </section>
         <aside className={styles.versionRail} aria-label="Version history"><div className={styles.versionRailHeader}><div><span>Project history</span><h2>Versions</h2></div></div>{studioCandidates.map((item, index) => <Link className={`${styles.versionItem} ${item.versionRef === activeCandidate.versionRef ? styles.versionItemActive : ""}`} href={`/projects/${activeProjectRef}/studio/${item.versionRef}`} key={item.versionRef}><div className={`${styles.versionThumb} ${index === 1 ? styles.versionThumbAlt : ""}`}><Play size={12} fill="currentColor" /></div><div><strong>{item.title}</strong><span>{index === 0 ? "Current" : "Draft"} · {Math.floor(item.durationSeconds / 60)}:{String(item.durationSeconds % 60).padStart(2, "0")}</span></div></Link>)}</aside>
-      </div>
+      </div>}
     </MoriStudioShell>
   )
+}
+
+function resolveInitialCandidate(candidate: Candidate, projectRef?: string, versionRef?: string): Candidate | null {
+  const requestedProjectRef = projectRef?.trim()
+  const requestedVersionRef = versionRef?.trim()
+  if (requestedProjectRef !== undefined && requestedProjectRef !== "" && requestedProjectRef !== previewProject.projectRef) return null
+  if (requestedVersionRef !== undefined && requestedVersionRef !== "" && requestedVersionRef !== candidate.versionRef) return null
+  return candidate
 }
 
 function toDomainCandidate(candidate: MoriCandidate, index: number): Candidate {

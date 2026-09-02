@@ -171,4 +171,25 @@ describe("Mori studio page", () => {
     expect(screen.getByRole("link", { name: /Window Seat/ })).toHaveAttribute("href", "/projects/project_live_1/studio/version_live_1")
     expect(screen.getAllByText("soft motion · close vocal").length).toBeGreaterThan(0)
   })
+
+  it("shows an explicit unavailable state when the requested version is absent", async () => {
+    render(
+      <MoriAppProvider>
+        <StudioPageContent
+          candidate={previewCandidates[0]}
+          projectRef="project_live_2"
+          versionRef="version_live_2"
+          api={{
+            createExport: async () => ({ data: { export_ref: "export_empty", status: "queued" as const }, meta: { request_id: "request_empty_export" } }),
+            listCandidates: async () => ({ data: { candidates: [], next_cursor: null }, meta: { request_id: "request_empty_studio" } }),
+          }}
+        />
+      </MoriAppProvider>,
+    )
+
+    await waitFor(() => expect(screen.getByRole("region", { name: "Studio version unavailable" })).toBeInTheDocument())
+    expect(screen.getByText("This version is not available yet")).toBeInTheDocument()
+    expect(screen.queryByRole("heading", { name: "First Light" })).not.toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "Back to projects" })).toHaveAttribute("href", "/projects/project_live_2")
+  })
 })

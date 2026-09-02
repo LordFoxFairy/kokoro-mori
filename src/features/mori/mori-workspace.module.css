@@ -2204,6 +2204,48 @@
   box-shadow: var(--mori-shadow-sm);
 }
 
+.studioUnavailable {
+  display: grid;
+  min-height: calc(100dvh - 83px);
+  align-content: center;
+  justify-items: center;
+  gap: 10px;
+  padding: 40px 24px;
+  border: 1px solid var(--mori-border);
+  border-radius: var(--mori-radius-lg);
+  text-align: center;
+  background: linear-gradient(145deg, rgba(240, 237, 255, 0.42), rgba(255, 247, 239, 0.44));
+  box-shadow: var(--mori-shadow-sm);
+}
+
+.studioUnavailableIcon {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  margin-bottom: 4px;
+  place-items: center;
+  border: 1px solid rgba(109, 92, 231, 0.16);
+  border-radius: 15px;
+  color: var(--mori-primary);
+  background: #fff;
+}
+
+.studioUnavailable h1 {
+  margin: 0;
+  font-family: var(--mori-font-display);
+  font-size: clamp(28px, 4vw, 42px);
+  font-weight: 400;
+  letter-spacing: -0.06em;
+}
+
+.studioUnavailable p {
+  max-width: 380px;
+  margin: 0 0 8px;
+  color: var(--mori-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
 .studioSidebar,
 .versionRail {
   display: flex;

@@ -7,7 +7,7 @@ import { MoriAppShell } from "./mori-app-shell"
 import styles from "../mori-workspace.module.css"
 
 type MoriStudioShellProps = {
-  candidate: Candidate
+  candidate: Candidate | null
   children: ReactNode
 }
 
@@ -15,6 +15,7 @@ export function MoriStudioShell({ candidate, children }: MoriStudioShellProps) {
   const { selectPlayerCandidate } = useMoriApp()
 
   useEffect(() => {
+    if (candidate === null) return
     const selectionTimer = window.setTimeout(() => selectPlayerCandidate(candidate), 0)
     return () => window.clearTimeout(selectionTimer)
   }, [candidate, selectPlayerCandidate])
