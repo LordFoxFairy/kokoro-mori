@@ -29,6 +29,20 @@ describe("Mori studio page", () => {
     expect(screen.getByRole("region", { name: "Stems editor" })).toBeInTheDocument()
   })
 
+  it("shows take lanes and lets a user make a direction current", () => {
+    renderStudio()
+
+    const takeLanes = screen.getByRole("region", { name: "Take lanes" })
+    const firstTake = within(takeLanes).getByRole("article", { name: "Take 1: First Light" })
+    const secondTake = within(takeLanes).getByRole("article", { name: "Take 2: First Light · Afterglow" })
+
+    expect(within(firstTake).getByText("Current version")).toBeInTheDocument()
+    fireEvent.click(within(secondTake).getByRole("button", { name: "Use First Light · Afterglow as current" }))
+
+    expect(within(secondTake).getByText("Current version")).toBeInTheDocument()
+    expect(within(firstTake).getByRole("button", { name: "Use First Light as current" })).toBeInTheDocument()
+  })
+
   it("uses the global player for studio preview and gives share feedback", () => {
     renderStudio()
 
@@ -111,6 +125,6 @@ describe("Mori studio page", () => {
     await waitFor(() => expect(screen.getByRole("heading", { name: "Window Seat" })).toBeInTheDocument())
     expect(screen.getByRole("link", { name: "First Light" })).toHaveAttribute("href", "/projects/project_live_1")
     expect(screen.getByRole("link", { name: /Window Seat/ })).toHaveAttribute("href", "/projects/project_live_1/studio/version_live_1")
-    expect(screen.getByText("soft motion · close vocal")).toBeInTheDocument()
+    expect(screen.getAllByText("soft motion · close vocal").length).toBeGreaterThan(0)
   })
 })

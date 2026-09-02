@@ -2424,6 +2424,183 @@
   background: #fce9dd;
 }
 
+.takeLanes {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.takeLanesHeader {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.takeLanesHeader > div {
+  display: grid;
+  gap: 4px;
+}
+
+.takeLanesHeader span {
+  color: var(--mori-faint);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.takeLanesHeader h3 {
+  margin: 0;
+  font-size: 14px;
+  letter-spacing: -0.03em;
+}
+
+.takeLaneList {
+  display: grid;
+  gap: 7px;
+}
+
+.takeLane {
+  display: grid;
+  grid-template-columns: minmax(150px, 1.05fr) minmax(100px, 1.2fr) 36px auto;
+  gap: 11px;
+  align-items: center;
+  min-width: 0;
+  padding: 10px 11px;
+  border: 1px solid var(--mori-border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.77);
+  transition: border-color var(--mori-motion-fast) ease, background var(--mori-motion-fast) ease, box-shadow var(--mori-motion-fast) ease;
+}
+
+.takeLane:hover,
+.takeLaneSelected {
+  border-color: rgba(109, 92, 231, 0.22);
+  background: rgba(250, 248, 255, 0.94);
+  box-shadow: 0 6px 15px rgba(109, 92, 231, 0.06);
+}
+
+.takeLaneCurrent {
+  border-left: 3px solid var(--mori-success);
+  padding-left: 9px;
+}
+
+.takeLaneSelect {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  color: var(--mori-foreground);
+  text-align: left;
+  background: transparent;
+}
+
+.takeLaneSelect:focus-visible {
+  outline: 3px solid rgba(109, 92, 231, 0.18);
+  outline-offset: 3px;
+}
+
+.takeLaneIndex {
+  display: grid;
+  width: 25px;
+  height: 25px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 8px;
+  color: var(--mori-primary);
+  font-family: var(--mori-font-mono);
+  font-size: 9px;
+  background: var(--mori-primary-soft);
+}
+
+.takeLaneCopy {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.takeLaneCopy strong,
+.takeLaneCopy span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.takeLaneCopy strong {
+  font-size: 11px;
+}
+
+.takeLaneCopy span,
+.takeLaneDuration {
+  color: var(--mori-muted);
+  font-size: 9px;
+}
+
+.takeLaneWave {
+  min-width: 0;
+}
+
+.takeLaneDuration {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.takeLaneActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.takeLanePreview,
+.takeLanePromote {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 27px;
+  padding: 0 8px;
+  border-radius: 8px;
+  font-size: 9px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.takeLanePreview {
+  border: 1px solid var(--mori-border);
+  color: var(--mori-foreground);
+  background: #fff;
+}
+
+.takeLanePreview:hover {
+  border-color: var(--mori-border-strong);
+  background: var(--mori-primary-soft);
+}
+
+.takeLanePreview svg {
+  color: var(--mori-primary);
+}
+
+.takeLanePromote {
+  border: 0;
+  color: var(--mori-primary);
+  background: var(--mori-primary-soft);
+}
+
+.takeLanePromote:hover {
+  background: #e3dcff;
+}
+
+.takeLaneCurrentLabel {
+  color: var(--mori-success);
+  font-size: 9px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .lyricsCard {
   margin-top: 15px;
   padding: 18px;
@@ -2641,6 +2818,29 @@
 
   .timelineSegments {
     min-height: 27px;
+  }
+
+  .takeLane {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 9px;
+  }
+
+  .takeLaneSelect,
+  .takeLaneActions {
+    grid-column: 1 / -1;
+  }
+
+  .takeLaneWave {
+    grid-column: 1;
+  }
+
+  .takeLaneDuration {
+    grid-column: 2;
+    align-self: center;
+  }
+
+  .takeLaneActions {
+    justify-content: space-between;
   }
 
   .lyricsCard p {

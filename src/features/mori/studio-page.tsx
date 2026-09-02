@@ -27,6 +27,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api }: St
   const studioApi = api ?? defaultApi
   const [activeCandidate, setActiveCandidate] = useState(candidate)
   const [studioCandidates, setStudioCandidates] = useState(() => [candidate, ...previewCandidates.filter((item) => item.versionRef !== candidate.versionRef)])
+  const [currentVersionRef, setCurrentVersionRef] = useState(() => previewCandidates.find((item) => item.isCurrent)?.versionRef ?? candidate.versionRef)
   const [projectTitle, setProjectTitle] = useState<string | null>(null)
   const [activeTool, setActiveTool] = useState<StudioTool>("arrangement")
   const [shareFeedback, setShareFeedback] = useState(false)
@@ -77,6 +78,24 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api }: St
     }
     selectPlayerCandidate(activeCandidate)
     setPlaying(true)
+  }
+
+  const selectTake = (take: Candidate) => {
+    setActiveCandidate(take)
+  }
+
+  const previewTake = (take: Candidate) => {
+    if (playerCandidate.versionRef === take.versionRef) {
+      setPlaying(!playing)
+      return
+    }
+    selectPlayerCandidate(take)
+    setPlaying(true)
+  }
+
+  const promoteTake = (take: Candidate) => {
+    setCurrentVersionRef(take.versionRef)
+    setActiveCandidate(take)
   }
 
   const share = () => {
@@ -167,7 +186,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api }: St
         </aside>
         <section className={styles.studioCanvas} aria-label="Studio editor">
           <div className={styles.studioCanvasTop}><div><span className={styles.eyebrow}><span className={styles.eyebrowDot} />Editing with intention</span><h2>Shape the feeling.</h2></div><button className={styles.generateButton} type="button" onClick={preview}><Play size={14} fill="currentColor" /> {playerCandidate.versionRef === activeCandidate.versionRef && playing ? "Pause" : "Preview"}</button></div>
-          {activeTool === "arrangement" ? <ArrangementEditor candidate={activeCandidate} /> : null}
+          {activeTool === "arrangement" ? <ArrangementEditor candidate={activeCandidate} takes={studioCandidates} currentVersionRef={currentVersionRef} playerVersionRef={playerCandidate.versionRef} playing={playing} onSelectTake={selectTake} onPreviewTake={previewTake} onPromoteTake={promoteTake} /> : null}
           {activeTool === "lyrics" ? <LyricsEditor /> : null}
           {activeTool === "stems" ? <StemsEditor /> : null}
         </section>
@@ -192,7 +211,18 @@ function toDomainCandidate(candidate: MoriCandidate, index: number): Candidate {
   }
 }
 
-function ArrangementEditor({ candidate }: { candidate: Candidate }) {
+type ArrangementEditorProps = {
+  candidate: Candidate
+  takes: Candidate[]
+  currentVersionRef: string
+  playerVersionRef: string
+  playing: boolean
+  onSelectTake: (take: Candidate) => void
+  onPreviewTake: (take: Candidate) => void
+  onPromoteTake: (take: Candidate) => void
+}
+
+function ArrangementEditor({ candidate, takes, currentVersionRef, playerVersionRef, playing, onSelectTake, onPreviewTake, onPromoteTake }: ArrangementEditorProps) {
   return (
     <section aria-label="Arrangement editor">
       <div className={styles.timelineCard}>
@@ -201,6 +231,33 @@ function ArrangementEditor({ candidate }: { candidate: Candidate }) {
         <div className={styles.timelineWave}><Waveform seed={candidate.waveformSeed} progress={0.2} /></div>
         <div className={styles.timelineSegments}>{previewSongPlan.structure.map((item, index) => <div className={`${styles.timelineSegment} ${index === 3 ? styles.timelineSegmentAccent : ""}`} key={item} style={{ flex: index === 0 || index === 4 ? 0.75 : index === 3 ? 1.3 : 1 }}>{item}</div>)}</div>
       </div>
+      <section className={styles.takeLanes} aria-label="Take lanes">
+        <div className={styles.takeLanesHeader}>
+          <div><span>Compare before committing</span><h3>Take lanes</h3></div>
+          <span>{takes.length} {takes.length === 1 ? "take" : "takes"}</span>
+        </div>
+        <div className={styles.takeLaneList}>
+          {takes.map((take, index) => {
+            const isSelected = take.versionRef === candidate.versionRef
+            const isCurrent = take.versionRef === currentVersionRef
+            const isPlaying = take.versionRef === playerVersionRef && playing
+            return (
+              <article className={`${styles.takeLane} ${isSelected ? styles.takeLaneSelected : ""} ${isCurrent ? styles.takeLaneCurrent : ""}`} aria-label={`Take ${index + 1}: ${take.title}`} key={take.versionRef}>
+                <button className={styles.takeLaneSelect} type="button" aria-pressed={isSelected} aria-label={`Select ${take.title} take`} onClick={() => onSelectTake(take)}>
+                  <span className={styles.takeLaneIndex}>0{index + 1}</span>
+                  <span className={styles.takeLaneCopy}><strong>{take.title}</strong><span>{take.subtitle}</span></span>
+                </button>
+                <div className={styles.takeLaneWave}><Waveform seed={take.waveformSeed} compact progress={isSelected ? 0.62 : 0.34} /></div>
+                <span className={styles.takeLaneDuration}>{Math.floor(take.durationSeconds / 60)}:{String(take.durationSeconds % 60).padStart(2, "0")}</span>
+                <div className={styles.takeLaneActions}>
+                  <button className={styles.takeLanePreview} type="button" onClick={() => onPreviewTake(take)} aria-label={`${isPlaying ? "Pause" : "Preview"} ${take.title}`}><Play size={12} fill={isPlaying ? "currentColor" : "none"} /> {isPlaying ? "Pause" : "Preview"}</button>
+                  {isCurrent ? <span className={styles.takeLaneCurrentLabel}>Current version</span> : <button className={styles.takeLanePromote} type="button" onClick={() => onPromoteTake(take)} aria-label={`Use ${take.title} as current`}>Use take</button>}
+                </div>
+              </article>
+            )
+          })}
+        </div>
+      </section>
       <LyricsCard />
     </section>
   )
