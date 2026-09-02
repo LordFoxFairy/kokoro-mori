@@ -2,6 +2,7 @@
 
 import { PanelRight, Share2 } from "lucide-react"
 import { createPortal } from "react-dom"
+import Link from "next/link"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { createGenerationRequest, type MoriApi } from "@/lib/mori-api"
 import { createMoriApiClient, MoriApiRequestError } from "@/lib/mori-api-client"
@@ -18,7 +19,8 @@ type MoriWorkspaceProps = {
 }
 
 export function MoriWorkspace({ api: injectedApi }: MoriWorkspaceProps = {}) {
-  const [mode, setMode] = useState<CreationMode>("smart")
+  const { playing, playerCandidate, setPlaying, togglePlaying, selectPlayerCandidate, preferences } = useMoriApp()
+  const [mode, setMode] = useState<CreationMode>(() => preferences.defaultMode)
   const [queueOpen, setQueueOpen] = useState(false)
   const [candidates, setCandidates] = useState(previewCandidates)
   const [currentVersionRef, setCurrentVersionRef] = useState(previewProject.currentVersionRef)
@@ -30,8 +32,6 @@ export function MoriWorkspace({ api: injectedApi }: MoriWorkspaceProps = {}) {
   const [shareFeedback, setShareFeedback] = useState(false)
   const defaultApi = useMemo(() => createMoriApiClient(), [])
   const api = injectedApi ?? defaultApi
-  const { playing, playerCandidate, setPlaying, togglePlaying, selectPlayerCandidate } = useMoriApp()
-
   const generation = useMemo(() => ({
     ...previewGeneration,
     status: generationStatus,
@@ -113,7 +113,17 @@ export function MoriWorkspace({ api: injectedApi }: MoriWorkspaceProps = {}) {
           const candidateResponse = await listCandidates(snapshot.data.project_ref)
           if (disposed) return
           const generated = candidateResponse.data.candidates.filter((candidate) => candidateRefs.includes(candidate.candidate_ref))
-          if (generated.length > 0) setCandidates(generated.map(toDomainCandidate))
+          if (generated.length > 0) {
+            const generatedCandidates = generated.map(toDomainCandidate)
+            setCandidates(generatedCandidates)
+            if (preferences.autoplay) {
+              const firstCandidate = generatedCandidates[0]
+              if (firstCandidate) {
+                selectPlayerCandidate(firstCandidate)
+                setPlaying(true)
+              }
+            }
+          }
           return
         }
         if (["failed", "cancelled", "expired"].includes(status)) return
@@ -131,7 +141,7 @@ export function MoriWorkspace({ api: injectedApi }: MoriWorkspaceProps = {}) {
       disposed = true
       if (timer !== undefined) window.clearTimeout(timer)
     }
-  }, [api, generationRef])
+  }, [api, generationRef, preferences.autoplay, selectPlayerCandidate, setPlaying])
 
   useEffect(() => {
     if (!queueOpen) return
@@ -183,7 +193,7 @@ export function MoriWorkspace({ api: injectedApi }: MoriWorkspaceProps = {}) {
         <div className={`${styles.workspaceLayout} ${queueOpen ? styles.workspaceLayoutWithDrawer : ""}`}>
           <section className={styles.createSurface} aria-label="Create canvas">
             <header className={styles.canvasHeader}>
-              <div className={styles.breadcrumb}><span>Workspace</span><span>/</span><strong>New creation</strong></div>
+              <div className={styles.breadcrumb}><span>Workspace</span><span>/</span><Link className={styles.breadcrumbLink} href={`/projects/${previewProject.projectRef}`}>{previewProject.title}</Link><span>/</span><strong>New creation</strong></div>
               <div className={styles.headerActions}>
                 <button className={styles.queueButton} type="button" onClick={() => setQueueOpen((value) => !value)} aria-expanded={queueOpen} aria-label={queueOpen ? "Hide generation queue" : "Open generation queue"}>
                   <PanelRight size={14} /> <span>Queue</span><b>{currentCandidates.length}</b>

@@ -15,7 +15,7 @@ type MoriAppShellProps = {
 }
 
 export function MoriAppShell({ activeKey, ariaLabel, children, onQueueOpen, showQueueButton = false }: MoriAppShellProps) {
-  const { railCollapsed, toggleRail, playerCandidate, playing, muted, positionSeconds, togglePlaying, toggleMuted, previousPlayerCandidate, nextPlayerCandidate } = useMoriApp()
+  const { railCollapsed, toggleRail, playerCandidate, playing, muted, positionSeconds, togglePlaying, toggleMuted, previousPlayerCandidate, nextPlayerCandidate, preferences } = useMoriApp()
 
   useEffect(() => {
     if (railCollapsed || window.innerWidth > 700) return
@@ -37,7 +37,7 @@ export function MoriAppShell({ activeKey, ariaLabel, children, onQueueOpen, show
   const className = `${styles.appShell} ${styles.appShellWithPlayer}`
 
   return (
-    <div className={className} data-rail-collapsed={railCollapsed} style={shellStyle}>
+    <div className={className} data-rail-collapsed={railCollapsed} data-reduce-motion={preferences.reduceMotion} style={shellStyle}>
       <MoriRail
         activeKey={activeKey}
         collapsed={railCollapsed}

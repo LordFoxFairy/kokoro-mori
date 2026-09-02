@@ -18,7 +18,7 @@ pnpm build
 
 - `pnpm lint`：通过，`--max-warnings=0`
 - `pnpm typecheck`：通过
-- `pnpm test`：通过，14 个测试文件、53 个测试
+- `pnpm test`：通过，14 个测试文件、57 个测试
 - `pnpm build`：通过，生成 `/`、`/create`、`/projects`、`/library`、`/settings`、Project Overview 和 Studio 路由
 
 ## 页面巡检
@@ -46,7 +46,8 @@ pnpm dev --hostname 127.0.0.1 --port 3001
 品牌行内，桌面宽度下始终可见。Global Player 是跨页面、跨 Rail 的固定底部 transport
 dock；桌面端提供歌曲、波形、进度和 transport，小屏幕收敛为歌曲信息、播放和队列入口。
 Create 的 Queue 默认关闭，可通过 Queue 动作打开并通过 Close generation queue 关闭；
-移动端 390px 视口默认收起 Rail，内容仍保持可见。
+移动端 390px 视口默认收起 Rail，内容仍保持可见。Player 桌面端采用左侧当前歌曲、中部
+transport + progress、右侧音量/队列的音乐播放器层级；移动端收敛为当前歌曲、播放和队列入口。
 
 Library 已巡检 All、Versions、Lyrics、Exports 过滤器，以及版本 Play/Pause、项目和
 Studio 链接。Home 与 Project Overview 的候选歌曲均可直接接入 Global Player；Projects、
@@ -56,7 +57,8 @@ Project Overview 与 Studio 会读取 provider-neutral 项目/候选 projection�
 Arrangement/Lyrics/Stems 切换、Preview、Share 反馈和 Export queued → completed download
 action；未实现的 More/Edit 死按钮已移除，避免给用户错误预期。
 
-Settings 已收敛为 Mori 自身需要的四组能力：Appearance、Playback、Creation、Account；
+Settings 已收敛为 Mori 自身需要的四组能力：Appearance、Playback、Creation、Account；采用
+参考 Kokoro Settings 的浮窗结构（固定左侧偏好导航、右侧独立滚动内容、Back to studio 关闭入口），
 不再把 Kokoro 的 computer、deployment、integration、team、skills、MCP 等通用能力带入
 音乐产品。全局 Rail 不再放置难以理解的 Current project 卡片，项目入口统一回到 Projects，
 具体项目上下文只在 Project Overview 和 Studio 中出现。

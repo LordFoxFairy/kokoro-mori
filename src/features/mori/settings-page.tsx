@@ -1,7 +1,9 @@
 "use client"
 
-import { Check, Headphones, Keyboard, Palette, Sparkles, UserRound } from "lucide-react"
-import { useState, type ReactNode } from "react"
+import Link from "next/link"
+import { Check, Headphones, Keyboard, Palette, Sparkles, UserRound, X } from "lucide-react"
+import { useEffect, useState, type ReactNode } from "react"
+import { createPortal } from "react-dom"
 import { useMoriApp } from "./components/mori-app-provider"
 import styles from "./mori-workspace.module.css"
 
@@ -16,28 +18,28 @@ const sections: Array<{ key: SettingsSection; label: string; description: string
 
 export function MoriSettingsPage() {
   const [section, setSection] = useState<SettingsSection>("appearance")
-  const { railCollapsed, setRailCollapsed } = useMoriApp()
-  const [reduceMotion, setReduceMotion] = useState(false)
-  const [rememberTrack, setRememberTrack] = useState(true)
-  const [autoplay, setAutoplay] = useState(false)
-  const [endBehavior, setEndBehavior] = useState<"stop" | "next">("stop")
-  const [defaultMode, setDefaultMode] = useState<"smart" | "custom">("smart")
-  const [lyricsMode, setLyricsMode] = useState<"lyrics" | "instrumental">("lyrics")
-  const [duration, setDuration] = useState("3 minutes")
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null)
+  const { railCollapsed, setRailCollapsed, preferences, updatePreferences } = useMoriApp()
 
-  return (
-    <div className={`${styles.catalogContent} ${styles.settingsPage}`}>
-      <header className={styles.catalogIntro}>
-        <div>
-          <div className={styles.eyebrow}><span className={styles.eyebrowDot} />Workspace</div>
-          <h1 className={styles.catalogTitle}>Settings</h1>
-          <p className={styles.catalogDescription}>A small set of controls for making Mori feel like your own studio.</p>
-        </div>
-      </header>
+  useEffect(() => {
+    const timer = window.setTimeout(() => setPortalTarget(document.body), 0)
+    return () => window.clearTimeout(timer)
+  }, [])
 
-      <div className={styles.settingsLayout}>
+  const settingsWindow = (
+    <div className={styles.settingsPage} data-testid="settings-overlay">
+      <div className={styles.settingsBackdrop} aria-hidden="true" />
+      <section className={styles.settingsWindow} aria-labelledby="mori-settings-title">
         <nav className={styles.settingsNav} aria-label="Settings sections">
-          <span className={styles.settingsNavLabel}>Preferences</span>
+          <div className={styles.settingsNavBrand}>
+            <div className={styles.settingsNavBrandMark} aria-hidden="true">M</div>
+            <div className={styles.settingsNavBrandCopy}>
+              <strong>Mori</strong>
+              <span>Music workspace</span>
+            </div>
+          </div>
+          <div className={styles.settingsNavSection}>
+            <span className={styles.settingsNavLabel}>Preferences</span>
           {sections.map(({ key, label, description, icon: Icon }) => (
             <button
               className={styles.settingsNavItem}
@@ -51,11 +53,25 @@ export function MoriSettingsPage() {
               <span><strong>{label}</strong><small>{description}</small></span>
             </button>
           ))}
+          </div>
           <div className={styles.settingsNavDivider} />
           <div className={styles.settingsNavNote}><Keyboard size={14} aria-hidden="true" /><span>Shortcuts stay in the editor so the studio stays focused.</span></div>
         </nav>
 
-        <section className={styles.settingsMain} aria-live="polite">
+        <div className={styles.settingsWindowContent}>
+          <header className={styles.settingsWindowHeader}>
+            <div className={styles.settingsWindowHeaderCopy}>
+              <div className={styles.eyebrow}><span className={styles.eyebrowDot} />Workspace controls</div>
+              <h1 className={styles.settingsWindowTitle} id="mori-settings-title">Settings</h1>
+              <p>Shape the way Mori creates, plays, and presents your music.</p>
+            </div>
+            <Link className={styles.settingsClose} href="/" aria-label="Back to studio">
+              <span>Back to studio</span>
+              <X size={17} strokeWidth={1.8} aria-hidden="true" />
+            </Link>
+          </header>
+
+          <section className={styles.settingsMain} aria-live="polite">
           {section === "appearance" ? (
             <SettingsPanel icon={Palette} title="Appearance" description="Keep the studio light, quiet, and easy to scan.">
               <SettingRow title="Theme" description="Mori uses a warm light canvas with lavender, peach, and mint accents.">
@@ -74,25 +90,22 @@ export function MoriSettingsPage() {
                 />
               </SettingRow>
               <SettingRow title="Reduce motion" description="Use calmer transitions throughout the workspace.">
-                <Toggle pressed={reduceMotion} onChange={setReduceMotion} label={reduceMotion ? "On" : "Off"} />
+                <Toggle pressed={preferences.reduceMotion} onChange={(value) => updatePreferences({ reduceMotion: value })} label={preferences.reduceMotion ? "On" : "Off"} />
               </SettingRow>
             </SettingsPanel>
           ) : null}
 
           {section === "playback" ? (
             <SettingsPanel icon={Headphones} title="Playback" description="Make listening continuous without getting in the way of creating.">
-              <SettingRow title="Remember last track" description="Return to the last selected song when you come back to Mori.">
-                <Toggle pressed={rememberTrack} onChange={setRememberTrack} label={rememberTrack ? "On" : "Off"} />
-              </SettingRow>
               <SettingRow title="Autoplay new takes" description="Start a newly generated direction as soon as it is ready.">
-                <Toggle pressed={autoplay} onChange={setAutoplay} label={autoplay ? "On" : "Off"} />
+                <Toggle pressed={preferences.autoplay} onChange={(value) => updatePreferences({ autoplay: value })} label={preferences.autoplay ? "On" : "Off"} />
               </SettingRow>
               <SettingRow title="After a track ends" description="Choose what the player should do next.">
                 <SegmentedControl
                   ariaLabel="After a track ends"
-                  value={endBehavior}
+                  value={preferences.endBehavior}
                   options={[{ value: "stop", label: "Stop" }, { value: "next", label: "Play next" }]}
-                  onChange={setEndBehavior}
+                  onChange={(value) => updatePreferences({ endBehavior: value })}
                 />
               </SettingRow>
             </SettingsPanel>
@@ -103,27 +116,27 @@ export function MoriSettingsPage() {
               <SettingRow title="Default mode" description="Smart keeps the first step simple; Custom opens the full control set.">
                 <SegmentedControl
                   ariaLabel="Default creation mode"
-                  value={defaultMode}
+                  value={preferences.defaultMode}
                   options={[{ value: "smart", label: "Smart" }, { value: "custom", label: "Custom" }]}
-                  onChange={setDefaultMode}
+                  onChange={(value) => updatePreferences({ defaultMode: value })}
                 />
               </SettingRow>
               <SettingRow title="Default output" description="Choose whether new directions begin with a vocal or an instrumental arrangement.">
                 <SegmentedControl
                   ariaLabel="Default output"
-                  value={lyricsMode}
+                  value={preferences.lyricsMode}
                   options={[{ value: "lyrics", label: "Lyrics" }, { value: "instrumental", label: "Instrumental" }]}
-                  onChange={setLyricsMode}
+                  onChange={(value) => updatePreferences({ lyricsMode: value })}
                 />
               </SettingRow>
               <SettingRow title="Default duration" description="The initial duration shown in the Create form.">
                 <label className={styles.settingsSelectWrap}>
                   <span className={styles.srOnly}>Default duration</span>
-                  <select className={styles.settingsSelect} value={duration} onChange={(event) => setDuration(event.target.value)}>
-                    <option>2 minutes</option>
-                    <option>3 minutes</option>
-                    <option>4 minutes</option>
-                    <option>5 minutes</option>
+                  <select className={styles.settingsSelect} value={preferences.durationSeconds} onChange={(event) => updatePreferences({ durationSeconds: Number(event.target.value) })}>
+                    <option value="120">2 minutes</option>
+                    <option value="180">3 minutes</option>
+                    <option value="240">4 minutes</option>
+                    <option value="300">5 minutes</option>
                   </select>
                 </label>
               </SettingRow>
@@ -142,12 +155,15 @@ export function MoriSettingsPage() {
               <SettingRow title="Audio ownership" description="Generated audio will be linked to this workspace when the Music owner is connected.">
                 <span className={styles.settingsValue}>Workspace library</span>
               </SettingRow>
-            </SettingsPanel>
-          ) : null}
-        </section>
-      </div>
+              </SettingsPanel>
+            ) : null}
+          </section>
+        </div>
+      </section>
     </div>
   )
+
+  return portalTarget === null ? settingsWindow : createPortal(settingsWindow, portalTarget)
 }
 
 function SettingsPanel({ icon: Icon, title, description, children }: { icon: typeof Palette; title: string; description: string; children: ReactNode }) {

@@ -74,7 +74,7 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
       </div>
 
       <section className={styles.overviewSection} aria-labelledby="directions-heading">
-        <div className={styles.overviewSectionHeader}><div><h2 id="directions-heading">Latest directions</h2><p>Compare the shape of the song before you commit to a version.</p></div><span>2 candidates</span></div>
+        <div className={styles.overviewSectionHeader}><div><h2 id="directions-heading">Latest directions</h2><p>Compare the shape of the song before you commit to a version.</p></div><span>{candidates.length} {candidates.length === 1 ? "candidate" : "candidates"}</span></div>
         <div className={styles.overviewCandidateList}>
           {candidates.map((candidate, index) => (
             <article className={styles.overviewCandidate} key={candidate.candidateRef}>

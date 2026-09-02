@@ -1,7 +1,8 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { useState } from "react"
 import { describe, expect, it, vi } from "vitest"
 import type { MoriApi } from "@/lib/mori-api"
-import { MoriAppProvider } from "./components/mori-app-provider"
+import { MoriAppProvider, useMoriApp } from "./components/mori-app-provider"
 import { MoriWorkspace } from "./mori-workspace"
 
 function renderWorkspace() {
@@ -18,6 +19,7 @@ describe("Mori workspace", () => {
     expect(screen.getByRole("navigation", { name: "Mori" })).toBeInTheDocument()
     expect(screen.getByRole("heading", { name: /make something you can feel/i })).toBeInTheDocument()
     expect(screen.getByRole("tab", { name: /smart/i })).toHaveAttribute("aria-selected", "true")
+    expect(screen.getByRole("link", { name: "First Light" })).toHaveAttribute("href", "/projects/project_preview_first_light")
     expect(screen.queryByRole("region", { name: /generation queue/i })).not.toBeInTheDocument()
     expect(screen.getByRole("region", { name: /global player/i })).toBeInTheDocument()
   })
@@ -28,6 +30,35 @@ describe("Mori workspace", () => {
     expect(screen.getByLabelText(/lyrics or instrumental/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/style/i)).toBeInTheDocument()
     expect(screen.getByRole("button", { name: /reference audio/i })).toBeInTheDocument()
+  })
+
+  it("opens Create with the defaults chosen in Mori settings", () => {
+    function DefaultWorkspaceHarness() {
+      const { updatePreferences } = useMoriApp()
+      const [open, setOpen] = useState(false)
+
+      return (
+        <>
+          <button type="button" onClick={() => {
+            updatePreferences({ defaultMode: "custom", lyricsMode: "instrumental", durationSeconds: 240 })
+            setOpen(true)
+          }}>Open customized Create</button>
+          {open ? <MoriWorkspace /> : null}
+        </>
+      )
+    }
+
+    render(
+      <MoriAppProvider>
+        <DefaultWorkspaceHarness />
+      </MoriAppProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Open customized Create" }))
+
+    expect(screen.getByRole("tab", { name: /custom/i })).toHaveAttribute("aria-selected", "true")
+    expect(screen.getByLabelText("Lyrics or instrumental")).toHaveValue("instrumental")
+    expect(screen.getByLabelText("Duration")).toHaveValue("240")
   })
 
   it("turns creative shortcuts into visible draft actions", () => {

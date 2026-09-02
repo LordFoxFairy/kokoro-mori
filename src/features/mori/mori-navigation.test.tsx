@@ -1,8 +1,9 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { useState } from "react"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
+import { previewCandidates } from "./preview-data"
 import { MoriCatalogShell } from "./components/mori-catalog-shell"
-import { MoriAppProvider } from "./components/mori-app-provider"
+import { MoriAppProvider, useMoriApp } from "./components/mori-app-provider"
 
 describe("Mori application navigation", () => {
   it("keeps product-level destinations in one shared shell", () => {
@@ -134,6 +135,31 @@ describe("Mori application navigation", () => {
     expect(screen.getByRole("link", { name: "Projects" })).toBeVisible()
   })
 
+  it("applies reduce-motion preference at the shared shell", () => {
+    function MotionPreferenceHarness() {
+      const { updatePreferences } = useMoriApp()
+
+      return (
+        <>
+          <button type="button" onClick={() => updatePreferences({ reduceMotion: true })}>Reduce motion</button>
+          <MoriCatalogShell activeKey="home" ariaLabel="Home">
+            <div>Home content</div>
+          </MoriCatalogShell>
+        </>
+      )
+    }
+
+    render(
+      <MoriAppProvider>
+        <MotionPreferenceHarness />
+      </MoriAppProvider>,
+    )
+
+    expect(document.querySelector('[data-reduce-motion="true"]')).toBeNull()
+    fireEvent.click(screen.getByRole("button", { name: "Reduce motion" }))
+    expect(document.querySelector('[data-reduce-motion="true"]')).toBeInTheDocument()
+  })
+
   it("keeps the active track playing while moving between product surfaces", () => {
     function PlayerSurfaceHarness() {
       const [surface, setSurface] = useState<"home" | "library">("home")
@@ -175,5 +201,42 @@ describe("Mori application navigation", () => {
     expect(player).toHaveTextContent("First Light · Afterglow")
     fireEvent.click(screen.getByRole("button", { name: "Previous version" }))
     expect(player).toHaveTextContent("First Light")
+  })
+
+  it("plays the next version when the playback preference is enabled", () => {
+    vi.useFakeTimers()
+
+    try {
+      function PlaybackPreferenceHarness() {
+        const { selectPlayerCandidate, updatePreferences } = useMoriApp()
+
+        return (
+          <>
+            <button type="button" onClick={() => updatePreferences({ endBehavior: "next" })}>Play next at end</button>
+            <button type="button" onClick={() => selectPlayerCandidate({ ...previewCandidates[0], durationSeconds: 2 })}>Use short preview</button>
+            <MoriCatalogShell activeKey="home" ariaLabel="Home">
+              <div>Home content</div>
+            </MoriCatalogShell>
+          </>
+        )
+      }
+
+      render(
+        <MoriAppProvider>
+          <PlaybackPreferenceHarness />
+        </MoriAppProvider>,
+      )
+
+      fireEvent.click(screen.getByRole("button", { name: "Play next at end" }))
+      fireEvent.click(screen.getByRole("button", { name: "Use short preview" }))
+      fireEvent.click(screen.getByRole("button", { name: "Play" }))
+
+      act(() => vi.advanceTimersByTime(2_000))
+
+      expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("First Light · Afterglow")
+      expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react"
 import { AudioLines, ChevronDown, Link2, Mic2, Plus, SlidersHorizontal, Sparkles, WandSparkles } from "lucide-react"
 import type { CreationMode, LyricsMode } from "../domain"
 import { t } from "../copy"
+import { useMoriApp } from "./mori-app-provider"
 import styles from "../mori-workspace.module.css"
 
 export type CreationDraft = {
@@ -21,11 +22,12 @@ type CreateCanvasProps = {
 }
 
 export function CreateCanvas({ mode, onModeChange, onGenerate }: CreateCanvasProps) {
+  const { preferences } = useMoriApp()
   const [prompt, setPrompt] = useState("A warm, late-night track for the drive home, slowly opening into sunrise.")
-  const [lyricsMode, setLyricsMode] = useState<LyricsMode>("lyrics")
+  const [lyricsMode, setLyricsMode] = useState<LyricsMode>(() => preferences.lyricsMode)
   const [style, setStyle] = useState("Dream pop · intimate · organic")
   const [voice, setVoice] = useState("Natural lead")
-  const [durationSeconds, setDurationSeconds] = useState(180)
+  const [durationSeconds, setDurationSeconds] = useState(() => preferences.durationSeconds)
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const [referenceAdded, setReferenceAdded] = useState(false)
   const [moodsOpen, setMoodsOpen] = useState(false)
@@ -111,6 +113,7 @@ export function CreateCanvas({ mode, onModeChange, onGenerate }: CreateCanvasPro
                   <option value={120}>2:00</option>
                   <option value={180}>3:00</option>
                   <option value={240}>4:00</option>
+                  <option value={300}>5:00</option>
                 </select>
               </div>
               <div className={styles.field}>
