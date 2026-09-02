@@ -2543,6 +2543,10 @@
   background: var(--mori-primary-soft);
 }
 
+.rail:not(.railCollapsed) .railToggle {
+  margin-right: -16px;
+}
+
 .railToggle svg {
   width: 17px;
   height: 17px;
