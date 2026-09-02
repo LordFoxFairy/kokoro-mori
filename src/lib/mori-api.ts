@@ -2,7 +2,6 @@ import type { CreationMode, GenerationStatus, LyricsMode, MoriRef } from "@/feat
 
 export type ApiMeta = {
   request_id: string
-  received_at: string
 }
 
 export type ApiSuccess<T> = {
@@ -10,11 +9,17 @@ export type ApiSuccess<T> = {
   meta: ApiMeta
 }
 
+export type ApiErrorDetail = {
+  field: string | null
+  reason: string
+}
+
 export type ApiError = {
   error: {
     code: string
     message: string
     retryable: boolean
+    details: ApiErrorDetail[] | null
   }
   meta: ApiMeta
 }
@@ -30,8 +35,12 @@ export type GenerationCreateInput = {
   lyrics_mode: LyricsMode
 }
 
+export type MoriMutationHeaders = {
+  "Content-Type": "application/json"
+  "Idempotency-Key": string
+}
+
 export type GenerationReceipt = {
-  request_id: string
   generation_ref: MoriRef
   status: Extract<GenerationStatus, "queued" | "preparing" | "generating">
 }
@@ -44,6 +53,7 @@ export type MoriGenerationDraft = {
   mode: CreationMode
   prompt: string
   lyricsMode: LyricsMode
+  lyrics?: string
   style?: string
   referenceAssetRefs?: string[]
   voiceRef?: string
@@ -54,11 +64,23 @@ export function createGenerationRequest(draft: MoriGenerationDraft): GenerationC
   return {
     mode: draft.mode,
     prompt: draft.prompt.trim(),
-    lyrics: draft.lyricsMode === "lyrics" ? null : null,
+    lyrics: draft.lyricsMode === "lyrics" ? draft.lyrics?.trim() || null : null,
     style: draft.style?.trim() || null,
     reference_asset_refs: draft.referenceAssetRefs ?? [],
     voice_ref: draft.voiceRef?.trim() || null,
     duration_seconds: draft.durationSeconds ?? null,
     lyrics_mode: draft.lyricsMode,
+  }
+}
+
+export function createMutationHeaders(idempotencyKey: string): MoriMutationHeaders {
+  const normalizedKey = idempotencyKey.trim()
+  if (!normalizedKey) {
+    throw new Error("idempotency_key_required")
+  }
+
+  return {
+    "Content-Type": "application/json",
+    "Idempotency-Key": normalizedKey,
   }
 }

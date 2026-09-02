@@ -29,7 +29,7 @@ export function createGenerationController(api: MoriApi): GenerationController {
       state = { ...state, status: "preparing", errorCode: null }
       try {
         const response = await api.createGeneration(createGenerationRequest(draft), idempotencyKey)
-        state = receiptState(response.data)
+        state = receiptState(response.data, response.meta.request_id)
       } catch {
         state = { ...state, status: "failed", errorCode: "generation_request_failed" }
       }
@@ -38,10 +38,10 @@ export function createGenerationController(api: MoriApi): GenerationController {
   }
 }
 
-function receiptState(receipt: GenerationReceipt): GenerationControllerState {
+function receiptState(receipt: GenerationReceipt, requestId: string): GenerationControllerState {
   return {
     status: receipt.status,
-    requestId: receipt.request_id,
+    requestId,
     generationRef: receipt.generation_ref,
     errorCode: null,
   }
@@ -51,13 +51,11 @@ export const previewMoriApi: MoriApi = {
   async createGeneration(_input: GenerationCreateInput, idempotencyKey: string) {
     return {
       data: {
-        request_id: `preview-request-${idempotencyKey}`,
         generation_ref: "generation_preview_first_light_next",
         status: "queued",
       },
       meta: {
         request_id: `preview-request-${idempotencyKey}`,
-        received_at: "preview",
       },
     }
   },
