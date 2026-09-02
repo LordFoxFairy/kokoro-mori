@@ -171,7 +171,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api }: St
         : "Export"
 
   const activeProjectRef = projectRef?.trim() || previewProject.projectRef
-  const activeProjectTitle = projectTitle ?? previewProject.title
+  const activeProjectTitle = projectTitle ?? (activeProjectRef === previewProject.projectRef ? previewProject.title : "Project")
 
   return (
     <MoriStudioShell candidate={activeCandidate}>
