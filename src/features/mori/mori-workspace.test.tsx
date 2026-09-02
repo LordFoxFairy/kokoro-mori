@@ -25,6 +25,60 @@ describe("Mori workspace", () => {
     expect(screen.getByRole("region", { name: /global player/i })).toBeInTheDocument()
   })
 
+  it("keeps generation commands inside the requested project", async () => {
+    const createGeneration = vi.fn<MoriApi["createGeneration"]>(async (projectRef) => ({
+      data: { generation_ref: "generation_project_context", status: "queued" as const },
+      meta: { request_id: `request_${projectRef}` },
+    }))
+    const api: Pick<MoriApi, "getProject" | "createSongPlan" | "createGeneration" | "getGeneration" | "getGenerationEvents" | "listCandidates" | "cancelGeneration"> = {
+      getProject: async () => ({
+        data: {
+          project_ref: "project_live_1",
+          title: "Window Seat",
+          description: "A quiet, forward-moving sketch.",
+          current_version_ref: null,
+          candidate_count: 0,
+          last_activity_at: "2026-09-02T12:00:00.000Z",
+        },
+        meta: { request_id: "request_project_context" },
+      }),
+      createSongPlan: async (projectRef, input) => ({
+        data: { ...input, song_plan_ref: "song_plan_project_context", project_ref: projectRef, created_at: "2026-09-02T12:00:00.000Z" },
+        meta: { request_id: "request_project_context_plan" },
+      }),
+      createGeneration,
+      getGeneration: async () => ({
+        data: {
+          generation_ref: "generation_project_context",
+          project_ref: "project_live_1",
+          song_plan_ref: null,
+          mode: "custom" as const,
+          status: "queued" as const,
+          progress: 0,
+          candidate_refs: [],
+          created_at: "2026-09-02T12:00:00.000Z",
+        },
+        meta: { request_id: "request_project_context_status" },
+      }),
+      getGenerationEvents: async () => [],
+      listCandidates: async () => ({ data: { candidates: [], next_cursor: null }, meta: { request_id: "request_project_context_candidates" } }),
+      cancelGeneration: async () => ({ data: { generation_ref: "generation_project_context", status: "cancelled" as const }, meta: { request_id: "request_project_context_cancel" } }),
+    }
+
+    render(
+      <MoriAppProvider>
+        <MoriWorkspace projectRef="project_live_1" api={api} />
+      </MoriAppProvider>,
+    )
+
+    await waitFor(() => expect(screen.getByRole("link", { name: "Window Seat" })).toHaveAttribute("href", "/projects/project_live_1"))
+    fireEvent.click(screen.getByRole("tab", { name: /custom/i }))
+    fireEvent.submit(screen.getByRole("textbox", { name: "Song idea" }).closest("form") as HTMLFormElement)
+
+    await waitFor(() => expect(createGeneration).toHaveBeenCalledOnce())
+    expect(createGeneration).toHaveBeenCalledWith("project_live_1", expect.anything(), expect.stringMatching(/^mori-create-/u))
+  })
+
   it("reveals Custom controls without leaving Create", () => {
     renderWorkspace()
     fireEvent.click(screen.getByRole("tab", { name: /custom/i }))

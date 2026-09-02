@@ -77,7 +77,7 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
           <p>{requestedProject.description}</p>
           <div className={styles.projectOverviewActions}>
             {candidates[0] ? <Link className={styles.generateButton} href={`/projects/${requestedProject.projectRef}/studio/${candidates[0].versionRef}`}><Play size={14} fill="currentColor" /> Open Studio</Link> : null}
-            <Link className={styles.ghostButton} href="/create"><Sparkles size={14} /> New direction</Link>
+            <Link className={styles.ghostButton} href={`/create?project_ref=${encodeURIComponent(requestedProject.projectRef)}`}><Sparkles size={14} /> New direction</Link>
           </div>
         </div>
       </div>
@@ -107,7 +107,7 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
           <div className={styles.libraryEmptyIcon}><Sparkles size={18} /></div>
           <strong>No directions yet</strong>
           <p>Shape the first direction for this project, then compare versions here.</p>
-          <Link className={styles.ghostButton} href="/create">Create a direction</Link>
+          <Link className={styles.ghostButton} href={`/create?project_ref=${encodeURIComponent(requestedProject.projectRef)}`}>Create a direction</Link>
         </div>}
       </section>
 

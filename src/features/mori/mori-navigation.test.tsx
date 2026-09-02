@@ -177,6 +177,45 @@ describe("Mori application navigation", () => {
     }
   })
 
+  it("keeps new creation inside the current project context", async () => {
+    const originalPath = window.location.pathname
+    window.history.pushState({}, "", "/projects/project_live_1/studio/version_live_1")
+
+    try {
+      render(
+        <MoriAppProvider>
+          <MoriCatalogShell activeKey="projects" ariaLabel="Studio">
+            <div>Studio content</div>
+          </MoriCatalogShell>
+        </MoriAppProvider>,
+      )
+
+      await waitFor(() => expect(screen.getByRole("link", { name: "New creation" })).toHaveAttribute("href", "/create?project_ref=project_live_1"))
+    } finally {
+      window.history.pushState({}, "", originalPath)
+    }
+  })
+
+  it("carries project context through the Create route", async () => {
+    const originalUrl = window.location.href
+    window.history.pushState({}, "", "/create?project_ref=project_live_1")
+
+    try {
+      render(
+        <MoriAppProvider>
+          <MoriCatalogShell activeKey="create" ariaLabel="Create">
+            <div>Create content</div>
+          </MoriCatalogShell>
+        </MoriAppProvider>,
+      )
+
+      await waitFor(() => expect(screen.getByRole("link", { name: "New creation" })).toHaveAttribute("href", "/create?project_ref=project_live_1"))
+      expect(screen.getByRole("link", { name: "Create" })).toHaveAttribute("href", "/create?project_ref=project_live_1")
+    } finally {
+      window.history.pushState({}, "", originalUrl)
+    }
+  })
+
   it("marks the current utility surface in the rail", () => {
     render(
       <MoriAppProvider>

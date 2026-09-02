@@ -16,7 +16,8 @@ import { MoriAppShell } from "./components/mori-app-shell"
 import styles from "./mori-workspace.module.css"
 
 type MoriWorkspaceProps = {
-  api?: Pick<MoriApi, "createSongPlan" | "createGeneration" | "getGeneration" | "getGenerationEvents" | "listCandidates" | "cancelGeneration">
+  projectRef?: string
+  api?: Pick<MoriApi, "createSongPlan" | "createGeneration" | "getGeneration" | "getGenerationEvents" | "listCandidates" | "cancelGeneration"> & Partial<Pick<MoriApi, "getProject">>
 }
 
 type GenerationAttempt = {
@@ -24,20 +25,23 @@ type GenerationAttempt = {
   draft: CreationDraft
 }
 
-export function MoriWorkspace({ api: injectedApi }: MoriWorkspaceProps = {}) {
+export function MoriWorkspace({ projectRef: requestedProjectRef, api: injectedApi }: MoriWorkspaceProps = {}) {
+  const workspaceProjectRef = requestedProjectRef?.trim() || previewProject.projectRef
+  const initialCandidates = workspaceProjectRef === previewProject.projectRef ? previewCandidates : []
   const { playing, playerCandidate, setPlaying, togglePlaying, selectPlayerCandidate, preferences } = useMoriApp()
   const [modeOverride, setModeOverride] = useState<CreationMode | null>(null)
   const [queueOpen, setQueueOpen] = useState(false)
-  const [candidates, setCandidates] = useState(previewCandidates)
+  const [candidates, setCandidates] = useState(initialCandidates)
   const [songPlan, setSongPlan] = useState(previewSongPlan)
-  const [currentVersionRef, setCurrentVersionRef] = useState(previewProject.currentVersionRef)
-  const [selectedCandidateRef, setSelectedCandidateRef] = useState(previewCandidates[0].candidateRef)
+  const [currentVersionRef, setCurrentVersionRef] = useState(workspaceProjectRef === previewProject.projectRef ? previewProject.currentVersionRef : "")
+  const [selectedCandidateRef, setSelectedCandidateRef] = useState(initialCandidates[0]?.candidateRef ?? "")
   const [generationStatus, setGenerationStatus] = useState<GenerationStatus>(previewGeneration.status)
   const [generationLabel, setGenerationLabel] = useState(previewGeneration.label)
   const [progress, setProgress] = useState(previewGeneration.progress)
   const [generationRef, setGenerationRef] = useState<string | null>(null)
   const [lastGenerationAttempt, setLastGenerationAttempt] = useState<GenerationAttempt | null>(null)
   const [shareFeedback, setShareFeedback] = useState(false)
+  const [workspaceProjectTitle, setWorkspaceProjectTitle] = useState(workspaceProjectRef === previewProject.projectRef ? previewProject.title : "Project")
   const defaultApi = useMemo(() => createMoriApiClient(), [])
   const api = injectedApi ?? defaultApi
   const mode = modeOverride ?? preferences.defaultMode
@@ -48,6 +52,21 @@ export function MoriWorkspace({ api: injectedApi }: MoriWorkspaceProps = {}) {
     progress,
     candidateRefs: candidates.map((candidate) => candidate.candidateRef),
   }), [candidates, generationLabel, generationStatus, progress])
+
+  useEffect(() => {
+    if (workspaceProjectRef === previewProject.projectRef || api.getProject === undefined) return
+    let disposed = false
+
+    void api.getProject(workspaceProjectRef).then((response) => {
+      if (!disposed) setWorkspaceProjectTitle(response.data.title)
+    }).catch(() => {
+      // The neutral Project label keeps creation usable while the projection is unavailable.
+    })
+
+    return () => {
+      disposed = true
+    }
+  }, [api, workspaceProjectRef])
 
   const handleGenerate = useCallback(async (draft: CreationDraft, generationMode = mode) => {
     setLastGenerationAttempt({ mode: generationMode, draft })
@@ -60,9 +79,9 @@ export function MoriWorkspace({ api: injectedApi }: MoriWorkspaceProps = {}) {
     try {
       let songPlanRef: string | undefined
       if (generationMode === "smart") {
-        const draftPlan = draft.songPlan ?? buildSongPlan(previewProject.projectRef, draft)
+        const draftPlan = draft.songPlan ?? buildSongPlan(workspaceProjectRef, draft)
         const planResponse = await api.createSongPlan(
-          previewProject.projectRef,
+          workspaceProjectRef,
           toSongPlanCreateInput(draftPlan),
           `mori-plan-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         )
@@ -70,7 +89,7 @@ export function MoriWorkspace({ api: injectedApi }: MoriWorkspaceProps = {}) {
         setSongPlan(toDomainSongPlan(planResponse.data))
       }
       const response = await api.createGeneration(
-        previewProject.projectRef,
+        workspaceProjectRef,
         createGenerationRequest({
           mode: generationMode,
           prompt: draft.prompt,
@@ -93,7 +112,7 @@ export function MoriWorkspace({ api: injectedApi }: MoriWorkspaceProps = {}) {
       setGenerationLabel(generationFailureLabel(error))
       setProgress(0)
     }
-  }, [api, mode, setPlaying])
+  }, [api, mode, setPlaying, workspaceProjectRef])
 
   const retryLastGeneration = useCallback(() => {
     if (lastGenerationAttempt === null) return
@@ -227,7 +246,7 @@ export function MoriWorkspace({ api: injectedApi }: MoriWorkspaceProps = {}) {
         <div className={`${styles.workspaceLayout} ${queueOpen ? styles.workspaceLayoutWithDrawer : ""}`}>
           <section className={styles.createSurface} aria-label="Create canvas">
             <header className={styles.canvasHeader}>
-              <div className={styles.breadcrumb}><span>Workspace</span><span>/</span><Link className={styles.breadcrumbLink} href={`/projects/${previewProject.projectRef}`}>{previewProject.title}</Link><span>/</span><strong>New creation</strong></div>
+              <div className={styles.breadcrumb}><span>Workspace</span><span>/</span><Link className={styles.breadcrumbLink} href={`/projects/${encodeURIComponent(workspaceProjectRef)}`}>{workspaceProjectTitle}</Link><span>/</span><strong>New creation</strong></div>
               <div className={styles.headerActions}>
                 <button className={styles.queueButton} type="button" onClick={() => setQueueOpen((value) => !value)} aria-expanded={queueOpen} aria-label={queueOpen ? "Hide generation queue" : "Open generation queue"}>
                   <PanelRight size={14} /> <span>Queue</span><b>{currentCandidates.length}</b>
@@ -236,7 +255,7 @@ export function MoriWorkspace({ api: injectedApi }: MoriWorkspaceProps = {}) {
               </div>
             </header>
             <div className={styles.canvasBody}>
-              <CreateCanvas projectRef={previewProject.projectRef} mode={mode} onModeChange={setModeOverride} onGenerate={handleGenerate} />
+              <CreateCanvas projectRef={workspaceProjectRef} mode={mode} onModeChange={setModeOverride} onGenerate={handleGenerate} />
             </div>
           </section>
 

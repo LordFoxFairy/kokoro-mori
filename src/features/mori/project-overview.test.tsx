@@ -95,7 +95,7 @@ describe("Mori project overview", () => {
 
     await waitFor(() => expect(screen.getByRole("heading", { name: "Rain Room" })).toBeInTheDocument())
     expect(screen.getByText("No directions yet")).toBeInTheDocument()
-    expect(screen.getByRole("link", { name: "Create a direction" })).toHaveAttribute("href", "/create")
+    expect(screen.getByRole("link", { name: "Create a direction" })).toHaveAttribute("href", "/create?project_ref=project_empty_1")
     expect(screen.queryByRole("link", { name: "Open Studio" })).not.toBeInTheDocument()
   })
 
