@@ -27,6 +27,7 @@ export type ApiError = {
 export type GenerationCreateInput = {
   mode: CreationMode
   prompt: string
+  song_plan_ref: MoriRef | null
   lyrics: string | null
   style: string | null
   reference_asset_refs: string[]
@@ -52,6 +53,7 @@ export type MoriApi = {
 export type MoriGenerationDraft = {
   mode: CreationMode
   prompt: string
+  songPlanRef?: MoriRef
   lyricsMode: LyricsMode
   lyrics?: string
   style?: string
@@ -64,6 +66,7 @@ export function createGenerationRequest(draft: MoriGenerationDraft): GenerationC
   return {
     mode: draft.mode,
     prompt: draft.prompt.trim(),
+    song_plan_ref: draft.songPlanRef?.trim() || null,
     lyrics: draft.lyricsMode === "lyrics" ? draft.lyrics?.trim() || null : null,
     style: draft.style?.trim() || null,
     reference_asset_refs: draft.referenceAssetRefs ?? [],

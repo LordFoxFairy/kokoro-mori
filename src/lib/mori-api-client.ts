@@ -30,7 +30,7 @@ export class MoriApiRequestError extends Error {
 }
 
 export function createMoriApiClient(options: MoriApiClientOptions = {}): MoriApi {
-  const apiBasePath = (options.apiBasePath ?? "/api/v1").replace(/\/$/, "")
+  const apiBasePath = (options.apiBasePath ?? "/api/v1/mori").replace(/\/$/, "")
   const fetchImpl = options.fetchImpl ?? fetch
 
   return {

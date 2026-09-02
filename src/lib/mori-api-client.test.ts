@@ -23,7 +23,7 @@ describe("Mori same-origin API client", () => {
       "idem-1",
     )
 
-    expect(capturedUrl).toBe("/api/v1/projects/project_preview_first_light/generations")
+    expect(capturedUrl).toBe("/api/v1/mori/projects/project_preview_first_light/generations")
     expect(capturedInit?.method).toBe("POST")
     expect(capturedInit?.headers).toEqual({
       "Content-Type": "application/json",
@@ -32,6 +32,7 @@ describe("Mori same-origin API client", () => {
     expect(JSON.parse(String(capturedInit?.body))).toEqual({
       mode: "smart",
       prompt: "a quiet morning",
+      song_plan_ref: null,
       lyrics: null,
       style: null,
       reference_asset_refs: [],
@@ -59,6 +60,7 @@ describe("Mori same-origin API client", () => {
     await expect(api.createGeneration("project_preview_first_light", {
       mode: "smart",
       prompt: "morning",
+      song_plan_ref: null,
       lyrics: null,
       style: null,
       reference_asset_refs: [],

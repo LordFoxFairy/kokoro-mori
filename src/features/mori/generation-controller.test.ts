@@ -8,6 +8,7 @@ describe("Mori generation contract seam", () => {
     const request = createGenerationRequest({
       mode: "custom",
       prompt: "  a soft sunrise  ",
+      songPlanRef: "song_plan_preview_first_light",
       lyricsMode: "lyrics",
       lyrics: "  we carry the morning through  ",
       style: "dream pop",
@@ -19,6 +20,7 @@ describe("Mori generation contract seam", () => {
     expect(request).toEqual({
       mode: "custom",
       prompt: "a soft sunrise",
+      song_plan_ref: "song_plan_preview_first_light",
       lyrics: "we carry the morning through",
       style: "dream pop",
       reference_asset_refs: ["asset_preview_reference"],
