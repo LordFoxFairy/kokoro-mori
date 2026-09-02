@@ -1,0 +1,15 @@
+export const MORI_TOKENS = Object.freeze({
+  background: "#FBFAF8",
+  surface: "#FFFFFF",
+  foreground: "#25252A",
+  muted: "#77747B",
+  border: "#EAE7E3",
+  lavender: "#EDE9FE",
+  peach: "#FDE7DA",
+  mint: "#E7F6EF",
+  primary: "#6D5CE7",
+  primarySoft: "#F0EDFF",
+  success: "#3D9B72",
+  warning: "#C58A32",
+  error: "#C95555",
+})
