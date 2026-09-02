@@ -80,7 +80,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api }: St
 
   const preview = () => {
     if (activeCandidate === null) return
-    if (playerCandidate.versionRef === activeCandidate.versionRef) {
+    if (playerCandidate?.versionRef === activeCandidate.versionRef) {
       setPlaying(!playing)
       return
     }
@@ -93,7 +93,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api }: St
   }
 
   const previewTake = (take: Candidate) => {
-    if (playerCandidate.versionRef === take.versionRef) {
+    if (playerCandidate?.versionRef === take.versionRef) {
       setPlaying(!playing)
       return
     }
@@ -199,8 +199,8 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api }: St
           <div className={styles.studioSidebarBottom}><span>Version</span><strong>{activeCandidate.versionRef}</strong></div>
         </aside>
         <section className={styles.studioCanvas} aria-label="Studio editor">
-          <div className={styles.studioCanvasTop}><div><span className={styles.eyebrow}><span className={styles.eyebrowDot} />Editing with intention</span><h2>Shape the feeling.</h2></div><button className={styles.generateButton} type="button" onClick={preview}><Play size={14} fill="currentColor" /> {playerCandidate.versionRef === activeCandidate.versionRef && playing ? "Pause" : "Preview"}</button></div>
-          {activeTool === "arrangement" ? <ArrangementEditor candidate={activeCandidate} takes={studioCandidates} currentVersionRef={currentVersionRef} playerVersionRef={playerCandidate.versionRef} playing={playing} onSelectTake={selectTake} onPreviewTake={previewTake} onPromoteTake={promoteTake} /> : null}
+          <div className={styles.studioCanvasTop}><div><span className={styles.eyebrow}><span className={styles.eyebrowDot} />Editing with intention</span><h2>Shape the feeling.</h2></div><button className={styles.generateButton} type="button" onClick={preview}><Play size={14} fill="currentColor" /> {playerCandidate?.versionRef === activeCandidate.versionRef && playing ? "Pause" : "Preview"}</button></div>
+          {activeTool === "arrangement" ? <ArrangementEditor candidate={activeCandidate} takes={studioCandidates} currentVersionRef={currentVersionRef} playerVersionRef={playerCandidate?.versionRef ?? ""} playing={playing} onSelectTake={selectTake} onPreviewTake={previewTake} onPromoteTake={promoteTake} /> : null}
           {activeTool === "lyrics" ? <LyricsEditor key={activeCandidate.versionRef} versionRef={activeCandidate.versionRef} /> : null}
           {activeTool === "stems" ? <StemsEditor /> : null}
         </section>

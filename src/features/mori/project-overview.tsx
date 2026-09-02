@@ -17,7 +17,7 @@ type ProjectOverviewPageContentProps = {
 }
 
 export function ProjectOverviewPageContent({ projectRef = previewProject.projectRef, api }: ProjectOverviewPageContentProps = {}) {
-  const { playerCandidate, playing, selectPlayerCandidate, setPlaying } = useMoriApp()
+  const { clearPlayerCandidate, playerCandidate, playing, selectPlayerCandidate, setPlaying } = useMoriApp()
   const defaultApi = useMemo(() => createMoriApiClient(), [])
   const overviewApi = api ?? defaultApi
   const initialProjectRef = projectRef.trim() || previewProject.projectRef
@@ -43,18 +43,22 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
     })
 
     void overviewApi.listCandidates(requestedProjectRef).then((candidatesResponse) => {
-      if (!disposed) setCandidateState({ projectRef: requestedProjectRef, value: candidatesResponse.data.candidates.map(toDomainCandidate) })
+      if (disposed) return
+      const nextCandidates = candidatesResponse.data.candidates.map(toDomainCandidate)
+      setCandidateState({ projectRef: requestedProjectRef, value: nextCandidates })
+      if (requestedProjectRef !== previewProject.projectRef && nextCandidates.length === 0) clearPlayerCandidate()
     }).catch(() => {
+      if (!disposed && requestedProjectRef !== previewProject.projectRef) clearPlayerCandidate()
       // Never attach preview candidates to a live project when its projection is unavailable.
     })
 
     return () => {
       disposed = true
     }
-  }, [overviewApi, projectRef])
+  }, [clearPlayerCandidate, overviewApi, projectRef])
 
   function playCandidate(candidate: (typeof previewCandidates)[number]) {
-    if (playerCandidate.candidateRef === candidate.candidateRef) {
+    if (playerCandidate?.candidateRef === candidate.candidateRef) {
       setPlaying(!playing)
       return
     }
@@ -90,8 +94,8 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
         {candidates.length > 0 ? <div className={styles.overviewCandidateList}>
             {candidates.map((candidate, index) => (
             <article className={styles.overviewCandidate} key={candidate.candidateRef}>
-              <button className={`${styles.candidateArtwork} ${styles.overviewCandidateArtwork} ${index === 1 ? styles.candidateArtworkAlt : ""}`} type="button" onClick={() => playCandidate(candidate)} aria-label={`${playerCandidate.candidateRef === candidate.candidateRef && playing ? "Pause" : "Play"} ${candidate.title}`}>
-                <Play size={14} fill={playerCandidate.candidateRef === candidate.candidateRef && playing ? "currentColor" : "none"} />
+              <button className={`${styles.candidateArtwork} ${styles.overviewCandidateArtwork} ${index === 1 ? styles.candidateArtworkAlt : ""}`} type="button" onClick={() => playCandidate(candidate)} aria-label={`${playerCandidate?.candidateRef === candidate.candidateRef && playing ? "Pause" : "Play"} ${candidate.title}`}>
+                <Play size={14} fill={playerCandidate?.candidateRef === candidate.candidateRef && playing ? "currentColor" : "none"} />
               </button>
               <div className={styles.overviewCandidateInfo}><strong>{candidate.title}</strong><span>{candidate.subtitle}</span></div>
               <div className={styles.overviewCandidateWave}><Waveform seed={candidate.waveformSeed} compact progress={index === 0 ? 0.8 : 0.48} /></div>

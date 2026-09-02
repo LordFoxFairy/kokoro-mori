@@ -84,7 +84,7 @@ export function LibraryPageContent({ api }: LibraryPageContentProps = {}) {
     const libraryItem = libraryItems.find((item): item is Extract<LibraryItem, { kind: "version" }> => item.kind === "version" && item.ref === versionRef)
     const candidate = previewCandidates.find((item) => item.versionRef === versionRef) ?? (libraryItem ? toPlayerCandidate(libraryItem) : null)
     if (!candidate) return
-    if (playerCandidate.versionRef === candidate.versionRef) {
+    if (playerCandidate?.versionRef === candidate.versionRef) {
       setPlaying(!playing)
       return
     }
@@ -110,7 +110,7 @@ export function LibraryPageContent({ api }: LibraryPageContentProps = {}) {
           {items.map((item) => {
             const isProject = item.kind === "project"
             const versionPath = isProject ? `/projects/${item.ref}` : `/projects/${item.projectRef}/studio/${item.ref}`
-            const active = !isProject && playerCandidate.versionRef === item.ref
+            const active = !isProject && playerCandidate?.versionRef === item.ref
             return (
               <article className={styles.libraryRow} key={item.ref}>
                 <div className={`${styles.libraryArtwork} ${item.accent === "peach" ? styles.libraryArtworkPeach : item.accent === "mint" ? styles.libraryArtworkMint : ""}`}>

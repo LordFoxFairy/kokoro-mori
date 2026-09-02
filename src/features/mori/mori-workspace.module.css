@@ -3585,8 +3585,23 @@
   border-radius: 14px;
 }
 
+.playerArtworkEmpty {
+  display: grid;
+  place-items: center;
+  color: var(--mori-faint);
+  border: 1px dashed var(--mori-border-strong);
+  background: linear-gradient(145deg, #faf9fc, #fff8f1);
+}
+
 .playerInfo strong {
   font-size: 12px;
+}
+
+.playerEmptyProgress {
+  grid-column: 1 / -1;
+  color: var(--mori-faint);
+  font-size: 10px;
+  text-align: center;
 }
 
 .playerControls {
@@ -3602,6 +3617,21 @@
 .playerButtonPrimary {
   width: 44px;
   height: 44px;
+}
+
+.playerButton:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.playerButton:disabled:hover {
+  color: var(--mori-muted);
+  background: transparent;
+}
+
+.playerButtonPrimary:disabled:hover {
+  color: #fff;
+  background: var(--mori-primary);
 }
 
 .playerTool {

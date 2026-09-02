@@ -12,13 +12,15 @@ type MoriStudioShellProps = {
 }
 
 export function MoriStudioShell({ candidate, children }: MoriStudioShellProps) {
-  const { selectPlayerCandidate } = useMoriApp()
+  const { clearPlayerCandidate, selectPlayerCandidate } = useMoriApp()
 
   useEffect(() => {
-    if (candidate === null) return
-    const selectionTimer = window.setTimeout(() => selectPlayerCandidate(candidate), 0)
+    const selectionTimer = window.setTimeout(() => {
+      if (candidate === null) clearPlayerCandidate()
+      else selectPlayerCandidate(candidate)
+    }, 0)
     return () => window.clearTimeout(selectionTimer)
-  }, [candidate, selectPlayerCandidate])
+  }, [candidate, clearPlayerCandidate, selectPlayerCandidate])
 
   return (
     <MoriAppShell

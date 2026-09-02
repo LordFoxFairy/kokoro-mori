@@ -255,7 +255,7 @@ export function MoriWorkspace({ api: injectedApi }: MoriWorkspaceProps = {}) {
             onRetry={retryLastGeneration}
             onPlay={(candidate) => {
               setSelectedCandidateRef(candidate.candidateRef)
-              if (playerCandidate.candidateRef === candidate.candidateRef) togglePlaying()
+              if (playerCandidate?.candidateRef === candidate.candidateRef) togglePlaying()
               else { selectPlayerCandidate(candidate); setPlaying(true) }
             }}
             onClose={() => setQueueOpen(false)}

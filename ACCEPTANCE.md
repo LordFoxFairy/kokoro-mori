@@ -71,6 +71,8 @@ Settings 已收敛为 Mori 自身需要的四组能力：Appearance、Playback�
 音乐产品；音乐偏好和桌面 Rail 展开状态会保存在当前浏览器中，刷新后仍保持。Create 会在偏好
 hydration 完成后同步默认模式、输出类型和时长。全局 Rail 不再放置难以理解的 Current project 卡片，项目入口统一回到 Projects，
 具体项目上下文只在 Project Overview 和 Studio 中出现；从任意 Mori 工作区打开 Settings 后，关闭入口会回到来源路径；请求不存在的 Studio 版本时显示明确的 unavailable 状态，不回退到 First Light fixture。
+当实时项目没有可播放版本或 Studio 版本失效时，Global Player 保留固定 dock 的空间，但展示
+Nothing playing 和下一步提示，播放、跳转、静音等依赖版本的控制会明确禁用。
 
 本轮改动范围仅为 `kokoro-mori`；未修改 BFF、`kokoro-app` 或其他服务仓库。
 

@@ -29,7 +29,8 @@ type MoriAppContextValue = {
   railCollapsed: boolean
   toggleRail: () => void
   setRailCollapsed: (collapsed: boolean) => void
-  playerCandidate: Candidate
+  playerCandidate: Candidate | null
+  clearPlayerCandidate: () => void
   playing: boolean
   muted: boolean
   positionSeconds: number
@@ -51,7 +52,7 @@ export function MoriAppProvider({ children }: { children: ReactNode }) {
   const [railLoaded, setRailLoaded] = useState(false)
   const [preferences, setPreferences] = useState<MoriPreferences>(defaultPreferences)
   const [preferencesLoaded, setPreferencesLoaded] = useState(false)
-  const [playerCandidate, setPlayerCandidate] = useState(previewCandidates[0])
+  const [playerCandidate, setPlayerCandidate] = useState<Candidate | null>(previewCandidates[0])
   const [playerCandidates, setPlayerCandidates] = useState(previewCandidates)
   const [playing, setPlaying] = useState(false)
   const [muted, setMuted] = useState(false)
@@ -64,10 +65,16 @@ export function MoriAppProvider({ children }: { children: ReactNode }) {
   const toggleMuted = useCallback(() => setMuted((value) => !value), [])
   const seekPlayer = useCallback((position: number) => {
     if (!Number.isFinite(position)) return
+    if (playerCandidate === null) return
     setPositionSeconds(Math.max(0, Math.min(playerCandidate.durationSeconds, Math.round(position))))
-  }, [playerCandidate.durationSeconds])
+  }, [playerCandidate])
   const updatePreferences = useCallback((patch: Partial<MoriPreferences>) => {
     setPreferences((current) => ({ ...current, ...patch }))
+  }, [])
+  const clearPlayerCandidate = useCallback(() => {
+    setPlayerCandidate(null)
+    setPlaying(false)
+    setPositionSeconds(0)
   }, [])
 
   useEffect(() => {
@@ -113,12 +120,12 @@ export function MoriAppProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const previousPlayerCandidate = useCallback(() => {
-    setPlayerCandidate((candidate) => stepCandidate(candidate, playerCandidates, -1))
+    setPlayerCandidate((candidate) => candidate === null ? null : stepCandidate(candidate, playerCandidates, -1))
     setPositionSeconds(0)
   }, [playerCandidates])
 
   const nextPlayerCandidate = useCallback(() => {
-    setPlayerCandidate((candidate) => stepCandidate(candidate, playerCandidates, 1))
+    setPlayerCandidate((candidate) => candidate === null ? null : stepCandidate(candidate, playerCandidates, 1))
     setPositionSeconds(0)
   }, [playerCandidates])
 
@@ -137,6 +144,10 @@ export function MoriAppProvider({ children }: { children: ReactNode }) {
     if (!playing) return
     const timer = window.setInterval(() => {
       const current = playbackRef.current
+      if (current.candidate === null) {
+        setPlaying(false)
+        return
+      }
       const nextPosition = current.positionSeconds + 1
       if (nextPosition < current.candidate.durationSeconds) {
         current.positionSeconds = nextPosition
@@ -162,6 +173,7 @@ export function MoriAppProvider({ children }: { children: ReactNode }) {
     toggleRail,
     setRailCollapsed,
     playerCandidate,
+    clearPlayerCandidate,
     playing,
     muted,
     positionSeconds,
@@ -174,7 +186,7 @@ export function MoriAppProvider({ children }: { children: ReactNode }) {
     nextPlayerCandidate,
     preferences,
     updatePreferences,
-  }), [muted, nextPlayerCandidate, playerCandidate, playing, positionSeconds, preferences, previousPlayerCandidate, railCollapsed, seekPlayer, selectPlayerCandidate, setRailCollapsed, toggleMuted, togglePlaying, toggleRail, updatePreferences])
+  }), [clearPlayerCandidate, muted, nextPlayerCandidate, playerCandidate, playing, positionSeconds, preferences, previousPlayerCandidate, railCollapsed, seekPlayer, selectPlayerCandidate, setRailCollapsed, toggleMuted, togglePlaying, toggleRail, updatePreferences])
 
   return <MoriAppContext.Provider value={value}>{children}</MoriAppContext.Provider>
 }

@@ -129,5 +129,6 @@ describe("Mori project overview", () => {
     expect(screen.getByText("A restrained electronic study.")).toBeInTheDocument()
     expect(screen.getByText("No directions yet")).toBeInTheDocument()
     expect(screen.queryByRole("link", { name: "Open Studio" })).not.toBeInTheDocument()
+    expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("Nothing playing")
   })
 })
