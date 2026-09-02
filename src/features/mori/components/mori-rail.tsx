@@ -20,7 +20,7 @@ const navigation = [
 
 export function MoriRail({ project, activeKey = "create", collapsed = false }: MoriRailProps) {
   return (
-    <nav className={`${styles.rail} ${collapsed ? styles.railCollapsed : ""}`} aria-label="Mori">
+    <nav className={`${styles.rail} ${collapsed ? styles.railCollapsed : ""}`} aria-label="Mori" data-rail-state={collapsed ? "collapsed" : "expanded"}>
       <div className={styles.brandRow}>
         <div className={styles.brandMark} aria-hidden="true">M</div>
         <span className={styles.brandName}>Mori</span>

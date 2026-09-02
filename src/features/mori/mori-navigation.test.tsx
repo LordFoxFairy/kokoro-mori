@@ -54,6 +54,32 @@ describe("Mori application navigation", () => {
     }
   })
 
+  it("locks the page behind the expanded mobile rail", async () => {
+    const originalWidth = window.innerWidth
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 390 })
+
+    try {
+      render(
+        <MoriAppProvider>
+          <MoriCatalogShell activeKey="library" ariaLabel="Library">
+            <div>Library content</div>
+          </MoriCatalogShell>
+        </MoriAppProvider>,
+      )
+      await waitFor(() => expect(screen.getByRole("button", { name: "Expand sidebar" })).toBeInTheDocument())
+
+      fireEvent.click(screen.getByRole("button", { name: "Expand sidebar" }))
+      await waitFor(() => expect(document.body.style.overflow).toBe("hidden"))
+
+      fireEvent.keyDown(window, { key: "Escape" })
+      await waitFor(() => expect(document.body.style.overflow).toBe(""))
+      expect(screen.getByRole("button", { name: "Expand sidebar" })).toBeInTheDocument()
+    } finally {
+      document.body.style.overflow = ""
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: originalWidth })
+    }
+  })
+
   it("persists the rail state while moving between product surfaces", () => {
     function SurfaceHarness() {
       const [surface, setSurface] = useState<"home" | "library">("home")
@@ -78,6 +104,21 @@ describe("Mori application navigation", () => {
     fireEvent.click(screen.getByRole("button", { name: "Switch surface" }))
 
     expect(screen.getByRole("button", { name: /expand sidebar/i })).toBeInTheDocument()
+  })
+
+  it("keeps the current project reachable when the rail is collapsed", () => {
+    render(
+      <MoriAppProvider>
+        <MoriCatalogShell activeKey="library" ariaLabel="Library">
+          <div>Library content</div>
+        </MoriCatalogShell>
+      </MoriAppProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: /collapse sidebar/i }))
+
+    expect(screen.getByRole("navigation", { name: "Mori" })).toHaveAttribute("data-rail-state", "collapsed")
+    expect(screen.getByRole("link", { name: "Open First Light project" })).toBeVisible()
   })
 
   it("keeps the active track playing while moving between product surfaces", () => {

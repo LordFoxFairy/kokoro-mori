@@ -60,8 +60,8 @@
   top: 39px;
   left: calc(var(--mori-rail-width) - 8px);
   display: grid;
-  width: 24px;
-  height: 24px;
+  width: 32px;
+  height: 32px;
   place-items: center;
   border: 1px solid var(--mori-border);
   border-radius: 50%;
@@ -150,6 +150,17 @@
 .navItemActive {
   color: var(--mori-foreground);
   background: var(--mori-primary-soft);
+}
+
+.navItem:focus-visible,
+.projectMini:focus-visible,
+.railFooterLink:focus-visible,
+.newButton:focus-visible,
+.railToggleGlobal:focus-visible,
+.playerButton:focus-visible,
+.playerTool:focus-visible {
+  outline: 3px solid rgba(109, 92, 231, 0.3);
+  outline-offset: 2px;
 }
 
 .navItemActive {
@@ -2297,7 +2308,6 @@
 .railCollapsed .newButton span,
 .railCollapsed .navLabel,
 .railCollapsed .navItem span,
-.railCollapsed .projectMini,
 .railCollapsed .railFooterLink span {
   display: none;
 }
@@ -2315,6 +2325,33 @@
 .railCollapsed .railFooterLink {
   justify-content: center;
   padding-inline: 0;
+}
+
+.railCollapsed .projectMini {
+  display: block;
+  margin-top: 22px;
+  padding: 5px;
+  border-color: transparent;
+  background: transparent;
+}
+
+.railCollapsed .projectMini:hover {
+  border-color: var(--mori-border);
+  background: var(--mori-primary-soft);
+}
+
+.railCollapsed .projectMiniHeader,
+.railCollapsed .miniArtworkText {
+  display: none;
+}
+
+.railCollapsed .projectMiniCover {
+  justify-content: center;
+}
+
+.railCollapsed .miniArtwork {
+  width: 42px;
+  height: 42px;
 }
 
 .surface {
@@ -2449,12 +2486,24 @@
   grid-row: auto;
   width: 100%;
   min-height: 64px;
+  position: relative;
+  overflow: hidden;
   padding: 9px 13px 9px 15px;
   border: 1px solid rgba(234, 231, 227, 0.96);
   border-radius: 17px;
-  background: rgba(255, 255, 255, 0.93);
+  background: linear-gradient(102deg, rgba(255, 255, 255, 0.97), rgba(248, 245, 255, 0.95) 62%, rgba(255, 247, 239, 0.95));
   box-shadow: 0 16px 38px rgba(62, 45, 86, 0.13);
   backdrop-filter: blur(22px);
+}
+
+.player::before {
+  position: absolute;
+  top: 0;
+  right: 18%;
+  left: 18%;
+  height: 2px;
+  content: "";
+  background: linear-gradient(90deg, transparent, rgba(109, 92, 231, 0.62), rgba(230, 156, 120, 0.66), transparent);
 }
 
 .playerTool {
@@ -2724,6 +2773,37 @@
 
   .globalPlayerSlot {
     left: 14px;
+  }
+}
+
+@media (min-width: 701px) and (max-width: 900px) {
+  .appShell:not([data-rail-collapsed="true"]) .brandRow {
+    justify-content: flex-start;
+    padding-inline: 8px;
+  }
+
+  .appShell:not([data-rail-collapsed="true"]) .brandName,
+  .appShell:not([data-rail-collapsed="true"]) .newButton span,
+  .appShell:not([data-rail-collapsed="true"]) .navLabel,
+  .appShell:not([data-rail-collapsed="true"]) .navItem span,
+  .appShell:not([data-rail-collapsed="true"]) .projectMini,
+  .appShell:not([data-rail-collapsed="true"]) .railFooterLink span {
+    display: revert;
+  }
+
+  .appShell:not([data-rail-collapsed="true"]) .newButton {
+    width: 100%;
+    margin-inline: 0;
+  }
+
+  .appShell:not([data-rail-collapsed="true"]) .navItem,
+  .appShell:not([data-rail-collapsed="true"]) .railFooterLink {
+    justify-content: flex-start;
+    padding-inline: 11px;
+  }
+
+  .appShell .railCollapsed .projectMini {
+    display: block;
   }
 }
 

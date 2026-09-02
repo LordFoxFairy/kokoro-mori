@@ -1,7 +1,7 @@
 "use client"
 
 import { ChevronLeft, ChevronRight } from "lucide-react"
-import { type CSSProperties, type ReactNode } from "react"
+import { useEffect, type CSSProperties, type ReactNode } from "react"
 import { previewProject } from "../preview-data"
 import type { Project } from "../domain"
 import { useMoriApp } from "./mori-app-provider"
@@ -20,6 +20,22 @@ type MoriAppShellProps = {
 
 export function MoriAppShell({ activeKey, ariaLabel, children, onQueueOpen, project = previewProject, showQueueButton = false }: MoriAppShellProps) {
   const { railCollapsed, toggleRail, playerCandidate, playing, muted, positionSeconds, togglePlaying, toggleMuted, previousPlayerCandidate, nextPlayerCandidate } = useMoriApp()
+
+  useEffect(() => {
+    if (railCollapsed || window.innerWidth > 700) return
+
+    const previousOverflow = document.body.style.overflow
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") toggleRail()
+    }
+
+    document.body.style.overflow = "hidden"
+    window.addEventListener("keydown", handleKeyDown)
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown)
+      document.body.style.overflow = previousOverflow
+    }
+  }, [railCollapsed, toggleRail])
 
   const shellStyle = { "--mori-rail-width": railCollapsed ? "76px" : "224px" } as CSSProperties
   const className = `${styles.appShell} ${styles.appShellWithPlayer}`
