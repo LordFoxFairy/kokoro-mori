@@ -18,7 +18,7 @@ pnpm build
 
 - `pnpm lint`：通过，`--max-warnings=0`
 - `pnpm typecheck`：通过
-- `pnpm test`：通过，13 个测试文件、47 个测试
+- `pnpm test`：通过，13 个测试文件、48 个测试
 - `pnpm build`：通过，生成 `/`、`/create`、`/projects`、`/library`、Project Overview 和 Studio 路由
 
 ## 页面巡检
@@ -46,11 +46,12 @@ pnpm dev --hostname 127.0.0.1 --port 3001
 打开并通过 Close generation queue 关闭；移动端 390px 视口默认收起 Rail，内容仍保持可见。
 
 Library 已巡检 All、Versions、Lyrics、Exports 过滤器，以及版本 Play/Pause、项目和
-Studio 链接。Home 与 Project Overview 的候选歌曲均可直接接入 Global Player；Projects
-与 Project Overview 会读取 provider-neutral 项目/候选 projection。Create Queue 支持
-活动生成的取消反馈；状态同步优先读取快照并通过 SSE `Last-Event-ID` 回放事件。Studio 已巡检 Arrangement/Lyrics/Stems 切换、Preview、Share 反馈
-和 Export queued → completed download action；未实现的 More/Edit 死按钮已移除，避免给
-用户错误预期。
+Studio 链接。Home 与 Project Overview 的候选歌曲均可直接接入 Global Player；Projects、
+Project Overview 与 Studio 会读取 provider-neutral 项目/候选 projection，Studio 会按
+请求的 `projectRef`/`versionRef` hydration 当前版本。Create Queue 支持活动生成的取消
+反馈；状态同步优先读取快照并通过 SSE `Last-Event-ID` 回放事件。Studio 已巡检
+Arrangement/Lyrics/Stems 切换、Preview、Share 反馈和 Export queued → completed download
+action；未实现的 More/Edit 死按钮已移除，避免给用户错误预期。
 
 ## 产品边界
 

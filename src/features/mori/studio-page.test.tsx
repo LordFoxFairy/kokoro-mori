@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 import { MoriAppProvider } from "./components/mori-app-provider"
 import { previewCandidates } from "./preview-data"
@@ -75,5 +75,42 @@ describe("Mori studio page", () => {
 
     const download = await screen.findByRole("link", { name: "Download MP3" })
     expect(download).toHaveAttribute("href", "https://download.kokoro.invalid/export_1.mp3")
+  })
+
+  it("hydrates the studio version from the requested project projection", async () => {
+    render(
+      <MoriAppProvider>
+        <StudioPageContent
+          candidate={previewCandidates[0]}
+          projectRef="project_live_1"
+          api={{
+            createExport: async () => ({ data: { export_ref: "export_1", status: "queued" as const }, meta: { request_id: "request_export_1" } }),
+            listCandidates: async () => ({
+              data: {
+                candidates: [{
+                  candidate_ref: "candidate_live_1",
+                  generation_ref: "generation_live_1",
+                  version_ref: "version_live_1",
+                  project_ref: "project_live_1",
+                  title: "Window Seat",
+                  duration_seconds: 140,
+                  audio_asset_ref: "asset_live_1",
+                  waveform_asset_ref: "waveform_live_1",
+                  style_tags: ["soft motion", "close vocal"],
+                  created_at: "2026-09-02T12:00:00.000Z",
+                }],
+                next_cursor: null,
+              },
+              meta: { request_id: "request_candidates_1" },
+            }),
+          }}
+        />
+      </MoriAppProvider>,
+    )
+
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Window Seat" })).toBeInTheDocument())
+    expect(screen.getByRole("link", { name: "First Light" })).toHaveAttribute("href", "/projects/project_live_1")
+    expect(screen.getByRole("link", { name: /Window Seat/ })).toHaveAttribute("href", "/projects/project_live_1/studio/version_live_1")
+    expect(screen.getByText("soft motion · close vocal")).toBeInTheDocument()
   })
 })

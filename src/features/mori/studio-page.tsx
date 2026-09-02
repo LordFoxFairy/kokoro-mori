@@ -3,7 +3,7 @@
 import { ArrowLeft, Download, PanelLeft, Play, Share2, Sparkles } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
-import type { MoriApi, MoriExportSnapshot } from "@/lib/mori-api"
+import type { MoriApi, MoriCandidate, MoriExportSnapshot } from "@/lib/mori-api"
 import { createMoriApiClient } from "@/lib/mori-api-client"
 import type { Candidate } from "./domain"
 import { MoriStudioShell } from "./components/mori-studio-shell"
@@ -16,25 +16,66 @@ type StudioTool = "arrangement" | "lyrics" | "stems"
 
 type StudioPageContentProps = {
   candidate: Candidate
-  api?: Pick<MoriApi, "createExport"> & Partial<Pick<MoriApi, "getExport">>
+  projectRef?: string
+  versionRef?: string
+  api?: Pick<MoriApi, "createExport"> & Partial<Pick<MoriApi, "getExport" | "getProject" | "listCandidates">>
 }
 
-export function StudioPageContent({ candidate, api }: StudioPageContentProps) {
+export function StudioPageContent({ candidate, projectRef, versionRef, api }: StudioPageContentProps) {
   const { playerCandidate, playing, selectPlayerCandidate, setPlaying } = useMoriApp()
   const defaultApi = useMemo(() => createMoriApiClient(), [])
   const studioApi = api ?? defaultApi
+  const [activeCandidate, setActiveCandidate] = useState(candidate)
+  const [studioCandidates, setStudioCandidates] = useState(() => [candidate, ...previewCandidates.filter((item) => item.versionRef !== candidate.versionRef)])
+  const [projectTitle, setProjectTitle] = useState<string | null>(null)
   const [activeTool, setActiveTool] = useState<StudioTool>("arrangement")
   const [shareFeedback, setShareFeedback] = useState(false)
   const [exportFeedback, setExportFeedback] = useState<"idle" | "queued" | "processing" | "succeeded" | "failed">("idle")
   const [exportRef, setExportRef] = useState<string | null>(null)
   const [exportSnapshot, setExportSnapshot] = useState<MoriExportSnapshot | null>(null)
 
+  useEffect(() => {
+    const requestedProjectRef = projectRef?.trim()
+    if (!requestedProjectRef) return
+
+    const getProject = studioApi.getProject
+    const listCandidates = studioApi.listCandidates
+    let disposed = false
+
+    if (getProject) {
+      void getProject(requestedProjectRef).then((response) => {
+        if (!disposed) setProjectTitle(response.data.title)
+      }).catch(() => {
+        // Keep the deterministic project title visible while the BFF is unavailable.
+      })
+    }
+
+    if (listCandidates) {
+      void listCandidates(requestedProjectRef).then((response) => {
+        if (disposed || response.data.candidates.length === 0) return
+        const nextCandidates = response.data.candidates.map(toDomainCandidate)
+        const requestedVersionRef = versionRef?.trim()
+        const nextActiveCandidate = requestedVersionRef
+          ? nextCandidates.find((item) => item.versionRef === requestedVersionRef)
+          : nextCandidates[0]
+        setStudioCandidates(nextCandidates)
+        if (nextActiveCandidate) setActiveCandidate(nextActiveCandidate)
+      }).catch(() => {
+        // Keep the deterministic fixture visible while the BFF is unavailable.
+      })
+    }
+
+    return () => {
+      disposed = true
+    }
+  }, [projectRef, studioApi, versionRef])
+
   const preview = () => {
-    if (playerCandidate.versionRef === candidate.versionRef) {
+    if (playerCandidate.versionRef === activeCandidate.versionRef) {
       setPlaying(!playing)
       return
     }
-    selectPlayerCandidate(candidate)
+    selectPlayerCandidate(activeCandidate)
     setPlaying(true)
   }
 
@@ -50,7 +91,7 @@ export function StudioPageContent({ candidate, api }: StudioPageContentProps) {
     setExportRef(null)
     setExportSnapshot(null)
     try {
-      const response = await studioApi.createExport(candidate.versionRef, "mp3", `mori-export-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
+      const response = await studioApi.createExport(activeCandidate.versionRef, "mp3", `mori-export-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
       setExportRef(response.data.export_ref)
       setExportFeedback(response.data.status === "processing" ? "processing" : "queued")
     } catch {
@@ -101,10 +142,13 @@ export function StudioPageContent({ candidate, api }: StudioPageContentProps) {
         ? "Retry export"
         : "Export"
 
+  const activeProjectRef = projectRef?.trim() || previewProject.projectRef
+  const activeProjectTitle = projectTitle ?? previewProject.title
+
   return (
-    <MoriStudioShell candidate={candidate}>
+    <MoriStudioShell candidate={activeCandidate}>
       <header className={styles.studioHeader}>
-          <div className={styles.studioHeaderLeft}><Link className={styles.studioBack} href={`/projects/${previewProject.projectRef}`}><ArrowLeft size={15} /> {previewProject.title}</Link><span>/</span><strong>Studio</strong></div>
+          <div className={styles.studioHeaderLeft}><Link className={styles.studioBack} href={`/projects/${activeProjectRef}`}><ArrowLeft size={15} /> {activeProjectTitle}</Link><span>/</span><strong>Studio</strong></div>
           <div className={styles.studioHeaderActions}>
             <button className={styles.ghostButton} type="button" onClick={share}><Share2 size={14} /> {shareFeedback ? "Link copied" : "Share"}</button>
           {exportReady ? <a className={styles.ghostButton} href={downloadUrl} download aria-label={`Download ${exportSnapshot?.format.toUpperCase() ?? "MP3"}`}><Download size={14} /> Download {exportSnapshot?.format.toUpperCase() ?? "MP3"}</a> : <button className={styles.ghostButton} type="button" onClick={() => { void exportVersion() }} disabled={exportFeedback === "queued" || exportFeedback === "processing"}>{exportFeedback === "queued" || exportFeedback === "processing" ? exportLabel : exportFeedback === "failed" ? "Retry export" : <><Download size={14} /> Export</>}</button>}
@@ -113,24 +157,39 @@ export function StudioPageContent({ candidate, api }: StudioPageContentProps) {
       <div className={styles.studioLayout}>
         <aside className={styles.studioSidebar} aria-label="Studio tools">
           <div className={styles.studioArtwork}><span>01</span></div>
-          <div className={styles.studioSidebarCopy}><span>Current version</span><h1>{candidate.title}</h1><p>{candidate.subtitle}</p></div>
+          <div className={styles.studioSidebarCopy}><span>Current version</span><h1>{activeCandidate.title}</h1><p>{activeCandidate.subtitle}</p></div>
           <div className={styles.studioToolList}>
             <button className={activeTool === "arrangement" ? styles.studioToolActive : ""} type="button" aria-pressed={activeTool === "arrangement"} onClick={() => setActiveTool("arrangement")}><PanelLeft size={15} /> Arrangement</button>
             <button className={activeTool === "lyrics" ? styles.studioToolActive : ""} type="button" aria-pressed={activeTool === "lyrics"} onClick={() => setActiveTool("lyrics")}><Sparkles size={15} /> Lyrics</button>
             <button className={activeTool === "stems" ? styles.studioToolActive : ""} type="button" aria-pressed={activeTool === "stems"} onClick={() => setActiveTool("stems")}><PanelLeft size={15} /> Stems</button>
           </div>
-          <div className={styles.studioSidebarBottom}><span>Version</span><strong>{candidate.versionRef}</strong></div>
+          <div className={styles.studioSidebarBottom}><span>Version</span><strong>{activeCandidate.versionRef}</strong></div>
         </aside>
         <section className={styles.studioCanvas} aria-label="Studio editor">
-          <div className={styles.studioCanvasTop}><div><span className={styles.eyebrow}><span className={styles.eyebrowDot} />Editing with intention</span><h2>Shape the feeling.</h2></div><button className={styles.generateButton} type="button" onClick={preview}><Play size={14} fill="currentColor" /> {playerCandidate.versionRef === candidate.versionRef && playing ? "Pause" : "Preview"}</button></div>
-          {activeTool === "arrangement" ? <ArrangementEditor candidate={candidate} /> : null}
+          <div className={styles.studioCanvasTop}><div><span className={styles.eyebrow}><span className={styles.eyebrowDot} />Editing with intention</span><h2>Shape the feeling.</h2></div><button className={styles.generateButton} type="button" onClick={preview}><Play size={14} fill="currentColor" /> {playerCandidate.versionRef === activeCandidate.versionRef && playing ? "Pause" : "Preview"}</button></div>
+          {activeTool === "arrangement" ? <ArrangementEditor candidate={activeCandidate} /> : null}
           {activeTool === "lyrics" ? <LyricsEditor /> : null}
           {activeTool === "stems" ? <StemsEditor /> : null}
         </section>
-        <aside className={styles.versionRail} aria-label="Version history"><div className={styles.versionRailHeader}><div><span>Project history</span><h2>Versions</h2></div></div>{previewCandidates.map((item, index) => <Link className={`${styles.versionItem} ${item.versionRef === candidate.versionRef ? styles.versionItemActive : ""}`} href={`/projects/${previewProject.projectRef}/studio/${item.versionRef}`} key={item.versionRef}><div className={`${styles.versionThumb} ${index === 1 ? styles.versionThumbAlt : ""}`}><Play size={12} fill="currentColor" /></div><div><strong>{item.title}</strong><span>{index === 0 ? "Current" : "Draft"} · {Math.floor(item.durationSeconds / 60)}:{String(item.durationSeconds % 60).padStart(2, "0")}</span></div></Link>)}</aside>
+        <aside className={styles.versionRail} aria-label="Version history"><div className={styles.versionRailHeader}><div><span>Project history</span><h2>Versions</h2></div></div>{studioCandidates.map((item, index) => <Link className={`${styles.versionItem} ${item.versionRef === activeCandidate.versionRef ? styles.versionItemActive : ""}`} href={`/projects/${activeProjectRef}/studio/${item.versionRef}`} key={item.versionRef}><div className={`${styles.versionThumb} ${index === 1 ? styles.versionThumbAlt : ""}`}><Play size={12} fill="currentColor" /></div><div><strong>{item.title}</strong><span>{index === 0 ? "Current" : "Draft"} · {Math.floor(item.durationSeconds / 60)}:{String(item.durationSeconds % 60).padStart(2, "0")}</span></div></Link>)}</aside>
       </div>
     </MoriStudioShell>
   )
+}
+
+function toDomainCandidate(candidate: MoriCandidate, index: number): Candidate {
+  const tags = candidate.style_tags.length > 0 ? candidate.style_tags : ["new direction"]
+  return {
+    candidateRef: candidate.candidate_ref,
+    versionRef: candidate.version_ref,
+    generationRef: candidate.generation_ref,
+    title: candidate.title,
+    subtitle: tags.join(" · "),
+    durationSeconds: candidate.duration_seconds,
+    mood: tags[0] ?? "new direction",
+    waveformSeed: index + 13,
+    isCurrent: index === 0,
+  }
 }
 
 function ArrangementEditor({ candidate }: { candidate: Candidate }) {
