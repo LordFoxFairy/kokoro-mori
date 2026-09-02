@@ -767,6 +767,34 @@
   line-height: 1.45;
 }
 
+.queueActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 13px;
+  padding-top: 11px;
+  border-top: 1px solid rgba(109, 92, 231, 0.1);
+  color: var(--mori-faint);
+  font-size: 10px;
+}
+
+.cancelButton {
+  min-height: 28px;
+  padding: 0 9px;
+  border: 1px solid rgba(201, 85, 85, 0.2);
+  border-radius: 8px;
+  color: var(--mori-error);
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(255, 245, 245, 0.8);
+}
+
+.cancelButton:hover {
+  border-color: rgba(201, 85, 85, 0.38);
+  background: #fff0f0;
+}
+
 .candidatesHeader {
   display: flex;
   align-items: center;

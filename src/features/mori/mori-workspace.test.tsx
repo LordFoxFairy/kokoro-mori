@@ -1,5 +1,6 @@
-import { fireEvent, render, screen } from "@testing-library/react"
-import { describe, expect, it } from "vitest"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { describe, expect, it, vi } from "vitest"
+import type { MoriApi } from "@/lib/mori-api"
 import { MoriAppProvider } from "./components/mori-app-provider"
 import { MoriWorkspace } from "./mori-workspace"
 
@@ -72,5 +73,49 @@ describe("Mori workspace", () => {
 
     fireEvent.keyDown(window, { key: "Escape" })
     expect(screen.queryByRole("region", { name: /generation queue/i })).not.toBeInTheDocument()
+  })
+
+  it("lets a user cancel an active generation from the queue", async () => {
+    const cancelGeneration = vi.fn(async () => ({
+      data: { generation_ref: "generation_live_1", status: "cancelled" as const },
+      meta: { request_id: "request_cancel_1" },
+    }))
+    const api: Pick<MoriApi, "createGeneration" | "getGeneration" | "listCandidates" | "cancelGeneration"> = {
+      createGeneration: async () => ({
+        data: { generation_ref: "generation_live_1", status: "queued" as const },
+        meta: { request_id: "request_create_1" },
+      }),
+      getGeneration: async () => ({
+        data: {
+          generation_ref: "generation_live_1",
+          project_ref: "project_preview_first_light",
+          song_plan_ref: "song_plan_preview_first_light",
+          mode: "smart" as const,
+          status: "generating" as const,
+          progress: 52,
+          candidate_refs: [],
+          created_at: "2026-09-02T12:00:00.000Z",
+        },
+        meta: { request_id: "request_status_1" },
+      }),
+      listCandidates: async () => ({
+        data: { candidates: [], next_cursor: null },
+        meta: { request_id: "request_candidates_1" },
+      }),
+      cancelGeneration,
+    }
+
+    render(
+      <MoriAppProvider>
+        <MoriWorkspace api={api} />
+      </MoriAppProvider>,
+    )
+
+    fireEvent.submit(screen.getByRole("textbox", { name: "Song idea" }).closest("form") as HTMLFormElement)
+    await waitFor(() => expect(screen.getByRole("button", { name: "Cancel generation" })).toBeInTheDocument())
+    fireEvent.click(screen.getByRole("button", { name: "Cancel generation" }))
+
+    await waitFor(() => expect(cancelGeneration).toHaveBeenCalledOnce())
+    expect(screen.getByText("Generation cancelled")).toBeInTheDocument()
   })
 })

@@ -3,7 +3,7 @@
 import { PanelRight, Share2 } from "lucide-react"
 import { createPortal } from "react-dom"
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { createGenerationRequest } from "@/lib/mori-api"
+import { createGenerationRequest, type MoriApi } from "@/lib/mori-api"
 import { createMoriApiClient, MoriApiRequestError } from "@/lib/mori-api-client"
 import type { Candidate, CreationMode, GenerationStatus } from "./domain"
 import { previewCandidates, previewGeneration, previewProject, previewSongPlan } from "./preview-data"
@@ -13,7 +13,11 @@ import { useMoriApp } from "./components/mori-app-provider"
 import { MoriAppShell } from "./components/mori-app-shell"
 import styles from "./mori-workspace.module.css"
 
-export function MoriWorkspace() {
+type MoriWorkspaceProps = {
+  api?: Pick<MoriApi, "createGeneration" | "getGeneration" | "listCandidates" | "cancelGeneration">
+}
+
+export function MoriWorkspace({ api: injectedApi }: MoriWorkspaceProps = {}) {
   const [mode, setMode] = useState<CreationMode>("smart")
   const [queueOpen, setQueueOpen] = useState(false)
   const [candidates, setCandidates] = useState(previewCandidates)
@@ -24,7 +28,8 @@ export function MoriWorkspace() {
   const [progress, setProgress] = useState(previewGeneration.progress)
   const [generationRef, setGenerationRef] = useState<string | null>(null)
   const [shareFeedback, setShareFeedback] = useState(false)
-  const api = useMemo(() => createMoriApiClient(), [])
+  const defaultApi = useMemo(() => createMoriApiClient(), [])
+  const api = injectedApi ?? defaultApi
   const { playing, playerCandidate, setPlaying, togglePlaying, selectPlayerCandidate } = useMoriApp()
 
   const generation = useMemo(() => ({
@@ -120,6 +125,21 @@ export function MoriWorkspace() {
     selectPlayerCandidate(candidate)
   }, [selectPlayerCandidate])
 
+  const handleCancel = useCallback(async () => {
+    if (generationRef === null) return
+    try {
+      const response = await api.cancelGeneration(
+        generationRef,
+        `mori-cancel-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      )
+      setGenerationStatus(response.data.status)
+      setGenerationLabel(generationLabelFor(response.data.status))
+      setProgress((value) => Math.min(value, 99))
+    } catch {
+      setGenerationLabel("Cancellation failed")
+    }
+  }, [api, generationRef])
+
   const handleShare = useCallback(() => {
     const clipboardWrite = navigator.clipboard?.writeText(window.location.href)
     if (clipboardWrite !== undefined) void clipboardWrite.catch(() => undefined)
@@ -166,6 +186,7 @@ export function MoriWorkspace() {
             playing={playing}
             onSelect={(candidate) => { setSelectedCandidateRef(candidate.candidateRef); selectPlayerCandidate(candidate); setPlaying(false) }}
             onPromote={handlePromote}
+            onCancel={() => { void handleCancel() }}
             onPlay={(candidate) => {
               setSelectedCandidateRef(candidate.candidateRef)
               if (playerCandidate.candidateRef === candidate.candidateRef) togglePlaying()

@@ -44,6 +44,31 @@ describe("Mori same-origin API client", () => {
     expect(response.meta.request_id).toBe("request_1")
   })
 
+  it("cancels a generation with an idempotent command", async () => {
+    let capturedUrl = ""
+    let capturedInit: RequestInit | undefined
+    const api = createMoriApiClient({
+      fetchImpl: async (input, init) => {
+        capturedUrl = String(input)
+        capturedInit = init
+        return new Response(JSON.stringify({
+          data: { generation_ref: "generation_1", status: "cancelled" },
+          meta: { request_id: "request_cancel_1" },
+        }), { status: 202, headers: { "Content-Type": "application/json" } })
+      },
+    })
+
+    const response = await api.cancelGeneration("generation_1", "idem-cancel-1")
+
+    expect(capturedUrl).toBe("/api/v1/mori/generations/generation_1/cancel")
+    expect(capturedInit?.method).toBe("POST")
+    expect(capturedInit?.headers).toEqual({
+      "Content-Type": "application/json",
+      "Idempotency-Key": "idem-cancel-1",
+    })
+    expect(response.data.status).toBe("cancelled")
+  })
+
   it("preserves the normalized API error for UI state mapping", async () => {
     const api = createMoriApiClient({
       fetchImpl: async () => new Response(JSON.stringify({
@@ -91,6 +116,35 @@ describe("Mori same-origin API client", () => {
 
     expect(capturedUrl).toBe("/api/v1/mori/library?kind=version")
     expect(response?.data.items).toEqual([])
+  })
+
+  it("reads paginated project projections through the same-origin contract", async () => {
+    let capturedUrl = ""
+    const api = createMoriApiClient({
+      fetchImpl: async (input) => {
+        capturedUrl = String(input)
+        return new Response(JSON.stringify({
+          data: {
+            projects: [{
+              project_ref: "project_1",
+              title: "Morning tape",
+              description: "A small room with the windows open.",
+              current_version_ref: null,
+              candidate_count: 0,
+              last_activity_at: "2026-09-02T12:00:00.000Z",
+            }],
+            next_cursor: "mori_projects_1",
+          },
+          meta: { request_id: "request_projects_1" },
+        }), { status: 200, headers: { "Content-Type": "application/json" } })
+      },
+    })
+
+    const response = await api.listProjects?.({ limit: 10, cursor: "mori_projects_0" })
+
+    expect(capturedUrl).toBe("/api/v1/mori/projects?limit=10&cursor=mori_projects_0")
+    expect(response?.data.projects[0]?.project_ref).toBe("project_1")
+    expect(response?.data.next_cursor).toBe("mori_projects_1")
   })
 
   it("queues and reads a version export through the Mori contract", async () => {

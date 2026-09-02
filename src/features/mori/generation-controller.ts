@@ -49,6 +49,32 @@ function receiptState(receipt: GenerationReceipt, requestId: string): Generation
 }
 
 export const previewMoriApi: MoriApi = {
+  async listProjects() {
+    return {
+      data: {
+        projects: [],
+        next_cursor: null,
+      },
+      meta: {
+        request_id: "preview-projects-request",
+      },
+    }
+  },
+  async getProject() {
+    return {
+      data: {
+        project_ref: "project_preview_first_light",
+        title: "First Light",
+        description: "A bright, patient song about finding your way home.",
+        current_version_ref: "version_preview_first_light_a",
+        candidate_count: 2,
+        last_activity_at: "2026-09-02T12:00:00.000Z",
+      },
+      meta: {
+        request_id: "preview-project-request",
+      },
+    }
+  },
   async createGeneration(_projectRef: MoriRef, _input: GenerationCreateInput, idempotencyKey: string) {
     return {
       data: {
@@ -60,6 +86,23 @@ export const previewMoriApi: MoriApi = {
       },
     }
   },
+  async getGeneration(generationRef: MoriRef) {
+    return {
+      data: {
+        generation_ref: generationRef,
+        project_ref: "project_preview_first_light",
+        song_plan_ref: "song_plan_preview_first_light",
+        mode: "smart" as const,
+        status: "queued" as const,
+        progress: 0,
+        candidate_refs: [],
+        created_at: "2026-09-02T12:00:00.000Z",
+      },
+      meta: {
+        request_id: "preview-generation-status-request",
+      },
+    }
+  },
   async listLibrary() {
     return {
       data: {
@@ -68,6 +111,28 @@ export const previewMoriApi: MoriApi = {
       },
       meta: {
         request_id: "preview-library-request",
+      },
+    }
+  },
+  async listCandidates() {
+    return {
+      data: {
+        candidates: [],
+        next_cursor: null,
+      },
+      meta: {
+        request_id: "preview-candidates-request",
+      },
+    }
+  },
+  async cancelGeneration(generationRef: MoriRef) {
+    return {
+      data: {
+        generation_ref: generationRef,
+        status: "cancelled" as const,
+      },
+      meta: {
+        request_id: "preview-generation-cancel-request",
       },
     }
   },

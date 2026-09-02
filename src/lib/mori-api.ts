@@ -46,6 +46,30 @@ export type GenerationReceipt = {
   status: Extract<GenerationStatus, "queued" | "preparing" | "generating">
 }
 
+export type GenerationCancelReceipt = {
+  generation_ref: MoriRef
+  status: GenerationStatus
+}
+
+export type MoriProject = {
+  project_ref: MoriRef
+  title: string
+  description: string
+  current_version_ref: MoriRef | null
+  candidate_count: number
+  last_activity_at: string
+}
+
+export type MoriProjectListOptions = {
+  cursor?: string | null
+  limit?: number
+}
+
+export type MoriProjectPage = {
+  projects: MoriProject[]
+  next_cursor: string | null
+}
+
 export type GenerationSnapshot = {
   generation_ref: MoriRef
   project_ref: MoriRef
@@ -101,9 +125,12 @@ export type MoriExportSnapshot = {
 }
 
 export type MoriApi = {
+  listProjects: (options?: MoriProjectListOptions) => Promise<ApiSuccess<MoriProjectPage>>
+  getProject: (projectRef: MoriRef) => Promise<ApiSuccess<MoriProject>>
   createGeneration: (projectRef: MoriRef, input: GenerationCreateInput, idempotencyKey: string) => Promise<ApiSuccess<GenerationReceipt>>
-  getGeneration?: (generationRef: MoriRef) => Promise<ApiSuccess<GenerationSnapshot>>
-  listCandidates?: (projectRef: MoriRef) => Promise<ApiSuccess<{ candidates: MoriCandidate[]; next_cursor: string | null }>>
+  getGeneration: (generationRef: MoriRef) => Promise<ApiSuccess<GenerationSnapshot>>
+  listCandidates: (projectRef: MoriRef) => Promise<ApiSuccess<{ candidates: MoriCandidate[]; next_cursor: string | null }>>
+  cancelGeneration: (generationRef: MoriRef, idempotencyKey: string) => Promise<ApiSuccess<GenerationCancelReceipt>>
   listLibrary: (kind?: "all" | "version") => Promise<ApiSuccess<{ items: MoriLibraryItem[]; next_cursor: string | null }>>
   createExport: (versionRef: MoriRef, format: "mp3" | "wav", idempotencyKey: string) => Promise<ApiSuccess<MoriExportReceipt>>
   getExport: (exportRef: MoriRef) => Promise<ApiSuccess<MoriExportSnapshot>>

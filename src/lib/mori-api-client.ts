@@ -4,12 +4,14 @@ import {
   type ApiError,
   type ApiSuccess,
   type GenerationCreateInput,
+  type GenerationCancelReceipt,
   type GenerationReceipt,
   type GenerationSnapshot,
   type MoriExportReceipt,
   type MoriExportSnapshot,
   type MoriCandidate,
   type MoriLibraryItem,
+  type MoriProjectPage,
   type MoriApi,
 } from "./mori-api"
 
@@ -39,6 +41,25 @@ export function createMoriApiClient(options: MoriApiClientOptions = {}): MoriApi
   const fetchImpl = options.fetchImpl ?? fetch
 
   return {
+    async listProjects(options = {}) {
+      const query = new URLSearchParams()
+      if (options.limit !== undefined) query.set("limit", String(options.limit))
+      if (options.cursor !== undefined && options.cursor !== null && options.cursor.trim() !== "") query.set("cursor", options.cursor)
+      const response = await fetchImpl(`${apiBasePath}/projects${query.size > 0 ? `?${query.toString()}` : ""}`)
+      const payload = await readJson(response)
+      if (!response.ok || isApiError(payload)) {
+        throwRequestError(response, payload)
+      }
+      return payload as ApiSuccess<MoriProjectPage>
+    },
+    async getProject(projectRef: MoriRef) {
+      const response = await fetchImpl(`${apiBasePath}/projects/${encodeURIComponent(projectRef)}`)
+      const payload = await readJson(response)
+      if (!response.ok || isApiError(payload)) {
+        throwRequestError(response, payload)
+      }
+      return payload as ApiSuccess<import("./mori-api").MoriProject>
+    },
     async createGeneration(projectRef: MoriRef, input: GenerationCreateInput, idempotencyKey: string) {
       const response = await fetchImpl(
         `${apiBasePath}/projects/${encodeURIComponent(projectRef)}/generations`,
@@ -78,6 +99,17 @@ export function createMoriApiClient(options: MoriApiClientOptions = {}): MoriApi
         throwRequestError(response, payload)
       }
       return payload as ApiSuccess<{ candidates: MoriCandidate[]; next_cursor: string | null }>
+    },
+    async cancelGeneration(generationRef: MoriRef, idempotencyKey: string) {
+      const response = await fetchImpl(`${apiBasePath}/generations/${encodeURIComponent(generationRef)}/cancel`, {
+        method: "POST",
+        headers: createMutationHeaders(idempotencyKey),
+      })
+      const payload = await readJson(response)
+      if (!response.ok || isApiError(payload)) {
+        throwRequestError(response, payload)
+      }
+      return payload as ApiSuccess<GenerationCancelReceipt>
     },
     async listLibrary(kind = "all") {
       const response = await fetchImpl(`${apiBasePath}/library?kind=${encodeURIComponent(kind)}`)

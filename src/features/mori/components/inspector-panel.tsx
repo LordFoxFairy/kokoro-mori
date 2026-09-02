@@ -12,6 +12,7 @@ type InspectorPanelProps = {
   onSelect: (candidate: Candidate) => void
   onPromote: (candidate: Candidate) => void
   onPlay: (candidate: Candidate) => void
+  onCancel?: () => void
   onClose?: () => void
 }
 
@@ -21,7 +22,9 @@ function formatDuration(seconds: number): string {
   return `${minutes}:${remaining}`
 }
 
-export function InspectorPanel({ generation, candidates, songPlan, selectedCandidateRef, playing, onSelect, onPromote, onPlay, onClose }: InspectorPanelProps) {
+export function InspectorPanel({ generation, candidates, songPlan, selectedCandidateRef, playing, onSelect, onPromote, onPlay, onCancel, onClose }: InspectorPanelProps) {
+  const generationActive = ["queued", "preparing", "generating", "post_processing"].includes(generation.status)
+
   return (
     <aside className={styles.inspector} aria-label="Generation queue" role="region" tabIndex={-1}>
       <header className={styles.inspectorHeader}>
@@ -44,6 +47,7 @@ export function InspectorPanel({ generation, candidates, songPlan, selectedCandi
             <div className={styles.progressValue} style={{ width: `${generation.progress}%` }} />
           </div>
           <p className={styles.queueText}>Ready to compare. Pick a direction and make it yours.</p>
+          {onCancel && generationActive ? <div className={styles.queueActions}><span>Need to change the idea?</span><button className={styles.cancelButton} type="button" onClick={onCancel}>Cancel generation</button></div> : null}
         </section>
 
         <section className={styles.candidateList} aria-labelledby="candidate-heading">
