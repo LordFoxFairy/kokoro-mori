@@ -78,7 +78,7 @@ Settings 与 Help 在当前 utility 页面上会显示 active 状态，Create �
 `project_ref` 并优先读取项目名称，
 具体项目上下文会在 Project Overview、Create 和 Studio 中连续保留；从任意 Mori 工作区打开 Settings 后，关闭入口会回到来源路径；请求不存在的 Studio 版本时显示明确的 unavailable 状态，不回退到 First Light fixture。
 Settings 以浮动 dialog 呈现，打开后焦点进入窗口，Tab/Shift+Tab 在窗口内循环，Escape 使用同一关闭入口返回来源。
-Generation queue 作为同样的上下文抽屉处理，打开后焦点进入队列，Tab/Shift+Tab 不会跑到遮罩后的工作区，关闭后恢复触发入口。
+Generation queue 作为带遮罩的 modal 上下文抽屉处理，打开后焦点进入队列，Tab/Shift+Tab 不会跑到遮罩后的工作区，关闭后恢复触发入口。
 当实时项目没有可播放版本或 Studio 版本失效时，Global Player 保留固定 dock 的空间，但展示
 Nothing playing 和下一步提示，播放、跳转、静音等依赖版本的控制会明确禁用。播放器的上一首/下一首
 只在当前页面投影的候选集合内切换，不会把其他项目或旧的预览方向混入当前上下文。

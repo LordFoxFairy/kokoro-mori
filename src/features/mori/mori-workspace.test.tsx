@@ -21,7 +21,7 @@ describe("Mori workspace", () => {
     expect(screen.getByRole("heading", { name: /make something you can feel/i })).toBeInTheDocument()
     expect(screen.getByRole("tab", { name: /smart/i })).toHaveAttribute("aria-selected", "true")
     expect(screen.getByRole("link", { name: "First Light" })).toHaveAttribute("href", "/projects/project_preview_first_light")
-    expect(screen.queryByRole("region", { name: /generation queue/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole("dialog", { name: /generation queue/i })).not.toBeInTheDocument()
     expect(screen.getByRole("region", { name: /global player/i })).toBeInTheDocument()
   })
 
@@ -300,17 +300,17 @@ describe("Mori workspace", () => {
 
   it("opens the generation queue as a contextual drawer", () => {
     renderWorkspace()
-    expect(screen.queryByRole("region", { name: /generation queue/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole("dialog", { name: /generation queue/i })).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole("button", { name: /open generation queue/i }))
 
-    expect(screen.getByRole("region", { name: /generation queue/i })).toBeInTheDocument()
+    expect(screen.getByRole("dialog", { name: /generation queue/i })).toBeInTheDocument()
     expect(screen.getByRole("button", { name: /close generation queue/i })).toBeInTheDocument()
-    expect(screen.getByRole("region", { name: /generation queue/i })).toHaveFocus()
+    expect(screen.getByRole("dialog", { name: /generation queue/i })).toHaveFocus()
     expect(document.body.style.overflow).toBe("hidden")
 
     fireEvent.keyDown(window, { key: "Escape" })
-    expect(screen.queryByRole("region", { name: /generation queue/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole("dialog", { name: /generation queue/i })).not.toBeInTheDocument()
     expect(document.body.style.overflow).toBe("")
   })
 

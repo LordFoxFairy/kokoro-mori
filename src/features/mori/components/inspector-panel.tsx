@@ -63,10 +63,10 @@ export function InspectorPanel({ generation, candidates, songPlan, selectedCandi
   }, [])
 
   return (
-    <aside ref={panelRef} className={styles.inspector} aria-label="Generation queue" role="region" tabIndex={-1}>
+    <aside ref={panelRef} className={styles.inspector} role="dialog" aria-modal="true" aria-labelledby="generation-queue-title" tabIndex={-1}>
       <header className={styles.inspectorHeader}>
         <div>
-          <h2 className={styles.sectionTitle}>Generation queue</h2>
+          <h2 className={styles.sectionTitle} id="generation-queue-title">Generation queue</h2>
           <p className={styles.sectionCaption}>Your newest directions, in one place.</p>
         </div>
         <div className={styles.inspectorActions}>

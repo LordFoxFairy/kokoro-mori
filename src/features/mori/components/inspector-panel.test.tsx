@@ -69,7 +69,8 @@ describe("Mori generation queue", () => {
       />,
     )
 
-    const queue = screen.getByRole("region", { name: "Generation queue" })
+    expect(screen.getByRole("dialog", { name: "Generation queue" })).toHaveAttribute("aria-modal", "true")
+    const queue = screen.getByRole("dialog", { name: "Generation queue" })
     await waitFor(() => expect(queue).toHaveFocus())
     const close = screen.getByRole("button", { name: "Close generation queue" })
     const lastControl = screen.getByRole("button", { name: "Set as current" })
