@@ -18,7 +18,7 @@ pnpm build
 
 - `pnpm lint`：通过，`--max-warnings=0`
 - `pnpm typecheck`：通过
-- `pnpm test`：通过，18 个测试文件、144 个测试
+- `pnpm test`：通过，19 个测试文件、151 个测试
 - `pnpm build`：通过，生成 `/`、`/create`、`/projects`、`/library`、`/settings`、Project Overview 和 Studio 路由
 
 ## 页面巡检
@@ -53,9 +53,11 @@ Create 的 Queue 默认关闭，可通过 Queue 动作打开并通过 Close gene
 transport + progress、右侧音量/队列的音乐播放器层级；移动端收敛为当前歌曲、播放和队列入口。
 播放支持在非输入控件上使用 Space 快捷键，输入歌词或表单时不会拦截空格；播放主按钮声明对应键盘快捷键。
 
-Library 已巡检 All、Versions、Lyrics、Exports 过滤器，以及版本 Play/Pause、项目和
-Studio 链接；搜索会在当前分类内匹配项目、版本标题和说明，持续反馈结果数，并在无匹配时提供
-明确的清除入口。桌面端将筛选与搜索放在同一工具栏，小屏幕把搜索提升到筛选之前并允许分类横向滚动。
+Library 已巡检 All、Versions、Sources、Lyrics、Exports 过滤器，以及版本 Play/Pause、项目和
+Studio 链接；All 视图将 Projects & versions 与 Creative sources 分成连续但清晰的两个区域，Sources 再按
+Audio、Voices、Inspiration 渐进筛选，避免把资产类型继续堆进全局 Rail。搜索会在当前分类内匹配项目、版本
+标题、说明与创作素材，持续反馈结果数，并在无匹配时提供明确的清除入口；Browse all sources 会重置为完整
+素材架。桌面端将筛选与搜索放在同一工具栏，小屏幕把搜索提升到筛选之前并允许分类横向滚动。
 Home 与 Project Overview 的候选歌曲均可直接接入 Global Player；Projects、
 Project Overview 与 Studio 会读取 provider-neutral 项目/候选 projection，Studio 会按
 请求的 `projectRef`/`versionRef` hydration 当前版本。Create Queue 支持活动生成的取消
@@ -107,7 +109,9 @@ Create 现在在主 Prompt 下方提供 Smart / Custom 共用的 Creative source
 50 MB 上限，并展示文件名、大小、替换和移除操作；无效的替换不会清空已经选好的参考。选中的本地参考会通过预览资产
 `reference_asset_refs` 进入 generation command。Voice profile 使用稳定 preview `voice_ref`，与 Custom
 中的人类可读 Vocal direction 分开；Inspiration 采用少量策展方向并同步到仍可编辑的 Style，手动改写
-Style 后会解除旧 preset 关联。真实上传和 Library 资产接入仍由后续 storage/music owner adapter 承接。
+Style 后会解除旧 preset 关联。Library 中的 Audio、Voice、Inspiration preview assets 可通过
+`source_kind` + `source_ref` 的 provider-neutral 查询上下文进入 Create；Create 只恢复已知且类型匹配的素材，
+未知或错配引用不会污染创作草稿。正式上传与实时资产 projection 仍由后续 storage/music owner adapter 承接。
 没有实际参数的 Advanced 假入口已移除，Custom 只保留会影响生成请求的控制项。
 Custom 模式在选择 Lyrics 时提供可选的用户歌词输入，提交时会按 `lyrics_mode` 和公共契约传递
 到 generation command；切换为 Instrumental 后该输入从当前创作界面收起。

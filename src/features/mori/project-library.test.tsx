@@ -20,7 +20,7 @@ describe("Mori catalog surfaces", () => {
         <LibraryPageContent />
       </MoriAppProvider>,
     )
-    for (const label of ["All", "Projects", "Versions", "Lyrics", "Exports"]) {
+    for (const label of ["All", "Projects", "Versions", "Sources", "Lyrics", "Exports"]) {
       expect(screen.getByRole("button", { name: label })).toBeInTheDocument()
     }
     expect(screen.queryByText(/suno|tad/i)).not.toBeInTheDocument()
@@ -50,7 +50,7 @@ describe("Mori catalog surfaces", () => {
     )
 
     fireEvent.change(screen.getByRole("searchbox", { name: "Search library" }), {
-      target: { value: "Afterglow" },
+      target: { value: "First Light · Afterglow" },
     })
 
     expect(screen.getAllByRole("article")).toHaveLength(1)
@@ -71,7 +71,62 @@ describe("Mori catalog surfaces", () => {
 
     expect(screen.getByText("No matches for “Midnight rain”")).toBeInTheDocument()
     fireEvent.click(screen.getByRole("button", { name: "Clear library search" }))
-    expect(screen.getAllByRole("article")).toHaveLength(3)
+    expect(screen.getAllByRole("article")).toHaveLength(9)
+  })
+
+  it("keeps reusable creative sources in a progressive Library shelf", () => {
+    render(
+      <MoriAppProvider>
+        <LibraryPageContent />
+      </MoriAppProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Sources" }))
+
+    const sourceShelf = screen.getByRole("region", { name: "Creative source library" })
+    expect(sourceShelf).toHaveTextContent("City Lights demo")
+    expect(sourceShelf).toHaveTextContent("Mira")
+    expect(sourceShelf).toHaveTextContent("Open Road")
+    expect(screen.getByRole("link", { name: "Use Mira in Create" })).toHaveAttribute("href", "/create?source_kind=voice&source_ref=voice_preview_mira")
+
+    fireEvent.click(screen.getByRole("button", { name: "Voices" }))
+    expect(screen.getByRole("button", { name: "Voices" })).toHaveAttribute("aria-pressed", "true")
+    expect(sourceShelf).toHaveTextContent("Mira")
+    expect(sourceShelf).toHaveTextContent("Rowan")
+    expect(sourceShelf).not.toHaveTextContent("City Lights demo")
+    expect(sourceShelf).not.toHaveTextContent("Open Road")
+  })
+
+  it("opens the complete source shelf from the All view", () => {
+    render(
+      <MoriAppProvider>
+        <LibraryPageContent />
+      </MoriAppProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Sources" }))
+    fireEvent.click(screen.getByRole("button", { name: "Voices" }))
+    fireEvent.click(screen.getByRole("button", { name: "All" }))
+    fireEvent.click(screen.getByRole("button", { name: "Browse all sources" }))
+
+    expect(screen.getByRole("button", { name: "All sources" })).toHaveAttribute("aria-pressed", "true")
+    expect(screen.getByRole("region", { name: "Creative source library" })).toHaveTextContent("City Lights demo")
+  })
+
+  it("searches reusable sources alongside projects and versions", () => {
+    render(
+      <MoriAppProvider>
+        <LibraryPageContent />
+      </MoriAppProvider>,
+    )
+
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search library" }), {
+      target: { value: "Rowan" },
+    })
+
+    expect(screen.getAllByRole("article")).toHaveLength(1)
+    expect(screen.getByRole("link", { name: "Use Rowan in Create" })).toBeInTheDocument()
+    expect(screen.getByRole("status")).toHaveTextContent("1 result")
   })
 
   it("routes the export center action to the exports shelf", () => {

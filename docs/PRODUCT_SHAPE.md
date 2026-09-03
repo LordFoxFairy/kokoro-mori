@@ -113,7 +113,9 @@ Workspace nav    内容随项目上下文变化                     跨页面保
 - 已落地第一版：Prompt 下方的 Creative sources 把 Audio、Voice、Inspiration 作为 Smart / Custom 共用的
   上下文输入，而不是继续堆全局 AI 工具。Audio 使用真实文件选择与格式/大小校验；Voice 使用稳定 preview
   `voice_ref`，与本次生成的人类可读 Vocal direction 分开；Inspiration 只提供少量策展起点并写入仍可编辑的
-  Style。上传后的正式资产引用与 Library 数据继续留给 storage/music owner adapter。
+  Style。Library 的 All 视图已经将作品与素材分区，Sources 视图按 Audio / Voices / Inspiration 渐进筛选；
+  `Use in Create` 会通过经校验的 provider-neutral source ref 恢复同一个创作上下文。当前素材为确定性 preview，
+  正式资产引用与 projection 继续由 storage/music owner adapter 承接。
 - 后续：Song Plan 的服务端版本历史、音频上传、连接真实音频渲染器、版本自动保存和更多导出格式。
 
 ## 五、明确不做的方向

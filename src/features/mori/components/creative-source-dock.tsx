@@ -5,12 +5,13 @@ import { useState } from "react"
 import {
   previewInspirationPresets,
   previewVoiceProfiles,
+  type MoriAudioReferenceSelection,
   type MoriInspirationPreset,
 } from "../creative-assets"
 import styles from "./creative-source-dock.module.css"
 
 type CreativeSourceDockProps = {
-  referenceFile: { name: string; size: number } | null
+  referenceSource: MoriAudioReferenceSelection | null
   referenceError: string | null
   voiceRef: string | null
   inspirationRef: string | null
@@ -23,7 +24,7 @@ type CreativeSourceDockProps = {
 type OpenPicker = "voice" | "inspiration" | null
 
 export function CreativeSourceDock({
-  referenceFile,
+  referenceSource,
   referenceError,
   voiceRef,
   inspirationRef,
@@ -50,20 +51,20 @@ export function CreativeSourceDock({
       <div className={styles.sourceGrid}>
         <div className={styles.sourceCell}>
           <button
-            className={`${styles.sourceButton} ${referenceFile === null ? "" : `${styles.sourceButtonSelected} ${styles.sourceButtonRemovable}`}`}
+            className={`${styles.sourceButton} ${referenceSource === null ? "" : `${styles.sourceButtonSelected} ${styles.sourceButtonRemovable}`}`}
             type="button"
             onClick={() => { setOpenPicker(null); onChooseReference() }}
-            aria-label={referenceFile === null ? "Add audio reference" : `Replace reference audio ${referenceFile.name}`}
+            aria-label={referenceSource === null ? "Add audio reference" : `Replace reference audio ${referenceSource.name}`}
           >
             <span className={styles.sourceIcon}><FileAudio /></span>
             <span className={styles.sourceCopy}>
-              <strong>{referenceFile?.name ?? "Audio"}</strong>
-              <small>{referenceFile === null ? "Guide rhythm, melody, or texture" : `${formatFileSize(referenceFile.size)} · selected for this direction`}</small>
+              <strong>{referenceSource?.name ?? "Audio"}</strong>
+              <small>{referenceSource?.detail ?? "Guide rhythm, melody, or texture"}</small>
             </span>
-            {referenceFile === null ? <Plus className={styles.sourceChevron} /> : null}
+            {referenceSource === null ? <Plus className={styles.sourceChevron} /> : null}
           </button>
-          {referenceFile !== null ? (
-            <button className={styles.sourceRemove} type="button" onClick={onRemoveReference} aria-label={`Remove reference audio ${referenceFile.name}`}>
+          {referenceSource !== null ? (
+            <button className={styles.sourceRemove} type="button" onClick={onRemoveReference} aria-label={`Remove reference audio ${referenceSource.name}`}>
               <X />
             </button>
           ) : null}
@@ -163,9 +164,4 @@ export function CreativeSourceDock({
       ) : null}
     </section>
   )
-}
-
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }

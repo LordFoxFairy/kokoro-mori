@@ -6,11 +6,13 @@ import { useEffect, useMemo, useState } from "react"
 import type { MoriApi, MoriLibraryItem, MoriProject } from "@/lib/mori-api"
 import { createMoriApiClient } from "@/lib/mori-api-client"
 import type { Candidate, LibraryItem, Project } from "./domain"
+import { creativeSourceKindLabel, previewCreativeSources } from "./creative-assets"
+import { CreativeSourceLibrary, type CreativeSourceFilter } from "./components/creative-source-library"
 import { useMoriApp } from "./components/mori-app-provider"
 import { previewCandidates, previewLibrary, previewProject } from "./preview-data"
 import styles from "./mori-workspace.module.css"
 
-const filters = ["All", "Projects", "Versions", "Lyrics", "Exports"] as const
+const filters = ["All", "Projects", "Versions", "Sources", "Lyrics", "Exports"] as const
 type LibraryFilter = (typeof filters)[number]
 
 const emptyCopy: Record<LibraryFilter, { title: string; description: string }> = {
@@ -25,6 +27,10 @@ const emptyCopy: Record<LibraryFilter, { title: string; description: string }> =
   Versions: {
     title: "No versions yet",
     description: "Generate a direction and keep the version you want to return to.",
+  },
+  Sources: {
+    title: "No creative sources yet",
+    description: "Uploads, voice profiles, and inspiration presets you keep will appear here.",
   },
   Lyrics: {
     title: "No lyrics saved yet",
@@ -48,6 +54,7 @@ export function LibraryPageContent({ api }: LibraryPageContentProps = {}) {
   const [libraryLoaded, setLibraryLoaded] = useState(false)
   const [projects, setProjects] = useState<Project[] | null>(null)
   const [filter, setFilter] = useState<LibraryFilter>("All")
+  const [sourceFilter, setSourceFilter] = useState<CreativeSourceFilter>("All sources")
   const [query, setQuery] = useState("")
 
   useEffect(() => {
@@ -88,7 +95,7 @@ export function LibraryPageContent({ api }: LibraryPageContentProps = {}) {
     : [...projects.map(toLibraryProject), ...libraryItems.filter((item) => item.kind === "version")]
   const normalizedQuery = query.trim().toLowerCase()
   const hasQuery = normalizedQuery.length > 0
-  const items = itemsWithProjects.filter((item) => {
+  const visibleWorks = itemsWithProjects.filter((item) => {
     const matchesFilter = filter === "All"
       || (filter === "Projects" && item.kind === "project")
       || (filter === "Versions" && item.kind === "version")
@@ -96,15 +103,27 @@ export function LibraryPageContent({ api }: LibraryPageContentProps = {}) {
     if (!hasQuery) return true
     return `${item.title} ${item.subtitle}`.toLowerCase().includes(normalizedQuery)
   })
+  const visibleSources = previewCreativeSources.filter((source) => {
+    if (filter !== "All" && filter !== "Sources") return false
+    const matchesSourceFilter = filter !== "Sources"
+      || sourceFilter === "All sources"
+      || (sourceFilter === "Audio" && source.sourceKind === "audio")
+      || (sourceFilter === "Voices" && source.sourceKind === "voice")
+      || (sourceFilter === "Inspiration" && source.sourceKind === "inspiration")
+    if (!matchesSourceFilter) return false
+    if (!hasQuery) return true
+    return `${source.name} ${source.description} ${creativeSourceKindLabel(source.sourceKind)}`.toLowerCase().includes(normalizedQuery)
+  })
+  const resultCount = visibleWorks.length + visibleSources.length
   const emptyState = hasQuery
     ? {
         title: `No matches for “${query.trim()}”`,
-        description: "Try another title, project, or version name.",
+        description: "Try another title, project, version, or creative source.",
       }
     : emptyCopy[filter]
   const resultLabel = hasQuery
-    ? `${items.length} ${items.length === 1 ? "result" : "results"}`
-    : `${items.length} ${items.length === 1 ? "item" : "items"}`
+    ? `${resultCount} ${resultCount === 1 ? "result" : "results"}`
+    : `${resultCount} ${resultCount === 1 ? "item" : "items"}`
 
   const playVersion = (versionRef: string) => {
     const libraryItem = libraryItems.find((item): item is Extract<LibraryItem, { kind: "version" }> => item.kind === "version" && item.ref === versionRef)
@@ -160,29 +179,54 @@ export function LibraryPageContent({ api }: LibraryPageContentProps = {}) {
           </span>
         </div>
       </div>
-      {items.length > 0 ? (
-        <div className={styles.libraryList} id="mori-library-results">
-          {items.map((item) => {
-            const isProject = item.kind === "project"
-            const versionPath = isProject ? `/projects/${item.ref}` : `/projects/${item.projectRef}/studio/${item.ref}`
-            const active = !isProject && playerCandidate?.versionRef === item.ref
-            return (
-              <article className={styles.libraryRow} key={item.ref}>
-                <div className={`${styles.libraryArtwork} ${item.accent === "peach" ? styles.libraryArtworkPeach : item.accent === "mint" ? styles.libraryArtworkMint : ""}`}>
-                  {isProject ? <FolderKanban size={18} /> : <Music2 size={18} />}
+      {resultCount > 0 ? (
+        <div className={styles.libraryResults} id="mori-library-results">
+          {visibleWorks.length > 0 ? (
+            <section className={styles.librarySection} aria-label="Projects and versions">
+              <header className={styles.librarySectionHeader}>
+                <div>
+                  <h2>{filter === "Projects" ? "Projects" : filter === "Versions" ? "Versions" : "Projects & versions"}</h2>
+                  <p>Continue from the work itself, not from a disconnected tool.</p>
                 </div>
-                <div className={styles.libraryCopy}>
-                  <strong>{item.title}</strong>
-                  <span>{item.subtitle}</span>
-                </div>
-                {!isProject ? <span className={styles.libraryDuration}><Headphones size={13} /> {Math.floor(item.durationSeconds / 60)}:{String(item.durationSeconds % 60).padStart(2, "0")}</span> : null}
-                <div className={styles.libraryActions}>
-                  {!isProject ? <button className={styles.iconButton} type="button" onClick={() => playVersion(item.ref)} aria-label={`${active && playing ? "Pause" : "Play"} ${item.title}`}>{active && playing ? <Pause size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" />}</button> : null}
-                  <Link className={styles.iconButton} href={versionPath} aria-label={`Open ${item.title} ${isProject ? "project" : "studio"}`}><ArrowUpRight size={14} /></Link>
-                </div>
-              </article>
-            )
-          })}
+                <span>{visibleWorks.length} {visibleWorks.length === 1 ? "item" : "items"}</span>
+              </header>
+              <div className={styles.libraryList}>
+                {visibleWorks.map((item) => {
+                  const isProject = item.kind === "project"
+                  const versionPath = isProject ? `/projects/${item.ref}` : `/projects/${item.projectRef}/studio/${item.ref}`
+                  const active = !isProject && playerCandidate?.versionRef === item.ref
+                  return (
+                    <article className={styles.libraryRow} key={item.ref}>
+                      <div className={`${styles.libraryArtwork} ${item.accent === "peach" ? styles.libraryArtworkPeach : item.accent === "mint" ? styles.libraryArtworkMint : ""}`}>
+                        {isProject ? <FolderKanban size={18} /> : <Music2 size={18} />}
+                      </div>
+                      <div className={styles.libraryCopy}>
+                        <strong>{item.title}</strong>
+                        <span>{item.subtitle}</span>
+                      </div>
+                      {!isProject ? <span className={styles.libraryDuration}><Headphones size={13} /> {Math.floor(item.durationSeconds / 60)}:{String(item.durationSeconds % 60).padStart(2, "0")}</span> : null}
+                      <div className={styles.libraryActions}>
+                        {!isProject ? <button className={styles.iconButton} type="button" onClick={() => playVersion(item.ref)} aria-label={`${active && playing ? "Pause" : "Play"} ${item.title}`}>{active && playing ? <Pause size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" />}</button> : null}
+                        <Link className={styles.iconButton} href={versionPath} aria-label={`Open ${item.title} ${isProject ? "project" : "studio"}`}><ArrowUpRight size={14} /></Link>
+                      </div>
+                    </article>
+                  )
+                })}
+              </div>
+            </section>
+          ) : null}
+          {visibleSources.length > 0 ? (
+            <CreativeSourceLibrary
+              sources={visibleSources}
+              filter={sourceFilter}
+              showFilters={filter === "Sources"}
+              onFilterChange={setSourceFilter}
+              onBrowseAll={() => {
+                setSourceFilter("All sources")
+                setFilter("Sources")
+              }}
+            />
+          ) : null}
         </div>
       ) : (
         <div className={styles.libraryEmpty} id="mori-library-results">

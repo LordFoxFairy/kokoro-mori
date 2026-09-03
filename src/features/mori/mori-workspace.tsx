@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { createGenerationRequest, type MoriApi } from "@/lib/mori-api"
 import { createMoriApiClient, MoriApiRequestError } from "@/lib/mori-api-client"
 import type { Candidate, CreationMode, GenerationStatus, SongPlan } from "./domain"
+import type { MoriCreativeSourceSelection } from "./creative-assets"
 import { previewCandidates, previewGeneration, previewProject, previewSongPlan } from "./preview-data"
 import { buildSongPlan, toSongPlanCreateInput } from "./song-plan"
 import { CreateCanvas, type CreationDraft } from "./components/create-canvas"
@@ -17,6 +18,7 @@ import styles from "./mori-workspace.module.css"
 
 type MoriWorkspaceProps = {
   projectRef?: string
+  initialCreativeSource?: MoriCreativeSourceSelection
   api?: Pick<MoriApi, "createSongPlan" | "createGeneration" | "getGeneration" | "getGenerationEvents" | "listCandidates" | "cancelGeneration"> & Partial<Pick<MoriApi, "getProject">>
 }
 
@@ -25,7 +27,7 @@ type GenerationAttempt = {
   draft: CreationDraft
 }
 
-export function MoriWorkspace({ projectRef: requestedProjectRef, api: injectedApi }: MoriWorkspaceProps = {}) {
+export function MoriWorkspace({ projectRef: requestedProjectRef, initialCreativeSource, api: injectedApi }: MoriWorkspaceProps = {}) {
   const workspaceProjectRef = requestedProjectRef?.trim() || previewProject.projectRef
   const initialCandidates = workspaceProjectRef === previewProject.projectRef ? previewCandidates : []
   const { playing, playerCandidate, replacePlayerCandidates, setPlaying, togglePlaying, selectPlayerCandidate, preferences } = useMoriApp()
@@ -254,7 +256,7 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, api: injectedAp
               </div>
             </header>
             <div className={styles.canvasBody}>
-              <CreateCanvas projectRef={workspaceProjectRef} mode={mode} onModeChange={setModeOverride} onGenerate={handleGenerate} />
+              <CreateCanvas projectRef={workspaceProjectRef} mode={mode} initialCreativeSource={initialCreativeSource} onModeChange={setModeOverride} onGenerate={handleGenerate} />
             </div>
           </section>
 

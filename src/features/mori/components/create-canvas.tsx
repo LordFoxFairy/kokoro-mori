@@ -4,7 +4,14 @@ import { useRef, useState, type ChangeEvent, type FormEvent, type KeyboardEvent 
 import { AudioLines, Check, Disc3, Mic2, SlidersHorizontal, Sparkles, WandSparkles } from "lucide-react"
 import type { CreationMode, LyricsMode, SongPlan } from "../domain"
 import { t } from "../copy"
-import type { MoriInspirationPreset } from "../creative-assets"
+import {
+  previewInspirationPresets,
+  previewReferenceAudios,
+  previewVoiceProfiles,
+  type MoriAudioReferenceSelection,
+  type MoriCreativeSourceSelection,
+  type MoriInspirationPreset,
+} from "../creative-assets"
 import { buildSongPlan } from "../song-plan"
 import { CreativeSourceDock } from "./creative-source-dock"
 import { useMoriApp } from "./mori-app-provider"
@@ -25,24 +32,38 @@ export type CreationDraft = {
 type CreateCanvasProps = {
   projectRef: string
   mode: CreationMode
+  initialCreativeSource?: MoriCreativeSourceSelection
   onModeChange: (mode: CreationMode) => void
   onGenerate: (draft: CreationDraft) => void
 }
 
-export function CreateCanvas({ projectRef, mode, onModeChange, onGenerate }: CreateCanvasProps) {
+export function CreateCanvas({ projectRef, mode, initialCreativeSource, onModeChange, onGenerate }: CreateCanvasProps) {
   const { preferences } = useMoriApp()
+  const initialVoiceProfile = initialCreativeSource?.kind === "voice"
+    ? previewVoiceProfiles.find((profile) => profile.ref === initialCreativeSource.ref) ?? null
+    : null
+  const initialInspiration = initialCreativeSource?.kind === "inspiration"
+    ? previewInspirationPresets.find((preset) => preset.ref === initialCreativeSource.ref) ?? null
+    : null
+  const initialReferenceAudio = initialCreativeSource?.kind === "audio"
+    ? previewReferenceAudios.find((audio) => audio.ref === initialCreativeSource.ref) ?? null
+    : null
   const smartTabRef = useRef<HTMLButtonElement>(null)
   const customTabRef = useRef<HTMLButtonElement>(null)
   const referenceInputRef = useRef<HTMLInputElement>(null)
   const [prompt, setPrompt] = useState("A warm, late-night track for the drive home, slowly opening into sunrise.")
   const [lyrics, setLyrics] = useState("")
   const [lyricsModeOverride, setLyricsModeOverride] = useState<LyricsMode | null>(null)
-  const [style, setStyle] = useState("Dream pop · intimate · organic")
+  const [style, setStyle] = useState(initialInspiration?.style ?? "Dream pop · intimate · organic")
   const [voice, setVoice] = useState("Natural lead")
-  const [voiceProfileRef, setVoiceProfileRef] = useState<string | null>(null)
-  const [inspirationRef, setInspirationRef] = useState<string | null>(null)
+  const [voiceProfileRef, setVoiceProfileRef] = useState<string | null>(initialVoiceProfile?.ref ?? null)
+  const [inspirationRef, setInspirationRef] = useState<string | null>(initialInspiration?.ref ?? null)
   const [durationOverride, setDurationOverride] = useState<number | null>(null)
-  const [referenceFile, setReferenceFile] = useState<{ name: string; size: number } | null>(null)
+  const [referenceSource, setReferenceSource] = useState<MoriAudioReferenceSelection | null>(() => initialReferenceAudio === null ? null : {
+    ref: initialReferenceAudio.ref,
+    name: initialReferenceAudio.name,
+    detail: `${initialReferenceAudio.description} · from Library`,
+  })
   const [referenceError, setReferenceError] = useState<string | null>(null)
   const [planPreview, setPlanPreview] = useState<ReturnType<typeof buildSongPlan> | null>(null)
   const [planEditing, setPlanEditing] = useState(false)
@@ -103,13 +124,17 @@ export function CreateCanvas({ projectRef, mode, onModeChange, onGenerate }: Cre
       return
     }
 
-    setReferenceFile({ name: file.name, size: file.size })
+    setReferenceSource({
+      ref: "asset_preview_reference",
+      name: file.name,
+      detail: `${formatFileSize(file.size)} · selected for this direction`,
+    })
     setReferenceError(null)
     clearPlanPreview()
   }
 
   function removeReference() {
-    setReferenceFile(null)
+    setReferenceSource(null)
     setReferenceError(null)
     if (referenceInputRef.current !== null) referenceInputRef.current.value = ""
     clearPlanPreview()
@@ -127,11 +152,11 @@ export function CreateCanvas({ projectRef, mode, onModeChange, onGenerate }: Cre
       setPlanPreview(buildSongPlan(projectRef, { prompt, lyricsMode, style, voice, durationSeconds }))
       return
     }
-    onGenerate({ prompt, lyricsMode, lyrics: lyrics.trim() || undefined, style, referenceAssetRefs: referenceFile === null ? [] : ["asset_preview_reference"], voice, voiceRef: voiceProfileRef ?? undefined, durationSeconds })
+    onGenerate({ prompt, lyricsMode, lyrics: lyrics.trim() || undefined, style, referenceAssetRefs: referenceSource === null ? [] : [referenceSource.ref], voice, voiceRef: voiceProfileRef ?? undefined, durationSeconds })
   }
 
   function confirmPlan() {
-    onGenerate({ prompt, lyricsMode, lyrics: lyrics.trim() || undefined, style, referenceAssetRefs: referenceFile === null ? [] : ["asset_preview_reference"], voice, voiceRef: voiceProfileRef ?? undefined, durationSeconds, songPlan: planPreview ?? undefined })
+    onGenerate({ prompt, lyricsMode, lyrics: lyrics.trim() || undefined, style, referenceAssetRefs: referenceSource === null ? [] : [referenceSource.ref], voice, voiceRef: voiceProfileRef ?? undefined, durationSeconds, songPlan: planPreview ?? undefined })
   }
 
   function navigateMode(event: KeyboardEvent<HTMLButtonElement>, currentMode: CreationMode) {
@@ -169,7 +194,7 @@ export function CreateCanvas({ projectRef, mode, onModeChange, onGenerate }: Cre
         />
 
         <CreativeSourceDock
-          referenceFile={referenceFile}
+          referenceSource={referenceSource}
           referenceError={referenceError}
           voiceRef={voiceProfileRef}
           inspirationRef={inspirationRef}
@@ -326,4 +351,9 @@ function parsePlanList(value: string, fallback: readonly string[]): string[] {
 
 function isAudioReference(file: File): boolean {
   return file.type.startsWith("audio/") || /\.(?:mp3|wav|m4a|flac|aac|ogg)$/iu.test(file.name)
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }

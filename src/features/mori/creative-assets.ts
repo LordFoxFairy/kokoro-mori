@@ -4,12 +4,48 @@ export type MoriVoiceProfile = {
   description: string
 }
 
+export type MoriReferenceAudio = {
+  ref: string
+  name: string
+  description: string
+  durationSeconds: number
+}
+
+export type MoriAudioReferenceSelection = {
+  ref: string
+  name: string
+  detail: string
+}
+
 export type MoriInspirationPreset = {
   ref: string
   name: string
   description: string
   style: string
 }
+
+export type MoriCreativeSourceKind = "audio" | "voice" | "inspiration"
+
+export type MoriCreativeSourceSelection = {
+  kind: MoriCreativeSourceKind
+  ref: string
+}
+
+export type MoriCreativeLibrarySource = {
+  sourceKind: MoriCreativeSourceKind
+  ref: string
+  name: string
+  description: string
+}
+
+export const previewReferenceAudios = [
+  {
+    ref: "asset_preview_city_lights",
+    name: "City Lights demo",
+    description: "24 sec · soft city pulse",
+    durationSeconds: 24,
+  },
+] satisfies readonly MoriReferenceAudio[]
 
 export const previewVoiceProfiles = [
   {
@@ -44,3 +80,40 @@ export const previewInspirationPresets = [
     style: "Future garage · textured drums · nocturnal synth",
   },
 ] satisfies readonly MoriInspirationPreset[]
+
+export const previewCreativeSources = [
+  ...previewReferenceAudios.map((audio) => ({
+    sourceKind: "audio" as const,
+    ref: audio.ref,
+    name: audio.name,
+    description: audio.description,
+  })),
+  ...previewVoiceProfiles.map((voice) => ({
+    sourceKind: "voice" as const,
+    ref: voice.ref,
+    name: voice.name,
+    description: voice.description,
+  })),
+  ...previewInspirationPresets.map((preset) => ({
+    sourceKind: "inspiration" as const,
+    ref: preset.ref,
+    name: preset.name,
+    description: preset.description,
+  })),
+] satisfies readonly MoriCreativeLibrarySource[]
+
+export function resolvePreviewCreativeSource(kind: string | undefined, ref: string | undefined): MoriCreativeSourceSelection | undefined {
+  if (ref === undefined) return undefined
+  if (kind === "audio" && previewReferenceAudios.some((audio) => audio.ref === ref)) return { kind, ref }
+  if (kind === "voice" && previewVoiceProfiles.some((voice) => voice.ref === ref)) return { kind, ref }
+  if (kind === "inspiration" && previewInspirationPresets.some((preset) => preset.ref === ref)) return { kind, ref }
+  return undefined
+}
+
+export function creativeSourceKindLabel(kind: MoriCreativeSourceKind): string {
+  switch (kind) {
+    case "audio": return "Audio reference"
+    case "voice": return "Voice profile"
+    case "inspiration": return "Inspiration preset"
+  }
+}

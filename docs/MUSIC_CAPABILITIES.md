@@ -73,8 +73,12 @@ Voice profile 与 **Vocal direction** 必须分开：前者是可复用资产身
 用户一旦手动修改 Style，就解除预设关联，避免界面仍声称使用一个已经不准确的 preset。
 
 这一层吸收 Suno 在 Create 中把 Audio、Voice、Inspo 放在创作上下文里的做法，也吸收 Tad 对 Reference
-输入的明确分类；但只展示少量策展方向，避免把 Tad 的大规模标签树直接复制进首屏。正式资产以后统一从
-Library 选择，Create 的位置与交互保持不变。
+输入的明确分类；但只展示少量策展方向，避免把 Tad 的大规模标签树直接复制进首屏。Library 已用同一套
+Audio / Voice / Inspiration 语义建立可复用素材层：默认 All 视图将作品与素材分区，Sources 视图再渐进展开
+类型筛选；`Use in Create` 只传递 provider-neutral 的 `source_kind` 与 `source_ref`，由 Create 校验后恢复选择。
+当前使用确定性 preview assets，正式资产接线后位置、层级和交互保持不变。参考 Suno 的
+[Studio Library](https://help.suno.com/en/articles/13670849)、[Voices](https://help.suno.com/en/articles/11362369)
+和 [Audio Uploads](https://help.suno.com/en/articles/6141569)。
 
 ## 3. Studio 的 AI 操作模型
 
@@ -286,8 +290,9 @@ Command 使用 `Idempotency-Key`；恢复使用 durable snapshot 与 `Last-Event
   version-scoped OpenAPI、client、运行时 parser 与 contract tests。
 - 定向 Isolate one part 与 Custom stems 等 owner 能力协商稳定后再进入渐进式高级选项。
 - Add Vocal、Add Instrumental。
-- Create 已建立 Audio / Voice / Inspiration 的统一选择位，并把 `voice_ref` 与 Vocal direction 分离；下一步让
-  Voice、Persona、Style preset、Reference 正式进入 Library assets，替换当前 preview 目录。
+- Create 已建立 Audio / Voice / Inspiration 的统一选择位，并把 `voice_ref` 与 Vocal direction 分离；Library
+  已加入同源 preview 素材架、类型筛选、搜索和 `Use in Create` 上下文恢复。下一步由 storage/music owner
+  adapter 提供正式 Audio、Voice、Persona、Style preset 与 Reference projection，替换当前 preview 目录。
 
 ### P3 · 完成与发布
 

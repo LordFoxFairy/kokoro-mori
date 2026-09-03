@@ -1428,10 +1428,45 @@
   white-space: nowrap;
 }
 
+.libraryResults {
+  display: block;
+}
+
+.librarySection {
+  display: grid;
+  gap: 13px;
+  margin-top: 20px;
+}
+
+.librarySectionHeader {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.librarySectionHeader h2 {
+  margin: 0;
+  font-size: 16px;
+  letter-spacing: -0.03em;
+}
+
+.librarySectionHeader p {
+  margin: 5px 0 0;
+  color: var(--mori-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.librarySectionHeader > span {
+  color: var(--mori-faint);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
 .libraryList {
   display: grid;
   gap: 8px;
-  margin-top: 17px;
 }
 
 .libraryRow {

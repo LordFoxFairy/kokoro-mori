@@ -294,6 +294,59 @@ describe("Mori workspace", () => {
     })
   })
 
+  it("hydrates a reusable voice selected from Library", () => {
+    render(
+      <MoriAppProvider>
+        <CreateCanvas
+          projectRef="project_preview_first_light"
+          mode="smart"
+          initialCreativeSource={{ kind: "voice", ref: "voice_preview_mira" }}
+          onModeChange={() => undefined}
+          onGenerate={() => undefined}
+        />
+      </MoriAppProvider>,
+    )
+
+    expect(screen.getByRole("button", { name: "Change voice profile Mira" })).toBeInTheDocument()
+  })
+
+  it("hydrates editable inspiration selected from Library", () => {
+    render(
+      <MoriAppProvider>
+        <CreateCanvas
+          projectRef="project_preview_first_light"
+          mode="custom"
+          initialCreativeSource={{ kind: "inspiration", ref: "style_preview_open_road" }}
+          onModeChange={() => undefined}
+          onGenerate={() => undefined}
+        />
+      </MoriAppProvider>,
+    )
+
+    expect(screen.getByRole("button", { name: "Change inspiration Open Road" })).toBeInTheDocument()
+    expect(screen.getByLabelText("Style")).toHaveValue("Cinematic folk · open horizon · strings")
+  })
+
+  it("hydrates a reusable audio reference selected from Library", () => {
+    const onGenerate = vi.fn<(draft: CreationDraft) => void>()
+
+    render(
+      <MoriAppProvider>
+        <CreateCanvas
+          projectRef="project_preview_first_light"
+          mode="custom"
+          initialCreativeSource={{ kind: "audio", ref: "asset_preview_city_lights" }}
+          onModeChange={() => undefined}
+          onGenerate={onGenerate}
+        />
+      </MoriAppProvider>,
+    )
+
+    expect(screen.getByRole("button", { name: "Replace reference audio City Lights demo" })).toBeInTheDocument()
+    fireEvent.submit(screen.getByRole("textbox", { name: "Song idea" }).closest("form") as HTMLFormElement)
+    expect(onGenerate.mock.calls[0]?.[0].referenceAssetRefs).toEqual(["asset_preview_city_lights"])
+  })
+
   it("carries selected creative asset refs into the generation command", async () => {
     let request: GenerationCreateInput | null = null
     const api: Pick<MoriApi, "createSongPlan" | "createGeneration" | "getGeneration" | "getGenerationEvents" | "listCandidates" | "cancelGeneration"> = {
