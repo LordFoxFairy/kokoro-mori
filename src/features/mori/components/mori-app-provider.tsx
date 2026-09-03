@@ -141,11 +141,14 @@ export function MoriAppProvider({ children }: { children: ReactNode }) {
   }, [playerCandidate, playerCandidates, positionSeconds, preferences.endBehavior])
 
   useEffect(() => {
-    if (window.innerWidth <= 700) {
-      const compactTimer = window.setTimeout(() => setRailCollapsed(true), 0)
-      return () => window.clearTimeout(compactTimer)
+    const keepMobileRailCompact = () => {
+      if (window.innerWidth <= 700) setRailCollapsedState(true)
     }
-  }, [setRailCollapsed])
+
+    keepMobileRailCompact()
+    window.addEventListener("resize", keepMobileRailCompact)
+    return () => window.removeEventListener("resize", keepMobileRailCompact)
+  }, [])
 
   useEffect(() => {
     if (!playing) return

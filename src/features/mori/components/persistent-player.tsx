@@ -30,7 +30,7 @@ export function PersistentPlayer({ candidate, playing, muted, positionSeconds, o
   return (
     <section className={styles.player} aria-label="Global player" data-player-surface="global-dock">
       <div className={styles.playerTrack}>
-        <div className={`${styles.playerArtwork} ${hasCandidate ? "" : styles.playerArtworkEmpty}`} aria-hidden="true">{hasCandidate ? null : <Music2 size={18} />}</div>
+        <div className={`${styles.playerArtwork} ${hasCandidate ? "" : styles.playerArtworkEmpty}`} aria-hidden="true">{hasCandidate ? <span>01</span> : <Music2 size={18} />}</div>
         <div className={styles.playerInfo}>
           <strong>{candidate?.title ?? "Nothing playing"}</strong>
           <span>{candidate?.subtitle ?? "No version selected"}</span>

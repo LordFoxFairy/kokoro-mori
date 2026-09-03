@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowLeft, Check, Download, PanelLeft, Play, Save, Share2, Sparkles, Volume2, VolumeX } from "lucide-react"
+import { ArrowLeft, AudioLines, AudioWaveform, Check, Download, FileText, Play, Save, Share2, Sparkles, Volume2, VolumeX } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import type { MoriApi, MoriCandidate, MoriExportSnapshot } from "@/lib/mori-api"
@@ -192,9 +192,9 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api }: St
           <div className={styles.studioArtwork}><span>01</span></div>
           <div className={styles.studioSidebarCopy}><span>Current version</span><h1>{activeCandidate.title}</h1><p>{activeCandidate.subtitle}</p></div>
           <div className={styles.studioToolList}>
-            <button className={activeTool === "arrangement" ? styles.studioToolActive : ""} type="button" aria-pressed={activeTool === "arrangement"} onClick={() => setActiveTool("arrangement")}><PanelLeft size={15} /> Arrangement</button>
-            <button className={activeTool === "lyrics" ? styles.studioToolActive : ""} type="button" aria-pressed={activeTool === "lyrics"} onClick={() => setActiveTool("lyrics")}><Sparkles size={15} /> Lyrics</button>
-            <button className={activeTool === "stems" ? styles.studioToolActive : ""} type="button" aria-pressed={activeTool === "stems"} onClick={() => setActiveTool("stems")}><PanelLeft size={15} /> Stems</button>
+            <button className={activeTool === "arrangement" ? styles.studioToolActive : ""} type="button" aria-pressed={activeTool === "arrangement"} onClick={() => setActiveTool("arrangement")}><AudioLines size={15} /> Arrangement</button>
+            <button className={activeTool === "lyrics" ? styles.studioToolActive : ""} type="button" aria-pressed={activeTool === "lyrics"} onClick={() => setActiveTool("lyrics")}><FileText size={15} /> Lyrics</button>
+            <button className={activeTool === "stems" ? styles.studioToolActive : ""} type="button" aria-pressed={activeTool === "stems"} onClick={() => setActiveTool("stems")}><AudioWaveform size={15} /> Stems</button>
           </div>
           <div className={styles.studioSidebarBottom}><span>Version</span><strong>{activeCandidate.versionRef}</strong></div>
         </aside>

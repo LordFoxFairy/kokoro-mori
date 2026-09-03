@@ -3701,10 +3701,20 @@
 }
 
 .playerArtwork {
+  display: grid;
   width: 52px;
   height: 52px;
   flex: 0 0 auto;
+  place-items: center;
   border-radius: 14px;
+  color: rgba(55, 43, 80, 0.68);
+  font-family: var(--mori-font-display);
+  font-size: 23px;
+  letter-spacing: -0.08em;
+  background:
+    radial-gradient(circle at 76% 20%, rgba(255, 255, 255, 0.65), transparent 1.5rem),
+    linear-gradient(145deg, #b9a6f5, #f2b5b8 58%, #f7c39e);
+  box-shadow: 0 6px 14px rgba(109, 92, 231, 0.12);
 }
 
 .playerArtworkEmpty {

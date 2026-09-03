@@ -65,6 +65,7 @@ describe("Mori application navigation", () => {
 
     expect(screen.getByRole("region", { name: "Global player" })).toHaveAttribute("data-player-surface", "global-dock")
     expect(screen.getByRole("group", { name: "Playback controls" })).toBeInTheDocument()
+    expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("01")
   })
 
   it("lets a listener seek through the current version", () => {
@@ -98,6 +99,31 @@ describe("Mori application navigation", () => {
       )
       await waitFor(() => expect(screen.getByRole("button", { name: "Expand sidebar" })).toBeInTheDocument())
     } finally {
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: originalWidth })
+    }
+  })
+
+  it("keeps the rail compact when a desktop window is resized to mobile", async () => {
+    const originalWidth = window.innerWidth
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 1280 })
+    localStorage.removeItem("mori.rail.v1")
+
+    try {
+      render(
+        <MoriAppProvider>
+          <MoriCatalogShell activeKey="library" ariaLabel="Library">
+            <div>Library content</div>
+          </MoriCatalogShell>
+        </MoriAppProvider>,
+      )
+
+      await waitFor(() => expect(screen.getByRole("button", { name: "Collapse sidebar" })).toBeInTheDocument())
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: 390 })
+      fireEvent(window, new Event("resize"))
+
+      await waitFor(() => expect(screen.getByRole("button", { name: "Expand sidebar" })).toBeInTheDocument())
+    } finally {
+      localStorage.removeItem("mori.rail.v1")
       Object.defineProperty(window, "innerWidth", { configurable: true, value: originalWidth })
     }
   })
