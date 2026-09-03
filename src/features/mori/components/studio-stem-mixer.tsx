@@ -1,0 +1,225 @@
+"use client"
+
+import { Download, Pause, Play, Volume2, VolumeX } from "lucide-react"
+import { useEffect, useMemo, useRef, useState } from "react"
+import type { MoriStem } from "@/lib/mori-api"
+import { buildMoriAssetContentUrl } from "@/lib/mori-media"
+import {
+  createHtmlStemPlaybackController,
+  type StemMixTrack,
+  type StemPlaybackController,
+  type StemPlaybackFactory,
+} from "../stem-playback"
+import { Waveform } from "./waveform"
+import styles from "./studio-stem-mixer.module.css"
+
+type StudioStemMixerProps = {
+  stems: readonly MoriStem[]
+  externalPlaybackActive: boolean
+  onPlaybackStart: () => void
+  playbackFactory?: StemPlaybackFactory
+}
+
+const playbackFailureMessage = "Stem audio is unavailable right now. Check the connection and try again."
+
+export function StudioStemMixer({ stems, externalPlaybackActive, onPlaybackStart, playbackFactory = createHtmlStemPlaybackController }: StudioStemMixerProps) {
+  const [playing, setPlaying] = useState(false)
+  const [starting, setStarting] = useState(false)
+  const [positionSeconds, setPositionSeconds] = useState(0)
+  const [mutedStemRefs, setMutedStemRefs] = useState<string[]>([])
+  const [soloStemRef, setSoloStemRef] = useState<string | null>(null)
+  const [gains, setGains] = useState<Record<string, number>>(() => initialGains(stems))
+  const [playbackError, setPlaybackError] = useState<string | null>(null)
+  const controllerRef = useRef<StemPlaybackController | null>(null)
+  const playbackRequestRef = useRef(0)
+  const durationSeconds = stems.reduce((duration, stem) => Math.max(duration, stem.duration_seconds), 0)
+  const mix = useMemo<StemMixTrack[]>(() => stems.map((stem) => ({
+    stemRef: stem.stem_ref,
+    gain: gains[stem.stem_ref] ?? 1,
+    muted: mutedStemRefs.includes(stem.stem_ref),
+    solo: soloStemRef === stem.stem_ref,
+  })), [gains, mutedStemRefs, soloStemRef, stems])
+
+  useEffect(() => {
+    const controller = playbackFactory({
+      onPosition: (position) => setPositionSeconds(clamp(position, 0, durationSeconds)),
+      onEnded: () => {
+        playbackRequestRef.current += 1
+        setPlaying(false)
+        setStarting(false)
+        setPositionSeconds(0)
+      },
+      onError: () => {
+        playbackRequestRef.current += 1
+        setPlaying(false)
+        setStarting(false)
+        setPlaybackError(playbackFailureMessage)
+      },
+    })
+    controllerRef.current = controller
+    controller.setTracks(stems)
+    return () => {
+      playbackRequestRef.current += 1
+      controller.dispose()
+      if (controllerRef.current === controller) controllerRef.current = null
+    }
+  }, [durationSeconds, playbackFactory, stems])
+
+  useEffect(() => {
+    controllerRef.current?.setMix(mix)
+  }, [mix])
+
+  useEffect(() => {
+    if (!externalPlaybackActive) return
+    playbackRequestRef.current += 1
+    controllerRef.current?.pause()
+    const timer = window.setTimeout(() => {
+      setPlaying(false)
+      setStarting(false)
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [externalPlaybackActive])
+
+  const togglePlayback = async () => {
+    const controller = controllerRef.current
+    if (controller === null) return
+    if (playing || starting) {
+      playbackRequestRef.current += 1
+      controller.pause()
+      setPlaying(false)
+      setStarting(false)
+      return
+    }
+
+    const request = playbackRequestRef.current + 1
+    playbackRequestRef.current = request
+    setPlaybackError(null)
+    setStarting(true)
+    onPlaybackStart()
+    try {
+      await controller.play(positionSeconds)
+      if (playbackRequestRef.current !== request) return
+      setPlaying(true)
+    } catch {
+      if (playbackRequestRef.current !== request) return
+      setPlaying(false)
+      setPlaybackError(playbackFailureMessage)
+    } finally {
+      if (playbackRequestRef.current === request) setStarting(false)
+    }
+  }
+
+  const seek = (position: number) => {
+    const nextPosition = clamp(position, 0, durationSeconds)
+    setPositionSeconds(nextPosition)
+    controllerRef.current?.seek(nextPosition)
+  }
+
+  const toggleMute = (stemRef: string) => {
+    setMutedStemRefs((current) => current.includes(stemRef) ? current.filter((item) => item !== stemRef) : [...current, stemRef])
+  }
+
+  const setGain = (stemRef: string, gainPercent: number) => {
+    setGains((current) => ({ ...current, [stemRef]: clamp(gainPercent / 100, 0, 1) }))
+  }
+
+  return (
+    <section className={styles.mixer} aria-label="Stem mixer">
+      <div className={styles.transport}>
+        <button className={styles.playButton} type="button" aria-label={playing || starting ? "Pause stem mix" : "Play stem mix"} onClick={() => { void togglePlayback() }}>
+          {playing || starting ? <Pause size={15} fill="currentColor" /> : <Play size={15} fill="currentColor" />}
+        </button>
+        <div className={styles.transportCopy}>
+          <strong>{starting ? "Opening audio…" : playing ? "Auditioning mix" : "Mix preview"}</strong>
+          <span>{stems.length} tracks · synchronized from this Version</span>
+        </div>
+        <span className={styles.transportTime}>{formatDuration(positionSeconds)} <i>/</i> {formatDuration(durationSeconds)}</span>
+      </div>
+
+      <label className={styles.masterSeek}>
+        <span className={styles.srOnly}>Seek stem mix</span>
+        <input
+          type="range"
+          min={0}
+          max={durationSeconds}
+          step={0.1}
+          value={Math.min(positionSeconds, durationSeconds)}
+          onChange={(event) => seek(Number(event.target.value))}
+          aria-label="Seek stem mix"
+          style={{ background: seekBackground(positionSeconds, durationSeconds) }}
+        />
+      </label>
+
+      {playbackError !== null ? <div className={styles.playbackError} role="alert">{playbackError}</div> : null}
+
+      <div className={styles.trackList}>
+        {stems.map((stem, index) => {
+          const muted = mutedStemRefs.includes(stem.stem_ref)
+          const solo = soloStemRef === stem.stem_ref
+          const suppressedBySolo = soloStemRef !== null && !solo
+          const gain = gains[stem.stem_ref] ?? 1
+          return (
+            <article className={`${styles.track} ${muted || suppressedBySolo ? styles.trackSuppressed : ""}`} aria-label={`${stem.label} stem`} key={stem.stem_ref}>
+              <div className={styles.identity}>
+                <span>{String(index + 1).padStart(2, "0")}</span>
+                <div><strong>{stem.label}</strong><small>{stemDetail(stem)}</small></div>
+              </div>
+              <div className={styles.waveform}><Waveform seed={stemSeed(stem, index)} compact progress={stem.duration_seconds > 0 ? Math.min(positionSeconds / stem.duration_seconds, 1) : 0} /></div>
+              <span className={styles.duration}>{formatDuration(stem.duration_seconds)}</span>
+              <label className={styles.level}>
+                <span>Level</span>
+                <input type="range" min={0} max={100} step={1} value={Math.round(gain * 100)} aria-label={`Volume ${stem.label}`} onChange={(event) => setGain(stem.stem_ref, Number(event.target.value))} />
+                <output>{Math.round(gain * 100)}</output>
+              </label>
+              <div className={styles.trackActions}>
+                <button type="button" aria-pressed={muted} aria-label={`${muted ? "Unmute" : "Mute"} ${stem.label}`} title={`${muted ? "Unmute" : "Mute"} ${stem.label}`} onClick={() => toggleMute(stem.stem_ref)}>{muted ? <VolumeX size={14} /> : <Volume2 size={14} />}</button>
+                <button className={solo ? styles.soloActive : ""} type="button" aria-pressed={solo} aria-label={`${solo ? "Unsolo" : "Solo"} ${stem.label}`} onClick={() => setSoloStemRef(solo ? null : stem.stem_ref)}>S</button>
+                <a href={buildMoriAssetContentUrl(stem.audio_asset_ref, "attachment")} download aria-label={`Download ${stem.label} stem`} title={`Download ${stem.label} stem`}><Download size={14} /></a>
+              </div>
+            </article>
+          )
+        })}
+      </div>
+      <p className={styles.mixNote}>Audition only · Mute, Solo, and Level never alter the Current Version or source stems.</p>
+    </section>
+  )
+}
+
+function initialGains(stems: readonly MoriStem[]): Record<string, number> {
+  return Object.fromEntries(stems.map((stem) => [stem.stem_ref, 1]))
+}
+
+function stemDetail(stem: MoriStem): string {
+  switch (stem.kind) {
+    case "vocals": return "Primary vocal layer"
+    case "backing_vocals": return "Harmony and support"
+    case "instrumental": return "Music without vocals"
+    case "drums": return "Percussion and transients"
+    case "bass": return "Low-frequency foundation"
+    case "guitar": return "Guitar layers"
+    case "keys": return "Piano and keyboard layers"
+    case "strings": return "String ensemble layers"
+    case "wind": return "Woodwind and brass layers"
+    case "synth": return "Synthesizer layers"
+    case "percussion": return "Additional percussion"
+    case "other": return "Remaining instruments"
+  }
+}
+
+function stemSeed(stem: MoriStem, index: number): number {
+  return stem.stem_ref.length * 7 + index * 13
+}
+
+function formatDuration(durationSeconds: number): string {
+  const safeDuration = Math.max(0, Math.floor(durationSeconds))
+  return `${Math.floor(safeDuration / 60)}:${String(safeDuration % 60).padStart(2, "0")}`
+}
+
+function seekBackground(positionSeconds: number, durationSeconds: number): string {
+  const progress = durationSeconds > 0 ? clamp((positionSeconds / durationSeconds) * 100, 0, 100) : 0
+  return `linear-gradient(90deg, var(--mori-primary) 0 ${progress}%, rgba(109, 92, 231, 0.08) ${progress}% 100%)`
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : min
+}

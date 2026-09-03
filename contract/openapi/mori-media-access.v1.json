@@ -1,0 +1,249 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Mori Media Access API",
+    "version": "0.1.0",
+    "description": "Authenticated same-origin byte-range access to Mori audio assets used by browser playback and explicit downloads."
+  },
+  "paths": {
+    "/api/v1/mori/assets/{asset_ref}/content": {
+      "get": {
+        "operationId": "getMoriAssetContent",
+        "summary": "Read audio content attached to an authorized Mori resource",
+        "description": "Resolves an opaque asset reference inside the trusted service context. The browser never receives a storage location or provider URL.",
+        "security": [
+          {
+            "moriSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "asset_ref",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "disposition",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "inline",
+                "attachment"
+              ],
+              "default": "inline"
+            }
+          },
+          {
+            "name": "Range",
+            "in": "header",
+            "required": false,
+            "description": "A single RFC 9110 byte range used for seeking.",
+            "schema": {
+              "type": "string",
+              "pattern": "^bytes=[0-9]*-[0-9]*$"
+            }
+          },
+          {
+            "name": "If-Range",
+            "in": "header",
+            "required": false,
+            "description": "An entity tag or HTTP date validating a resumed byte range.",
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Complete authorized audio content",
+            "headers": {
+              "Accept-Ranges": {
+                "schema": {
+                  "type": "string",
+                  "const": "bytes"
+                }
+              },
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "audio/*": {
+                "schema": {
+                  "type": "string",
+                  "contentEncoding": "binary"
+                }
+              }
+            }
+          },
+          "206": {
+            "description": "Authorized partial audio content",
+            "headers": {
+              "Accept-Ranges": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "bytes"
+                }
+              },
+              "Content-Range": {
+                "required": true,
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "audio/*": {
+                "schema": {
+                  "type": "string",
+                  "contentEncoding": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The asset is not attached to a resource visible in the trusted context",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The asset was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "416": {
+            "description": "The requested byte range is not satisfiable",
+            "headers": {
+              "Content-Range": {
+                "required": true,
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "moriSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "kokoro_session"
+      }
+    },
+    "schemas": {
+      "ApiError": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "code",
+          "message",
+          "retryable",
+          "details"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "retryable": {
+            "type": "boolean"
+          },
+          "details": {
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        }
+      },
+      "ApiMeta": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "request_id"
+        ],
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "ApiErrorResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "error",
+          "meta"
+        ],
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ApiError"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ApiMeta"
+          }
+        }
+      }
+    }
+  }
+}

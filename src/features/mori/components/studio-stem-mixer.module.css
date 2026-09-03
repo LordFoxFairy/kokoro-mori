@@ -1,0 +1,320 @@
+.mixer {
+  overflow: hidden;
+  margin: 0 18px 14px;
+  border: 1px solid rgba(109, 92, 231, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.transport,
+.identity,
+.level,
+.trackActions {
+  display: flex;
+  align-items: center;
+}
+
+.transport {
+  gap: 10px;
+  min-height: 57px;
+  padding: 9px 11px;
+  background: linear-gradient(120deg, rgba(242, 239, 255, 0.8), rgba(255, 248, 242, 0.72));
+}
+
+.playButton {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  color: #fff;
+  background: var(--mori-primary);
+  box-shadow: 0 6px 14px rgba(109, 92, 231, 0.2);
+}
+
+.playButton:hover {
+  background: var(--mori-primary-deep);
+}
+
+.transportCopy {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 2px;
+}
+
+.transportCopy strong {
+  font-size: 11px;
+}
+
+.transportCopy span,
+.transportTime,
+.duration,
+.identity small,
+.mixNote {
+  color: var(--mori-muted);
+  font-size: 9px;
+}
+
+.transportTime,
+.duration {
+  font-family: var(--mori-font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.transportTime i {
+  padding: 0 2px;
+  color: var(--mori-faint);
+  font-style: normal;
+}
+
+.masterSeek {
+  display: block;
+  height: 5px;
+  background: rgba(109, 92, 231, 0.08);
+}
+
+.masterSeek input {
+  display: block;
+  width: 100%;
+  height: 5px;
+  margin: 0;
+  appearance: none;
+  cursor: pointer;
+  background: rgba(109, 92, 231, 0.08);
+}
+
+.masterSeek input::-webkit-slider-runnable-track {
+  height: 5px;
+  background: transparent;
+}
+
+.masterSeek input::-webkit-slider-thumb {
+  width: 10px;
+  height: 10px;
+  margin-top: -2.5px;
+  appearance: none;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--mori-primary);
+  box-shadow: 0 1px 4px rgba(62, 45, 86, 0.22);
+}
+
+.masterSeek input::-moz-range-track {
+  height: 5px;
+  background: transparent;
+}
+
+.masterSeek input::-moz-range-thumb {
+  width: 7px;
+  height: 7px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--mori-primary);
+}
+
+.playbackError {
+  margin: 9px 11px 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(201, 85, 85, 0.15);
+  border-radius: 8px;
+  color: #9a514d;
+  font-size: 10px;
+  line-height: 1.45;
+  background: rgba(255, 244, 241, 0.82);
+}
+
+.trackList {
+  display: grid;
+  padding: 7px 10px 4px;
+}
+
+.track {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.7fr) minmax(110px, 1fr) auto minmax(105px, 0.52fr) auto;
+  gap: 10px;
+  min-height: 54px;
+  align-items: center;
+  padding: 7px 2px;
+  border-bottom: 1px solid rgba(109, 92, 231, 0.075);
+  transition: opacity var(--mori-motion-fast) ease;
+}
+
+.track:last-child {
+  border-bottom: 0;
+}
+
+.trackSuppressed {
+  opacity: 0.43;
+}
+
+.identity {
+  min-width: 0;
+  gap: 8px;
+}
+
+.identity > span {
+  color: var(--mori-primary);
+  font-family: var(--mori-font-mono);
+  font-size: 9px;
+}
+
+.identity > div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.identity strong,
+.identity small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.identity strong {
+  font-size: 11px;
+}
+
+.waveform {
+  min-width: 0;
+}
+
+.level {
+  min-width: 0;
+  gap: 5px;
+}
+
+.level > span,
+.level output {
+  color: var(--mori-faint);
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.level output {
+  min-width: 18px;
+  font-family: var(--mori-font-mono);
+  text-align: right;
+}
+
+.level input {
+  width: 100%;
+  min-width: 46px;
+  height: 3px;
+  appearance: none;
+  border-radius: 99px;
+  background: rgba(109, 92, 231, 0.14);
+}
+
+.level input::-webkit-slider-thumb {
+  width: 9px;
+  height: 9px;
+  appearance: none;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--mori-primary);
+  box-shadow: 0 1px 3px rgba(62, 45, 86, 0.22);
+}
+
+.level input::-moz-range-thumb {
+  width: 6px;
+  height: 6px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--mori-primary);
+}
+
+.trackActions {
+  gap: 4px;
+}
+
+.trackActions button,
+.trackActions a {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid var(--mori-border);
+  border-radius: 7px;
+  color: var(--mori-muted);
+  font-size: 9px;
+  font-weight: 900;
+  background: #fff;
+}
+
+.trackActions button:hover,
+.trackActions a:hover,
+.trackActions .soloActive {
+  border-color: rgba(109, 92, 231, 0.24);
+  color: var(--mori-primary-deep);
+  background: var(--mori-primary-soft);
+}
+
+.mixNote {
+  margin: 0;
+  padding: 6px 11px 10px;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.playButton:focus-visible,
+.masterSeek input:focus-visible,
+.level input:focus-visible,
+.trackActions button:focus-visible,
+.trackActions a:focus-visible {
+  outline: 2px solid rgba(109, 92, 231, 0.48);
+  outline-offset: 2px;
+}
+
+@container (max-width: 680px) {
+  .track {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 7px 10px;
+    padding: 9px 2px;
+  }
+  .trackActions {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .waveform {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .duration {
+    display: none;
+  }
+
+  .level {
+    grid-column: 1 / -1;
+    grid-row: 3;
+  }
+}
+
+@container (max-width: 430px) {
+  .mixer {
+    margin-inline: 12px;
+  }
+
+  .transportCopy span {
+    display: none;
+  }
+
+  .transportTime {
+    font-size: 8px;
+  }
+}

@@ -3,13 +3,23 @@ import { describe, expect, it } from "vitest"
 import type { MoriApi, StudioChangeGenerationInput } from "@/lib/mori-api"
 import { MoriAppProvider } from "./components/mori-app-provider"
 import { previewCandidates } from "./preview-data"
+import type { StemPlaybackFactory } from "./stem-playback"
 import { StudioPageContent } from "./studio-page"
+
+const createTestStemPlaybackController: StemPlaybackFactory = () => ({
+  setTracks: () => undefined,
+  play: async () => undefined,
+  pause: () => undefined,
+  seek: () => undefined,
+  setMix: () => undefined,
+  dispose: () => undefined,
+})
 
 describe("Mori studio page", () => {
   function renderStudio(api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "listCandidates" | "createStudioChange" | "getGeneration" | "getGenerationEvents" | "cancelGeneration" | "createLyricsRevision" | "getLyricsRevision" | "getLyricsRevisionEvents" | "cancelLyricsRevision" | "createStemSeparation" | "getStemSeparation" | "getStemSeparationEvents" | "cancelStemSeparation">>) {
     return render(
       <MoriAppProvider>
-        <StudioPageContent candidate={previewCandidates[0]} api={api} />
+        <StudioPageContent candidate={previewCandidates[0]} api={api} stemPlaybackFactory={createTestStemPlaybackController} />
       </MoriAppProvider>,
     )
   }
@@ -884,7 +894,10 @@ describe("Mori studio page", () => {
     const stemTracks = await within(stemsEditor).findByRole("region", { name: "Stem tracks" })
     expect(within(stemTracks).getAllByRole("article")).toHaveLength(5)
     expect(within(stemTracks).getByText("MIDI transcription ready")).toBeInTheDocument()
-    expect(within(stemTracks).getByText("Mix controls are staged locally until playable stem audio is connected.")).toBeInTheDocument()
+    const mixer = within(stemTracks).getByRole("region", { name: "Stem mixer" })
+    expect(within(mixer).getByText("5 tracks · synchronized from this Version")).toBeInTheDocument()
+    expect(within(mixer).getAllByRole("link", { name: /Download .+ stem/u })).toHaveLength(5)
+    expect(within(mixer).getByText("Audition only · Mute, Solo, and Level never alter the Current Version or source stems.")).toBeInTheDocument()
 
     const muteLead = within(stemTracks).getByRole("button", { name: "Mute Lead vocal" })
     fireEvent.click(muteLead)

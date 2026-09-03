@@ -171,7 +171,8 @@ Option       可选 MIDI transcription
 Review       先确认输出数量、来源与结果去向
 Run          snapshot / SSE 进度、取消、失败重试
 Result       实际返回的 version-bound stem assets
-Mix          Mute / Solo 先保存当前工作区的本地选择，renderer 接入后再驱动真实试听
+Audition     一个同步 Transport + Seek；逐轨 Mute / Solo / Level
+Export       每个返回音轨可独立下载
 ```
 
 `Isolate a part` 是默认快路径，选择一个 vocals / drums / bass 等目标，得到该目标与 remaining mix；
@@ -180,6 +181,10 @@ Mix          Mute / Solo 先保存当前工作区的本地选择，renderer 接�
 Auto Split、Advanced Split 意图层级，但使用 Mori 自己的名称和 provider-neutral `target_kinds`，不泄漏套餐、
 credits 或供应商的近百个乐器 ID。它们都坚持 Suno Studio 的连续上下文：分离发生在当前 Version，用户留在
 Studio 内 Review，原版本保持不变。成功后只展示 API 真正返回的 version-bound assets，不用前端 fixture 冒充结果。
+Stem mixer 以第一条返回音轨为时钟，在播放和 seek 前对齐全部通道，并在漂移超过阈值时重新同步；Mute、Solo、
+Level 会立即改变 audition 通道，任一媒体失败则停止整组并显示真实失败。开始分轨试听会暂停全局 Player；全局
+Player 再次开始时也会暂停 mixer，避免两套声音竞争。逐轨 Download 与试听都使用同一个受信同源媒体 seam，
+不会把 Storage 或 provider URL 暴露给浏览器。
 
 ## 4. Studio Change API 契约
 
@@ -293,6 +298,21 @@ Command 使用 `Idempotency-Key`；恢复使用 durable snapshot 与 `Last-Event
 机器事实源见
 [`contract/openapi/mori-stem-separation.v1.json`](../contract/openapi/mori-stem-separation.v1.json)。
 
+### Media Access API
+
+Stem snapshot 继续只保存稳定的 opaque `audio_asset_ref`。浏览器通过独立、只读的同源媒体投影访问字节：
+
+```http
+GET /api/v1/mori/assets/{asset_ref}/content
+Range: bytes=START-END
+If-Range: ETAG
+```
+
+`disposition=inline` 用于播放，`disposition=attachment` 用于明确下载；完整响应为 `200`，seek/resume 为 `206`。
+BFF 必须按受信会话校验该 asset 与用户可见 Mori 资源的关联，再调用 Storage owner；浏览器既不传 identity，
+也不接收 bucket、object key 或 provider signed URL。机器事实源见
+[`contract/openapi/mori-media-access.v1.json`](../contract/openapi/mori-media-access.v1.json)。
+
 ## 5. 打磨顺序
 
 ### P0 · 交互骨架（当前）
@@ -319,10 +339,9 @@ Command 使用 `Idempotency-Key`；恢复使用 durable snapshot 与 `Last-Event
 - Lyrics 已完成按 Verse / Chorus / Whole lyrics 组织的 Rewrite、Continue、Find rhyme、Restructure
   界面闭环，并支持 Review、可编辑 Suggestion、Apply 与 Undo；Lyrics Revision contract、client、response parser、
   snapshot / SSE / cancel seam 已接入组件运行态，多候选保持独立且只应用用户选中的草稿。
-- Stem split 已完成浏览器侧闭环：两种分离模式、可选 MIDI、Review、snapshot / SSE、取消、重试与实际资产；
-  Mute/Solo 作为本地 mix selection 已就位，待可播放 stem renderer 接入后再驱动真实试听。已固定
-  version-scoped OpenAPI、client、运行时 parser 与 contract tests。
-- 定向 Isolate one part 与 Custom stems 等 owner 能力协商稳定后再进入渐进式高级选项。
+- Stem split 已完成浏览器侧闭环：Isolate part、Auto split、Custom stems、可选 MIDI、Review、snapshot / SSE、
+  取消、重试与实际资产。成功结果已接入同步 Transport、Seek、逐轨 Mute / Solo / Level 与单轨下载；媒体通过
+  同源、支持 Range 的 asset content seam 读取，失败不回退到假音频。下一步固定并接入可持久化 Mix Revision。
 - Add Vocal、Add Instrumental 已落地为 Stems 内的 whole-Version `add_part` 图层工作流：意图选择、结构化输入、
   Review、进度/取消/重试与 Take Lanes 去向均复用既有 Generation lifecycle，不新增全局工具或第二套任务状态机。
 - Create 已建立 Audio / Voice / Inspiration 的统一选择位，并把 `voice_ref` 与 Vocal direction 分离；Library

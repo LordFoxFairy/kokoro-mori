@@ -19,7 +19,7 @@ async function proxy(request: NextRequest, context: RouteContext, method: "GET" 
   const bffBaseUrl = (process.env.KOKORO_BFF_URL ?? "http://127.0.0.1:4300").replace(/\/$/u, "")
   const target = `${bffBaseUrl}/v1/mori/${path.map((segment) => encodeURIComponent(segment)).join("/")}${new URL(request.url).search}`
   const headers = new Headers()
-  for (const name of ["accept", "content-type", "idempotency-key", "last-event-id", "x-kokoro-request-id"]) {
+  for (const name of ["accept", "content-type", "idempotency-key", "last-event-id", "range", "if-range", "x-kokoro-request-id"]) {
     const value = request.headers.get(name)
     if (value !== null) headers.set(name, value)
   }

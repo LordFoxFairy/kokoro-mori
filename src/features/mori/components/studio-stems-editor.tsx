@@ -1,10 +1,11 @@
 "use client"
 
-import { ArrowRight, Check, FileMusic, Layers3, Mic2, Music2, RotateCcw, Scissors, Sparkles, Volume2, VolumeX, X } from "lucide-react"
+import { ArrowRight, Check, FileMusic, Layers3, Mic2, Music2, RotateCcw, Scissors, Sparkles, X } from "lucide-react"
 import { useState } from "react"
 import type { MoriStem, StemSeparationStatus, StemTargetKind } from "@/lib/mori-api"
 import { isActiveStudioChangeStatus, type StudioChangePlan } from "../studio-change"
 import { isStudioLayerPlan } from "../studio-layers"
+import type { StemPlaybackFactory } from "../stem-playback"
 import {
   buildStudioStemSeparationPlan,
   isActiveStemSeparationStatus,
@@ -16,9 +17,10 @@ import {
   type StudioStemSeparationMode,
   type StudioStemSeparationPlan,
 } from "../studio-stems"
-import { Waveform } from "./waveform"
+import { useMoriApp } from "./mori-app-provider"
 import { StudioLayerComposer } from "./studio-layer-composer"
 import type { StudioAiRunState } from "./studio-ai-composer"
+import { StudioStemMixer } from "./studio-stem-mixer"
 import styles from "./studio-stems-editor.module.css"
 
 export type StudioStemSeparationRunState = {
@@ -43,6 +45,7 @@ type StudioStemsEditorProps = {
   onCancelLayer: () => void
   onResetLayer: () => void
   onReviewTakes: () => void
+  playbackFactory: StemPlaybackFactory
 }
 
 const modes = [
@@ -58,15 +61,14 @@ const workflows = [
   { id: "instrumental", label: "Add instrumental", Icon: Music2 },
 ] satisfies readonly { id: StemsWorkflow; label: string; Icon: typeof Scissors }[]
 
-export function StudioStemsEditor({ durationSeconds, run, layerRun, onSeparate, onCancel, onReset, onGenerateLayer, onCancelLayer, onResetLayer, onReviewTakes }: StudioStemsEditorProps) {
+export function StudioStemsEditor({ durationSeconds, run, layerRun, onSeparate, onCancel, onReset, onGenerateLayer, onCancelLayer, onResetLayer, onReviewTakes, playbackFactory }: StudioStemsEditorProps) {
+  const { playing: globalPlaybackActive, setPlaying: setGlobalPlaying } = useMoriApp()
   const [workflow, setWorkflow] = useState<StemsWorkflow>(() => isStudioLayerPlan(layerRun.plan) ? layerRun.plan.layerKind : "separate")
   const [mode, setMode] = useState<StudioStemSeparationMode>(() => run.plan?.mode ?? "isolate_part")
   const [isolateTarget, setIsolateTarget] = useState<StemTargetKind>(() => run.plan?.mode === "isolate_part" ? run.plan.targetKinds[0] ?? "vocals" : "vocals")
   const [customTargets, setCustomTargets] = useState<StemTargetKind[]>(() => run.plan?.mode === "custom_stems" ? run.plan.targetKinds : [])
   const [includeMidi, setIncludeMidi] = useState(() => run.plan?.includeMidi ?? false)
   const [reviewedPlan, setReviewedPlan] = useState<StudioStemSeparationPlan | null>(() => run.status === "idle" ? null : run.plan)
-  const [mutedStems, setMutedStems] = useState<string[]>([])
-  const [soloStemRef, setSoloStemRef] = useState<string | null>(null)
   const visiblePlan = run.status === "idle" ? reviewedPlan : run.plan
   const ready = run.status === "succeeded" && run.stems.length > 0
   const workflowLocked = isActiveStemSeparationStatus(run.status) || isActiveStudioChangeStatus(layerRun.status)
@@ -91,13 +93,7 @@ export function StudioStemsEditor({ durationSeconds, run, layerRun, onSeparate, 
   const startOver = () => {
     if (isActiveStemSeparationStatus(run.status)) return
     setReviewedPlan(null)
-    setMutedStems([])
-    setSoloStemRef(null)
     onReset()
-  }
-
-  const toggleMute = (stemRef: string) => {
-    setMutedStems((current) => current.includes(stemRef) ? current.filter((item) => item !== stemRef) : [...current, stemRef])
   }
 
   const toggleCustomTarget = (targetKind: StemTargetKind) => {
@@ -185,29 +181,11 @@ export function StudioStemsEditor({ durationSeconds, run, layerRun, onSeparate, 
       {workflow === "separate" && visiblePlan !== null && ready ? (
         <section className={styles.results} aria-label="Stem tracks">
           <header className={styles.resultsHeader}>
-            <div><span>Separated from this version</span><h4>Stem tracks</h4></div>
+            <div><span>Separated from this version</span><h4>Mix &amp; export</h4></div>
             <button type="button" onClick={startOver}><RotateCcw size={12} /> New separation</button>
           </header>
-          <div className={styles.stemTrackList}>
-            {run.stems.map((stem, index) => {
-              const muted = mutedStems.includes(stem.stem_ref)
-              const solo = soloStemRef === stem.stem_ref
-              const suppressedBySolo = soloStemRef !== null && !solo
-              return (
-                <article className={`${styles.stemTrack} ${muted || suppressedBySolo ? styles.stemTrackMuted : ""}`} aria-label={`${stem.label} stem`} key={stem.stem_ref}>
-                  <div className={styles.stemIdentity}><span>{String(index + 1).padStart(2, "0")}</span><div><strong>{stem.label}</strong><small>{stemDetail(stem)}</small></div></div>
-                  <div className={styles.stemWave}><Waveform seed={stemSeed(stem, index)} compact progress={muted || suppressedBySolo ? 0.08 : solo ? 0.92 : 0.56} /></div>
-                  <span className={styles.duration}>{formatDuration(stem.duration_seconds)}</span>
-                  <div className={styles.stemActions}>
-                    <button type="button" aria-pressed={muted} aria-label={`${muted ? "Unmute" : "Mute"} ${stem.label}`} onClick={() => toggleMute(stem.stem_ref)}>{muted ? <VolumeX size={14} /> : <Volume2 size={14} />}</button>
-                    <button className={solo ? styles.soloActive : ""} type="button" aria-pressed={solo} aria-label={`${solo ? "Unsolo" : "Solo"} ${stem.label}`} onClick={() => setSoloStemRef(solo ? null : stem.stem_ref)}>Solo</button>
-                  </div>
-                </article>
-              )
-            })}
-          </div>
+          <StudioStemMixer stems={run.stems} externalPlaybackActive={globalPlaybackActive} onPlaybackStart={() => setGlobalPlaying(false)} playbackFactory={playbackFactory} />
           {run.midiAssetRef !== null ? <div className={styles.midiReady}><FileMusic size={15} /><div><strong>MIDI transcription ready</strong><span>Stored as a version-bound asset.</span></div></div> : null}
-          <p className={styles.resultNote}>Mix controls are staged locally until playable stem audio is connected.</p>
         </section>
       ) : null}
 
@@ -300,29 +278,4 @@ function stemSeparationStatusLabel(status: StudioStemSeparationRunState["status"
     case "cancelled": return "Cancelled"
     case "expired": return "Expired"
   }
-}
-
-function stemDetail(stem: MoriStem): string {
-  switch (stem.kind) {
-    case "vocals": return "Primary vocal layer"
-    case "backing_vocals": return "Harmony and support"
-    case "instrumental": return "Music without vocals"
-    case "drums": return "Percussion and transients"
-    case "bass": return "Low-frequency foundation"
-    case "guitar": return "Guitar layers"
-    case "keys": return "Piano and keyboard layers"
-    case "strings": return "String ensemble layers"
-    case "wind": return "Woodwind and brass layers"
-    case "synth": return "Synthesizer layers"
-    case "percussion": return "Additional percussion"
-    case "other": return "Remaining instruments"
-  }
-}
-
-function stemSeed(stem: MoriStem, index: number): number {
-  return stem.stem_ref.length * 7 + index * 13
-}
-
-function formatDuration(durationSeconds: number): string {
-  return `${Math.floor(durationSeconds / 60)}:${String(durationSeconds % 60).padStart(2, "0")}`
 }

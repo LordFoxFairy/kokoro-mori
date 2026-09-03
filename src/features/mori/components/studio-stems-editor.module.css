@@ -17,9 +17,6 @@
 .separationPlan footer > div,
 .progressBlock > div,
 .resultsHeader,
-.stemTrack,
-.stemIdentity,
-.stemActions,
 .midiReady {
   display: flex;
   align-items: center;
@@ -383,8 +380,7 @@
 
 .reviewButton,
 .separationPlan button,
-.resultsHeader button,
-.stemActions button {
+.resultsHeader button {
   display: inline-flex;
   min-height: 34px;
   align-items: center;
@@ -556,89 +552,9 @@
 }
 
 .resultsHeader button:hover,
-.stemActions button:hover {
+.resultsHeader button:focus-visible {
   border-color: var(--mori-border-strong);
   color: var(--mori-foreground);
-}
-
-.stemTrackList {
-  display: grid;
-  gap: 7px;
-  padding: 0 18px 12px;
-}
-
-.stemTrack {
-  display: grid;
-  grid-template-columns: minmax(130px, 0.7fr) minmax(120px, 1fr) auto auto;
-  gap: 12px;
-  min-height: 58px;
-  padding: 9px 10px;
-  border: 1px solid rgba(109, 92, 231, 0.1);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.86);
-  transition: opacity 140ms ease, background 140ms ease;
-}
-
-.stemTrackMuted {
-  opacity: 0.46;
-  background: rgba(245, 243, 247, 0.7);
-}
-
-.stemIdentity {
-  min-width: 0;
-  gap: 9px;
-}
-
-.stemIdentity > span {
-  color: var(--mori-primary);
-  font-family: var(--mori-font-mono);
-  font-size: 10px;
-}
-
-.stemIdentity > div {
-  display: grid;
-  min-width: 0;
-  gap: 3px;
-}
-
-.stemIdentity strong,
-.stemIdentity small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.stemIdentity strong {
-  font-size: 12px;
-}
-
-.stemIdentity small,
-.duration {
-  color: var(--mori-muted);
-  font-size: 10px;
-}
-
-.stemWave {
-  min-width: 0;
-}
-
-.duration {
-  font-variant-numeric: tabular-nums;
-}
-
-.stemActions {
-  gap: 5px;
-}
-
-.stemActions button {
-  min-width: 31px;
-  padding: 0 7px;
-}
-
-.stemActions .soloActive {
-  border-color: rgba(109, 92, 231, 0.24);
-  color: var(--mori-primary);
-  background: var(--mori-primary-soft);
 }
 
 .midiReady {
@@ -661,15 +577,9 @@
   font-size: 11px;
 }
 
-.midiReady span,
-.resultNote {
+.midiReady span {
   color: var(--mori-muted);
   font-size: 10px;
-}
-
-.resultNote {
-  margin: 0;
-  padding: 0 18px 15px;
 }
 
 .modeGrid button:focus-visible,
@@ -701,19 +611,6 @@
 
   .targetPicker select {
     width: 100%;
-  }
-
-  .stemTrack {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  .stemWave {
-    grid-column: 1 / -1;
-    grid-row: 2;
-  }
-
-  .duration {
-    display: none;
   }
 
   .separationPlan footer {

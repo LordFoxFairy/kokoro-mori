@@ -17,6 +17,7 @@ import { previewCandidates, previewProject, previewSongPlan } from "./preview-da
 import { buildStudioTimelineSections, isActiveStudioChangeStatus, type StudioChangePlan, type StudioTimelineSection } from "./studio-change"
 import { createStudioLyricsRevisionDraft, isActiveLyricsRevisionStatus, studioLyricsScopeLabel, type StudioLyricsPlan } from "./studio-lyrics"
 import { createStudioStemSeparationDraft, isActiveStemSeparationStatus, stemSeparationSnapshotMatchesPlan, type StudioStemSeparationPlan } from "./studio-stems"
+import { createHtmlStemPlaybackController, type StemPlaybackFactory } from "./stem-playback"
 import styles from "./mori-workspace.module.css"
 
 type StudioTool = "arrangement" | "lyrics" | "stems"
@@ -26,6 +27,7 @@ type StudioPageContentProps = {
   projectRef?: string
   versionRef?: string
   api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "listCandidates" | "createStudioChange" | "getGeneration" | "getGenerationEvents" | "cancelGeneration" | "createLyricsRevision" | "getLyricsRevision" | "getLyricsRevisionEvents" | "cancelLyricsRevision" | "createStemSeparation" | "getStemSeparation" | "getStemSeparationEvents" | "cancelStemSeparation">>
+  stemPlaybackFactory?: StemPlaybackFactory
 }
 
 type TrackedStudioChange = {
@@ -74,7 +76,7 @@ const idleStemSeparationRun: StudioStemSeparationRunState = {
   message: null,
 }
 
-export function StudioPageContent({ candidate, projectRef, versionRef, api }: StudioPageContentProps) {
+export function StudioPageContent({ candidate, projectRef, versionRef, api, stemPlaybackFactory = createHtmlStemPlaybackController }: StudioPageContentProps) {
   const { playerCandidate, playing, positionSeconds, seekPlayer, selectPlayerCandidate, setPlaying } = useMoriApp()
   const defaultApi = useMemo(() => createMoriApiClient(), [])
   const studioApi = useMemo(() => ({ ...defaultApi, ...(api ?? {}) }), [api, defaultApi])
@@ -796,7 +798,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api }: St
           <div className={styles.studioCanvasTop}><div><span className={styles.eyebrow}><span className={styles.eyebrowDot} />Editing with intention</span><h2>Shape the feeling.</h2></div><button className={styles.generateButton} type="button" onClick={preview}><Play size={14} fill="currentColor" /> {playerCandidate?.versionRef === activeCandidate.versionRef && playing ? "Pause" : "Preview"}</button></div>
           {activeTool === "arrangement" ? <ArrangementEditor candidate={activeCandidate} takes={studioCandidates} currentVersionRef={currentVersionRef} playerVersionRef={playerCandidate?.versionRef ?? ""} positionSeconds={playerCandidate?.versionRef === activeCandidate.versionRef ? positionSeconds : 0} playing={playerCandidate?.versionRef === activeCandidate.versionRef && playing} studioChangeRun={studioChangeRun} onSeekTimeline={(nextPositionSeconds) => seekTimeline(activeCandidate, nextPositionSeconds)} onGenerateStudioChange={(plan) => { void generateStudioChange(plan) }} onCancelStudioChange={() => { void cancelStudioChange() }} onResetStudioChange={resetStudioChange} onSelectTake={selectTake} onPreviewTake={previewTake} onPromoteTake={promoteTake} /> : null}
           {activeTool === "lyrics" ? <StudioLyricsEditor key={activeCandidate.versionRef} versionRef={activeCandidate.versionRef} run={lyricsRevisionRun} onGenerate={(plan) => { void generateLyricsRevision(plan) }} onCancel={() => { void cancelLyricsRevision() }} onReset={resetLyricsRevision} /> : null}
-          {activeTool === "stems" ? <StudioStemsEditor key={activeVersionRef ?? "no-version"} durationSeconds={activeCandidate.durationSeconds} run={stemSeparationRun} layerRun={studioChangeRun} onSeparate={(plan) => { void generateStemSeparation(plan) }} onCancel={() => { void cancelStemSeparation() }} onReset={resetStemSeparation} onGenerateLayer={(plan) => { void generateStudioChange(plan) }} onCancelLayer={() => { void cancelStudioChange() }} onResetLayer={resetStudioChange} onReviewTakes={() => setActiveTool("arrangement")} /> : null}
+          {activeTool === "stems" ? <StudioStemsEditor key={activeVersionRef ?? "no-version"} durationSeconds={activeCandidate.durationSeconds} run={stemSeparationRun} layerRun={studioChangeRun} onSeparate={(plan) => { void generateStemSeparation(plan) }} onCancel={() => { void cancelStemSeparation() }} onReset={resetStemSeparation} onGenerateLayer={(plan) => { void generateStudioChange(plan) }} onCancelLayer={() => { void cancelStudioChange() }} onResetLayer={resetStudioChange} onReviewTakes={() => setActiveTool("arrangement")} playbackFactory={stemPlaybackFactory} /> : null}
         </section>
         <aside className={styles.versionRail} aria-label="Version history"><div className={styles.versionRailHeader}><div><span>Project history</span><h2>Versions</h2></div></div>{studioCandidates.map((item, index) => <Link className={`${styles.versionItem} ${item.versionRef === activeCandidate.versionRef ? styles.versionItemActive : ""}`} href={`/projects/${activeProjectRef}/studio/${item.versionRef}`} key={item.versionRef}><div className={`${styles.versionThumb} ${index === 1 ? styles.versionThumbAlt : ""}`}><Play size={12} fill="currentColor" /></div><div><strong>{item.title}</strong><span>{index === 0 ? "Current" : "Draft"} · {Math.floor(item.durationSeconds / 60)}:{String(item.durationSeconds % 60).padStart(2, "0")}</span></div></Link>)}</aside>
       </div>}
