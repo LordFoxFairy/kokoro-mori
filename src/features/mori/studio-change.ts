@@ -156,13 +156,13 @@ export function buildStudioChangePlan(
         return {
           ...planContext,
           operation,
-          draft: { ...common, operation, scope: { type: "whole_version" } },
+          draft: { ...common, operation, intent: "restyle", scope: { type: "whole_version" } },
         }
       }
       return {
         ...planContext,
         operation,
-        draft: { ...common, operation, scope: { type: "time_range", startMs: section.startMs, endMs: section.endMs } },
+        draft: { ...common, operation, intent: "restyle", scope: { type: "time_range", startMs: section.startMs, endMs: section.endMs } },
       }
   }
 }

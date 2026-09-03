@@ -202,6 +202,12 @@ describe("Mori studio page", () => {
           mode: null,
           source_version_ref: "version_preview_first_light_a",
           operation: "transform",
+          intent: "restyle",
+          scope: { type: "whole_version" },
+          instruction: "Turn this into an acoustic live-room performance.",
+          preserve: ["melody", "vocal_identity", "tempo"],
+          reference_asset_refs: [],
+          output_count: 4,
           status: "failed",
           progress: 18,
           candidate_refs: [],
@@ -235,6 +241,7 @@ describe("Mori studio page", () => {
 
     await waitFor(() => expect(submittedInput).toEqual({
       operation: "transform",
+      intent: "restyle",
       scope: { type: "whole_version" },
       instruction: "Turn this into an acoustic live-room performance.",
       preserve: ["melody", "vocal_identity", "tempo"],

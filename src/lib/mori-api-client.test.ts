@@ -230,6 +230,116 @@ describe("Mori same-origin API client", () => {
     })
   })
 
+  it("builds an explicit range Restyle command with normalized anchors and references", () => {
+    expect(createStudioChangeRequest({
+      operation: "transform",
+      intent: "restyle",
+      scope: { type: "time_range", startMs: 42_000, endMs: 96_000 },
+      instruction: "  Turn this passage into an intimate live-room arrangement.  ",
+      preserve: ["melody", "lyrics", "melody"],
+      referenceAssetRefs: ["  asset_room_1  ", "asset_room_1"],
+      outputCount: 4,
+    })).toEqual({
+      operation: "transform",
+      intent: "restyle",
+      scope: { type: "time_range", start_ms: 42_000, end_ms: 96_000 },
+      instruction: "Turn this passage into an intimate live-room arrangement.",
+      preserve: ["melody", "lyrics"],
+      reference_asset_refs: ["asset_room_1"],
+      output_count: 4,
+    })
+  })
+
+  it("builds a whole-song Vocal Cover with an optional reusable Voice profile", () => {
+    expect(createStudioChangeRequest({
+      operation: "transform",
+      intent: "cover",
+      scope: { type: "whole_version" },
+      coverMode: "vocal",
+      voiceRef: "  voice_preview_mira  ",
+      instruction: "  Re-perform this as a close, warm acoustic duet.  ",
+      preserve: ["melody", "lyrics", "structure"],
+      outputCount: 2,
+    })).toEqual({
+      operation: "transform",
+      intent: "cover",
+      scope: { type: "whole_version" },
+      cover_mode: "vocal",
+      voice_ref: "voice_preview_mira",
+      instruction: "Re-perform this as a close, warm acoustic duet.",
+      preserve: ["melody", "lyrics", "structure"],
+      reference_asset_refs: [],
+      output_count: 2,
+    })
+  })
+
+  it("builds an Instrumental Cover without vocal identity or Voice fields", () => {
+    expect(createStudioChangeRequest({
+      operation: "transform",
+      intent: "cover",
+      scope: { type: "whole_version" },
+      coverMode: "instrumental",
+      instruction: "  Reframe the song for felt piano and chamber strings.  ",
+      preserve: ["melody", "structure"],
+      outputCount: 2,
+    })).toEqual({
+      operation: "transform",
+      intent: "cover",
+      scope: { type: "whole_version" },
+      cover_mode: "instrumental",
+      voice_ref: null,
+      instruction: "Reframe the song for felt piano and chamber strings.",
+      preserve: ["melody", "structure"],
+      reference_asset_refs: [],
+      output_count: 2,
+    })
+  })
+
+  it("rejects Cover commands that loosen fixed musical safeguards", () => {
+    expect(() => createStudioChangeRequest({
+      operation: "transform",
+      intent: "cover",
+      scope: { type: "whole_version" },
+      coverMode: "vocal",
+      instruction: "Try a close vocal cover.",
+      preserve: ["melody", "lyrics"],
+      outputCount: 2,
+    })).toThrow("studio_cover_preserve_invalid")
+
+    expect(() => createStudioChangeRequest({
+      operation: "transform",
+      intent: "cover",
+      scope: { type: "whole_version" },
+      coverMode: "instrumental",
+      instruction: "Try an instrumental cover.",
+      preserve: ["melody", "structure"],
+      referenceAssetRefs: ["asset_duplicate_source"],
+      outputCount: 4,
+    })).toThrow("studio_cover_output_count_invalid")
+
+    expect(() => createStudioChangeRequest({
+      operation: "transform",
+      intent: "cover",
+      scope: { type: "whole_version" },
+      coverMode: "instrumental",
+      voiceRef: "voice_preview_mira",
+      instruction: "Try an instrumental cover.",
+      preserve: ["melody", "structure"],
+      outputCount: 2,
+    })).toThrow("studio_cover_voice_invalid")
+
+    expect(() => createStudioChangeRequest({
+      operation: "transform",
+      intent: "cover",
+      scope: { type: "whole_version" },
+      coverMode: "vocal",
+      instruction: "Try a vocal cover.",
+      preserve: ["melody", "lyrics", "structure"],
+      referenceAssetRefs: ["asset_duplicate_source"],
+      outputCount: 2,
+    })).toThrow("studio_cover_references_invalid")
+  })
+
   it("requires lyrics for a whole-version vocal layer", () => {
     expect(() => createStudioChangeRequest({
       operation: "add_part",
@@ -304,6 +414,117 @@ describe("Mori same-origin API client", () => {
       source: { type: "mix_revision", mix_revision_ref: "mix_revision_7" },
       variation_strength: "bold",
     })
+  })
+
+  it("reads the complete Restyle context from a durable generation snapshot", async () => {
+    const api = createMoriApiClient({
+      fetchImpl: async () => new Response(JSON.stringify({
+        data: {
+          generation_ref: "generation_restyle_1",
+          generation_kind: "studio_change",
+          project_ref: "project_1",
+          song_plan_ref: null,
+          mode: null,
+          source_version_ref: "version_1",
+          operation: "transform",
+          intent: "restyle",
+          scope: { type: "time_range", start_ms: 42_000, end_ms: 96_000 },
+          instruction: "Turn this passage into an intimate live-room arrangement.",
+          preserve: ["melody", "lyrics"],
+          reference_asset_refs: ["asset_room_1"],
+          output_count: 4,
+          status: "generating",
+          progress: 46,
+          candidate_refs: [],
+          created_at: "2026-09-03T12:00:00.000Z",
+        },
+        meta: { request_id: "request_restyle_snapshot_1" },
+      }), { status: 200, headers: { "Content-Type": "application/json" } }),
+    })
+
+    const response = await api.getGeneration("generation_restyle_1")
+
+    expect(response.data).toMatchObject({
+      operation: "transform",
+      intent: "restyle",
+      scope: { type: "time_range", start_ms: 42_000, end_ms: 96_000 },
+      instruction: "Turn this passage into an intimate live-room arrangement.",
+      preserve: ["melody", "lyrics"],
+      reference_asset_refs: ["asset_room_1"],
+      output_count: 4,
+    })
+  })
+
+  it("reads the complete Cover context from a durable generation snapshot", async () => {
+    const api = createMoriApiClient({
+      fetchImpl: async () => new Response(JSON.stringify({
+        data: {
+          generation_ref: "generation_cover_1",
+          generation_kind: "studio_change",
+          project_ref: "project_1",
+          song_plan_ref: null,
+          mode: null,
+          source_version_ref: "version_1",
+          operation: "transform",
+          intent: "cover",
+          scope: { type: "whole_version" },
+          cover_mode: "vocal",
+          voice_ref: "voice_preview_mira",
+          instruction: "Re-perform this as a close, warm acoustic duet.",
+          preserve: ["melody", "lyrics", "structure"],
+          reference_asset_refs: [],
+          output_count: 2,
+          status: "succeeded",
+          progress: 100,
+          candidate_refs: ["candidate_cover_1", "candidate_cover_2"],
+          created_at: "2026-09-03T12:00:00.000Z",
+        },
+        meta: { request_id: "request_cover_snapshot_1" },
+      }), { status: 200, headers: { "Content-Type": "application/json" } }),
+    })
+
+    const response = await api.getGeneration("generation_cover_1")
+
+    expect(response.data).toMatchObject({
+      operation: "transform",
+      intent: "cover",
+      scope: { type: "whole_version" },
+      cover_mode: "vocal",
+      voice_ref: "voice_preview_mira",
+      preserve: ["melody", "lyrics", "structure"],
+      reference_asset_refs: [],
+      output_count: 2,
+    })
+  })
+
+  it("rejects partial Cover metadata instead of degrading to a generic transform", async () => {
+    const api = createMoriApiClient({
+      fetchImpl: async () => new Response(JSON.stringify({
+        data: {
+          generation_ref: "generation_cover_invalid",
+          generation_kind: "studio_change",
+          project_ref: "project_1",
+          song_plan_ref: null,
+          mode: null,
+          source_version_ref: "version_1",
+          operation: "transform",
+          intent: "cover",
+          scope: { type: "whole_version" },
+          cover_mode: "vocal",
+          instruction: "Try a warm acoustic cover.",
+          preserve: ["melody", "lyrics", "structure"],
+          reference_asset_refs: [],
+          output_count: 2,
+          status: "generating",
+          progress: 46,
+          candidate_refs: [],
+          created_at: "2026-09-03T12:00:00.000Z",
+        },
+        meta: { request_id: "request_cover_snapshot_invalid" },
+      }), { status: 200, headers: { "Content-Type": "application/json" } }),
+    })
+
+    await expect(api.getGeneration("generation_cover_invalid")).rejects.toMatchObject({ code: "invalid_api_response" })
   })
 
   it("rejects partial Remaster metadata instead of treating it as a generic transform", async () => {
@@ -839,6 +1060,7 @@ describe("Mori same-origin API client", () => {
 
     expect(() => createStudioChangeRequest({
       operation: "transform",
+      intent: "restyle",
       scope: { type: "whole_version" },
       instruction: "   ",
     })).toThrow("studio_change_instruction_required")

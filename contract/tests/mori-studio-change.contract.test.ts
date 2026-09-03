@@ -43,7 +43,7 @@ describe("Mori Studio change OpenAPI contract", () => {
       const schemaName = name === "AddPartGenerationInput"
         ? "InsertPartGenerationInput"
         : name === "TransformGenerationInput"
-          ? "StandardTransformGenerationInput"
+          ? "RestyleGenerationInput"
           : name
       const schema = recordValue(schemas[schemaName], schemaName)
       const properties = recordValue(schema.properties, `${name} properties`)
@@ -52,14 +52,47 @@ describe("Mori Studio change OpenAPI contract", () => {
     expect(operations).toEqual(["add_part", "replace_section", "extend", "transform"])
   })
 
-  it("models Remaster as a typed whole-version transform instead of a fifth top-level operation", () => {
+  it("models Restyle, Cover, and Remaster as typed transforms instead of new top-level operations", () => {
     const schemas = contractSchemas(readContract())
     const transform = recordValue(schemas.TransformGenerationInput, "TransformGenerationInput")
     const variants = arrayValue(transform.oneOf, "Transform variants").map((value) => {
       const ref = stringValue(recordValue(value, "Transform variant").$ref, "Transform variant ref")
       return ref.split("/").at(-1) ?? ""
     })
-    expect(variants).toEqual(["StandardTransformGenerationInput", "RemasterGenerationInput"])
+    expect(variants).toEqual(["RestyleGenerationInput", "CoverGenerationInput", "RemasterGenerationInput"])
+
+    const restyle = recordValue(schemas.RestyleGenerationInput, "RestyleGenerationInput")
+    expect(arrayValue(restyle.required, "Restyle required fields")).toEqual(expect.arrayContaining([
+      "intent",
+      "scope",
+      "instruction",
+      "preserve",
+      "reference_asset_refs",
+      "output_count",
+    ]))
+    const restyleProperties = recordValue(restyle.properties, "Restyle properties")
+    expect(recordValue(restyleProperties.operation, "Restyle operation").const).toBe("transform")
+    expect(recordValue(restyleProperties.intent, "Restyle intent").const).toBe("restyle")
+    expect(arrayValue(recordValue(restyleProperties.scope, "Restyle scope").oneOf, "Restyle scopes")).toHaveLength(2)
+
+    const cover = recordValue(schemas.CoverGenerationInput, "CoverGenerationInput")
+    expect(arrayValue(cover.required, "Cover required fields")).toEqual(expect.arrayContaining([
+      "intent",
+      "cover_mode",
+      "voice_ref",
+      "scope",
+      "preserve",
+      "reference_asset_refs",
+      "output_count",
+    ]))
+    const coverProperties = recordValue(cover.properties, "Cover properties")
+    expect(recordValue(coverProperties.operation, "Cover operation").const).toBe("transform")
+    expect(recordValue(coverProperties.intent, "Cover intent").const).toBe("cover")
+    expect(recordValue(coverProperties.scope, "Cover scope").$ref).toBe("#/components/schemas/WholeVersionScope")
+    expect(recordValue(coverProperties.cover_mode, "Cover mode").enum).toEqual(["vocal", "instrumental"])
+    expect(recordValue(coverProperties.output_count, "Cover output count").const).toBe(2)
+    expect(recordValue(coverProperties.reference_asset_refs, "Cover references").maxItems).toBe(0)
+    expect(arrayValue(cover.allOf, "Cover mode invariants")).toHaveLength(2)
 
     const remaster = recordValue(schemas.RemasterGenerationInput, "RemasterGenerationInput")
     expect(arrayValue(remaster.required, "Remaster required fields")).toEqual(expect.arrayContaining([
@@ -124,7 +157,12 @@ describe("Mori Studio change OpenAPI contract", () => {
       const ref = stringValue(recordValue(value, "Studio snapshot variant").$ref, "Studio snapshot variant ref")
       return ref.split("/").at(-1) ?? ""
     })
-    expect(studioVariants).toEqual(["StandardStudioChangeGenerationSnapshot", "StudioRemasterGenerationSnapshot"])
+    expect(studioVariants).toEqual([
+      "StandardStudioChangeGenerationSnapshot",
+      "StudioRestyleGenerationSnapshot",
+      "StudioCoverGenerationSnapshot",
+      "StudioRemasterGenerationSnapshot",
+    ])
 
     const standardStudioSnapshot = recordValue(schemas.StandardStudioChangeGenerationSnapshot, "StandardStudioChangeGenerationSnapshot")
     const studioProperties = recordValue(standardStudioSnapshot.properties, "Studio snapshot properties")
@@ -133,8 +171,29 @@ describe("Mori Studio change OpenAPI contract", () => {
       "add_part",
       "replace_section",
       "extend",
-      "transform",
     ])
+
+    const restyleSnapshot = recordValue(schemas.StudioRestyleGenerationSnapshot, "StudioRestyleGenerationSnapshot")
+    expect(arrayValue(restyleSnapshot.required, "Restyle snapshot required fields")).toEqual(expect.arrayContaining([
+      "intent",
+      "scope",
+      "instruction",
+      "preserve",
+      "reference_asset_refs",
+      "output_count",
+    ]))
+
+    const coverSnapshot = recordValue(schemas.StudioCoverGenerationSnapshot, "StudioCoverGenerationSnapshot")
+    expect(arrayValue(coverSnapshot.required, "Cover snapshot required fields")).toEqual(expect.arrayContaining([
+      "intent",
+      "cover_mode",
+      "voice_ref",
+      "scope",
+      "instruction",
+      "preserve",
+      "reference_asset_refs",
+      "output_count",
+    ]))
 
     const remasterSnapshot = recordValue(schemas.StudioRemasterGenerationSnapshot, "StudioRemasterGenerationSnapshot")
     expect(arrayValue(remasterSnapshot.required, "Remaster snapshot required fields")).toEqual(expect.arrayContaining([

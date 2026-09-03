@@ -239,12 +239,23 @@
       "TransformGenerationInput": {
         "oneOf": [
           {
-            "$ref": "#/components/schemas/StandardTransformGenerationInput"
+            "$ref": "#/components/schemas/RestyleGenerationInput"
+          },
+          {
+            "$ref": "#/components/schemas/CoverGenerationInput"
           },
           {
             "$ref": "#/components/schemas/RemasterGenerationInput"
           }
-        ]
+        ],
+        "discriminator": {
+          "propertyName": "intent",
+          "mapping": {
+            "restyle": "#/components/schemas/RestyleGenerationInput",
+            "cover": "#/components/schemas/CoverGenerationInput",
+            "remaster": "#/components/schemas/RemasterGenerationInput"
+          }
+        }
       },
       "InsertionPointScope": {
         "type": "object",
@@ -454,6 +465,12 @@
         "oneOf": [
           {
             "$ref": "#/components/schemas/StandardStudioChangeGenerationSnapshot"
+          },
+          {
+            "$ref": "#/components/schemas/StudioRestyleGenerationSnapshot"
+          },
+          {
+            "$ref": "#/components/schemas/StudioCoverGenerationSnapshot"
           },
           {
             "$ref": "#/components/schemas/StudioRemasterGenerationSnapshot"
@@ -744,45 +761,6 @@
           }
         ]
       },
-      "StandardTransformGenerationInput": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "operation",
-          "scope",
-          "instruction",
-          "preserve",
-          "reference_asset_refs",
-          "output_count"
-        ],
-        "properties": {
-          "operation": {
-            "const": "transform"
-          },
-          "scope": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/TimeRangeScope"
-              },
-              {
-                "$ref": "#/components/schemas/WholeVersionScope"
-              }
-            ]
-          },
-          "instruction": {
-            "$ref": "#/components/schemas/Instruction"
-          },
-          "preserve": {
-            "$ref": "#/components/schemas/PreserveList"
-          },
-          "reference_asset_refs": {
-            "$ref": "#/components/schemas/ReferenceAssetRefs"
-          },
-          "output_count": {
-            "$ref": "#/components/schemas/OutputCount"
-          }
-        }
-      },
       "VersionRemasterSource": {
         "type": "object",
         "additionalProperties": false,
@@ -914,8 +892,7 @@
             "enum": [
               "add_part",
               "replace_section",
-              "extend",
-              "transform"
+              "extend"
             ]
           },
           "status": {
@@ -1009,6 +986,406 @@
             ]
           }
         }
+      },
+      "RestyleGenerationInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "scope",
+          "intent",
+          "instruction",
+          "preserve",
+          "reference_asset_refs",
+          "output_count"
+        ],
+        "properties": {
+          "operation": {
+            "const": "transform"
+          },
+          "instruction": {
+            "$ref": "#/components/schemas/Instruction"
+          },
+          "preserve": {
+            "$ref": "#/components/schemas/PreserveList"
+          },
+          "reference_asset_refs": {
+            "$ref": "#/components/schemas/ReferenceAssetRefs"
+          },
+          "output_count": {
+            "$ref": "#/components/schemas/OutputCount"
+          },
+          "scope": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/TimeRangeScope"
+              },
+              {
+                "$ref": "#/components/schemas/WholeVersionScope"
+              }
+            ]
+          },
+          "intent": {
+            "const": "restyle"
+          }
+        }
+      },
+      "CoverGenerationInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "scope",
+          "intent",
+          "instruction",
+          "preserve",
+          "reference_asset_refs",
+          "output_count",
+          "cover_mode",
+          "voice_ref"
+        ],
+        "properties": {
+          "operation": {
+            "const": "transform"
+          },
+          "instruction": {
+            "$ref": "#/components/schemas/Instruction"
+          },
+          "preserve": {
+            "$ref": "#/components/schemas/PreserveList"
+          },
+          "reference_asset_refs": {
+            "type": "array",
+            "maxItems": 0,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "output_count": {
+            "const": 2
+          },
+          "scope": {
+            "$ref": "#/components/schemas/WholeVersionScope"
+          },
+          "intent": {
+            "const": "cover"
+          },
+          "cover_mode": {
+            "type": "string",
+            "enum": [
+              "vocal",
+              "instrumental"
+            ]
+          },
+          "voice_ref": {
+            "oneOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "cover_mode": {
+                  "const": "vocal"
+                }
+              },
+              "required": [
+                "cover_mode"
+              ]
+            },
+            "then": {
+              "properties": {
+                "preserve": {
+                  "const": [
+                    "melody",
+                    "lyrics",
+                    "structure"
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "cover_mode": {
+                  "const": "instrumental"
+                }
+              },
+              "required": [
+                "cover_mode"
+              ]
+            },
+            "then": {
+              "properties": {
+                "preserve": {
+                  "const": [
+                    "melody",
+                    "structure"
+                  ]
+                },
+                "voice_ref": {
+                  "const": null
+                }
+              }
+            }
+          }
+        ]
+      },
+      "StudioRestyleGenerationSnapshot": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "generation_ref",
+          "generation_kind",
+          "project_ref",
+          "song_plan_ref",
+          "mode",
+          "source_version_ref",
+          "operation",
+          "status",
+          "progress",
+          "candidate_refs",
+          "created_at",
+          "intent",
+          "scope",
+          "instruction",
+          "preserve",
+          "reference_asset_refs",
+          "output_count"
+        ],
+        "properties": {
+          "generation_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "generation_kind": {
+            "const": "studio_change"
+          },
+          "project_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "song_plan_ref": {
+            "type": "null"
+          },
+          "mode": {
+            "type": "null"
+          },
+          "source_version_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "operation": {
+            "const": "transform"
+          },
+          "status": {
+            "$ref": "#/components/schemas/GenerationStatus"
+          },
+          "progress": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "candidate_refs": {
+            "$ref": "#/components/schemas/CandidateRefs"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "scope": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/TimeRangeScope"
+              },
+              {
+                "$ref": "#/components/schemas/WholeVersionScope"
+              }
+            ]
+          },
+          "instruction": {
+            "$ref": "#/components/schemas/Instruction"
+          },
+          "preserve": {
+            "$ref": "#/components/schemas/PreserveList"
+          },
+          "reference_asset_refs": {
+            "$ref": "#/components/schemas/ReferenceAssetRefs"
+          },
+          "output_count": {
+            "$ref": "#/components/schemas/OutputCount"
+          },
+          "intent": {
+            "const": "restyle"
+          }
+        }
+      },
+      "StudioCoverGenerationSnapshot": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "generation_ref",
+          "generation_kind",
+          "project_ref",
+          "song_plan_ref",
+          "mode",
+          "source_version_ref",
+          "operation",
+          "status",
+          "progress",
+          "candidate_refs",
+          "created_at",
+          "intent",
+          "scope",
+          "instruction",
+          "preserve",
+          "reference_asset_refs",
+          "output_count",
+          "cover_mode",
+          "voice_ref"
+        ],
+        "properties": {
+          "generation_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "generation_kind": {
+            "const": "studio_change"
+          },
+          "project_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "song_plan_ref": {
+            "type": "null"
+          },
+          "mode": {
+            "type": "null"
+          },
+          "source_version_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "operation": {
+            "const": "transform"
+          },
+          "status": {
+            "$ref": "#/components/schemas/GenerationStatus"
+          },
+          "progress": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "candidate_refs": {
+            "$ref": "#/components/schemas/CandidateRefs"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/WholeVersionScope"
+          },
+          "instruction": {
+            "$ref": "#/components/schemas/Instruction"
+          },
+          "preserve": {
+            "$ref": "#/components/schemas/PreserveList"
+          },
+          "reference_asset_refs": {
+            "type": "array",
+            "maxItems": 0,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "output_count": {
+            "const": 2
+          },
+          "intent": {
+            "const": "cover"
+          },
+          "cover_mode": {
+            "type": "string",
+            "enum": [
+              "vocal",
+              "instrumental"
+            ]
+          },
+          "voice_ref": {
+            "oneOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "cover_mode": {
+                  "const": "vocal"
+                }
+              },
+              "required": [
+                "cover_mode"
+              ]
+            },
+            "then": {
+              "properties": {
+                "preserve": {
+                  "const": [
+                    "melody",
+                    "lyrics",
+                    "structure"
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "cover_mode": {
+                  "const": "instrumental"
+                }
+              },
+              "required": [
+                "cover_mode"
+              ]
+            },
+            "then": {
+              "properties": {
+                "preserve": {
+                  "const": [
+                    "melody",
+                    "structure"
+                  ]
+                },
+                "voice_ref": {
+                  "const": null
+                }
+              }
+            }
+          }
+        ]
       }
     }
   }

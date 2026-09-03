@@ -1,4 +1,13 @@
-import { artworkPalettes, artworkStyles, releaseVisibilities, stemSeparationModes, stemTargetKinds, studioRemasterStrengths } from "./mori-api"
+import {
+  artworkPalettes,
+  artworkStyles,
+  releaseVisibilities,
+  stemSeparationModes,
+  stemTargetKinds,
+  studioInstrumentalCoverProtectedAnchors,
+  studioRemasterStrengths,
+  studioVocalCoverProtectedAnchors,
+} from "./mori-api"
 import type {
   ApiError,
   ApiSuccess,
@@ -46,7 +55,11 @@ import type {
   StemSeparationSnapshot,
   StemSeparationStatus,
   StemTargetKind,
+  StudioChangePreserve,
+  StudioChangeRangeScope,
   StudioChangeOperation,
+  StudioChangeWholeVersionScope,
+  StudioCoverMode,
   StudioRemasterSource,
   StudioRemasterStrength,
 } from "./mori-api"
@@ -112,6 +125,47 @@ function studioRemasterSource(value: unknown): StudioRemasterSource | null {
     return { type: "mix_revision", mix_revision_ref: value.mix_revision_ref }
   }
   return null
+}
+
+function studioTransformScope(value: unknown): StudioChangeRangeScope | StudioChangeWholeVersionScope | null {
+  if (!isRecord(value)) return null
+  if (value.type === "whole_version") return { type: "whole_version" }
+  if (
+    value.type === "time_range"
+    && integer(value.start_ms)
+    && integer(value.end_ms, 1)
+    && value.end_ms > value.start_ms
+  ) {
+    return { type: "time_range", start_ms: value.start_ms, end_ms: value.end_ms }
+  }
+  return null
+}
+
+function studioChangePreserve(value: unknown): value is StudioChangePreserve {
+  return value === "melody"
+    || value === "lyrics"
+    || value === "vocal_identity"
+    || value === "tempo"
+    || value === "structure"
+}
+
+function studioChangePreserveList(value: unknown): StudioChangePreserve[] | null {
+  if (!Array.isArray(value)) return null
+  if (!value.every(studioChangePreserve)) return null
+  return new Set(value).size === value.length ? value : null
+}
+
+function studioReferenceAssetRefs(value: unknown): string[] | null {
+  if (!stringArray(value) || value.length > 8 || new Set(value).size !== value.length) return null
+  return value
+}
+
+function studioCoverMode(value: unknown): value is StudioCoverMode {
+  return value === "vocal" || value === "instrumental"
+}
+
+function sameOrderedValues(left: string[], right: readonly string[]): boolean {
+  return left.length === right.length && right.every((value, index) => left[index] === value)
 }
 
 function artworkStyle(value: unknown): value is ArtworkStyle {
@@ -430,13 +484,22 @@ export function parseGenerationSnapshot(value: unknown): GenerationSnapshot | nu
   }
   if (value.generation_kind === "studio_change") {
     if (value.song_plan_ref !== null || value.mode !== null || !nonEmptyString(value.source_version_ref) || !studioChangeOperation(value.operation)) return null
-    const hasRemasterMetadata = "intent" in value || "source" in value || "variation_strength" in value
-    if (hasRemasterMetadata) {
+    if (value.operation !== "transform") {
+      if ("intent" in value) return null
+      return {
+        ...common,
+        generation_kind: "studio_change",
+        song_plan_ref: null,
+        mode: null,
+        source_version_ref: value.source_version_ref,
+        operation: value.operation,
+      }
+    }
+
+    if (value.intent === "remaster") {
       const source = studioRemasterSource(value.source)
       if (
-        value.operation !== "transform"
-        || value.intent !== "remaster"
-        || source === null
+        source === null
         || !studioRemasterStrength(value.variation_strength)
       ) return null
       return {
@@ -451,14 +514,68 @@ export function parseGenerationSnapshot(value: unknown): GenerationSnapshot | nu
         variation_strength: value.variation_strength,
       }
     }
-    return {
-      ...common,
-      generation_kind: "studio_change",
-      song_plan_ref: null,
-      mode: null,
-      source_version_ref: value.source_version_ref,
-      operation: value.operation,
+
+    const scope = studioTransformScope(value.scope)
+    const preserve = studioChangePreserveList(value.preserve)
+    const referenceAssetRefs = studioReferenceAssetRefs(value.reference_asset_refs)
+    if (
+      scope === null
+      || !nonEmptyString(value.instruction)
+      || value.instruction.length > 2_000
+      || preserve === null
+      || referenceAssetRefs === null
+      || !integer(value.output_count, 1, 4)
+    ) return null
+
+    if (value.intent === "restyle") {
+      return {
+        ...common,
+        generation_kind: "studio_change",
+        song_plan_ref: null,
+        mode: null,
+        source_version_ref: value.source_version_ref,
+        operation: "transform",
+        intent: "restyle",
+        scope,
+        instruction: value.instruction,
+        preserve,
+        reference_asset_refs: referenceAssetRefs,
+        output_count: value.output_count,
+      }
     }
+
+    if (value.intent === "cover") {
+      if (
+        scope.type !== "whole_version"
+        || !studioCoverMode(value.cover_mode)
+        || !nullableString(value.voice_ref)
+        || value.output_count !== 2
+        || referenceAssetRefs.length !== 0
+      ) return null
+      const expectedAnchors = value.cover_mode === "vocal"
+        ? studioVocalCoverProtectedAnchors
+        : studioInstrumentalCoverProtectedAnchors
+      if (!sameOrderedValues(preserve, expectedAnchors)) return null
+      if (value.cover_mode === "instrumental" && value.voice_ref !== null) return null
+      return {
+        ...common,
+        generation_kind: "studio_change",
+        song_plan_ref: null,
+        mode: null,
+        source_version_ref: value.source_version_ref,
+        operation: "transform",
+        intent: "cover",
+        scope: { type: "whole_version" },
+        cover_mode: value.cover_mode,
+        voice_ref: value.voice_ref,
+        instruction: value.instruction,
+        preserve,
+        reference_asset_refs: [],
+        output_count: 2,
+      }
+    }
+
+    return null
   }
   return null
 }
