@@ -1158,6 +1158,8 @@
   color: var(--mori-muted);
   text-align: center;
   background: linear-gradient(145deg, rgba(240, 237, 255, 0.42), rgba(231, 246, 239, 0.24));
+  font: inherit;
+  cursor: pointer;
 }
 
 .newProjectCard:hover {
@@ -1181,6 +1183,169 @@
 .newProjectCard strong {
   color: var(--mori-foreground);
   font-size: 14px;
+}
+
+.projectCreateLayer {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  isolation: isolate;
+}
+
+.projectCreateBackdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: rgba(54, 46, 70, 0.14);
+  backdrop-filter: blur(7px);
+}
+
+.projectCreateDialog {
+  position: relative;
+  z-index: 1;
+  width: min(520px, 100%);
+  max-height: min(660px, calc(100dvh - 40px));
+  overflow: auto;
+  border: 1px solid rgba(221, 215, 228, 0.96);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 28px 90px rgba(62, 45, 86, 0.22), 0 0 0 1px rgba(255, 255, 255, 0.72);
+}
+
+.projectCreateHeader {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 13px;
+  align-items: start;
+  padding: 25px 25px 20px;
+  border-bottom: 1px solid var(--mori-border);
+  background: linear-gradient(145deg, rgba(252, 250, 255, 0.96), rgba(255, 248, 243, 0.72));
+}
+
+.projectCreateIcon,
+.projectCreateSuccessIcon {
+  display: grid;
+  place-items: center;
+  color: var(--mori-primary);
+  background: var(--mori-primary-soft);
+}
+
+.projectCreateIcon {
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(109, 92, 231, 0.16);
+  border-radius: 11px;
+}
+
+.projectCreateHeader h2,
+.projectCreateSuccess h2 {
+  margin: 0;
+  font-size: 22px;
+  letter-spacing: -0.045em;
+}
+
+.projectCreateHeader p,
+.projectCreateSuccess p {
+  margin: 6px 0 0;
+  color: var(--mori-muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.projectCreateForm {
+  display: grid;
+  gap: 18px;
+  padding: 24px 25px 25px;
+}
+
+.projectCreateField {
+  display: grid;
+  gap: 8px;
+  color: var(--mori-foreground);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.projectCreateField small {
+  margin-left: 5px;
+  color: var(--mori-faint);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.projectCreateDescription {
+  width: 100%;
+  min-height: 104px;
+  resize: vertical;
+  padding: 12px 13px;
+  border: 1px solid var(--mori-border);
+  border-radius: 11px;
+  color: var(--mori-foreground);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.55;
+  background: rgba(255, 255, 255, 0.8);
+  outline: 0;
+}
+
+.projectCreateDescription:focus {
+  border-color: rgba(109, 92, 231, 0.45);
+  box-shadow: 0 0 0 3px rgba(109, 92, 231, 0.1);
+}
+
+.projectCreateDescription::placeholder {
+  color: var(--mori-faint);
+}
+
+.projectCreateError {
+  margin: -4px 0 0;
+  color: #a35454;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.projectCreateActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.projectCreateActions .generateButton:disabled {
+  cursor: wait;
+  opacity: 0.68;
+}
+
+.projectCreateSuccess {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 42px 32px 34px;
+  text-align: center;
+}
+
+.projectCreateSuccessIcon {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 4px;
+  border: 1px solid rgba(58, 159, 117, 0.2);
+  border-radius: 50%;
+  color: var(--mori-success);
+  background: rgba(224, 246, 235, 0.78);
+}
+
+.projectCreateSuccess .eyebrow {
+  margin: 0;
+}
+
+.projectCreateSuccess p {
+  max-width: 360px;
 }
 
 .newProjectCard > span:last-child {

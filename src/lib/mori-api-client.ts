@@ -57,6 +57,15 @@ export function createMoriApiClient(options: MoriApiClientOptions = {}): MoriApi
       const payload = await readJson(response)
       return parseSuccessResponse(response, payload, parseMoriProjectPage)
     },
+    async createProject(input, idempotencyKey) {
+      const response = await fetchImpl(`${apiBasePath}/projects`, {
+        method: "POST",
+        headers: createMutationHeaders(idempotencyKey),
+        body: JSON.stringify(input),
+      })
+      const payload = await readJson(response)
+      return parseSuccessResponse(response, payload, parseMoriProject)
+    },
     async getProject(projectRef: MoriRef) {
       const response = await fetchImpl(`${apiBasePath}/projects/${encodeURIComponent(projectRef)}`)
       const payload = await readJson(response)

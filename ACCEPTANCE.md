@@ -18,7 +18,7 @@ pnpm build
 
 - `pnpm lint`：通过，`--max-warnings=0`
 - `pnpm typecheck`：通过
-- `pnpm test`：通过，15 个测试文件、92 个测试
+- `pnpm test`：通过，15 个测试文件、94 个测试
 - `pnpm build`：通过，生成 `/`、`/create`、`/projects`、`/library`、`/settings`、Project Overview 和 Studio 路由
 
 ## 页面巡检
@@ -70,6 +70,9 @@ Custom 模式在选择 Lyrics 时提供可选的用户歌词输入，提交时�
 到 generation command；切换为 Instrumental 后该输入从当前创作界面收起。
 Create 的 Smart/Custom 模式使用标准 tab 键盘模型：方向键切换模式、Home/End 定位首尾，只有当前
 模式进入 Tab 顺序，并通过 tabpanel 关联当前创作面板。
+Projects 的 New project、Start a project 和 Start another idea 都打开 Mori 自己的项目创建窗口；
+填写名称后通过 `POST /api/v1/mori/projects` 携带 `Idempotency-Key` 创建项目，成功结果提供项目入口，
+不会把“新项目”误导到 First Light 预览项目。
 
 Settings 已收敛为 Mori 自身需要的四组能力：Appearance、Playback、Creation、Account；采用
 参考 Kokoro Settings 的浮窗结构（固定左侧偏好导航、右侧独立滚动内容、回到来源工作区的关闭入口），

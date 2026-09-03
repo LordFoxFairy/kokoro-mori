@@ -3,6 +3,39 @@ import { createGenerationRequest } from "./mori-api"
 import { createMoriApiClient } from "./mori-api-client"
 
 describe("Mori same-origin API client", () => {
+  it("creates a project with an idempotent public command", async () => {
+    let capturedUrl = ""
+    let capturedInit: RequestInit | undefined
+    const api = createMoriApiClient({
+      fetchImpl: async (input, init) => {
+        capturedUrl = String(input)
+        capturedInit = init
+        return new Response(JSON.stringify({
+          data: {
+            project_ref: "project_mori_1",
+            title: "Window Seat",
+            description: "A quiet, forward-moving sketch.",
+            current_version_ref: null,
+            candidate_count: 0,
+            last_activity_at: "2026-09-02T12:00:00.000Z",
+          },
+          meta: { request_id: "request_project_create_1" },
+        }), { status: 201, headers: { "Content-Type": "application/json" } })
+      },
+    })
+
+    const response = await api.createProject({ title: "Window Seat", description: "A quiet, forward-moving sketch." }, "idem-project-1")
+
+    expect(capturedUrl).toBe("/api/v1/mori/projects")
+    expect(capturedInit?.method).toBe("POST")
+    expect(capturedInit?.headers).toEqual({
+      "Content-Type": "application/json",
+      "Idempotency-Key": "idem-project-1",
+    })
+    expect(JSON.parse(String(capturedInit?.body))).toEqual({ title: "Window Seat", description: "A quiet, forward-moving sketch." })
+    expect(response.data.project_ref).toBe("project_mori_1")
+  })
+
   it("persists a reviewed song plan before creating directions", async () => {
     let capturedUrl = ""
     let capturedInit: RequestInit | undefined

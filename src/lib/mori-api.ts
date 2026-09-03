@@ -70,6 +70,11 @@ export type MoriProject = {
   last_activity_at: string
 }
 
+export type MoriProjectCreateInput = {
+  title: string
+  description: string
+}
+
 export type MoriSongPlan = SongPlanCreateInput & {
   song_plan_ref: MoriRef
   project_ref: MoriRef
@@ -148,6 +153,7 @@ export type MoriExportSnapshot = {
 
 export type MoriApi = {
   listProjects: (options?: MoriProjectListOptions) => Promise<ApiSuccess<MoriProjectPage>>
+  createProject: (input: MoriProjectCreateInput, idempotencyKey: string) => Promise<ApiSuccess<MoriProject>>
   getProject: (projectRef: MoriRef) => Promise<ApiSuccess<MoriProject>>
   createSongPlan: (projectRef: MoriRef, input: SongPlanCreateInput, idempotencyKey: string) => Promise<ApiSuccess<MoriSongPlan>>
   createGeneration: (projectRef: MoriRef, input: GenerationCreateInput, idempotencyKey: string) => Promise<ApiSuccess<GenerationReceipt>>

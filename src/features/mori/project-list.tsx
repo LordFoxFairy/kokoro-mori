@@ -7,16 +7,18 @@ import type { MoriApi, MoriProject } from "@/lib/mori-api"
 import { createMoriApiClient } from "@/lib/mori-api-client"
 import type { Project } from "./domain"
 import { previewProject } from "./preview-data"
+import { ProjectCreateDialog } from "./project-create-dialog"
 import styles from "./mori-workspace.module.css"
 
 type ProjectsPageContentProps = {
-  api?: Pick<MoriApi, "listProjects">
+  api?: Pick<MoriApi, "listProjects"> & Partial<Pick<MoriApi, "createProject">>
 }
 
 export function ProjectsPageContent({ api }: ProjectsPageContentProps = {}) {
   const defaultApi = useMemo(() => createMoriApiClient(), [])
   const projectsApi = api ?? defaultApi
   const [projects, setProjects] = useState<Project[]>([previewProject])
+  const [createOpen, setCreateOpen] = useState(false)
 
   useEffect(() => {
     let disposed = false
@@ -41,23 +43,28 @@ export function ProjectsPageContent({ api }: ProjectsPageContentProps = {}) {
           <h1 className={styles.catalogTitle}>Projects</h1>
           <p className={styles.catalogDescription}>Keep every direction, version, and little spark connected.</p>
         </div>
-        <Link className={styles.generateButton} href="/create"><Music2 size={15} /> New project</Link>
+        <button className={styles.generateButton} type="button" onClick={() => setCreateOpen(true)} aria-haspopup="dialog" aria-expanded={createOpen}><Music2 size={15} /> New project</button>
       </div>
       <div className={styles.projectGrid}>
         {projects.length > 0 ? <>
           {projects.map((project, index) => <ProjectCard key={project.projectRef} project={project} index={index} />)}
-          <Link className={styles.newProjectCard} href="/create" aria-label="Create another project">
+          <button className={styles.newProjectCard} type="button" onClick={() => setCreateOpen(true)} aria-haspopup="dialog" aria-label="Create another project">
             <span className={styles.newProjectIcon}>+</span>
             <strong>Start another idea</strong>
             <span>Begin with a thought, a mood, or a reference.</span>
-          </Link>
+          </button>
         </> : <div className={styles.libraryEmpty}>
           <div className={styles.libraryEmptyIcon}><Music2 size={18} /></div>
           <strong>No projects yet</strong>
           <p>Start with a thought, a mood, or a reference. Mori will keep every direction together.</p>
-          <Link className={styles.ghostButton} href="/create">Start a project</Link>
+          <button className={styles.ghostButton} type="button" onClick={() => setCreateOpen(true)} aria-haspopup="dialog">Start a project</button>
         </div>}
       </div>
+      {createOpen ? <ProjectCreateDialog
+        createProject={projectsApi.createProject}
+        onClose={() => setCreateOpen(false)}
+        onCreated={(project) => setProjects((items) => [toDomainProject(project, 0), ...items.filter((item) => item.projectRef !== project.project_ref)])}
+      /> : null}
     </div>
   )
 }
