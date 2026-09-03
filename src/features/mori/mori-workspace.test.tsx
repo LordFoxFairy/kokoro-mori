@@ -227,8 +227,14 @@ describe("Mori workspace", () => {
     expect(screen.getByRole("tab", { name: /custom/i })).toHaveAttribute("aria-selected", "true")
     expect(screen.getByLabelText("Lyrics or instrumental")).toHaveValue("lyrics")
 
+    const referenceInput = screen.getByLabelText("Reference audio file")
+    const openPicker = vi.spyOn(referenceInput, "click")
     fireEvent.click(screen.getByRole("button", { name: "Add a reference" }))
-    expect(screen.getByRole("button", { name: "Reference audio ready" })).toBeInTheDocument()
+    expect(openPicker).toHaveBeenCalledOnce()
+
+    fireEvent.change(referenceInput, { target: { files: [new File([new Uint8Array(2048)], "night-drive.wav", { type: "audio/wav" })] } })
+    expect(screen.getByRole("button", { name: "Replace reference audio night-drive.wav" })).toBeInTheDocument()
+    expect(screen.getByText("2 KB · selected for this direction")).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole("button", { name: "Browse moods" }))
     expect(screen.getByRole("listbox", { name: "Browse moods" })).toBeInTheDocument()
@@ -270,13 +276,29 @@ describe("Mori workspace", () => {
     )
 
     fireEvent.click(screen.getByRole("tab", { name: /custom/i }))
-    fireEvent.click(screen.getByRole("button", { name: "Reference audio" }))
+    fireEvent.change(screen.getByLabelText("Reference audio file"), { target: { files: [new File(["audio"], "first-light.mp3", { type: "audio/mpeg" })] } })
     fireEvent.submit(screen.getByRole("textbox", { name: "Song idea" }).closest("form") as HTMLFormElement)
 
     await waitFor(() => {
       expect(request).not.toBeNull()
       expect(request?.reference_asset_refs).toEqual(["asset_preview_reference"])
     })
+  })
+
+  it("rejects a non-audio reference before generation", () => {
+    const onGenerate = vi.fn<(draft: CreationDraft) => void>()
+
+    render(
+      <MoriAppProvider>
+        <CreateCanvas projectRef="project_preview_first_light" mode="smart" onModeChange={() => undefined} onGenerate={onGenerate} />
+      </MoriAppProvider>,
+    )
+
+    fireEvent.change(screen.getByLabelText("Reference audio file"), { target: { files: [new File(["notes"], "notes.txt", { type: "text/plain" })] } })
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Choose an MP3, WAV, M4A, FLAC, AAC, or OGG audio file.")
+    expect(screen.getByRole("button", { name: "Add a reference" })).toBeInTheDocument()
+    expect(onGenerate).not.toHaveBeenCalled()
   })
 
   it("keeps optional user lyrics in the custom creation draft", () => {
