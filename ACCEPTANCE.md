@@ -18,7 +18,7 @@ pnpm build
 
 - `pnpm lint`：通过，`--max-warnings=0`
 - `pnpm typecheck`：通过
-- `pnpm test`：通过，18 个测试文件、141 个测试
+- `pnpm test`：通过，18 个测试文件、144 个测试
 - `pnpm build`：通过，生成 `/`、`/create`、`/projects`、`/library`、`/settings`、Project Overview 和 Studio 路由
 
 ## 页面巡检
@@ -102,9 +102,12 @@ generation；未实现的 More/Edit 死按钮已移除，避免给用户错误�
 合并，避免真实 Library 只返回版本时丢失 Projects 视图；Projects 和 Project Overview 对成功返回的
 空 project/candidate projection 也展示明确空状态，不再保留过期的 First Light fixture；Project Overview
 对项目和候选 projection 分开收敛，单个投影暂时不可用时也不会把 First Light 候选错挂到实时项目上。
-Create 的 Reference 快捷入口现在打开真实文件选择，校验音频格式和 50 MB 上限，并展示文件名、大小、
-替换和移除操作；选中的本地参考会通过预览资产 `reference_asset_refs` 进入 generation command，
-让界面选择与 API 契约保持一致；真实上传接入仍由后续 storage/music owner adapter 承接。
+Create 现在在主 Prompt 下方提供 Smart / Custom 共用的 Creative sources：Audio、Voice、Inspiration 都是
+可选上下文，不进入全局 Rail，也不再与页面底部快捷入口重复。Audio 打开真实文件选择，校验音频格式和
+50 MB 上限，并展示文件名、大小、替换和移除操作；无效的替换不会清空已经选好的参考。选中的本地参考会通过预览资产
+`reference_asset_refs` 进入 generation command。Voice profile 使用稳定 preview `voice_ref`，与 Custom
+中的人类可读 Vocal direction 分开；Inspiration 采用少量策展方向并同步到仍可编辑的 Style，手动改写
+Style 后会解除旧 preset 关联。真实上传和 Library 资产接入仍由后续 storage/music owner adapter 承接。
 没有实际参数的 Advanced 假入口已移除，Custom 只保留会影响生成请求的控制项。
 Custom 模式在选择 Lyrics 时提供可选的用户歌词输入，提交时会按 `lyrics_mode` 和公共契约传递
 到 generation command；切换为 Instrumental 后该输入从当前创作界面收起。

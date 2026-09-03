@@ -57,6 +57,25 @@ Idea / Reference
 
 这样既保留 Tad 的能力广度，又避免用户先理解一堆工具名才能开始创作。
 
+### Create 的创意来源模型
+
+Create 不再把 Reference、Voice、Style 拆成互相重复的快捷按钮或全局工具页。主 Prompt 下方固定一层
+轻量 **Creative sources**，Smart 与 Custom 共用同一份选择：
+
+| 来源 | 用户意图 | 当前行为 | 契约事实 |
+|---|---|---|---|
+| Audio | “参考这段节奏、旋律或质感” | 选择、校验、替换或移除本地音频 | 上传完成后进入 `reference_asset_refs[]` |
+| Voice | “沿用这个可复用的演唱身份” | 从渐进式 Voice profiles 中选择 | 稳定资产引用进入 `voice_ref` |
+| Inspiration | “从一个完整创作方向开始” | 选择少量策展预设并把结果写入可编辑 Style | 当前进入 provider-neutral `style` 文本 |
+
+Voice profile 与 **Vocal direction** 必须分开：前者是可复用资产身份，后者是本次作品的演唱要求，例如
+“close and unhurried”。Mori 不把 `Natural lead` 这类展示文案伪装成 `voice_ref`。Inspiration 也只是起点；
+用户一旦手动修改 Style，就解除预设关联，避免界面仍声称使用一个已经不准确的 preset。
+
+这一层吸收 Suno 在 Create 中把 Audio、Voice、Inspo 放在创作上下文里的做法，也吸收 Tad 对 Reference
+输入的明确分类；但只展示少量策展方向，避免把 Tad 的大规模标签树直接复制进首屏。正式资产以后统一从
+Library 选择，Create 的位置与交互保持不变。
+
 ## 3. Studio 的 AI 操作模型
 
 Studio 只暴露四个稳定的一层意图，复杂参数进入下一层：
@@ -240,7 +259,7 @@ Command 使用 `Idempotency-Key`；恢复使用 durable snapshot 与 `Last-Event
 
 ### P0 · 交互骨架（当前）
 
-- Create：Smart / Custom、Song Plan review、Reference audio。
+- Create：Smart / Custom、Song Plan review、Audio / Voice / Inspiration 创意来源。
 - Studio：Arrangement / Lyrics / Stems、Mori AI Changes、Take Lanes。
 - 全局：Player、播放队列、Project-first 导航。
 
@@ -267,7 +286,8 @@ Command 使用 `Idempotency-Key`；恢复使用 durable snapshot 与 `Last-Event
   version-scoped OpenAPI、client、运行时 parser 与 contract tests。
 - 定向 Isolate one part 与 Custom stems 等 owner 能力协商稳定后再进入渐进式高级选项。
 - Add Vocal、Add Instrumental。
-- Voice、Persona、Style preset、Reference 进入 Library assets。
+- Create 已建立 Audio / Voice / Inspiration 的统一选择位，并把 `voice_ref` 与 Vocal direction 分离；下一步让
+  Voice、Persona、Style preset、Reference 正式进入 Library assets，替换当前 preview 目录。
 
 ### P3 · 完成与发布
 

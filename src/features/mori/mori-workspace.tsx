@@ -98,7 +98,7 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, api: injectedAp
           lyrics: draft.lyrics,
           style: draft.style,
           referenceAssetRefs: draft.referenceAssetRefs,
-          voiceRef: draft.voice,
+          voiceRef: draft.voiceRef,
           durationSeconds: draft.durationSeconds,
         }),
         `mori-create-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,

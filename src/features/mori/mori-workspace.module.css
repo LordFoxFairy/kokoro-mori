@@ -456,34 +456,6 @@
   height: 13px;
 }
 
-.moodPicker {
-  display: grid;
-  gap: 4px;
-  width: min(420px, 100%);
-  margin-top: 10px;
-  padding: 6px;
-  border: 1px solid var(--mori-border);
-  border-radius: 13px;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: var(--mori-shadow-sm);
-}
-
-.moodPicker button {
-  padding: 9px 10px;
-  border: 0;
-  border-radius: 8px;
-  color: var(--mori-muted);
-  font-size: 11px;
-  text-align: left;
-  background: transparent;
-}
-
-.moodPicker button:hover,
-.moodPicker button[aria-selected="true"] {
-  color: var(--mori-foreground);
-  background: var(--mori-primary-soft);
-}
-
 .customFields {
   display: grid;
   gap: 13px;
@@ -507,8 +479,7 @@
   grid-column: 1 / -1;
 }
 
-.field label,
-.fieldLegend {
+.field label {
   color: var(--mori-muted);
   font-size: 10px;
   font-weight: 700;
@@ -549,169 +520,6 @@
 .promptArea:focus-visible {
   border-color: rgba(109, 92, 231, 0.5);
   box-shadow: 0 0 0 3px rgba(109, 92, 231, 0.1);
-}
-
-.referenceButton {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 8px;
-  width: 100%;
-  min-height: 52px;
-  padding: 7px 11px;
-  border: 1px dashed #d7d0ed;
-  border-radius: 10px;
-  color: var(--mori-primary);
-  font-size: 12px;
-  font-weight: 700;
-  text-align: left;
-  background: var(--mori-primary-soft);
-}
-
-.referenceButton svg {
-  flex: 0 0 auto;
-  width: 15px;
-  height: 15px;
-}
-
-.referenceButton:hover {
-  border-color: rgba(109, 92, 231, 0.34);
-  background: #efecff;
-}
-
-.referenceButtonSelected {
-  border-style: solid;
-  border-color: rgba(109, 92, 231, 0.24);
-  color: var(--mori-foreground);
-  background: linear-gradient(105deg, rgba(237, 233, 254, 0.78), rgba(253, 231, 218, 0.28));
-}
-
-.referenceControl {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 7px;
-}
-
-.referenceButtonCopy {
-  display: grid;
-  min-width: 0;
-  gap: 3px;
-}
-
-.referenceButtonCopy strong,
-.referenceButtonCopy small {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.referenceButtonCopy strong {
-  font-size: 11px;
-}
-
-.referenceButtonCopy small {
-  color: var(--mori-muted);
-  font-size: 9px;
-  font-weight: 500;
-}
-
-.referenceRemove {
-  display: grid;
-  width: 34px;
-  height: 34px;
-  padding: 0;
-  place-items: center;
-  border: 1px solid var(--mori-border);
-  border-radius: 10px;
-  color: var(--mori-muted);
-  background: #fff;
-}
-
-.referenceRemove:hover {
-  border-color: rgba(109, 92, 231, 0.24);
-  color: var(--mori-foreground);
-  background: var(--mori-primary-soft);
-}
-
-.referenceRemove svg {
-  width: 14px;
-  height: 14px;
-}
-
-.referenceError {
-  display: block;
-  margin-top: 5px;
-  color: #b4574d;
-  font-size: 10px;
-  line-height: 1.4;
-}
-
-.referenceQuickStatus {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  width: min(420px, 100%);
-  min-height: 52px;
-  align-items: center;
-  gap: 10px;
-  margin-top: 10px;
-  padding: 8px 9px 8px 12px;
-  border: 1px solid rgba(109, 92, 231, 0.17);
-  border-radius: 12px;
-  color: var(--mori-primary);
-  background: linear-gradient(105deg, rgba(237, 233, 254, 0.72), rgba(253, 231, 218, 0.24));
-}
-
-.referenceQuickStatus > svg {
-  width: 16px;
-  height: 16px;
-}
-
-.referenceQuickStatus > span {
-  display: grid;
-  min-width: 0;
-  gap: 3px;
-}
-
-.referenceQuickStatus strong,
-.referenceQuickStatus small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.referenceQuickStatus strong {
-  color: var(--mori-foreground);
-  font-size: 11px;
-}
-
-.referenceQuickStatus small {
-  color: var(--mori-muted);
-  font-size: 9px;
-}
-
-.referenceQuickStatus button {
-  display: grid;
-  width: 30px;
-  height: 30px;
-  padding: 0;
-  place-items: center;
-  border: 0;
-  border-radius: 9px;
-  color: var(--mori-muted);
-  background: rgba(255, 255, 255, 0.76);
-}
-
-.referenceQuickStatus button:hover {
-  color: var(--mori-foreground);
-  background: #fff;
-}
-
-.referenceQuickStatus button svg {
-  width: 13px;
-  height: 13px;
 }
 
 .tagRow {
@@ -4328,6 +4136,29 @@
 
 .homeTrackDuration {
   font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 701px) and (max-height: 780px) {
+  .canvasBody {
+    padding-top: 30px;
+  }
+
+  .eyebrow {
+    margin-bottom: 10px;
+  }
+
+  .heroTitle {
+    font-size: clamp(35px, 4vw, 50px);
+  }
+
+  .heroDescription {
+    margin: 12px 0 18px;
+  }
+
+  .promptArea {
+    min-height: 106px;
+    padding-block: 15px;
+  }
 }
 
 @media (max-width: 1120px) {

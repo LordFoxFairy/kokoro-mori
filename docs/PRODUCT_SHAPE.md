@@ -110,8 +110,10 @@ Workspace nav    内容随项目上下文变化                     跨页面保
   失效，最终结果进入 Take Lanes，当前版本不会被直接覆盖。
 - 已落地第一版：从项目详情、Studio 或项目上下文中的 Rail 进入 Create 时保留 `project_ref`，
   生成命令不再意外落到预览项目；可用时先读取项目 projection 展示项目名称，读取失败保留中性上下文。
-- 已落地第一版：Reference audio 使用真实文件选择与前端格式/大小校验，选择结果在 Smart 与 Custom
-  中都保持可见；上传后的正式资产引用继续留给 storage/music owner adapter。
+- 已落地第一版：Prompt 下方的 Creative sources 把 Audio、Voice、Inspiration 作为 Smart / Custom 共用的
+  上下文输入，而不是继续堆全局 AI 工具。Audio 使用真实文件选择与格式/大小校验；Voice 使用稳定 preview
+  `voice_ref`，与本次生成的人类可读 Vocal direction 分开；Inspiration 只提供少量策展起点并写入仍可编辑的
+  Style。上传后的正式资产引用与 Library 数据继续留给 storage/music owner adapter。
 - 后续：Song Plan 的服务端版本历史、音频上传、连接真实音频渲染器、版本自动保存和更多导出格式。
 
 ## 五、明确不做的方向

@@ -87,7 +87,32 @@ describe("Mori workspace", () => {
     fireEvent.click(screen.getByRole("tab", { name: /custom/i }))
     expect(screen.getByLabelText(/lyrics or instrumental/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/style/i)).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: /reference audio/i })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Add audio reference" })).toBeInTheDocument()
+  })
+
+  it("keeps audio, voice, and inspiration as optional contextual sources", () => {
+    renderWorkspace()
+
+    const sources = screen.getByRole("region", { name: "Creative sources" })
+    expect(within(sources).getByRole("button", { name: "Add audio reference" })).toBeInTheDocument()
+    expect(within(sources).getByRole("button", { name: "Choose voice profile" })).toBeInTheDocument()
+    expect(within(sources).getByRole("button", { name: "Choose inspiration" })).toBeInTheDocument()
+    expect(screen.queryByRole("region", { name: "Voice profiles" })).not.toBeInTheDocument()
+
+    fireEvent.click(within(sources).getByRole("button", { name: "Choose voice profile" }))
+    const voices = screen.getByRole("region", { name: "Voice profiles" })
+    fireEvent.click(within(voices).getByRole("button", { name: "Use Mira voice" }))
+    expect(within(sources).getByRole("button", { name: "Change voice profile Mira" })).toBeInTheDocument()
+    expect(screen.queryByRole("region", { name: "Voice profiles" })).not.toBeInTheDocument()
+
+    fireEvent.click(within(sources).getByRole("button", { name: "Choose inspiration" }))
+    const inspirations = screen.getByRole("region", { name: "Inspiration presets" })
+    fireEvent.click(within(inspirations).getByRole("button", { name: "Use Open Road inspiration" }))
+    expect(within(sources).getByRole("button", { name: "Change inspiration Open Road" })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole("tab", { name: /custom/i }))
+    fireEvent.change(screen.getByLabelText("Style"), { target: { value: "Hand-built chamber pop" } })
+    expect(within(sources).getByRole("button", { name: "Choose inspiration" })).toBeInTheDocument()
   })
 
   it("supports keyboard navigation between creation modes", () => {
@@ -235,18 +260,41 @@ describe("Mori workspace", () => {
 
     const referenceInput = screen.getByLabelText("Reference audio file")
     const openPicker = vi.spyOn(referenceInput, "click")
-    fireEvent.click(screen.getByRole("button", { name: "Add a reference" }))
+    fireEvent.click(screen.getByRole("button", { name: "Add audio reference" }))
     expect(openPicker).toHaveBeenCalledOnce()
 
     fireEvent.change(referenceInput, { target: { files: [new File([new Uint8Array(2048)], "night-drive.wav", { type: "audio/wav" })] } })
     expect(screen.getByRole("button", { name: "Replace reference audio night-drive.wav" })).toBeInTheDocument()
     expect(screen.getByText("2 KB · selected for this direction")).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole("button", { name: "Browse moods" }))
-    expect(screen.getByRole("listbox", { name: "Browse moods" })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: "Start instrumental" }))
+    expect(screen.getByLabelText("Lyrics or instrumental")).toHaveValue("instrumental")
   })
 
-  it("carries the selected reference asset into the generation command", async () => {
+  it("keeps stable asset refs separate from human-readable creative direction", () => {
+    const onGenerate = vi.fn<(draft: CreationDraft) => void>()
+
+    render(
+      <MoriAppProvider>
+        <CreateCanvas projectRef="project_preview_first_light" mode="custom" onModeChange={() => undefined} onGenerate={onGenerate} />
+      </MoriAppProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Choose voice profile" }))
+    fireEvent.click(screen.getByRole("button", { name: "Use Mira voice" }))
+    fireEvent.click(screen.getByRole("button", { name: "Choose inspiration" }))
+    fireEvent.click(screen.getByRole("button", { name: "Use Open Road inspiration" }))
+    fireEvent.submit(screen.getByRole("textbox", { name: "Song idea" }).closest("form") as HTMLFormElement)
+
+    expect(onGenerate).toHaveBeenCalledOnce()
+    expect(onGenerate.mock.calls[0]?.[0]).toMatchObject({
+      voice: "Natural lead",
+      voiceRef: "voice_preview_mira",
+      style: "Cinematic folk · open horizon · strings",
+    })
+  })
+
+  it("carries selected creative asset refs into the generation command", async () => {
     let request: GenerationCreateInput | null = null
     const api: Pick<MoriApi, "createSongPlan" | "createGeneration" | "getGeneration" | "getGenerationEvents" | "listCandidates" | "cancelGeneration"> = {
       createSongPlan: async (projectRef, input) => ({
@@ -285,12 +333,15 @@ describe("Mori workspace", () => {
     )
 
     fireEvent.click(screen.getByRole("tab", { name: /custom/i }))
+    fireEvent.click(screen.getByRole("button", { name: "Choose voice profile" }))
+    fireEvent.click(screen.getByRole("button", { name: "Use Mira voice" }))
     fireEvent.change(screen.getByLabelText("Reference audio file"), { target: { files: [new File(["audio"], "first-light.mp3", { type: "audio/mpeg" })] } })
     fireEvent.submit(screen.getByRole("textbox", { name: "Song idea" }).closest("form") as HTMLFormElement)
 
     await waitFor(() => {
       expect(request).not.toBeNull()
       expect(request?.reference_asset_refs).toEqual(["asset_preview_reference"])
+      expect(request?.voice_ref).toBe("voice_preview_mira")
     })
   })
 
@@ -306,8 +357,19 @@ describe("Mori workspace", () => {
     fireEvent.change(screen.getByLabelText("Reference audio file"), { target: { files: [new File(["notes"], "notes.txt", { type: "text/plain" })] } })
 
     expect(screen.getByRole("alert")).toHaveTextContent("Choose an MP3, WAV, M4A, FLAC, AAC, or OGG audio file.")
-    expect(screen.getByRole("button", { name: "Add a reference" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Add audio reference" })).toBeInTheDocument()
     expect(onGenerate).not.toHaveBeenCalled()
+  })
+
+  it("preserves the current audio reference when a replacement is rejected", () => {
+    renderWorkspace()
+
+    const referenceInput = screen.getByLabelText("Reference audio file")
+    fireEvent.change(referenceInput, { target: { files: [new File(["audio"], "kept.wav", { type: "audio/wav" })] } })
+    fireEvent.change(referenceInput, { target: { files: [new File(["notes"], "notes.txt", { type: "text/plain" })] } })
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Choose an MP3, WAV, M4A, FLAC, AAC, or OGG audio file.")
+    expect(screen.getByRole("button", { name: "Replace reference audio kept.wav" })).toBeInTheDocument()
   })
 
   it("keeps optional user lyrics in the custom creation draft", () => {

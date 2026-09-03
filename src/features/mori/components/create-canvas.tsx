@@ -1,10 +1,12 @@
 "use client"
 
 import { useRef, useState, type ChangeEvent, type FormEvent, type KeyboardEvent } from "react"
-import { AudioLines, Check, ChevronDown, FileAudio, Mic2, Plus, SlidersHorizontal, Sparkles, WandSparkles, X } from "lucide-react"
+import { AudioLines, Check, Disc3, Mic2, SlidersHorizontal, Sparkles, WandSparkles } from "lucide-react"
 import type { CreationMode, LyricsMode, SongPlan } from "../domain"
 import { t } from "../copy"
+import type { MoriInspirationPreset } from "../creative-assets"
 import { buildSongPlan } from "../song-plan"
+import { CreativeSourceDock } from "./creative-source-dock"
 import { useMoriApp } from "./mori-app-provider"
 import styles from "../mori-workspace.module.css"
 
@@ -15,6 +17,7 @@ export type CreationDraft = {
   style: string
   referenceAssetRefs: string[]
   voice: string
+  voiceRef?: string
   durationSeconds: number
   songPlan?: SongPlan
 }
@@ -36,10 +39,11 @@ export function CreateCanvas({ projectRef, mode, onModeChange, onGenerate }: Cre
   const [lyricsModeOverride, setLyricsModeOverride] = useState<LyricsMode | null>(null)
   const [style, setStyle] = useState("Dream pop · intimate · organic")
   const [voice, setVoice] = useState("Natural lead")
+  const [voiceProfileRef, setVoiceProfileRef] = useState<string | null>(null)
+  const [inspirationRef, setInspirationRef] = useState<string | null>(null)
   const [durationOverride, setDurationOverride] = useState<number | null>(null)
   const [referenceFile, setReferenceFile] = useState<{ name: string; size: number } | null>(null)
   const [referenceError, setReferenceError] = useState<string | null>(null)
-  const [moodsOpen, setMoodsOpen] = useState(false)
   const [planPreview, setPlanPreview] = useState<ReturnType<typeof buildSongPlan> | null>(null)
   const [planEditing, setPlanEditing] = useState(false)
   const [planBackup, setPlanBackup] = useState<SongPlan | null>(null)
@@ -75,6 +79,12 @@ export function CreateCanvas({ projectRef, mode, onModeChange, onGenerate }: Cre
     clearPlanPreview()
   }
 
+  function startInstrumental() {
+    onModeChange("custom")
+    setLyricsModeOverride("instrumental")
+    clearPlanPreview()
+  }
+
   function addReference() {
     referenceInputRef.current?.click()
   }
@@ -83,17 +93,13 @@ export function CreateCanvas({ projectRef, mode, onModeChange, onGenerate }: Cre
     const file = event.currentTarget.files?.[0]
     if (file === undefined) return
     if (!isAudioReference(file)) {
-      setReferenceFile(null)
       setReferenceError("Choose an MP3, WAV, M4A, FLAC, AAC, or OGG audio file.")
       event.currentTarget.value = ""
-      clearPlanPreview()
       return
     }
     if (file.size > 50 * 1024 * 1024) {
-      setReferenceFile(null)
       setReferenceError("Reference audio must be 50 MB or smaller.")
       event.currentTarget.value = ""
-      clearPlanPreview()
       return
     }
 
@@ -109,10 +115,9 @@ export function CreateCanvas({ projectRef, mode, onModeChange, onGenerate }: Cre
     clearPlanPreview()
   }
 
-  function chooseMood(mood: string) {
-    onModeChange("custom")
-    setStyle(mood)
-    setMoodsOpen(false)
+  function chooseInspiration(preset: MoriInspirationPreset | null) {
+    setInspirationRef(preset?.ref ?? null)
+    if (preset !== null) setStyle(preset.style)
     clearPlanPreview()
   }
 
@@ -122,11 +127,11 @@ export function CreateCanvas({ projectRef, mode, onModeChange, onGenerate }: Cre
       setPlanPreview(buildSongPlan(projectRef, { prompt, lyricsMode, style, voice, durationSeconds }))
       return
     }
-    onGenerate({ prompt, lyricsMode, lyrics: lyrics.trim() || undefined, style, referenceAssetRefs: referenceFile === null ? [] : ["asset_preview_reference"], voice, durationSeconds })
+    onGenerate({ prompt, lyricsMode, lyrics: lyrics.trim() || undefined, style, referenceAssetRefs: referenceFile === null ? [] : ["asset_preview_reference"], voice, voiceRef: voiceProfileRef ?? undefined, durationSeconds })
   }
 
   function confirmPlan() {
-    onGenerate({ prompt, lyricsMode, lyrics: lyrics.trim() || undefined, style, referenceAssetRefs: referenceFile === null ? [] : ["asset_preview_reference"], voice, durationSeconds, songPlan: planPreview ?? undefined })
+    onGenerate({ prompt, lyricsMode, lyrics: lyrics.trim() || undefined, style, referenceAssetRefs: referenceFile === null ? [] : ["asset_preview_reference"], voice, voiceRef: voiceProfileRef ?? undefined, durationSeconds, songPlan: planPreview ?? undefined })
   }
 
   function navigateMode(event: KeyboardEvent<HTMLButtonElement>, currentMode: CreationMode) {
@@ -163,6 +168,17 @@ export function CreateCanvas({ projectRef, mode, onModeChange, onGenerate }: Cre
           aria-label="Song idea"
         />
 
+        <CreativeSourceDock
+          referenceFile={referenceFile}
+          referenceError={referenceError}
+          voiceRef={voiceProfileRef}
+          inspirationRef={inspirationRef}
+          onChooseReference={addReference}
+          onRemoveReference={removeReference}
+          onVoiceChange={(nextVoiceRef) => { setVoiceProfileRef(nextVoiceRef); clearPlanPreview() }}
+          onInspirationChange={chooseInspiration}
+        />
+
         {mode === "custom" ? (
           <div className={styles.customFields}>
             <div className={styles.fieldRow}>
@@ -175,7 +191,7 @@ export function CreateCanvas({ projectRef, mode, onModeChange, onGenerate }: Cre
               </div>
               <div className={styles.field}>
                 <label htmlFor="mori-style">Style</label>
-                <input className={styles.textInput} id="mori-style" value={style} onChange={(event) => { setStyle(event.target.value); clearPlanPreview() }} />
+                <input className={styles.textInput} id="mori-style" value={style} onChange={(event) => { setStyle(event.target.value); setInspirationRef(null); clearPlanPreview() }} />
               </div>
             </div>
             {lyricsMode === "lyrics" ? <div className={styles.fieldRow}>
@@ -186,7 +202,7 @@ export function CreateCanvas({ projectRef, mode, onModeChange, onGenerate }: Cre
             </div> : null}
             <div className={styles.fieldRow}>
               <div className={styles.field}>
-                <label htmlFor="mori-voice">Voice</label>
+                <label htmlFor="mori-voice">Vocal direction</label>
                 <select className={styles.selectInput} id="mori-voice" value={voice} onChange={(event) => { setVoice(event.target.value); clearPlanPreview() }}>
                   <option>Natural lead</option>
                   <option>Airy alto</option>
@@ -201,22 +217,6 @@ export function CreateCanvas({ projectRef, mode, onModeChange, onGenerate }: Cre
                   <option value={240}>4:00</option>
                   <option value={300}>5:00</option>
                 </select>
-              </div>
-            </div>
-            <div className={styles.fieldRow}>
-              <div className={`${styles.field} ${styles.fieldWide}`}>
-                <span className={styles.fieldLegend}>Reference audio</span>
-                <div className={styles.referenceControl}>
-                  <button className={`${styles.referenceButton} ${referenceFile === null ? "" : styles.referenceButtonSelected}`} type="button" onClick={addReference} aria-label={referenceFile === null ? "Choose reference audio file" : `Replace reference audio ${referenceFile.name}`}>
-                    <FileAudio />
-                    <span className={styles.referenceButtonCopy}>
-                      <strong>{referenceFile?.name ?? "Choose an audio reference"}</strong>
-                      <small>{referenceFile === null ? "MP3, WAV, M4A, FLAC, AAC, or OGG · up to 50 MB" : `${formatFileSize(referenceFile.size)} · selected for this direction`}</small>
-                    </span>
-                  </button>
-                  {referenceFile !== null ? <button className={styles.referenceRemove} type="button" onClick={removeReference} aria-label={`Remove reference audio ${referenceFile.name}`}><X /></button> : null}
-                </div>
-                {referenceError !== null ? <span className={styles.referenceError} role="alert">{referenceError}</span> : null}
               </div>
             </div>
           </div>
@@ -299,25 +299,9 @@ export function CreateCanvas({ projectRef, mode, onModeChange, onGenerate }: Cre
 
       <div className={styles.quickChips} aria-label="Creative shortcuts">
         <button className={styles.quickChip} type="button" onClick={startWithLyrics}><Mic2 /> Start with lyrics</button>
-        <button className={styles.quickChip} type="button" onClick={addReference} aria-label={referenceFile === null ? "Add a reference" : `Replace reference ${referenceFile.name}`}><Plus /> {referenceFile?.name ?? "Add a reference"}</button>
-        <button className={styles.quickChip} type="button" onClick={() => setMoodsOpen((value) => !value)} aria-expanded={moodsOpen}><ChevronDown /> Browse moods</button>
+        <button className={styles.quickChip} type="button" onClick={startInstrumental}><Disc3 /> Start instrumental</button>
       </div>
       <input ref={referenceInputRef} className={styles.srOnly} type="file" accept="audio/*,.mp3,.wav,.m4a,.flac,.aac,.ogg" onChange={changeReference} aria-label="Reference audio file" />
-      {mode === "smart" && referenceFile !== null ? (
-        <div className={styles.referenceQuickStatus} role="status">
-          <FileAudio />
-          <span><strong>{referenceFile.name}</strong><small>{formatFileSize(referenceFile.size)} · selected for this direction</small></span>
-          <button type="button" onClick={removeReference} aria-label={`Remove reference audio ${referenceFile.name}`}><X /></button>
-        </div>
-      ) : null}
-      {mode === "smart" && referenceError !== null ? <span className={styles.referenceError} role="alert">{referenceError}</span> : null}
-      {moodsOpen ? <div className={styles.moodPicker} role="listbox" aria-label="Browse moods">
-        {[
-          "Dream pop · intimate · organic",
-          "Warm soul · live drums · close vocal",
-          "Cinematic folk · open horizon · strings",
-        ].map((mood) => <button key={mood} type="button" role="option" aria-selected={style === mood} onClick={() => chooseMood(mood)}>{mood}</button>)}
-      </div> : null}
     </section>
   )
 }
@@ -342,9 +326,4 @@ function parsePlanList(value: string, fallback: readonly string[]): string[] {
 
 function isAudioReference(file: File): boolean {
   return file.type.startsWith("audio/") || /\.(?:mp3|wav|m4a|flac|aac|ogg)$/iu.test(file.name)
-}
-
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
