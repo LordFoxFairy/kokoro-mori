@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowUpRight, Download, FolderKanban, Headphones, Music2, Pause, Play, Sparkles } from "lucide-react"
+import { ArrowUpRight, Download, FolderKanban, Headphones, Music2, Pause, Play, Search, Sparkles, X } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import type { MoriApi, MoriLibraryItem, MoriProject } from "@/lib/mori-api"
@@ -48,6 +48,7 @@ export function LibraryPageContent({ api }: LibraryPageContentProps = {}) {
   const [libraryLoaded, setLibraryLoaded] = useState(false)
   const [projects, setProjects] = useState<Project[] | null>(null)
   const [filter, setFilter] = useState<LibraryFilter>("All")
+  const [query, setQuery] = useState("")
 
   useEffect(() => {
     let disposed = false
@@ -85,12 +86,25 @@ export function LibraryPageContent({ api }: LibraryPageContentProps = {}) {
   const itemsWithProjects = projects === null
     ? libraryItems
     : [...projects.map(toLibraryProject), ...libraryItems.filter((item) => item.kind === "version")]
+  const normalizedQuery = query.trim().toLowerCase()
+  const hasQuery = normalizedQuery.length > 0
   const items = itemsWithProjects.filter((item) => {
-    if (filter === "All") return true
-    if (filter === "Projects") return item.kind === "project"
-    if (filter === "Versions") return item.kind === "version"
-    return false
+    const matchesFilter = filter === "All"
+      || (filter === "Projects" && item.kind === "project")
+      || (filter === "Versions" && item.kind === "version")
+    if (!matchesFilter) return false
+    if (!hasQuery) return true
+    return `${item.title} ${item.subtitle}`.toLowerCase().includes(normalizedQuery)
   })
+  const emptyState = hasQuery
+    ? {
+        title: `No matches for “${query.trim()}”`,
+        description: "Try another title, project, or version name.",
+      }
+    : emptyCopy[filter]
+  const resultLabel = hasQuery
+    ? `${items.length} ${items.length === 1 ? "result" : "results"}`
+    : `${items.length} ${items.length === 1 ? "item" : "items"}`
 
   const playVersion = (versionRef: string) => {
     const libraryItem = libraryItems.find((item): item is Extract<LibraryItem, { kind: "version" }> => item.kind === "version" && item.ref === versionRef)
@@ -114,11 +128,40 @@ export function LibraryPageContent({ api }: LibraryPageContentProps = {}) {
         </div>
         <button className={styles.ghostButton} type="button" onClick={() => setFilter("Exports")}><Download size={14} /> Export center</button>
       </div>
-      <div className={styles.filterBar} aria-label="Library filters">
-        {filters.map((item) => <button className={`${styles.filterButton} ${filter === item ? styles.filterButtonActive : ""}`} type="button" key={item} aria-pressed={filter === item} onClick={() => setFilter(item)}>{item}</button>)}
+      <div className={styles.libraryToolbar}>
+        <div className={styles.filterBar} aria-label="Library filters">
+          {filters.map((item) => <button className={`${styles.filterButton} ${filter === item ? styles.filterButtonActive : ""}`} type="button" key={item} aria-pressed={filter === item} onClick={() => setFilter(item)}>{item}</button>)}
+        </div>
+        <div className={styles.librarySearchGroup}>
+          <div className={styles.librarySearch}>
+            <Search size={15} aria-hidden="true" />
+            <input
+              type="search"
+              aria-label="Search library"
+              aria-controls="mori-library-results"
+              autoComplete="off"
+              placeholder="Search library"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+            {query.length > 0 ? (
+              <button className={styles.librarySearchClear} type="button" aria-label="Clear library search" onClick={() => setQuery("")}>
+                <X size={14} />
+              </button>
+            ) : null}
+          </div>
+          <span
+            className={styles.libraryResultCount}
+            role="status"
+            aria-live="polite"
+            aria-label={hasQuery ? `${resultLabel} for ${query.trim()}` : resultLabel}
+          >
+            {resultLabel}
+          </span>
+        </div>
       </div>
       {items.length > 0 ? (
-        <div className={styles.libraryList}>
+        <div className={styles.libraryList} id="mori-library-results">
           {items.map((item) => {
             const isProject = item.kind === "project"
             const versionPath = isProject ? `/projects/${item.ref}` : `/projects/${item.projectRef}/studio/${item.ref}`
@@ -142,11 +185,15 @@ export function LibraryPageContent({ api }: LibraryPageContentProps = {}) {
           })}
         </div>
       ) : (
-        <div className={styles.libraryEmpty}>
+        <div className={styles.libraryEmpty} id="mori-library-results">
           <div className={styles.libraryEmptyIcon}><Sparkles size={18} /></div>
-          <strong>{emptyCopy[filter].title}</strong>
-          <p>{emptyCopy[filter].description}</p>
-          <Link className={styles.ghostButton} href="/create"><Sparkles size={14} /> Start creating</Link>
+          <strong>{emptyState.title}</strong>
+          <p>{emptyState.description}</p>
+          {hasQuery ? (
+            <button className={styles.ghostButton} type="button" onClick={() => setQuery("")}><X size={14} /> Clear search</button>
+          ) : (
+            <Link className={styles.ghostButton} href="/create"><Sparkles size={14} /> Start creating</Link>
+          )}
         </div>
       )}
     </div>

@@ -42,6 +42,38 @@ describe("Mori catalog surfaces", () => {
     expect(screen.getByText("No lyrics saved yet")).toBeInTheDocument()
   })
 
+  it("filters library items by title", () => {
+    render(
+      <MoriAppProvider>
+        <LibraryPageContent />
+      </MoriAppProvider>,
+    )
+
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search library" }), {
+      target: { value: "Afterglow" },
+    })
+
+    expect(screen.getAllByRole("article")).toHaveLength(1)
+    expect(screen.getByText("First Light · Afterglow")).toBeInTheDocument()
+    expect(screen.getByRole("status")).toHaveTextContent("1 result")
+  })
+
+  it("offers a clear recovery action when library search has no matches", () => {
+    render(
+      <MoriAppProvider>
+        <LibraryPageContent />
+      </MoriAppProvider>,
+    )
+
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search library" }), {
+      target: { value: "Midnight rain" },
+    })
+
+    expect(screen.getByText("No matches for “Midnight rain”")).toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: "Clear library search" }))
+    expect(screen.getAllByRole("article")).toHaveLength(3)
+  })
+
   it("routes the export center action to the exports shelf", () => {
     render(
       <MoriAppProvider>

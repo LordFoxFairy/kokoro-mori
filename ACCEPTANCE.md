@@ -1,6 +1,6 @@
 # Mori Preview Acceptance
 
-> 记录日期：2026-09-02
+> 记录日期：2026-09-03
 > 范围：Mori 第一轮全局壳体、页面 IA、fixture-only 生成体验、Library/Studio 交互与 API client seam
 
 ## 验证命令
@@ -18,7 +18,7 @@ pnpm build
 
 - `pnpm lint`：通过，`--max-warnings=0`
 - `pnpm typecheck`：通过
-- `pnpm test`：通过，15 个测试文件、100 个测试
+- `pnpm test`：通过，15 个测试文件、102 个测试
 - `pnpm build`：通过，生成 `/`、`/create`、`/projects`、`/library`、`/settings`、Project Overview 和 Studio 路由
 
 ## 页面巡检
@@ -54,7 +54,9 @@ transport + progress、右侧音量/队列的音乐播放器层级；移动端�
 播放支持在非输入控件上使用 Space 快捷键，输入歌词或表单时不会拦截空格；播放主按钮声明对应键盘快捷键。
 
 Library 已巡检 All、Versions、Lyrics、Exports 过滤器，以及版本 Play/Pause、项目和
-Studio 链接。Home 与 Project Overview 的候选歌曲均可直接接入 Global Player；Projects、
+Studio 链接；搜索会在当前分类内匹配项目、版本标题和说明，持续反馈结果数，并在无匹配时提供
+明确的清除入口。桌面端将筛选与搜索放在同一工具栏，小屏幕把搜索提升到筛选之前并允许分类横向滚动。
+Home 与 Project Overview 的候选歌曲均可直接接入 Global Player；Projects、
 Project Overview 与 Studio 会读取 provider-neutral 项目/候选 projection，Studio 会按
 请求的 `projectRef`/`versionRef` hydration 当前版本。Create Queue 支持活动生成的取消
 反馈、无可播放结果时的明确空状态和失败后的 Try again 重试入口；打开时焦点进入 Queue、背景滚动锁定，移动端使用全宽工作表；状态同步优先读取快照并通过 SSE `Last-Event-ID` 回放事件。Studio 已巡检
