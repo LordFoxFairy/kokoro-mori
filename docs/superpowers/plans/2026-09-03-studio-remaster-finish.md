@@ -31,10 +31,10 @@
 - Produces: `StudioRemasterStrength`, `StudioRemasterSource`, `MoriStudioRemasterDraft`, `StudioRemasterPlan`, `buildStudioRemasterPlan`, and `isStudioRemasterPlan`.
 - Extends: the existing Studio Change request and snapshot unions without adding an endpoint or operation.
 
-- [ ] Write tests asserting the three strengths, exact protected anchors, two outputs, Version/Mix source serialization, and snapshot source/strength parsing.
-- [ ] Run `pnpm test -- src/features/mori/studio-remaster.test.ts contract/tests/mori-studio-change.contract.test.ts src/lib/mori-api-client.test.ts` and confirm failures are caused by the missing Remaster types and behavior.
-- [ ] Add the minimum typed helper, OpenAPI variants, request builder branch, and strict runtime parser needed to pass.
-- [ ] Re-run the focused tests and confirm they pass.
+- [x] Write tests asserting the three strengths, exact protected anchors, two outputs, Version/Mix source serialization, and snapshot source/strength parsing.
+- [x] Run `pnpm test -- src/features/mori/studio-remaster.test.ts contract/tests/mori-studio-change.contract.test.ts src/lib/mori-api-client.test.ts` and confirm failures are caused by the missing Remaster types and behavior.
+- [x] Add the minimum typed helper, OpenAPI variants, request builder branch, and strict runtime parser needed to pass.
+- [x] Re-run the focused tests and confirm they pass.
 
 ### Task 2: Build the review-first Finish dialog with RED tests
 
@@ -47,10 +47,10 @@
 - Consumes: Version identity, optional latest Mix Revision, shared `StudioAiRunState`, and `StudioRemasterPlan` callbacks.
 - Produces: setup, reviewed, queued/generating, failed/cancelled, and Takes-ready states in one accessible portal dialog.
 
-- [ ] Write component tests for the balanced default, Mix preference, changing strength, explicit review, exact submit plan, edit, cancel, retry, Review Takes, Escape, focus trap, body scroll lock, and focus restoration.
-- [ ] Run `pnpm test -- src/features/mori/components/studio-finish-dialog.test.tsx` and confirm the missing component causes RED.
-- [ ] Implement a restrained light-gradient dialog whose single signature move is a three-step waveform-strength selector; keep source, scope, protected anchors, output count, and destination visible in the plan.
-- [ ] Re-run the component tests and confirm they pass without console warnings.
+- [x] Write component tests for the balanced default, Mix preference, changing strength, explicit review, exact submit plan, edit, cancel, retry, Review Takes, Escape, focus trap, body scroll lock, and focus restoration.
+- [x] Run `pnpm test -- src/features/mori/components/studio-finish-dialog.test.tsx` and confirm the missing component causes RED.
+- [x] Implement a restrained light-gradient dialog whose single signature move is a three-step waveform-strength selector; keep source, scope, protected anchors, output count, and destination visible in the plan.
+- [x] Re-run the component tests and confirm they pass without console warnings.
 
 ### Task 3: Connect Finish to Studio and existing Take Lanes with RED tests
 
@@ -63,11 +63,11 @@
 - Consumes: `generateStudioChange`, `cancelStudioChange`, `resetStudioChange`, latest Mix Revision, and the existing Candidate merge path.
 - Produces: a contextual `Finish` header action with activity feedback and a `Review takes` transition back to Arrangement.
 
-- [ ] Write an integration test that opens Finish, selects a Mix Revision and bold strength, reviews, submits the exact `transform + whole_version + remaster` request, receives a matching snapshot, and finds the returned Takes without changing the existing Current Version.
-- [ ] Write a test that rejects a snapshot with a mismatched source or strength and preserves the reviewed plan for retry.
-- [ ] Run the focused Studio page tests and observe RED.
-- [ ] Wire the dialog into the header and shared generation lifecycle; compare typed Remaster snapshot context before accepting results and keep an active Remaster reachable after closing the dialog.
-- [ ] Re-run the focused Studio page tests and confirm GREEN.
+- [x] Write an integration test that opens Finish, selects a Mix Revision and bold strength, reviews, submits the exact `transform + whole_version + remaster` request, receives a matching snapshot, and finds the returned Takes without changing the existing Current Version.
+- [x] Write a test that rejects a snapshot with a mismatched source or strength and preserves the reviewed plan for retry.
+- [x] Run the focused Studio page tests and observe RED.
+- [x] Wire the dialog into the header and shared generation lifecycle; compare typed Remaster snapshot context before accepting results and keep an active Remaster reachable after closing the dialog.
+- [x] Re-run the focused Studio page tests and confirm GREEN.
 
 ### Task 4: Document, visually inspect, and verify
 
@@ -77,7 +77,7 @@
 - Modify: `docs/MUSIC_CAPABILITIES.md`
 - Modify: `docs/PRODUCT_SHAPE.md`
 
-- [ ] Document Remaster as a contextual Finish capability, its typed source/strength fields, and its Candidate destination.
-- [ ] Run `git diff --check && pnpm lint && pnpm typecheck && pnpm test && pnpm build`.
-- [ ] Inspect the Studio and Finish dialog at 1280×720 and a narrow mobile viewport; verify no horizontal overflow, one primary action per state, readable source/strength hierarchy, keyboard focus, and unobscured global Player.
-- [ ] Restore generated `next-env.d.ts`, remove browser artifacts, stop local servers, and commit the cohesive implementation.
+- [x] Document Remaster as a contextual Finish capability, its typed source/strength fields, and its Candidate destination.
+- [x] Run `git diff --check && pnpm lint && pnpm typecheck && pnpm test && pnpm build`.
+- [x] Inspect the Studio and Finish dialog at 1280×720 and a narrow mobile viewport; verify no horizontal overflow, one primary action per state, readable source/strength hierarchy, keyboard focus, and unobscured global Player.
+- [x] Restore generated `next-env.d.ts`, remove browser artifacts, stop local servers, and commit the cohesive implementation.
