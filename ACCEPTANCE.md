@@ -18,7 +18,7 @@ pnpm build
 
 - `pnpm lint`：通过，`--max-warnings=0`
 - `pnpm typecheck`：通过
-- `pnpm test`：通过，15 个测试文件、103 个测试
+- `pnpm test`：通过，16 个测试文件、110 个测试
 - `pnpm build`：通过，生成 `/`、`/create`、`/projects`、`/library`、`/settings`、Project Overview 和 Studio 路由
 
 ## 页面巡检
@@ -66,6 +66,12 @@ Arrangement 现在提供与时间线连在一起的 Mori AI Changes：Add part�
 共享同一套上下文式输入；Intro、Verse、Lift、Chorus、Outro 可直接选为 AI 操作上下文，操作范围和结果去向
 始终可见；提交前先展示 Change Plan，Stage 后明确反馈
 Ready for rendering，并持续声明 Current version stays untouched；
+Studio Change 的浏览器契约已固定为 version-scoped generation：四种 operation 使用互斥 scope，
+请求通过 `createStudioChangeRequest()` 归一为 `snake_case`，限制 1–4 个输出和最多 8 个参考资产，
+并由同源 `POST /api/v1/mori/versions/{version_ref}/generations` 携带 `Idempotency-Key` 提交；
+machine-readable OpenAPI 与 contract tests 会阻止 camelCase、provider、tenant 或 subject 字段进入公开 Schema；
+Generation snapshot 通过 `generation_kind` 区分新歌与 Studio Change，Studio 分支保留
+`source_version_ref` 和 `operation`，刷新后仍可恢复正确上下文；
 Lyrics 已提供可编辑草稿、按版本恢复的本地保存和明确的 Saved locally 状态；Stems 已提供 Preview only 的逐轨 Mute/Solo
 控制，明确当前仍是音频渲染器接入前的交互层；
 Create 的 Smart 模式会先展示可编辑 Song Plan 摘要，用户确认后才持久化 Song Plan 并创建

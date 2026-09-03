@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { createGenerationRequest } from "./mori-api"
+import { createGenerationRequest, createStudioChangeRequest } from "./mori-api"
 import { createMoriApiClient } from "./mori-api-client"
 
 describe("Mori same-origin API client", () => {
@@ -120,6 +120,92 @@ describe("Mori same-origin API client", () => {
     })
     expect(response.data.generation_ref).toBe("generation_request_1")
     expect(response.meta.request_id).toBe("request_1")
+  })
+
+  it("posts a version-bound studio change through the shared generation lifecycle", async () => {
+    let capturedUrl = ""
+    let capturedInit: RequestInit | undefined
+    const api = createMoriApiClient({
+      fetchImpl: async (input, init) => {
+        capturedUrl = String(input)
+        capturedInit = init
+        return new Response(JSON.stringify({
+          data: { generation_ref: "generation_change_1", status: "queued" },
+          meta: { request_id: "request_change_1" },
+        }), { status: 202, headers: { "Content-Type": "application/json" } })
+      },
+    })
+
+    const request = createStudioChangeRequest({
+      operation: "replace_section",
+      scope: { type: "time_range", startMs: 68_000, endMs: 96_000 },
+      instruction: "  Make the chorus wider without changing its melody.  ",
+      preserve: ["melody", "lyrics"],
+      referenceAssetRefs: ["asset_reference_1", "asset_reference_1", "  "],
+      outputCount: 2,
+    })
+    const response = await api.createStudioChange("version/change 1", request, "idem-change-1")
+
+    expect(capturedUrl).toBe("/api/v1/mori/versions/version%2Fchange%201/generations")
+    expect(capturedInit?.method).toBe("POST")
+    expect(capturedInit?.headers).toEqual({
+      "Content-Type": "application/json",
+      "Idempotency-Key": "idem-change-1",
+    })
+    expect(JSON.parse(String(capturedInit?.body))).toEqual({
+      operation: "replace_section",
+      scope: { type: "time_range", start_ms: 68_000, end_ms: 96_000 },
+      instruction: "Make the chorus wider without changing its melody.",
+      preserve: ["melody", "lyrics"],
+      reference_asset_refs: ["asset_reference_1"],
+      output_count: 2,
+    })
+    expect(response.data).toEqual({ generation_ref: "generation_change_1", status: "queued" })
+  })
+
+  it("reads the source and operation from a Studio generation snapshot", async () => {
+    const api = createMoriApiClient({
+      fetchImpl: async () => new Response(JSON.stringify({
+        data: {
+          generation_ref: "generation_change_1",
+          generation_kind: "studio_change",
+          project_ref: "project_1",
+          song_plan_ref: null,
+          mode: null,
+          source_version_ref: "version_1",
+          operation: "replace_section",
+          status: "generating",
+          progress: 46,
+          candidate_refs: [],
+          created_at: "2026-09-03T12:00:00.000Z",
+        },
+        meta: { request_id: "request_change_snapshot_1" },
+      }), { status: 200, headers: { "Content-Type": "application/json" } }),
+    })
+
+    const response = await api.getGeneration("generation_change_1")
+
+    expect(response.data).toMatchObject({
+      generation_kind: "studio_change",
+      source_version_ref: "version_1",
+      operation: "replace_section",
+      mode: null,
+      song_plan_ref: null,
+    })
+  })
+
+  it("rejects an invalid studio change before it reaches the API", () => {
+    expect(() => createStudioChangeRequest({
+      operation: "replace_section",
+      scope: { type: "time_range", startMs: 96_000, endMs: 68_000 },
+      instruction: "Try another chorus.",
+    })).toThrow("studio_change_range_invalid")
+
+    expect(() => createStudioChangeRequest({
+      operation: "transform",
+      scope: { type: "whole_version" },
+      instruction: "   ",
+    })).toThrow("studio_change_instruction_required")
   })
 
   it("cancels a generation with an idempotent command", async () => {

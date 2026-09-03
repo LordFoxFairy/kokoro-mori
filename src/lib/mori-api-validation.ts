@@ -12,6 +12,7 @@ import type {
   MoriProject,
   MoriProjectPage,
   MoriSongPlan,
+  StudioChangeOperation,
 } from "./mori-api"
 import type { GenerationStatus } from "@/features/mori/domain"
 
@@ -58,6 +59,10 @@ function stringArray(value: unknown): value is string[] {
 
 function generationStatus(value: unknown): value is GenerationStatus {
   return typeof value === "string" && generationStatuses.includes(value as GenerationStatus)
+}
+
+function studioChangeOperation(value: unknown): value is StudioChangeOperation {
+  return value === "add_part" || value === "replace_section" || value === "extend" || value === "transform"
 }
 
 function requestMeta(value: unknown): { request_id: string } | null {
@@ -144,17 +149,38 @@ export function parseGenerationCancelReceipt(value: unknown): GenerationCancelRe
 }
 
 export function parseGenerationSnapshot(value: unknown): GenerationSnapshot | null {
-  if (!isRecord(value) || !nonEmptyString(value.generation_ref) || !nonEmptyString(value.project_ref) || !nullableString(value.song_plan_ref) || (value.mode !== "smart" && value.mode !== "custom") || !generationStatus(value.status) || !integer(value.progress, 0, 100) || !stringArray(value.candidate_refs) || !dateString(value.created_at)) return null
-  return {
+  if (!isRecord(value) || !nonEmptyString(value.generation_ref) || !nonEmptyString(value.project_ref) || !generationStatus(value.status) || !integer(value.progress, 0, 100) || !stringArray(value.candidate_refs) || !dateString(value.created_at)) return null
+  const common = {
     generation_ref: value.generation_ref,
     project_ref: value.project_ref,
-    song_plan_ref: value.song_plan_ref,
-    mode: value.mode,
     status: value.status,
     progress: value.progress,
     candidate_refs: value.candidate_refs,
     created_at: value.created_at,
   }
+  if (value.generation_kind === "new_song") {
+    if (!nullableString(value.song_plan_ref) || (value.mode !== "smart" && value.mode !== "custom") || value.source_version_ref !== null || value.operation !== null) return null
+    return {
+      ...common,
+      generation_kind: "new_song",
+      song_plan_ref: value.song_plan_ref,
+      mode: value.mode,
+      source_version_ref: null,
+      operation: null,
+    }
+  }
+  if (value.generation_kind === "studio_change") {
+    if (value.song_plan_ref !== null || value.mode !== null || !nonEmptyString(value.source_version_ref) || !studioChangeOperation(value.operation)) return null
+    return {
+      ...common,
+      generation_kind: "studio_change",
+      song_plan_ref: null,
+      mode: null,
+      source_version_ref: value.source_version_ref,
+      operation: value.operation,
+    }
+  }
+  return null
 }
 
 export function parseGenerationEventData(value: unknown): MoriGenerationEvent["data"] | null {

@@ -36,6 +36,44 @@ export type GenerationCreateInput = {
   lyrics_mode: LyricsMode
 }
 
+export type StudioChangeOperation = "add_part" | "replace_section" | "extend" | "transform"
+
+export type StudioChangePreserve = "melody" | "lyrics" | "vocal_identity" | "tempo" | "structure"
+
+export type StudioChangeInsertionScope = {
+  type: "insertion_point"
+  position_ms: number
+}
+
+export type StudioChangeRangeScope = {
+  type: "time_range"
+  start_ms: number
+  end_ms: number
+}
+
+export type StudioChangeFromScope = {
+  type: "from_position"
+  position_ms: number
+}
+
+export type StudioChangeWholeVersionScope = {
+  type: "whole_version"
+}
+
+type StudioChangeGenerationCommonInput = {
+  instruction: string
+  preserve: StudioChangePreserve[]
+  reference_asset_refs: MoriRef[]
+  output_count: number
+}
+
+export type StudioChangeGenerationInput = StudioChangeGenerationCommonInput & (
+  | { operation: "add_part"; scope: StudioChangeInsertionScope }
+  | { operation: "replace_section"; scope: StudioChangeRangeScope }
+  | { operation: "extend"; scope: StudioChangeFromScope }
+  | { operation: "transform"; scope: StudioChangeRangeScope | StudioChangeWholeVersionScope }
+)
+
 export type SongPlanCreateInput = {
   prompt: string
   mood: string
@@ -91,16 +129,32 @@ export type MoriProjectPage = {
   next_cursor: string | null
 }
 
-export type GenerationSnapshot = {
+type GenerationSnapshotBase = {
   generation_ref: MoriRef
   project_ref: MoriRef
-  song_plan_ref: MoriRef | null
-  mode: CreationMode
   status: GenerationStatus
   progress: number
   candidate_refs: MoriRef[]
   created_at: string
 }
+
+export type NewSongGenerationSnapshot = GenerationSnapshotBase & {
+  generation_kind: "new_song"
+  song_plan_ref: MoriRef | null
+  mode: CreationMode
+  source_version_ref: null
+  operation: null
+}
+
+export type StudioChangeGenerationSnapshot = GenerationSnapshotBase & {
+  generation_kind: "studio_change"
+  song_plan_ref: null
+  mode: null
+  source_version_ref: MoriRef
+  operation: StudioChangeOperation
+}
+
+export type GenerationSnapshot = NewSongGenerationSnapshot | StudioChangeGenerationSnapshot
 
 export type MoriGenerationEvent = {
   id: string
@@ -157,6 +211,7 @@ export type MoriApi = {
   getProject: (projectRef: MoriRef) => Promise<ApiSuccess<MoriProject>>
   createSongPlan: (projectRef: MoriRef, input: SongPlanCreateInput, idempotencyKey: string) => Promise<ApiSuccess<MoriSongPlan>>
   createGeneration: (projectRef: MoriRef, input: GenerationCreateInput, idempotencyKey: string) => Promise<ApiSuccess<GenerationReceipt>>
+  createStudioChange: (versionRef: MoriRef, input: StudioChangeGenerationInput, idempotencyKey: string) => Promise<ApiSuccess<GenerationReceipt>>
   getGeneration: (generationRef: MoriRef) => Promise<ApiSuccess<GenerationSnapshot>>
   getGenerationEvents: (generationRef: MoriRef, lastEventId?: string | null) => Promise<MoriGenerationEvent[]>
   listCandidates: (projectRef: MoriRef) => Promise<ApiSuccess<{ candidates: MoriCandidate[]; next_cursor: string | null }>>
@@ -178,6 +233,20 @@ export type MoriGenerationDraft = {
   durationSeconds?: number
 }
 
+type MoriStudioChangeCommonDraft = {
+  instruction: string
+  preserve?: StudioChangePreserve[]
+  referenceAssetRefs?: MoriRef[]
+  outputCount?: number
+}
+
+export type MoriStudioChangeDraft = MoriStudioChangeCommonDraft & (
+  | { operation: "add_part"; scope: { type: "insertion_point"; positionMs: number } }
+  | { operation: "replace_section"; scope: { type: "time_range"; startMs: number; endMs: number } }
+  | { operation: "extend"; scope: { type: "from_position"; positionMs: number } }
+  | { operation: "transform"; scope: { type: "time_range"; startMs: number; endMs: number } | { type: "whole_version" } }
+)
+
 export function createGenerationRequest(draft: MoriGenerationDraft): GenerationCreateInput {
   return {
     mode: draft.mode,
@@ -192,6 +261,61 @@ export function createGenerationRequest(draft: MoriGenerationDraft): GenerationC
   }
 }
 
+export function createStudioChangeRequest(draft: MoriStudioChangeDraft): StudioChangeGenerationInput {
+  const instruction = draft.instruction.trim()
+  if (instruction === "") throw new Error("studio_change_instruction_required")
+  if (instruction.length > 2_000) throw new Error("studio_change_instruction_too_long")
+
+  const outputCount = draft.outputCount ?? 2
+  if (!Number.isSafeInteger(outputCount) || outputCount < 1 || outputCount > 4) {
+    throw new Error("studio_change_output_count_invalid")
+  }
+
+  const referenceAssetRefs = uniqueNonEmpty(draft.referenceAssetRefs ?? [])
+  if (referenceAssetRefs.length > 8) throw new Error("studio_change_reference_limit_exceeded")
+
+  const common = {
+    instruction,
+    preserve: uniqueValues(draft.preserve ?? []),
+    reference_asset_refs: referenceAssetRefs,
+    output_count: outputCount,
+  }
+
+  switch (draft.operation) {
+    case "add_part":
+      assertPosition(draft.scope.positionMs)
+      return {
+        ...common,
+        operation: "add_part",
+        scope: { type: "insertion_point", position_ms: draft.scope.positionMs },
+      }
+    case "replace_section":
+      assertRange(draft.scope.startMs, draft.scope.endMs)
+      return {
+        ...common,
+        operation: "replace_section",
+        scope: { type: "time_range", start_ms: draft.scope.startMs, end_ms: draft.scope.endMs },
+      }
+    case "extend":
+      assertPosition(draft.scope.positionMs)
+      return {
+        ...common,
+        operation: "extend",
+        scope: { type: "from_position", position_ms: draft.scope.positionMs },
+      }
+    case "transform":
+      if (draft.scope.type === "whole_version") {
+        return { ...common, operation: "transform", scope: { type: "whole_version" } }
+      }
+      assertRange(draft.scope.startMs, draft.scope.endMs)
+      return {
+        ...common,
+        operation: "transform",
+        scope: { type: "time_range", start_ms: draft.scope.startMs, end_ms: draft.scope.endMs },
+      }
+  }
+}
+
 export function createMutationHeaders(idempotencyKey: string): MoriMutationHeaders {
   const normalizedKey = idempotencyKey.trim()
   if (!normalizedKey) {
@@ -202,4 +326,23 @@ export function createMutationHeaders(idempotencyKey: string): MoriMutationHeade
     "Content-Type": "application/json",
     "Idempotency-Key": normalizedKey,
   }
+}
+
+function assertPosition(positionMs: number): void {
+  if (!Number.isSafeInteger(positionMs) || positionMs < 0) throw new Error("studio_change_position_invalid")
+}
+
+function assertRange(startMs: number, endMs: number): void {
+  if (!Number.isSafeInteger(startMs) || !Number.isSafeInteger(endMs) || startMs < 0 || endMs <= startMs) {
+    throw new Error("studio_change_range_invalid")
+  }
+}
+
+function uniqueNonEmpty(values: string[]): string[] {
+  const normalized = values.map((value) => value.trim()).filter((value) => value !== "")
+  return normalized.filter((value, index) => normalized.indexOf(value) === index)
+}
+
+function uniqueValues<T extends string>(values: T[]): T[] {
+  return values.filter((value, index) => values.indexOf(value) === index)
 }

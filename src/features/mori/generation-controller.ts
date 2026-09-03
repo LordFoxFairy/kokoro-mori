@@ -1,5 +1,5 @@
 import type { GenerationStatus } from "./domain"
-import { createGenerationRequest, type GenerationCreateInput, type GenerationReceipt, type MoriApi, type MoriGenerationDraft, type MoriProjectCreateInput, type SongPlanCreateInput } from "@/lib/mori-api"
+import { createGenerationRequest, type GenerationCreateInput, type GenerationReceipt, type MoriApi, type MoriGenerationDraft, type MoriProjectCreateInput, type SongPlanCreateInput, type StudioChangeGenerationInput } from "@/lib/mori-api"
 import type { MoriRef } from "./domain"
 
 export type GenerationControllerState = {
@@ -114,13 +114,27 @@ export const previewMoriApi: MoriApi = {
       },
     }
   },
+  async createStudioChange(_versionRef: MoriRef, _input: StudioChangeGenerationInput, idempotencyKey: string) {
+    return {
+      data: {
+        generation_ref: "generation_preview_first_light_change",
+        status: "queued" as const,
+      },
+      meta: {
+        request_id: `preview-change-request-${idempotencyKey}`,
+      },
+    }
+  },
   async getGeneration(generationRef: MoriRef) {
     return {
       data: {
         generation_ref: generationRef,
+        generation_kind: "new_song" as const,
         project_ref: "project_preview_first_light",
         song_plan_ref: "song_plan_preview_first_light",
         mode: "smart" as const,
+        source_version_ref: null,
+        operation: null,
         status: "queued" as const,
         progress: 0,
         candidate_refs: [],

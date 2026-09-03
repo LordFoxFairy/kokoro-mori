@@ -83,26 +83,38 @@ Commit       用户试听后显式 Use take
 自然语言指令、Change Plan 复核、非破坏式提示和 Stage 状态处于同一个工作面。它不挤入全局 Rail，
 也不伪装成聊天记录。
 
-## 4. 下一版 API 契约应表达的事实
+## 4. Studio Change API 契约
 
-界面稳定后，再把以下 provider-neutral command 收敛进 Mori 自己的契约；浏览器仍只调用同源 BFF：
+Studio Change 继续创建既有 **Generation** 资源，不再增加一套 Change Job 状态机：
 
-```text
-StudioChangeCommand
-  project_ref
-  source_version_ref
-  operation                 add_part | replace_section | extend | transform
-  scope
-    start_ms?
-    end_ms?
-    insertion_ms?
-  instruction
-  preserve                  melody? lyrics? vocal_identity?
-  reference_asset_refs[]
-  output_count              default 2, bounded
-  destination               take_lanes
+```http
+POST /api/v1/mori/versions/{version_ref}/generations  → 202
+GET  /api/v1/mori/generations/{generation_ref}
+GET  /api/v1/mori/generations/{generation_ref}/events
+POST /api/v1/mori/generations/{generation_ref}/cancel
 ```
 
+Create 从 Project 发起 Generation，Studio 从不可变 Version 发起 Generation；两者最终都输出
+Candidate 并进入 Take Lanes。浏览器仍只调用同源 BFF。Studio 请求的 provider-neutral 结构为：
+
+```text
+StudioChangeGenerationInput
+  operation                 add_part | replace_section | extend | transform
+  scope
+    insertion_point         position_ms
+    time_range              start_ms + end_ms
+    from_position           position_ms
+    whole_version
+  instruction
+  preserve                  melody | lyrics | vocal_identity | tempo | structure
+  reference_asset_refs[]
+  output_count              default 2, range 1–4
+```
+
+机器可检查的事实源位于
+[`contract/openapi/mori-studio-change.v1.json`](../contract/openapi/mori-studio-change.v1.json)。
+Generation snapshot 使用 `generation_kind: new_song | studio_change` 做显式判别；Studio 分支必须携带
+`source_version_ref` 与 `operation`。这样刷新或断线恢复时，浏览器无需依赖内存态就能还原本次变更的来源和意图。
 契约不携带 Suno、Tad 或其他 provider 私有字段。执行边界继续遵守：
 
 - Command 使用 `Idempotency-Key` 和 request digest。
@@ -119,11 +131,12 @@ StudioChangeCommand
 - Studio：Arrangement / Lyrics / Stems、Mori AI Changes、Take Lanes。
 - 全局：Player、播放队列、Project-first 导航。
 
-### P1 · Studio Change 契约
+### P1 · Studio Change 契约（已完成浏览器侧）
 
-- 固定四种 operation、scope 和 preserve 语义。
-- 增加 create/get/cancel/replay contract tests。
-- 将 Stage 接到 provider-neutral job，结果进入 Take Lanes。
+- 已固定四种 operation、scope 和 preserve 语义。
+- 已增加 machine-readable OpenAPI、浏览器 request builder、同源 client、运行时 response parser 和 contract tests。
+- 新歌与 Studio Change 共用 Generation lifecycle，并通过 discriminated snapshot 支持刷新恢复。
+- 下一步将 Stage 接到 BFF / owner adapter，继续复用 Generation snapshot、cancel 和 SSE replay。
 
 ### P2 · 深度编辑
 

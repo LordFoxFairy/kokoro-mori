@@ -1,0 +1,718 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Mori Studio Change API",
+    "version": "0.1.0",
+    "description": "Version-scoped, non-destructive music generation commands used by Mori Studio."
+  },
+  "paths": {
+    "/api/v1/mori/versions/{version_ref}/generations": {
+      "post": {
+        "operationId": "createStudioChange",
+        "summary": "Generate alternatives from an immutable source version",
+        "parameters": [
+          {
+            "name": "version_ref",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StudioChangeGenerationInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "The generation was accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiGenerationReceipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The command violates a scope or input invariant",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The source version was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The idempotency key or source version state conflicts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The requested operation cannot be rendered from this source",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/mori/generations/{generation_ref}": {
+      "get": {
+        "operationId": "getGeneration",
+        "summary": "Read a generation snapshot for refresh and recovery",
+        "parameters": [
+          {
+            "name": "generation_ref",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The latest durable generation snapshot",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiGenerationSnapshot"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The generation was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "StudioChangeGenerationInput": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/AddPartGenerationInput"
+          },
+          {
+            "$ref": "#/components/schemas/ReplaceSectionGenerationInput"
+          },
+          {
+            "$ref": "#/components/schemas/ExtendGenerationInput"
+          },
+          {
+            "$ref": "#/components/schemas/TransformGenerationInput"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "operation",
+          "mapping": {
+            "add_part": "#/components/schemas/AddPartGenerationInput",
+            "replace_section": "#/components/schemas/ReplaceSectionGenerationInput",
+            "extend": "#/components/schemas/ExtendGenerationInput",
+            "transform": "#/components/schemas/TransformGenerationInput"
+          }
+        }
+      },
+      "AddPartGenerationInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "scope",
+          "instruction",
+          "preserve",
+          "reference_asset_refs",
+          "output_count"
+        ],
+        "properties": {
+          "operation": {
+            "const": "add_part"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/InsertionPointScope"
+          },
+          "instruction": {
+            "$ref": "#/components/schemas/Instruction"
+          },
+          "preserve": {
+            "$ref": "#/components/schemas/PreserveList"
+          },
+          "reference_asset_refs": {
+            "$ref": "#/components/schemas/ReferenceAssetRefs"
+          },
+          "output_count": {
+            "$ref": "#/components/schemas/OutputCount"
+          }
+        }
+      },
+      "ReplaceSectionGenerationInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "scope",
+          "instruction",
+          "preserve",
+          "reference_asset_refs",
+          "output_count"
+        ],
+        "properties": {
+          "operation": {
+            "const": "replace_section"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/TimeRangeScope"
+          },
+          "instruction": {
+            "$ref": "#/components/schemas/Instruction"
+          },
+          "preserve": {
+            "$ref": "#/components/schemas/PreserveList"
+          },
+          "reference_asset_refs": {
+            "$ref": "#/components/schemas/ReferenceAssetRefs"
+          },
+          "output_count": {
+            "$ref": "#/components/schemas/OutputCount"
+          }
+        }
+      },
+      "ExtendGenerationInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "scope",
+          "instruction",
+          "preserve",
+          "reference_asset_refs",
+          "output_count"
+        ],
+        "properties": {
+          "operation": {
+            "const": "extend"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/FromPositionScope"
+          },
+          "instruction": {
+            "$ref": "#/components/schemas/Instruction"
+          },
+          "preserve": {
+            "$ref": "#/components/schemas/PreserveList"
+          },
+          "reference_asset_refs": {
+            "$ref": "#/components/schemas/ReferenceAssetRefs"
+          },
+          "output_count": {
+            "$ref": "#/components/schemas/OutputCount"
+          }
+        }
+      },
+      "TransformGenerationInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "scope",
+          "instruction",
+          "preserve",
+          "reference_asset_refs",
+          "output_count"
+        ],
+        "properties": {
+          "operation": {
+            "const": "transform"
+          },
+          "scope": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/TimeRangeScope"
+              },
+              {
+                "$ref": "#/components/schemas/WholeVersionScope"
+              }
+            ]
+          },
+          "instruction": {
+            "$ref": "#/components/schemas/Instruction"
+          },
+          "preserve": {
+            "$ref": "#/components/schemas/PreserveList"
+          },
+          "reference_asset_refs": {
+            "$ref": "#/components/schemas/ReferenceAssetRefs"
+          },
+          "output_count": {
+            "$ref": "#/components/schemas/OutputCount"
+          }
+        }
+      },
+      "InsertionPointScope": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "position_ms"
+        ],
+        "properties": {
+          "type": {
+            "const": "insertion_point"
+          },
+          "position_ms": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "TimeRangeScope": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "start_ms",
+          "end_ms"
+        ],
+        "properties": {
+          "type": {
+            "const": "time_range"
+          },
+          "start_ms": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "end_ms": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "FromPositionScope": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "position_ms"
+        ],
+        "properties": {
+          "type": {
+            "const": "from_position"
+          },
+          "position_ms": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "WholeVersionScope": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "const": "whole_version"
+          }
+        }
+      },
+      "Instruction": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 2000
+      },
+      "PreserveList": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "type": "string",
+          "enum": [
+            "melody",
+            "lyrics",
+            "vocal_identity",
+            "tempo",
+            "structure"
+          ]
+        }
+      },
+      "ReferenceAssetRefs": {
+        "type": "array",
+        "maxItems": 8,
+        "uniqueItems": true,
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "OutputCount": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 4,
+        "default": 2
+      },
+      "ApiGenerationSnapshot": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "data",
+          "meta"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/GenerationSnapshot"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ApiMeta"
+          }
+        }
+      },
+      "GenerationSnapshot": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/NewSongGenerationSnapshot"
+          },
+          {
+            "$ref": "#/components/schemas/StudioChangeGenerationSnapshot"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "generation_kind",
+          "mapping": {
+            "new_song": "#/components/schemas/NewSongGenerationSnapshot",
+            "studio_change": "#/components/schemas/StudioChangeGenerationSnapshot"
+          }
+        }
+      },
+      "NewSongGenerationSnapshot": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "generation_ref",
+          "generation_kind",
+          "project_ref",
+          "song_plan_ref",
+          "mode",
+          "source_version_ref",
+          "operation",
+          "status",
+          "progress",
+          "candidate_refs",
+          "created_at"
+        ],
+        "properties": {
+          "generation_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "generation_kind": {
+            "const": "new_song"
+          },
+          "project_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "song_plan_ref": {
+            "oneOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "smart",
+              "custom"
+            ]
+          },
+          "source_version_ref": {
+            "type": "null"
+          },
+          "operation": {
+            "type": "null"
+          },
+          "status": {
+            "$ref": "#/components/schemas/GenerationStatus"
+          },
+          "progress": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "candidate_refs": {
+            "$ref": "#/components/schemas/CandidateRefs"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "StudioChangeGenerationSnapshot": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "generation_ref",
+          "generation_kind",
+          "project_ref",
+          "song_plan_ref",
+          "mode",
+          "source_version_ref",
+          "operation",
+          "status",
+          "progress",
+          "candidate_refs",
+          "created_at"
+        ],
+        "properties": {
+          "generation_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "generation_kind": {
+            "const": "studio_change"
+          },
+          "project_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "song_plan_ref": {
+            "type": "null"
+          },
+          "mode": {
+            "type": "null"
+          },
+          "source_version_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "operation": {
+            "type": "string",
+            "enum": [
+              "add_part",
+              "replace_section",
+              "extend",
+              "transform"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/GenerationStatus"
+          },
+          "progress": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "candidate_refs": {
+            "$ref": "#/components/schemas/CandidateRefs"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "GenerationStatus": {
+        "type": "string",
+        "enum": [
+          "queued",
+          "preparing",
+          "generating",
+          "post_processing",
+          "succeeded",
+          "failed",
+          "cancelled",
+          "expired"
+        ]
+      },
+      "CandidateRefs": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "ApiGenerationReceipt": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "data",
+          "meta"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/GenerationReceipt"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ApiMeta"
+          }
+        }
+      },
+      "GenerationReceipt": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "generation_ref",
+          "status"
+        ],
+        "properties": {
+          "generation_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "preparing",
+              "generating"
+            ]
+          }
+        }
+      },
+      "ApiMeta": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "request_id"
+        ],
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "ApiErrorResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "error",
+          "meta"
+        ],
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ApiError"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ApiMeta"
+          }
+        }
+      },
+      "ApiError": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "code",
+          "message",
+          "retryable",
+          "details"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "retryable": {
+            "type": "boolean"
+          },
+          "details": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ApiErrorDetail"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "ApiErrorDetail": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "field",
+          "reason"
+        ],
+        "properties": {
+          "field": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  }
+}

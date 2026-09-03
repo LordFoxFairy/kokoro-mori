@@ -6,6 +6,7 @@ import {
   type GenerationCreateInput,
   type MoriGenerationEvent,
   type MoriApi,
+  type StudioChangeGenerationInput,
 } from "./mori-api"
 import {
   parseApiError,
@@ -86,6 +87,18 @@ export function createMoriApiClient(options: MoriApiClientOptions = {}): MoriApi
     async createGeneration(projectRef: MoriRef, input: GenerationCreateInput, idempotencyKey: string) {
       const response = await fetchImpl(
         `${apiBasePath}/projects/${encodeURIComponent(projectRef)}/generations`,
+        {
+          method: "POST",
+          headers: createMutationHeaders(idempotencyKey),
+          body: JSON.stringify(input),
+        },
+      )
+      const payload = await readJson(response)
+      return parseSuccessResponse(response, payload, parseGenerationReceipt)
+    },
+    async createStudioChange(versionRef: MoriRef, input: StudioChangeGenerationInput, idempotencyKey: string) {
+      const response = await fetchImpl(
+        `${apiBasePath}/versions/${encodeURIComponent(versionRef)}/generations`,
         {
           method: "POST",
           headers: createMutationHeaders(idempotencyKey),

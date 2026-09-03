@@ -50,9 +50,12 @@ describe("Mori workspace", () => {
       getGeneration: async () => ({
         data: {
           generation_ref: "generation_project_context",
+          generation_kind: "new_song" as const,
           project_ref: "project_live_1",
           song_plan_ref: null,
           mode: "custom" as const,
+          source_version_ref: null,
+          operation: null,
           status: "queued" as const,
           progress: 0,
           candidate_refs: [],
@@ -122,9 +125,12 @@ describe("Mori workspace", () => {
       getGeneration: async () => ({
         data: {
           generation_ref: "generation_plan_review",
+          generation_kind: "new_song" as const,
           project_ref: "project_preview_first_light",
           song_plan_ref: "song_plan_preview_first_light",
           mode: "smart" as const,
+          source_version_ref: null,
+          operation: null,
           status: "queued" as const,
           progress: 0,
           candidate_refs: [],
@@ -254,9 +260,12 @@ describe("Mori workspace", () => {
       getGeneration: async () => ({
         data: {
           generation_ref: "generation_reference",
+          generation_kind: "new_song" as const,
           project_ref: "project_preview_first_light",
           song_plan_ref: null,
           mode: "custom" as const,
+          source_version_ref: null,
+          operation: null,
           status: "queued" as const,
           progress: 0,
           candidate_refs: [],
@@ -373,9 +382,12 @@ describe("Mori workspace", () => {
       getGeneration: async () => ({
         data: {
           generation_ref: "generation_live_1",
+          generation_kind: "new_song" as const,
           project_ref: "project_preview_first_light",
           song_plan_ref: "song_plan_preview_first_light",
           mode: "smart" as const,
+          source_version_ref: null,
+          operation: null,
           status: "generating" as const,
           progress: 52,
           candidate_refs: [],
@@ -424,9 +436,12 @@ describe("Mori workspace", () => {
       getGeneration: async () => ({
         data: {
           generation_ref: "generation_retry",
+          generation_kind: "new_song" as const,
           project_ref: "project_preview_first_light",
           song_plan_ref: null,
           mode: "custom" as const,
+          source_version_ref: null,
+          operation: null,
           status: "failed" as const,
           progress: 0,
           candidate_refs: [],
@@ -473,9 +488,12 @@ describe("Mori workspace", () => {
       getGeneration: async () => ({
         data: {
           generation_ref: "generation_empty_result",
+          generation_kind: "new_song" as const,
           project_ref: "project_preview_first_light",
           song_plan_ref: null,
           mode: "custom" as const,
+          source_version_ref: null,
+          operation: null,
           status: "succeeded" as const,
           progress: 100,
           candidate_refs: [],
