@@ -1,3 +1,4 @@
+import { stemSeparationModes, stemTargetKinds } from "./mori-api"
 import type {
   ApiError,
   ApiSuccess,
@@ -29,6 +30,7 @@ import type {
   StemSeparationReceipt,
   StemSeparationSnapshot,
   StemSeparationStatus,
+  StemTargetKind,
   StudioChangeOperation,
 } from "./mori-api"
 import type { GenerationStatus } from "@/features/mori/domain"
@@ -95,7 +97,18 @@ function lyricsRevisionConstraint(value: unknown): value is LyricsRevisionConstr
 }
 
 function stemSeparationMode(value: unknown): value is StemSeparationMode {
-  return value === "vocals_instrumental" || value === "auto_stems"
+  return typeof value === "string" && stemSeparationModes.some((mode) => mode === value)
+}
+
+function stemTargetKind(value: unknown): value is StemTargetKind {
+  return typeof value === "string" && stemTargetKinds.some((kind) => kind === value)
+}
+
+function stemTargetKindArray(value: unknown): value is StemTargetKind[] {
+  return Array.isArray(value)
+    && value.length <= 10
+    && value.every(stemTargetKind)
+    && new Set(value).size === value.length
 }
 
 function stemSeparationStatus(value: unknown): value is StemSeparationStatus {
@@ -378,6 +391,8 @@ export function parseStemSeparationSnapshot(value: unknown): StemSeparationSnaps
     || !stemSeparationStatus(value.status)
     || !integer(value.progress, 0, 100)
     || !stemSeparationMode(value.mode)
+    || !stemTargetKindArray(value.target_kinds)
+    || !validStemTargetCount(value.mode, value.target_kinds.length)
     || typeof value.include_midi !== "boolean"
     || !nonEmptyString(value.source_audio_digest)
     || !Array.isArray(value.stems)
@@ -386,13 +401,14 @@ export function parseStemSeparationSnapshot(value: unknown): StemSeparationSnaps
   ) return null
   const stems = value.stems.map(parseMoriStem)
   if (!stems.every(present)) return null
-  if (!validStemSeparationAssets(value.status, value.mode, value.include_midi, stems, value.midi_asset_ref)) return null
+  if (!validStemSeparationAssets(value.status, value.mode, value.target_kinds, value.include_midi, stems, value.midi_asset_ref)) return null
   return {
     stem_separation_ref: value.stem_separation_ref,
     version_ref: value.version_ref,
     status: value.status,
     progress: value.progress,
     mode: value.mode,
+    target_kinds: value.target_kinds,
     include_midi: value.include_midi,
     source_audio_digest: value.source_audio_digest,
     stems,
@@ -423,6 +439,7 @@ export function parseStemSeparationEventData(value: unknown): MoriStemSeparation
 function validStemSeparationAssets(
   status: StemSeparationStatus,
   mode: StemSeparationMode,
+  targetKinds: StemTargetKind[],
   includeMidi: boolean,
   stems: MoriStem[],
   midiAssetRef: string | null,
@@ -430,10 +447,17 @@ function validStemSeparationAssets(
   if (!includeMidi && midiAssetRef !== null) return false
   if (status !== "succeeded") return stems.length === 0 && midiAssetRef === null
   if (stems.length === 0 || stems.length > 12) return false
-  if (mode !== "vocals_instrumental") return true
-  return stems.length === 2
-    && stems.some((stem) => stem.kind === "vocals")
-    && stems.some((stem) => stem.kind === "instrumental")
+  if (mode !== "isolate_part") return true
+  const targetKind = targetKinds[0]
+  return targetKind !== undefined
+    && stems.length === 2
+    && stems.some((stem) => stem.kind === targetKind)
+}
+
+function validStemTargetCount(mode: StemSeparationMode, count: number): boolean {
+  if (mode === "isolate_part") return count === 1
+  if (mode === "auto_stems") return count === 0
+  return count >= 2 && count <= 10
 }
 
 export function parseMoriCandidate(value: unknown): MoriCandidate | null {

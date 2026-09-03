@@ -193,6 +193,7 @@ export const previewMoriApi: MoriApi = {
         status: "succeeded" as const,
         progress: 100,
         mode: "auto_stems" as const,
+        target_kinds: [],
         include_midi: true,
         source_audio_digest: "preview-stem-source-digest",
         stems: [

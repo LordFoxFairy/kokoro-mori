@@ -36,23 +36,23 @@
 - Produces: `StemSeparationInput` and `StemSeparationSnapshot` with mode-specific `target_kinds` cardinality.
 - Produces: `buildStudioStemSeparationPlan(selection, includeMidi)` and `createStudioStemSeparationDraft(plan)`.
 
-- [ ] **Step 1: Write failing domain and request-builder tests**
+- [x] **Step 1: Write failing domain and request-builder tests**
 
 Assert that Isolate vocals maps to one target and two outputs, Auto split maps to no targets and up to twelve outputs, and Custom stems maps a unique two-to-ten target selection. Assert exact `snake_case` request bodies and invalid target-count errors.
 
-- [ ] **Step 2: Run focused tests and observe failures from the absent modes and target field**
+- [x] **Step 2: Run focused tests and observe failures from the absent modes and target field**
 
 Run: `pnpm vitest run src/features/mori/studio-stems.test.ts src/lib/mori-api-client.test.ts --reporter=dot`
 
-- [ ] **Step 3: Implement the discriminated domain and request builder**
+- [x] **Step 3: Implement the discriminated domain and request builder**
 
 Use one `target_kinds` array on the wire. Require exactly one item for `isolate_part`, zero for `auto_stems`, and two through ten unique items for `custom_stems`; reject unknown values.
 
-- [ ] **Step 4: Write failing OpenAPI assertions and update the schema**
+- [x] **Step 4: Write failing OpenAPI assertions and update the schema**
 
 Add `StemTargetKind`, the three modes, conditional target cardinality for command and snapshot, and isolate-success output invariants. Keep all existing resource paths, idempotency, replay, cancel, and identity boundaries.
 
-- [ ] **Step 5: Run domain, builder, and contract tests**
+- [x] **Step 5: Run domain, builder, and contract tests**
 
 Run: `pnpm vitest run src/features/mori/studio-stems.test.ts src/lib/mori-api-client.test.ts contract/tests/mori-stem-separation.contract.test.ts --reporter=dot`
 
@@ -70,19 +70,19 @@ Run: `pnpm vitest run src/features/mori/studio-stems.test.ts src/lib/mori-api-cl
 - Produces: runtime rejection of invalid mode/target/result combinations.
 - Preserves: exact target intent when matching a durable snapshot to a tracked command.
 
-- [ ] **Step 1: Write failing parser and lifecycle tests**
+- [x] **Step 1: Write failing parser and lifecycle tests**
 
 Verify Isolate snapshots require one requested target and exactly two results including that target; Auto snapshots require no targets; Custom snapshots require two-to-ten unique targets. Verify a snapshot with the right mode but different targets is rejected by the Studio lifecycle.
 
-- [ ] **Step 2: Run focused tests and observe the missing target validation**
+- [x] **Step 2: Run focused tests and observe the missing target validation**
 
 Run: `pnpm vitest run src/lib/mori-api-client.test.ts src/features/mori/studio-page.test.tsx --reporter=dot`
 
-- [ ] **Step 3: Implement runtime parsing and exact snapshot matching**
+- [x] **Step 3: Implement runtime parsing and exact snapshot matching**
 
-Parse `target_kinds`, validate mode-specific cardinality, preserve the field in returned snapshots, and compare ordered normalized target sets with the tracked plan before attaching assets.
+Parse `target_kinds`, validate mode-specific cardinality, preserve the field in returned snapshots, and compare normalized target sets with the tracked plan before attaching assets.
 
-- [ ] **Step 4: Update preview fixtures and run the focused tests**
+- [x] **Step 4: Update preview fixtures and run the focused tests**
 
 Run: `pnpm vitest run src/lib/mori-api-client.test.ts src/features/mori/studio-page.test.tsx --reporter=dot`
 
@@ -97,19 +97,19 @@ Run: `pnpm vitest run src/lib/mori-api-client.test.ts src/features/mori/studio-p
 - Consumes: `StemTargetKind`, target labels, and `buildStudioStemSeparationPlan()`.
 - Produces: fast Isolate part setup, no-configuration Auto split, and multi-select Custom stems setup.
 
-- [ ] **Step 1: Write failing interaction tests**
+- [x] **Step 1: Write failing interaction tests**
 
 Verify Isolate part is the default with vocals selected, changing the target changes review output and the submitted command, Auto split needs no targets, and Custom stems disables Review until at least two unique targets are selected.
 
-- [ ] **Step 2: Run the Studio tests and observe the absent controls**
+- [x] **Step 2: Run the Studio tests and observe the absent controls**
 
 Run: `pnpm vitest run src/features/mori/studio-page.test.tsx --reporter=dot`
 
-- [ ] **Step 3: Implement progressive controls and review facts**
+- [x] **Step 3: Implement progressive controls and review facts**
 
 Use three compact intent cards. Show a single target picker only for Isolate part, a checkable target grid with count feedback only for Custom stems, and keep MIDI as the shared optional setting. Review must state Source, Requested parts, Output, and non-destructive behavior.
 
-- [ ] **Step 4: Run the Studio interaction tests**
+- [x] **Step 4: Run the Studio interaction tests**
 
 Run: `pnpm vitest run src/features/mori/studio-page.test.tsx --reporter=dot`
 
@@ -121,18 +121,18 @@ Run: `pnpm vitest run src/features/mori/studio-page.test.tsx --reporter=dot`
 - Modify: `docs/PRODUCT_SHAPE.md`
 - Modify: `ACCEPTANCE.md`
 
-- [ ] **Step 1: Document the capability and contract boundary**
+- [x] **Step 1: Document the capability and contract boundary**
 
 Record Isolate part as one requested part plus remaining mix, Auto split as up to twelve detected parts, and Custom stems as a two-to-ten target request. Link Suno's current official separation explanation and retain Tad's simple source → mode → result lesson.
 
-- [ ] **Step 2: Inspect desktop rendering and browser logs**
+- [x] **Step 2: Inspect desktop rendering and browser logs**
 
 Run `pnpm dev --hostname 127.0.0.1 --port 3004`; inspect all three setup and Review states at 1280×720, verify target selection remains understandable, and confirm no browser runtime errors.
 
-- [ ] **Step 3: Run the full repository gate**
+- [x] **Step 3: Run the full repository gate**
 
 Run: `git diff --check && pnpm lint && pnpm typecheck && pnpm test && pnpm build`
 
-- [ ] **Step 4: Restore generated noise and commit**
+- [x] **Step 4: Restore generated noise and commit**
 
 Restore `next-env.d.ts`, remove `.playwright-cli` and `output/playwright`, stop the server, verify a clean diff, and commit with `feat: refine stem separation intents`.

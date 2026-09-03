@@ -25,9 +25,29 @@ describe("Mori stem separation OpenAPI contract", () => {
     const schemas = contractSchemas(readContract())
     const input = recordValue(schemas.StemSeparationInput, "StemSeparationInput")
     const properties = recordValue(input.properties, "StemSeparationInput properties")
-    expect(recordValue(properties.mode, "mode").enum).toEqual(["vocals_instrumental", "auto_stems"])
+    expect(recordValue(properties.mode, "mode").$ref).toBe("#/components/schemas/StemSeparationMode")
+    expect(recordValue(schemas.StemSeparationMode, "StemSeparationMode").enum).toEqual(["isolate_part", "auto_stems", "custom_stems"])
+    expect(recordValue(schemas.StemTargetKind, "StemTargetKind").enum).toEqual([
+      "vocals",
+      "backing_vocals",
+      "drums",
+      "bass",
+      "guitar",
+      "keys",
+      "strings",
+      "wind",
+      "synth",
+      "percussion",
+    ])
+    const targets = recordValue(properties.target_kinds, "target_kinds")
+    expect(recordValue(targets.items, "target_kinds items").$ref).toBe("#/components/schemas/StemTargetKind")
+    expect(targets.uniqueItems).toBe(true)
+    expect(targets.maxItems).toBe(10)
     expect(recordValue(properties.include_midi, "include_midi").type).toBe("boolean")
-    expect(arrayValue(input.required, "input required")).toEqual(["mode", "include_midi"])
+    expect(arrayValue(input.required, "input required")).toEqual(["mode", "target_kinds", "include_midi"])
+    expect(targetCardinality(input, "isolate_part")).toEqual({ minItems: 1, maxItems: 1 })
+    expect(targetCardinality(input, "auto_stems")).toEqual({ maxItems: 0 })
+    expect(targetCardinality(input, "custom_stems")).toEqual({ minItems: 2, maxItems: 10 })
   })
 
   it("publishes durable stem assets, replay, and cancellation", () => {
@@ -48,6 +68,7 @@ describe("Mori stem separation OpenAPI contract", () => {
     expect(arrayValue(snapshot.required, "snapshot required")).toEqual(expect.arrayContaining([
       "version_ref",
       "mode",
+      "target_kinds",
       "include_midi",
       "source_audio_digest",
       "stems",
@@ -88,6 +109,18 @@ describe("Mori stem separation OpenAPI contract", () => {
     expect(propertyKeys.filter((key) => key.includes("provider") || key.includes("tenant") || key.includes("subject") || key.includes("actor"))).toEqual([])
   })
 })
+
+function targetCardinality(schema: Record<string, unknown>, mode: string): Record<string, unknown> {
+  const branch = arrayValue(schema.allOf, `${mode} branches`).map((value) => recordValue(value, `${mode} branch`)).find((value) => {
+    const condition = recordValue(value.if, `${mode} condition`)
+    const properties = recordValue(condition.properties, `${mode} condition properties`)
+    return recordValue(properties.mode, `${mode} condition mode`).const === mode
+  })
+  if (branch === undefined) throw new Error(`${mode} branch is required`)
+  const then = recordValue(branch.then, `${mode} then`)
+  const properties = recordValue(then.properties, `${mode} then properties`)
+  return recordValue(properties.target_kinds, `${mode} target cardinality`)
+}
 
 function readContract(): Record<string, unknown> {
   const value: unknown = JSON.parse(readFileSync(contractPath, "utf8"))

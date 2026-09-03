@@ -2,7 +2,7 @@
 
 import { ArrowRight, Check, FileMusic, Layers3, Mic2, Music2, RotateCcw, Scissors, Sparkles, Volume2, VolumeX, X } from "lucide-react"
 import { useState } from "react"
-import type { MoriStem, StemSeparationStatus } from "@/lib/mori-api"
+import type { MoriStem, StemSeparationStatus, StemTargetKind } from "@/lib/mori-api"
 import { isActiveStudioChangeStatus, type StudioChangePlan } from "../studio-change"
 import { isStudioLayerPlan } from "../studio-layers"
 import {
@@ -11,6 +11,8 @@ import {
   studioStemSeparationActionLabel,
   studioStemSeparationModeLabel,
   studioStemSeparationOutputLabel,
+  studioStemTargetLabel,
+  studioStemTargets,
   type StudioStemSeparationMode,
   type StudioStemSeparationPlan,
 } from "../studio-stems"
@@ -43,7 +45,11 @@ type StudioStemsEditorProps = {
   onReviewTakes: () => void
 }
 
-const modes: readonly StudioStemSeparationMode[] = ["vocals_instrumental", "auto_stems"]
+const modes = [
+  { id: "isolate_part", detail: "One chosen part + remaining mix", Icon: Scissors },
+  { id: "auto_stems", detail: "Up to 12 detected parts", Icon: Sparkles },
+  { id: "custom_stems", detail: "Choose 2–10 parts", Icon: Layers3 },
+] satisfies readonly { id: StudioStemSeparationMode; detail: string; Icon: typeof Scissors }[]
 type StemsWorkflow = "separate" | "vocals" | "instrumental"
 
 const workflows = [
@@ -54,7 +60,9 @@ const workflows = [
 
 export function StudioStemsEditor({ durationSeconds, run, layerRun, onSeparate, onCancel, onReset, onGenerateLayer, onCancelLayer, onResetLayer, onReviewTakes }: StudioStemsEditorProps) {
   const [workflow, setWorkflow] = useState<StemsWorkflow>(() => isStudioLayerPlan(layerRun.plan) ? layerRun.plan.layerKind : "separate")
-  const [mode, setMode] = useState<StudioStemSeparationMode>(() => run.plan?.mode ?? "vocals_instrumental")
+  const [mode, setMode] = useState<StudioStemSeparationMode>(() => run.plan?.mode ?? "isolate_part")
+  const [isolateTarget, setIsolateTarget] = useState<StemTargetKind>(() => run.plan?.mode === "isolate_part" ? run.plan.targetKinds[0] ?? "vocals" : "vocals")
+  const [customTargets, setCustomTargets] = useState<StemTargetKind[]>(() => run.plan?.mode === "custom_stems" ? run.plan.targetKinds : [])
   const [includeMidi, setIncludeMidi] = useState(() => run.plan?.includeMidi ?? false)
   const [reviewedPlan, setReviewedPlan] = useState<StudioStemSeparationPlan | null>(() => run.status === "idle" ? null : run.plan)
   const [mutedStems, setMutedStems] = useState<string[]>([])
@@ -62,12 +70,19 @@ export function StudioStemsEditor({ durationSeconds, run, layerRun, onSeparate, 
   const visiblePlan = run.status === "idle" ? reviewedPlan : run.plan
   const ready = run.status === "succeeded" && run.stems.length > 0
   const workflowLocked = isActiveStemSeparationStatus(run.status) || isActiveStudioChangeStatus(layerRun.status)
+  const selectedTargetKinds = mode === "isolate_part" ? [isolateTarget] : mode === "custom_stems" ? customTargets : []
+  const canReview = mode !== "custom_stems" || customTargets.length >= 2
 
-  const review = () => setReviewedPlan(buildStudioStemSeparationPlan(mode, includeMidi))
+  const review = () => {
+    if (!canReview) return
+    setReviewedPlan(buildStudioStemSeparationPlan({ mode, targetKinds: selectedTargetKinds }, includeMidi))
+  }
 
   const editPlan = () => {
     if (visiblePlan === null || isActiveStemSeparationStatus(run.status)) return
     setMode(visiblePlan.mode)
+    if (visiblePlan.mode === "isolate_part") setIsolateTarget(visiblePlan.targetKinds[0] ?? "vocals")
+    if (visiblePlan.mode === "custom_stems") setCustomTargets(visiblePlan.targetKinds)
     setIncludeMidi(visiblePlan.includeMidi)
     setReviewedPlan(null)
     onReset()
@@ -83,6 +98,15 @@ export function StudioStemsEditor({ durationSeconds, run, layerRun, onSeparate, 
 
   const toggleMute = (stemRef: string) => {
     setMutedStems((current) => current.includes(stemRef) ? current.filter((item) => item !== stemRef) : [...current, stemRef])
+  }
+
+  const toggleCustomTarget = (targetKind: StemTargetKind) => {
+    setCustomTargets((current) => {
+      const selected = new Set(current)
+      if (selected.has(targetKind)) selected.delete(targetKind)
+      else selected.add(targetKind)
+      return studioStemTargets.filter((target) => selected.has(target.kind)).map((target) => target.kind)
+    })
   }
 
   return (
@@ -104,24 +128,47 @@ export function StudioStemsEditor({ durationSeconds, run, layerRun, onSeparate, 
         <section className={styles.setupPanel} aria-label="Stem separation setup">
           <div className={styles.setupIntro}>
             <span className={styles.setupIcon} aria-hidden="true"><Scissors size={16} /></span>
-            <div><span>Mori separation</span><h4>Choose the separation depth.</h4><p>The current version remains intact while Mori creates reusable stem assets.</p></div>
+            <div><span>Mori separation</span><h4>Choose what you need from the mix.</h4><p>Start with one part, let Mori detect everything, or name the parts you want. The current version remains intact.</p></div>
           </div>
           <div className={styles.modeGrid} role="group" aria-label="Separation mode">
-            {modes.map((item) => (
-              <button type="button" aria-label={studioStemSeparationModeLabel(item)} aria-pressed={mode === item} key={item} onClick={() => setMode(item)}>
-                <span aria-hidden="true">{item === "vocals_instrumental" ? <Scissors size={15} /> : <Layers3 size={15} />}</span>
-                <strong>{studioStemSeparationModeLabel(item)}</strong>
-                <small>{item === "vocals_instrumental" ? "2 clean parts · faster" : "Up to 12 detected parts · detailed edit"}</small>
+            {modes.map(({ id, detail, Icon }) => (
+              <button type="button" aria-label={studioStemSeparationModeLabel(id)} aria-pressed={mode === id} key={id} onClick={() => setMode(id)}>
+                <span aria-hidden="true"><Icon size={15} /></span>
+                <strong>{studioStemSeparationModeLabel(id)}</strong>
+                <small>{detail}</small>
               </button>
             ))}
           </div>
+          {mode === "isolate_part" ? (
+            <label className={styles.targetPicker}>
+              <span><strong>Part to isolate</strong><small>Mori also returns the mix without this part.</small></span>
+              <select aria-label="Part to isolate" value={isolateTarget} onChange={(event) => {
+                const target = studioStemTargets.find((item) => item.kind === event.target.value)
+                if (target !== undefined) setIsolateTarget(target.kind)
+              }}>
+                {studioStemTargets.map((target) => <option value={target.kind} key={target.kind}>{target.label}</option>)}
+              </select>
+            </label>
+          ) : null}
+          {mode === "custom_stems" ? (
+            <section className={styles.customTargets} aria-label="Custom stem targets">
+              <header><div><strong>Choose parts</strong><small>Select at least two. Mori returns only usable assets.</small></div><span>{customTargets.length} of 10 selected</span></header>
+              <div role="group" aria-label="Parts to separate">
+                {studioStemTargets.map((target) => (
+                  <button type="button" aria-pressed={customTargets.includes(target.kind)} key={target.kind} onClick={() => toggleCustomTarget(target.kind)}>
+                    {customTargets.includes(target.kind) ? <Check size={12} aria-hidden="true" /> : null}{target.label}
+                  </button>
+                ))}
+              </div>
+            </section>
+          ) : null}
           <label className={styles.midiOption}>
             <input type="checkbox" aria-label="Export MIDI transcription" checked={includeMidi} onChange={(event) => setIncludeMidi(event.target.checked)} />
             <span aria-hidden="true" />
             <div><strong>Export MIDI transcription</strong><small>Add a note-level draft alongside the audio stems.</small></div>
             <FileMusic size={15} aria-hidden="true" />
           </label>
-          <button className={styles.reviewButton} type="button" onClick={review}>Review separation <ArrowRight size={13} /></button>
+          <button className={styles.reviewButton} type="button" disabled={!canReview} onClick={review}>Review separation <ArrowRight size={13} /></button>
         </section>
       ) : null}
 
@@ -218,6 +265,7 @@ function StemSeparationPlan({ plan, run, onEdit, onSeparate, onCancel }: StemSep
       </header>
       <div className={styles.planFacts}>
         <span><strong>Output</strong>{studioStemSeparationOutputLabel(plan)}</span>
+        <span><strong>Requested</strong>{plan.targetKinds.length === 0 ? "Automatic detection" : plan.targetKinds.map(studioStemTargetLabel).join(" · ")}</span>
         <span><strong>Notes</strong>{plan.includeMidi ? "MIDI included" : "Audio only"}</span>
         <span><strong>Source</strong>Current version</span>
       </div>

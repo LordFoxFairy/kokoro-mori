@@ -18,7 +18,7 @@ pnpm build
 
 - `pnpm lint`：通过，`--max-warnings=0`
 - `pnpm typecheck`：通过
-- `pnpm test`：通过，20 个测试文件、161 个测试
+- `pnpm test`：通过，21 个测试文件、171 个测试
 - `pnpm build`：通过，生成 `/`、`/create`、`/projects`、`/library`、`/settings`、Project Overview 和 Studio 路由
 
 ## 页面巡检
@@ -90,11 +90,13 @@ Restructure，并能选择 Verse、Chorus 或 Whole lyrics；用户先 Review di
 不会丢失进行中的方向和选区。Apply 前原稿保持不变，只应用当前选中的 Suggestion，Apply 后可 Undo，最后仍通过
 Save draft 明确持久化；BFF 离线时显示真实失败状态，不在组件内生成替代结果。该工作面已在 1280×720 下巡检
 初始、Review 与离线重试状态，窄画布不再把歌词挤成逐字换行，且无浏览器运行时错误；多 Suggestion 成功态由集成测试覆盖。
-Stems 已升级为当前 Version 内的非破坏式分离工作面：用户可选择快速的 Vocals + instrumental，或按内容检测
-最多 12 个制作轨的 Auto stems；可选 MIDI transcription，先 Review 来源、输出和结果去向，再提交异步任务。运行态通过 snapshot / SSE
+Stems 已升级为当前 Version 内的非破坏式分离工作面：默认 Isolate a part 快路径可选择一个目标并返回该目标与
+remaining mix；Auto split 按内容检测最多 12 个制作轨；Custom stems 要求选择 2–10 个稳定目标，未达到两个时
+Review 明确禁用。三种模式共用可选 MIDI transcription，先 Review Requested、Output、Source 和结果去向，再提交异步任务。运行态通过 snapshot / SSE
 显示进度并支持取消、失败重试和切换工具后恢复；成功态只渲染 API 实际返回的 version-bound stem assets，逐轨
 Mute/Solo 当前只保存本地 mix selection，不修改资产或 Current Version；可播放 stem renderer 接入前不宣称改变
-实际音频，BFF 离线时显示真实失败状态，不伪造可播放结果。
+实际音频，BFF 离线时显示真实失败状态，不伪造可播放结果。三种 Setup 与 Review Plan 已在 1280×720 下巡检，
+快路径无需额外参数页，Custom 选择通过页面正常滚动避开固定 Player，浏览器日志无运行时错误。
 Stems 顶层已经收敛为 Voice & stems，并在同一上下文中提供 Separate mix、Add vocals、Add instrumental 三种意图；
 不为 Tad 式能力分类继续增加全局导航。Add vocals 要求 Lyrics，将可选 Voice profile 与 Vocal direction 分开；
 Add instrumental 只要求编曲方向。两者作用于 Whole song，先 Review Layer Plan，固定输出两个 alternatives 到
@@ -102,7 +104,8 @@ Take Lanes，并明确 Current Version stays untouched。未提交草稿可在�
 离开并返回 Stems 后仍恢复原意图、进度和取消入口。成功 Candidate 只追加到 Arrangement 的 Take Lanes，用户
 点击 Review takes in Arrangement 后仍需显式 Use take 才会改变 Current Version。
 Stem Separation 的 OpenAPI、request builder、same-origin client、运行时 parser 与 contract tests 已固定
-`snake_case`、`Idempotency-Key`、`Last-Event-ID`、cancel 和 caller identity 边界；
+`mode + target_kinds[]` 的意图与数量不变量，以及 `snake_case`、`Idempotency-Key`、`Last-Event-ID`、cancel
+和 caller identity 边界；snapshot 会回显目标，浏览器在恢复时同时核对 Version、模式、目标与 MIDI 选择；
 Lyrics Revision 的浏览器契约已固定为 version-scoped 异步资源：输入明确 direction、section / whole lyrics
 scope、完整 lyrics context、source text、constraints 与 1–4 个输出；snapshot 返回 source digest 和文本
 suggestions，支持 SSE `Last-Event-ID` 回放与幂等 cancel。OpenAPI、request builder、same-origin client、运行时

@@ -264,21 +264,87 @@
         "additionalProperties": false,
         "required": [
           "mode",
+          "target_kinds",
           "include_midi"
         ],
         "properties": {
           "mode": {
-            "type": "string",
-            "enum": [
-              "vocals_instrumental",
-              "auto_stems"
-            ]
+            "$ref": "#/components/schemas/StemSeparationMode"
+          },
+          "target_kinds": {
+            "type": "array",
+            "maxItems": 10,
+            "uniqueItems": true,
+            "items": {
+              "$ref": "#/components/schemas/StemTargetKind"
+            }
           },
           "include_midi": {
             "type": "boolean",
             "default": false
           }
-        }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "mode": {
+                  "const": "isolate_part"
+                }
+              },
+              "required": [
+                "mode"
+              ]
+            },
+            "then": {
+              "properties": {
+                "target_kinds": {
+                  "minItems": 1,
+                  "maxItems": 1
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "mode": {
+                  "const": "auto_stems"
+                }
+              },
+              "required": [
+                "mode"
+              ]
+            },
+            "then": {
+              "properties": {
+                "target_kinds": {
+                  "maxItems": 0
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "mode": {
+                  "const": "custom_stems"
+                }
+              },
+              "required": [
+                "mode"
+              ]
+            },
+            "then": {
+              "properties": {
+                "target_kinds": {
+                  "minItems": 2,
+                  "maxItems": 10
+                }
+              }
+            }
+          }
+        ]
       },
       "StemSeparationReceipt": {
         "type": "object",
@@ -327,6 +393,7 @@
           "status",
           "progress",
           "mode",
+          "target_kinds",
           "include_midi",
           "source_audio_digest",
           "stems",
@@ -352,6 +419,14 @@
           },
           "mode": {
             "$ref": "#/components/schemas/StemSeparationMode"
+          },
+          "target_kinds": {
+            "type": "array",
+            "maxItems": 10,
+            "uniqueItems": true,
+            "items": {
+              "$ref": "#/components/schemas/StemTargetKind"
+            }
           },
           "include_midi": {
             "type": "boolean"
@@ -381,6 +456,65 @@
           }
         },
         "allOf": [
+          {
+            "if": {
+              "properties": {
+                "mode": {
+                  "const": "isolate_part"
+                }
+              },
+              "required": [
+                "mode"
+              ]
+            },
+            "then": {
+              "properties": {
+                "target_kinds": {
+                  "minItems": 1,
+                  "maxItems": 1
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "mode": {
+                  "const": "auto_stems"
+                }
+              },
+              "required": [
+                "mode"
+              ]
+            },
+            "then": {
+              "properties": {
+                "target_kinds": {
+                  "maxItems": 0
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "mode": {
+                  "const": "custom_stems"
+                }
+              },
+              "required": [
+                "mode"
+              ]
+            },
+            "then": {
+              "properties": {
+                "target_kinds": {
+                  "minItems": 2,
+                  "maxItems": 10
+                }
+              }
+            }
+          },
           {
             "if": {
               "properties": {
@@ -428,7 +562,7 @@
             "if": {
               "properties": {
                 "mode": {
-                  "const": "vocals_instrumental"
+                  "const": "isolate_part"
                 },
                 "status": {
                   "const": "succeeded"
@@ -443,33 +577,7 @@
               "properties": {
                 "stems": {
                   "minItems": 2,
-                  "maxItems": 2,
-                  "allOf": [
-                    {
-                      "contains": {
-                        "properties": {
-                          "kind": {
-                            "const": "vocals"
-                          }
-                        },
-                        "required": [
-                          "kind"
-                        ]
-                      }
-                    },
-                    {
-                      "contains": {
-                        "properties": {
-                          "kind": {
-                            "const": "instrumental"
-                          }
-                        },
-                        "required": [
-                          "kind"
-                        ]
-                      }
-                    }
-                  ]
+                  "maxItems": 2
                 }
               }
             }
@@ -550,8 +658,9 @@
       "StemSeparationMode": {
         "type": "string",
         "enum": [
-          "vocals_instrumental",
-          "auto_stems"
+          "isolate_part",
+          "auto_stems",
+          "custom_stems"
         ]
       },
       "StemSeparationStatus": {
@@ -750,6 +859,21 @@
             "$ref": "#/components/schemas/ApiMeta"
           }
         }
+      },
+      "StemTargetKind": {
+        "type": "string",
+        "enum": [
+          "vocals",
+          "backing_vocals",
+          "drums",
+          "bass",
+          "guitar",
+          "keys",
+          "strings",
+          "wind",
+          "synth",
+          "percussion"
+        ]
       }
     }
   }

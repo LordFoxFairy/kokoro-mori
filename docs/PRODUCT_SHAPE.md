@@ -102,8 +102,9 @@ Workspace nav    内容随项目上下文变化                     跨页面保
 - 已有：Smart/Custom、浅色渐变视觉、浮窗式设置分组与 compact Rail。
 - 已落地第一版：Song Plan 从提示说明升级为可编辑、可确认的中间状态，并在确认后通过契约持久化再创建生成任务。
 - 已落地第一版：Studio Take Lanes 支持试听、选择和明确提交当前版本；Lyrics 支持本地草稿保存、分段 AI Revision、
-  多 Suggestion 对比以及 Apply / Undo；Stems 支持基于当前 Version 的二轨/最多十二轨自动分离计划、可选 MIDI、
-  异步恢复/取消/重试，以及对真实返回资产的逐轨 Mute/Solo 本地 mix selection；可播放 stem renderer 尚待接入。
+  多 Suggestion 对比以及 Apply / Undo；Stems 支持基于当前 Version 的 Isolate part、Auto split、Custom stems
+  三种渐进意图、可选 MIDI、异步恢复/取消/重试，以及对真实返回资产的逐轨 Mute/Solo 本地 mix selection；
+  Isolate 明确一个目标与 remaining mix，Custom 要求 2–10 个稳定目标，可播放 stem renderer 尚待接入。
 - 已落地第一版：Stems 已形成 Voice & stems 上下文工作面，在 Separate mix 旁提供 Add vocals 与 Add instrumental。
   Vocal layer 将必填 Lyrics、可选 Voice profile 和 Vocal direction 分开；Instrumental layer 只要求编曲方向。
   两者都先显示 whole-song Layer Plan，复用 version-scoped `add_part` Generation lifecycle，并把结果送入现有

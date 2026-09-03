@@ -161,11 +161,12 @@ Add Instrumental 与 Separate mix 时，本地未提交草稿不会丢失；运�
 
 ### Stems 的 AI 分离模型
 
-Stems 吸收 Tad Vocal Remover 的两层选择，但不要求用户重新上传当前歌曲，也不做成全局工具页：
+Stems 吸收 Tad Stem Splitter 的“来源 → 模式 → 结果”短路径，但不要求用户重新上传当前歌曲，也不做成全局工具页：
 
 ```text
 Source       当前不可变 Version
-Mode         Vocals + instrumental | Auto stems
+Mode         Isolate a part | Auto split | Custom stems
+Targets      1 个 | 自动检测 | 2–10 个
 Option       可选 MIDI transcription
 Review       先确认输出数量、来源与结果去向
 Run          snapshot / SSE 进度、取消、失败重试
@@ -173,14 +174,12 @@ Result       实际返回的 version-bound stem assets
 Mix          Mute / Solo 先保存当前工作区的本地选择，renderer 接入后再驱动真实试听
 ```
 
-`Vocals + instrumental` 是 Tad 式快速二轨工作流；`Auto stems` 吸收 Suno Auto Split，按音频内容检测
-最多 12 个 vocals、drums、bass、guitar、keys、strings、wind、synth 等制作轨。两种模式都坚持
-Suno Studio 的连续上下文：分离发生在当前 Version，
-用户留在 Studio 内审阅结果，原版本保持不变。界面只展示 API 真正返回的资产，不用前端 fixture 冒充分离结果。
-
-Suno 的 Split from Mix 与 Advanced Split 对 Mori 下一层能力有价值，但不提前摆出空控件：待 owner 能力协商
-支持后，在同一个 Stems 工作面渐进增加 **Isolate one part**（目标音轨 + 其余混音）与 **Custom stems**
-（选择多个目标乐器），不新增全局导航，也不把供应商套餐或乐器枚举泄漏进浏览器契约。
+`Isolate a part` 是默认快路径，选择一个 vocals / drums / bass 等目标，得到该目标与 remaining mix；
+`Auto split` 按内容检测最多 12 个制作轨；`Custom stems` 让用户从十个稳定的 Mori 音轨类别中选择 2–10 个目标。
+三者吸收 [Suno Advanced Stem Separation](https://help.suno.com/en/articles/12702337) 当前的 Split from Mix、
+Auto Split、Advanced Split 意图层级，但使用 Mori 自己的名称和 provider-neutral `target_kinds`，不泄漏套餐、
+credits 或供应商的近百个乐器 ID。它们都坚持 Suno Studio 的连续上下文：分离发生在当前 Version，用户留在
+Studio 内 Review，原版本保持不变。成功后只展示 API 真正返回的 version-bound assets，不用前端 fixture 冒充结果。
 
 ## 4. Studio Change API 契约
 
@@ -276,12 +275,13 @@ POST /api/v1/mori/stem_separations/{stem_separation_ref}/cancel
 
 ```text
 StemSeparationInput
-  mode              vocals_instrumental | auto_stems
+  mode              isolate_part | auto_stems | custom_stems
+  target_kinds[]    isolate=1；auto=0；custom=2–10，唯一
   include_midi      boolean
 
 StemSeparationSnapshot
   stem_separation_ref + version_ref
-  mode + include_midi
+  mode + target_kinds[] + include_midi
   status + progress
   source_audio_digest
   stems[]           stem_ref + kind + label + audio/waveform asset refs + duration

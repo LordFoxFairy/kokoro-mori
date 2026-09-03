@@ -16,7 +16,7 @@ import { Waveform } from "./components/waveform"
 import { previewCandidates, previewProject, previewSongPlan } from "./preview-data"
 import { buildStudioTimelineSections, isActiveStudioChangeStatus, type StudioChangePlan, type StudioTimelineSection } from "./studio-change"
 import { createStudioLyricsRevisionDraft, isActiveLyricsRevisionStatus, studioLyricsScopeLabel, type StudioLyricsPlan } from "./studio-lyrics"
-import { createStudioStemSeparationDraft, isActiveStemSeparationStatus, type StudioStemSeparationPlan } from "./studio-stems"
+import { createStudioStemSeparationDraft, isActiveStemSeparationStatus, stemSeparationSnapshotMatchesPlan, type StudioStemSeparationPlan } from "./studio-stems"
 import styles from "./mori-workspace.module.css"
 
 type StudioTool = "arrangement" | "lyrics" | "stems"
@@ -886,8 +886,7 @@ function lyricsRevisionTerminalMessage(status: "failed" | "cancelled" | "expired
 function stemSeparationSnapshotMatches(snapshot: StemSeparationSnapshot, tracked: TrackedStemSeparation): boolean {
   return snapshot.stem_separation_ref === tracked.stemSeparationRef
     && snapshot.version_ref === tracked.sourceVersionRef
-    && snapshot.mode === tracked.plan.mode
-    && snapshot.include_midi === tracked.plan.includeMidi
+    && stemSeparationSnapshotMatchesPlan(snapshot, tracked.plan)
 }
 
 function stemSeparationFailureMessage(error: unknown): string {

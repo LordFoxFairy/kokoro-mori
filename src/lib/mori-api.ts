@@ -148,7 +148,24 @@ export type MoriLyricsRevisionEvent = {
   }
 }
 
-export type StemSeparationMode = "vocals_instrumental" | "auto_stems"
+export const stemSeparationModes = ["isolate_part", "auto_stems", "custom_stems"] as const
+
+export type StemSeparationMode = typeof stemSeparationModes[number]
+
+export const stemTargetKinds = [
+  "vocals",
+  "backing_vocals",
+  "drums",
+  "bass",
+  "guitar",
+  "keys",
+  "strings",
+  "wind",
+  "synth",
+  "percussion",
+] as const
+
+export type StemTargetKind = typeof stemTargetKinds[number]
 
 export type StemKind = "vocals" | "backing_vocals" | "instrumental" | "drums" | "bass" | "guitar" | "keys" | "strings" | "wind" | "synth" | "percussion" | "other"
 
@@ -156,6 +173,7 @@ export type StemSeparationStatus = "queued" | "separating" | "succeeded" | "fail
 
 export type StemSeparationInput = {
   mode: StemSeparationMode
+  target_kinds: StemTargetKind[]
   include_midi: boolean
 }
 
@@ -184,6 +202,7 @@ export type StemSeparationSnapshot = {
   status: StemSeparationStatus
   progress: number
   mode: StemSeparationMode
+  target_kinds: StemTargetKind[]
   include_midi: boolean
   source_audio_digest: string
   stems: MoriStem[]
@@ -406,6 +425,7 @@ export type MoriLyricsRevisionDraft = {
 
 export type MoriStemSeparationDraft = {
   mode: StemSeparationMode
+  targetKinds: StemTargetKind[]
   includeMidi: boolean
 }
 
@@ -552,8 +572,20 @@ export function createLyricsRevisionRequest(draft: MoriLyricsRevisionDraft): Lyr
 export function createStemSeparationRequest(draft: MoriStemSeparationDraft): StemSeparationInput {
   if (!stemSeparationModes.includes(draft.mode)) throw new Error("stem_separation_mode_invalid")
   if (typeof draft.includeMidi !== "boolean") throw new Error("stem_separation_include_midi_invalid")
+  if (!Array.isArray(draft.targetKinds)) throw new Error("stem_separation_targets_invalid")
+  const targetKinds: StemTargetKind[] = []
+  for (const targetKind of draft.targetKinds) {
+    if (!stemTargetKinds.includes(targetKind)) throw new Error("stem_separation_target_invalid")
+    if (!targetKinds.includes(targetKind)) targetKinds.push(targetKind)
+  }
+  if (
+    (draft.mode === "isolate_part" && targetKinds.length !== 1)
+    || (draft.mode === "auto_stems" && targetKinds.length !== 0)
+    || (draft.mode === "custom_stems" && (targetKinds.length < 2 || targetKinds.length > 10))
+  ) throw new Error("stem_separation_target_count_invalid")
   return {
     mode: draft.mode,
+    target_kinds: targetKinds,
     include_midi: draft.includeMidi,
   }
 }
@@ -590,4 +622,3 @@ function uniqueValues<T extends string>(values: T[]): T[] {
 }
 
 const lyricsRevisionConstraints: readonly LyricsRevisionConstraint[] = ["meaning", "cadence", "rhyme_scheme", "section_length"]
-const stemSeparationModes: readonly StemSeparationMode[] = ["vocals_instrumental", "auto_stems"]

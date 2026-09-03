@@ -17,8 +17,8 @@ music owner、BFF 或其他 Kokoro 子仓的内部模型。
 - [`tests/mori-lyrics-revision.contract.test.ts`](./tests/mori-lyrics-revision.contract.test.ts)：检查 Direction、
   Section / Whole lyrics scope、Constraint、幂等命令、恢复资源与受信身份边界。
 - [`openapi/mori-stem-separation.v1.json`](./openapi/mori-stem-separation.v1.json)：Stems 中
-  Vocals + instrumental、Auto stems 与可选 MIDI 的 version-scoped 异步分离资源，以及 snapshot、
-  SSE replay 与 cancel。
+  Isolate part、Auto split、Custom stems 与可选 MIDI 的 version-scoped 异步分离资源，以及 snapshot、
+  SSE replay 与 cancel；`target_kinds` 明确承载用户要求的音轨，而不是供应商私有乐器 ID。
 - [`tests/mori-stem-separation.contract.test.ts`](./tests/mori-stem-separation.contract.test.ts)：检查来源 Version、
   provider-neutral 分离模式、幂等命令、返回资产、恢复资源与受信身份边界。
 
@@ -43,8 +43,9 @@ line range / whole-lyrics scope、source text、direction、constraints 与输�
 相对归一化后的 `lyrics_context` 使用从 0 开始、左闭右开的索引。浏览器不提交 tenant、subject、actor 或供应商字段。
 
 Stem Separation 同样不伪装成 Generation Candidate。它从一个不可变 Version 创建可复用音轨资产，
-`POST /api/v1/mori/versions/{version_ref}/stem_separations` 只接收 `mode` 与 `include_midi`；snapshot
-回显来源 Version、模式、进度、`source_audio_digest`、实际生成的 stems 与可选 MIDI asset。浏览器中的
+`POST /api/v1/mori/versions/{version_ref}/stem_separations` 接收 `mode`、`target_kinds` 与 `include_midi`：
+`isolate_part` 要求一个目标，`auto_stems` 不接受手选目标，`custom_stems` 要求两个至十个唯一目标；snapshot
+回显来源 Version、完整意图、进度、`source_audio_digest`、实际生成的 stems 与可选 MIDI asset。浏览器中的
 Mute/Solo 当前只保存本地 mix selection，不修改这些资产，也不覆盖 Current Version；在可播放 stem renderer
 接入前，界面不会宣称它已经改变实际音频。
 

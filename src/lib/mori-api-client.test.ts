@@ -412,7 +412,7 @@ describe("Mori same-origin API client", () => {
       },
     })
 
-    const request = createStemSeparationRequest({ mode: "auto_stems", includeMidi: true })
+    const request = createStemSeparationRequest({ mode: "auto_stems", targetKinds: [], includeMidi: true })
     const response = await api.createStemSeparation("version/stems 1", request, "idem-stems-1")
 
     expect(capturedUrl).toBe("/api/v1/mori/versions/version%2Fstems%201/stem_separations")
@@ -421,11 +421,53 @@ describe("Mori same-origin API client", () => {
       "Content-Type": "application/json",
       "Idempotency-Key": "idem-stems-1",
     })
-    expect(JSON.parse(String(capturedInit?.body))).toEqual({ mode: "auto_stems", include_midi: true })
+    expect(JSON.parse(String(capturedInit?.body))).toEqual({ mode: "auto_stems", target_kinds: [], include_midi: true })
     expect(response.data).toEqual({ stem_separation_ref: "stem_separation_1", status: "queued" })
   })
 
-  it("reads durable separated stem assets", async () => {
+  it("builds provider-neutral isolate and custom stem requests", () => {
+    expect(createStemSeparationRequest({
+      mode: "isolate_part",
+      targetKinds: ["vocals"],
+      includeMidi: false,
+    })).toEqual({
+      mode: "isolate_part",
+      target_kinds: ["vocals"],
+      include_midi: false,
+    })
+
+    expect(createStemSeparationRequest({
+      mode: "custom_stems",
+      targetKinds: ["drums", "bass", "drums", "keys"],
+      includeMidi: true,
+    })).toEqual({
+      mode: "custom_stems",
+      target_kinds: ["drums", "bass", "keys"],
+      include_midi: true,
+    })
+  })
+
+  it("rejects mode and target combinations that do not describe one intent", () => {
+    expect(() => createStemSeparationRequest({
+      mode: "isolate_part",
+      targetKinds: [],
+      includeMidi: false,
+    })).toThrow("stem_separation_target_count_invalid")
+
+    expect(() => createStemSeparationRequest({
+      mode: "auto_stems",
+      targetKinds: ["vocals"],
+      includeMidi: false,
+    })).toThrow("stem_separation_target_count_invalid")
+
+    expect(() => createStemSeparationRequest({
+      mode: "custom_stems",
+      targetKinds: ["drums", "drums"],
+      includeMidi: false,
+    })).toThrow("stem_separation_target_count_invalid")
+  })
+
+  it("reads a durable isolate-part snapshot with its requested target", async () => {
     const api = createMoriApiClient({
       fetchImpl: async () => new Response(JSON.stringify({
         data: {
@@ -433,7 +475,8 @@ describe("Mori same-origin API client", () => {
           version_ref: "version_1",
           status: "succeeded",
           progress: 100,
-          mode: "vocals_instrumental",
+          mode: "isolate_part",
+          target_kinds: ["vocals"],
           include_midi: false,
           source_audio_digest: "sha256:source-audio-1",
           stems: [
@@ -451,11 +494,68 @@ describe("Mori same-origin API client", () => {
 
     expect(response.data).toMatchObject({
       status: "succeeded",
-      mode: "vocals_instrumental",
+      mode: "isolate_part",
+      target_kinds: ["vocals"],
       source_audio_digest: "sha256:source-audio-1",
       midi_asset_ref: null,
     })
     expect(response.data.stems.map((stem) => stem.kind)).toEqual(["vocals", "instrumental"])
+  })
+
+  it("reads the requested targets from a custom-stems snapshot", async () => {
+    const api = createMoriApiClient({
+      fetchImpl: async () => new Response(JSON.stringify({
+        data: {
+          stem_separation_ref: "stem_separation_custom_1",
+          version_ref: "version_1",
+          status: "succeeded",
+          progress: 100,
+          mode: "custom_stems",
+          target_kinds: ["drums", "bass", "keys"],
+          include_midi: false,
+          source_audio_digest: "sha256:source-audio-custom-1",
+          stems: [
+            { stem_ref: "stem_drums_1", kind: "drums", label: "Drums", audio_asset_ref: "asset_drums_1", waveform_asset_ref: "waveform_drums_1", duration_seconds: 182 },
+            { stem_ref: "stem_bass_1", kind: "bass", label: "Bass", audio_asset_ref: "asset_bass_1", waveform_asset_ref: "waveform_bass_1", duration_seconds: 182 },
+            { stem_ref: "stem_keys_1", kind: "keys", label: "Keys", audio_asset_ref: "asset_keys_1", waveform_asset_ref: "waveform_keys_1", duration_seconds: 182 },
+          ],
+          midi_asset_ref: null,
+          created_at: "2026-09-03T12:00:00.000Z",
+        },
+        meta: { request_id: "request_stem_snapshot_custom_1" },
+      }), { status: 200, headers: { "Content-Type": "application/json" } }),
+    })
+
+    const response = await api.getStemSeparation("stem_separation_custom_1")
+
+    expect(response.data.mode).toBe("custom_stems")
+    expect(response.data.target_kinds).toEqual(["drums", "bass", "keys"])
+  })
+
+  it("rejects an isolate snapshot that does not return its requested part", async () => {
+    const api = createMoriApiClient({
+      fetchImpl: async () => new Response(JSON.stringify({
+        data: {
+          stem_separation_ref: "stem_separation_wrong_target",
+          version_ref: "version_1",
+          status: "succeeded",
+          progress: 100,
+          mode: "isolate_part",
+          target_kinds: ["drums"],
+          include_midi: false,
+          source_audio_digest: "sha256:source-audio-wrong-target",
+          stems: [
+            { stem_ref: "stem_vocals_1", kind: "vocals", label: "Vocals", audio_asset_ref: "asset_vocals_1", waveform_asset_ref: "waveform_vocals_1", duration_seconds: 182 },
+            { stem_ref: "stem_music_1", kind: "instrumental", label: "Remaining mix", audio_asset_ref: "asset_music_1", waveform_asset_ref: "waveform_music_1", duration_seconds: 182 },
+          ],
+          midi_asset_ref: null,
+          created_at: "2026-09-03T12:00:00.000Z",
+        },
+        meta: { request_id: "request_stem_snapshot_wrong_target" },
+      }), { status: 200, headers: { "Content-Type": "application/json" } }),
+    })
+
+    await expect(api.getStemSeparation("stem_separation_wrong_target")).rejects.toMatchObject({ code: "invalid_api_response" })
   })
 
   it("replays and cancels a stem separation through stable resource paths", async () => {
@@ -546,6 +646,7 @@ describe("Mori same-origin API client", () => {
           status: "succeeded",
           progress: 100,
           mode: "auto_stems",
+          target_kinds: [],
           include_midi: false,
           source_audio_digest: "sha256:source-audio-invalid",
           stems: Array.from({ length: 13 }, (_, index) => buildStem(index)),
