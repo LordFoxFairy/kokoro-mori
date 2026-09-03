@@ -326,6 +326,47 @@ describe("Mori studio page", () => {
     expect(within(aiChanges).getByRole("button", { name: "Cancel change" })).toBeInTheDocument()
   })
 
+  it("stages and explicitly applies a section-aware Mori lyric suggestion", () => {
+    localStorage.clear()
+    renderStudio()
+
+    fireEvent.click(screen.getByRole("button", { name: "Lyrics" }))
+    const lyricsEditor = screen.getByRole("region", { name: "Lyrics editor" })
+    const draft = within(lyricsEditor).getByRole("textbox", { name: "Lyrics draft" })
+    const originalDraft = (draft as HTMLTextAreaElement).value
+    const lyricPartner = within(lyricsEditor).getByRole("region", { name: "Mori lyric partner" })
+
+    expect(within(lyricPartner).getByRole("button", { name: "Rewrite" })).toHaveAttribute("aria-pressed", "true")
+    fireEvent.click(within(lyricPartner).getByRole("button", { name: "Chorus" }))
+    fireEvent.change(within(lyricPartner).getByRole("textbox", { name: "Describe the lyric direction" }), {
+      target: { value: "Make the image more vivid while keeping the same cadence." },
+    })
+    fireEvent.click(within(lyricPartner).getByRole("button", { name: "Review direction" }))
+
+    const plan = within(lyricPartner).getByRole("region", { name: "Lyric direction plan" })
+    expect(within(plan).getByText("Rewrite")).toBeInTheDocument()
+    expect(within(plan).getByText("Chorus")).toBeInTheDocument()
+    expect(within(plan).getByText("Original draft stays untouched.")).toBeInTheDocument()
+    expect(draft).toHaveValue(originalDraft)
+
+    fireEvent.click(within(plan).getByRole("button", { name: "Create suggestion" }))
+    const suggestion = within(lyricPartner).getByRole("region", { name: "Lyric suggestion" })
+    const suggestedLyrics = within(suggestion).getByRole("textbox", { name: "Suggested lyrics" })
+    expect(suggestedLyrics).not.toHaveValue("")
+    expect(draft).toHaveValue(originalDraft)
+
+    fireEvent.change(suggestedLyrics, {
+      target: { value: "We hold the morning in our hands.\nAnd let the open daylight land." },
+    })
+    fireEvent.click(within(suggestion).getByRole("button", { name: "Apply to draft" }))
+
+    expect((draft as HTMLTextAreaElement).value).toContain("We hold the morning in our hands.")
+    expect(within(lyricsEditor).getByText("Unsaved changes")).toBeInTheDocument()
+    fireEvent.click(within(lyricsEditor).getByRole("button", { name: "Undo AI edit" }))
+    expect(draft).toHaveValue(originalDraft)
+    localStorage.clear()
+  })
+
   it("keeps lyrics editable with an explicit local save state", () => {
     renderStudio()
 

@@ -2694,7 +2694,6 @@
   letter-spacing: -0.06em;
 }
 
-.editorSurface,
 .stemsEditor {
   border: 1px solid var(--mori-border);
   border-radius: 17px;
@@ -2732,8 +2731,6 @@
   letter-spacing: -0.04em;
 }
 
-.editorSaved,
-.editorUnsaved,
 .stemPreviewBadge {
   display: inline-flex;
   align-items: center;
@@ -2743,56 +2740,6 @@
   font-size: 9px;
   font-weight: 700;
   white-space: nowrap;
-}
-
-.editorSaved {
-  color: var(--mori-success);
-  background: rgba(231, 246, 239, 0.82);
-}
-
-.editorUnsaved {
-  color: #9d6d59;
-  background: rgba(253, 231, 218, 0.8);
-}
-
-.lyricsEditorArea {
-  display: block;
-  width: 100%;
-  min-height: 310px;
-  padding: 23px 20px;
-  border: 0;
-  outline: 0;
-  resize: vertical;
-  color: #615b65;
-  font-family: var(--mori-font-display);
-  font-size: 20px;
-  line-height: 1.8;
-  background: transparent;
-}
-
-.lyricsEditorArea:focus {
-  box-shadow: inset 0 0 0 2px rgba(109, 92, 231, 0.18);
-}
-
-.editorSurfaceFooter {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 15px 13px 20px;
-  border-top: 1px solid rgba(109, 92, 231, 0.1);
-  color: var(--mori-faint);
-  font-size: 10px;
-}
-
-.editorSurfaceFooter .ghostButton {
-  min-height: 32px;
-  font-size: 10px;
-}
-
-.editorSurfaceFooter .ghostButton:disabled {
-  cursor: default;
-  opacity: 0.72;
 }
 
 .stemsEditor {
@@ -3475,16 +3422,6 @@
   }
 
   .editorSurfaceHeader {
-    padding-inline: 16px;
-  }
-
-  .lyricsEditorArea {
-    min-height: 290px;
-    padding: 19px 16px;
-    font-size: 18px;
-  }
-
-  .editorSurfaceFooter {
     padding-inline: 16px;
   }
 

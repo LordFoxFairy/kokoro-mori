@@ -25,7 +25,7 @@ Idea / Reference
 - **Tad 值得吸收的部分**：把 Generate、Reference、Remix、Edit 作为清晰操作模型，同时提供
   Cover、Vocal Remover、MV 等能力。参考
   [Tad AI Music Generator](https://tad.ai/ai-music-generator)、
-  [Vocal Remover](https://tad.ai/vocal-remover) 与
+  [AI Audio Editor](https://tad.ai/audio-editor)、[Vocal Remover](https://tad.ai/vocal-remover) 与
   [AI Cover Generator](https://tad.ai/ai-cover-generator)。
 - **Mori 的差异**：先显示 AI 将改哪里、改什么、产生几版，再执行；任何 AI 操作都不直接覆盖
   Current Version，结果统一进入 Take Lanes 供试听和提交。
@@ -84,6 +84,24 @@ Commit       用户试听后显式 Use take
 允许用户明确锁定 Melody、Lyrics、Voice、Tempo、Structure，并选择 1 / 2 / 4 个 alternatives；Transform
 还可在 Selected section 与 Whole song 之间切换。生成后可看到进度、取消或重试；成功 Candidate 直接追加到
 Take Lanes，但不会替换 Current Version。它不挤入全局 Rail，也不伪装成聊天记录。
+
+### Lyrics 的 AI 协作模型
+
+Lyrics 不再只是一个孤立 textarea，也不复制 Tad 的工具入口列表。当前界面把可保存的歌词 Draft 与
+**Mori lyric partner** 放在同一个工作面：
+
+```text
+Direction    Rewrite | Continue | Find rhyme | Restructure
+Scope        Verse | Chorus | Whole lyrics
+Instruction  用户自然语言意图
+Review       先确认 Direction、Scope 与保留 Meaning/Cadence
+Suggestion   独立、可编辑，不立即覆盖 Draft
+Commit       Apply to draft；应用后仍可 Undo，最终由 Save draft 持久化
+```
+
+这一交互吸收 Suno 的“选区修改 → 产生候选 → 用户确认”与 Tad 的“定向改词、保持声线/节奏连续性”，但
+保持 Mori 的非破坏式原则：原稿在 Apply 前不变，建议文本本身也可继续编辑。当前 Suggestion 使用确定性
+preview fixture 验证界面状态机；真实歌词模型调用及其 API contract 是下一步，不把 fixture 描述成线上生成结果。
 
 ## 4. Studio Change API 契约
 
@@ -144,10 +162,12 @@ Generation snapshot 使用 `generation_kind: new_song | studio_change` 做显式
   可复核的控制项；默认工作面仍保持收起，避免把 Studio 做成参数面板。
 - 下一步只需由 BFF / music owner adapter 实现已固定契约；浏览器不引入 provider 字段。
 
-### P2 · 深度编辑
+### P2 · 深度编辑（进行中）
 
 - 可拖选时间范围、播放头与段落联动。
-- Lyrics 按段改写；Stem split、Add Vocal、Add Instrumental。
+- Lyrics 已完成按 Verse / Chorus / Whole lyrics 组织的 Rewrite、Continue、Find rhyme、Restructure
+  界面闭环，并支持 Review、可编辑 Suggestion、Apply 与 Undo；下一步固定真实 Lyrics Revision contract。
+- Stem split、Add Vocal、Add Instrumental。
 - Voice、Persona、Style preset、Reference 进入 Library assets。
 
 ### P3 · 完成与发布
