@@ -38,6 +38,8 @@ export type GenerationCreateInput = {
 
 export type StudioChangeOperation = "add_part" | "replace_section" | "extend" | "transform"
 
+export type StudioLayerKind = "vocals" | "instrumental"
+
 export type StudioChangePreserve = "melody" | "lyrics" | "vocal_identity" | "tempo" | "structure"
 
 export type StudioChangeInsertionScope = {
@@ -69,6 +71,13 @@ type StudioChangeGenerationCommonInput = {
 
 export type StudioChangeGenerationInput = StudioChangeGenerationCommonInput & (
   | { operation: "add_part"; scope: StudioChangeInsertionScope }
+  | {
+      operation: "add_part"
+      scope: StudioChangeWholeVersionScope
+      part_kind: StudioLayerKind
+      lyrics: string | null
+      voice_ref: MoriRef | null
+    }
   | { operation: "replace_section"; scope: StudioChangeRangeScope }
   | { operation: "extend"; scope: StudioChangeFromScope }
   | { operation: "transform"; scope: StudioChangeRangeScope | StudioChangeWholeVersionScope }
@@ -368,8 +377,17 @@ type MoriStudioChangeCommonDraft = {
   outputCount?: number
 }
 
+export type MoriStudioLayerDraft = MoriStudioChangeCommonDraft & {
+  operation: "add_part"
+  scope: { type: "whole_version" }
+  partKind: StudioLayerKind
+  lyrics?: string
+  voiceRef?: MoriRef
+}
+
 export type MoriStudioChangeDraft = MoriStudioChangeCommonDraft & (
   | { operation: "add_part"; scope: { type: "insertion_point"; positionMs: number } }
+  | MoriStudioLayerDraft
   | { operation: "replace_section"; scope: { type: "time_range"; startMs: number; endMs: number } }
   | { operation: "extend"; scope: { type: "from_position"; positionMs: number } }
   | { operation: "transform"; scope: { type: "time_range"; startMs: number; endMs: number } | { type: "whole_version" } }
@@ -427,6 +445,19 @@ export function createStudioChangeRequest(draft: MoriStudioChangeDraft): StudioC
 
   switch (draft.operation) {
     case "add_part":
+      if ("partKind" in draft) {
+        const lyrics = draft.partKind === "vocals" ? draft.lyrics?.trim() || "" : ""
+        if (draft.partKind === "vocals" && lyrics === "") throw new Error("studio_layer_lyrics_required")
+        if (lyrics.length > 20_000) throw new Error("studio_layer_lyrics_too_long")
+        return {
+          ...common,
+          operation: "add_part",
+          scope: { type: "whole_version" },
+          part_kind: draft.partKind,
+          lyrics: draft.partKind === "vocals" ? lyrics : null,
+          voice_ref: draft.partKind === "vocals" ? draft.voiceRef?.trim() || null : null,
+        }
+      }
       assertPosition(draft.scope.positionMs)
       return {
         ...common,

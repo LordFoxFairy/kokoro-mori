@@ -104,6 +104,10 @@ Workspace nav    内容随项目上下文变化                     跨页面保
 - 已落地第一版：Studio Take Lanes 支持试听、选择和明确提交当前版本；Lyrics 支持本地草稿保存、分段 AI Revision、
   多 Suggestion 对比以及 Apply / Undo；Stems 支持基于当前 Version 的二轨/最多十二轨自动分离计划、可选 MIDI、
   异步恢复/取消/重试，以及对真实返回资产的逐轨 Mute/Solo 本地 mix selection；可播放 stem renderer 尚待接入。
+- 已落地第一版：Stems 已形成 Voice & stems 上下文工作面，在 Separate mix 旁提供 Add vocals 与 Add instrumental。
+  Vocal layer 将必填 Lyrics、可选 Voice profile 和 Vocal direction 分开；Instrumental layer 只要求编曲方向。
+  两者都先显示 whole-song Layer Plan，复用 version-scoped `add_part` Generation lifecycle，并把结果送入现有
+  Take Lanes；切换子工作流保留未提交草稿，离开再返回也能恢复运行中的图层与取消入口。
 - 已落地第一版：Studio 的 Mori AI Changes 把 Add part、Replace section、Extend、Transform 放在
   Arrangement 时间线上下文中；时间线播放头与全局 Player 双向使用同一位置状态，并明确标记当前段落。
   用户可选择结构段或拖动起止控制形成 Custom range，再输入指令并复核 Change Plan；移动范围会让旧 Plan

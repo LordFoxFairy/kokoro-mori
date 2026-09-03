@@ -163,6 +163,60 @@ describe("Mori same-origin API client", () => {
     expect(response.data).toEqual({ generation_ref: "generation_change_1", status: "queued" })
   })
 
+  it("builds a structured whole-version vocal layer command", () => {
+    expect(createStudioChangeRequest({
+      operation: "add_part",
+      scope: { type: "whole_version" },
+      partKind: "vocals",
+      instruction: "  Keep the delivery close and unhurried.  ",
+      lyrics: "  Meet me where the streetlights fade.  ",
+      voiceRef: "  voice_preview_mira  ",
+      preserve: ["melody", "tempo", "structure"],
+      outputCount: 2,
+    })).toEqual({
+      operation: "add_part",
+      scope: { type: "whole_version" },
+      part_kind: "vocals",
+      instruction: "Keep the delivery close and unhurried.",
+      lyrics: "Meet me where the streetlights fade.",
+      voice_ref: "voice_preview_mira",
+      preserve: ["melody", "tempo", "structure"],
+      reference_asset_refs: [],
+      output_count: 2,
+    })
+  })
+
+  it("builds an instrumental layer without vocal-only fields", () => {
+    expect(createStudioChangeRequest({
+      operation: "add_part",
+      scope: { type: "whole_version" },
+      partKind: "instrumental",
+      instruction: "  Build warm piano and brushed drums around the vocal.  ",
+      preserve: ["melody", "lyrics", "vocal_identity", "tempo", "structure"],
+      outputCount: 2,
+    })).toEqual({
+      operation: "add_part",
+      scope: { type: "whole_version" },
+      part_kind: "instrumental",
+      instruction: "Build warm piano and brushed drums around the vocal.",
+      lyrics: null,
+      voice_ref: null,
+      preserve: ["melody", "lyrics", "vocal_identity", "tempo", "structure"],
+      reference_asset_refs: [],
+      output_count: 2,
+    })
+  })
+
+  it("requires lyrics for a whole-version vocal layer", () => {
+    expect(() => createStudioChangeRequest({
+      operation: "add_part",
+      scope: { type: "whole_version" },
+      partKind: "vocals",
+      instruction: "Keep the delivery close.",
+      lyrics: "   ",
+    })).toThrow("studio_layer_lyrics_required")
+  })
+
   it("reads the source and operation from a Studio generation snapshot", async () => {
     const api = createMoriApiClient({
       fetchImpl: async () => new Response(JSON.stringify({

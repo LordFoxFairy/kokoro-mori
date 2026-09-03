@@ -1,6 +1,6 @@
 # Studio Layer Workflows Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Add reviewable Add Vocals and Add Instrumental workflows inside the current Version's Stems workspace, with non-destructive results entering Take Lanes.
 
@@ -34,7 +34,7 @@
 - Produces: `StudioChangeGenerationInput` whole-Version `add_part` payload with `part_kind`, `lyrics`, and `voice_ref`.
 - Keeps: insertion-point `add_part` payload unchanged.
 
-- [ ] **Step 1: Write failing request-builder tests**
+- [x] **Step 1: Write failing request-builder tests**
 
 ```ts
 expect(createStudioChangeRequest({
@@ -59,19 +59,19 @@ expect(createStudioChangeRequest({
 })
 ```
 
-- [ ] **Step 2: Run the focused test and confirm it fails because the whole-Version `add_part` variant is absent**
+- [x] **Step 2: Run the focused test and confirm it fails because the whole-Version `add_part` variant is absent**
 
 Run: `pnpm vitest run src/lib/mori-api-client.test.ts --reporter=dot`
 
-- [ ] **Step 3: Implement the discriminated TypeScript input and validation**
+- [x] **Step 3: Implement the discriminated TypeScript input and validation**
 
 Require non-empty lyrics for `partKind: "vocals"`; normalize optional `voiceRef`; force `lyrics: null` and `voice_ref: null` for `partKind: "instrumental"`; preserve insertion-point behavior.
 
-- [ ] **Step 4: Add failing OpenAPI assertions, then update the schema**
+- [x] **Step 4: Add failing OpenAPI assertions, then update the schema**
 
 `AddPartGenerationInput` becomes a `oneOf` wrapper around the existing insertion-point command and a strict whole-Version layer command. The layer command requires `part_kind`, `lyrics`, and `voice_ref`, rejects provider/caller identity fields, and reuses the current generation receipt and snapshot.
 
-- [ ] **Step 5: Run contract and builder tests**
+- [x] **Step 5: Run contract and builder tests**
 
 Run: `pnpm vitest run contract/tests/mori-studio-change.contract.test.ts src/lib/mori-api-client.test.ts --reporter=dot`
 
@@ -86,19 +86,19 @@ Run: `pnpm vitest run contract/tests/mori-studio-change.contract.test.ts src/lib
 - Produces a `StudioLayerPlan` structurally compatible with `StudioChangePlan`, carrying the layer mode,
   `scopeLabel: "Whole song"`, and a whole-Version `add_part` draft.
 
-- [ ] **Step 1: Write failing plan tests**
+- [x] **Step 1: Write failing plan tests**
 
 Assert that vocals preserve melody/tempo/structure and carry lyrics/voice identity; instrumental layers preserve melody/lyrics/vocal identity/tempo/structure and carry no lyrics or voice ref.
 
-- [ ] **Step 2: Run and observe the missing-module failure**
+- [x] **Step 2: Run and observe the missing-module failure**
 
 Run: `pnpm vitest run src/features/mori/studio-layers.test.ts --reporter=dot`
 
-- [ ] **Step 3: Implement the smallest plan builder**
+- [x] **Step 3: Implement the smallest plan builder**
 
 The builder trims fields, fixes output count at two initial alternatives, labels the destination Take Lanes, and does not synthesize audio or API state.
 
-- [ ] **Step 4: Run the plan tests**
+- [x] **Step 4: Run the plan tests**
 
 Run: `pnpm vitest run src/features/mori/studio-layers.test.ts --reporter=dot`
 
@@ -114,19 +114,19 @@ Run: `pnpm vitest run src/features/mori/studio-layers.test.ts --reporter=dot`
 - Consumes: preview voice profiles, `StudioLayerPlan`, and existing `StudioAiRunState`.
 - Produces: reviewed plans through `onGenerate(plan)`; requests navigation through `onReviewTakes()`.
 
-- [ ] **Step 1: Write failing interaction tests**
+- [x] **Step 1: Write failing interaction tests**
 
 Verify three contextual Stems intents—Add vocals, Add instrumental, Separate mix—without adding global navigation. For Add vocals, require lyrics, allow a Voice profile, show Whole song / Take lanes / current-Version safety facts, and expose Generate 2 takes only after Review.
 
-- [ ] **Step 2: Run and confirm the controls are absent**
+- [x] **Step 2: Run and confirm the controls are absent**
 
 Run: `pnpm vitest run src/features/mori/studio-page.test.tsx --reporter=dot`
 
-- [ ] **Step 3: Implement semantic structure and restrained styling**
+- [x] **Step 3: Implement semantic structure and restrained styling**
 
 Use a compact workflow selector at the top of Stems. Keep separation as the default. Add Vocals exposes lyrics, optional Voice profile, and vocal direction; Add Instrumental exposes one arrangement-direction field. Reuse existing Mori tokens, visible focus, and responsive layout.
 
-- [ ] **Step 4: Run the focused UI tests**
+- [x] **Step 4: Run the focused UI tests**
 
 Run: `pnpm vitest run src/features/mori/studio-page.test.tsx --reporter=dot`
 
@@ -141,19 +141,19 @@ Run: `pnpm vitest run src/features/mori/studio-page.test.tsx --reporter=dot`
 - Reuses: `generateStudioChange`, snapshot/event recovery, cancellation, candidate projection, and `studioCandidates`.
 - Produces: successful layer candidates in the existing Arrangement Take Lanes; no automatic Current Version mutation.
 
-- [ ] **Step 1: Write a failing end-to-end component test**
+- [x] **Step 1: Write a failing end-to-end component test**
 
 Submit Add Vocals, assert the exact `snake_case` command, return one generated candidate, verify the Stems status offers `Review takes in Arrangement`, then verify navigation reveals the generated Take without promoting it.
 
-- [ ] **Step 2: Run and observe the missing orchestration failure**
+- [x] **Step 2: Run and observe the missing orchestration failure**
 
 Run: `pnpm vitest run src/features/mori/studio-page.test.tsx --reporter=dot`
 
-- [ ] **Step 3: Pass the existing Studio run and handlers into Stems**
+- [x] **Step 3: Pass the existing Studio run and handlers into Stems**
 
 Keep one active version-scoped generation state. Layer plans use the existing command path; switching Studio tools preserves active work. `Review takes in Arrangement` changes the local Studio tool only.
 
-- [ ] **Step 4: Run all focused tests**
+- [x] **Step 4: Run all focused tests**
 
 Run: `pnpm vitest run src/features/mori/studio-layers.test.ts src/features/mori/studio-page.test.tsx src/lib/mori-api-client.test.ts contract/tests/mori-studio-change.contract.test.ts --reporter=dot`
 
@@ -164,18 +164,18 @@ Run: `pnpm vitest run src/features/mori/studio-layers.test.ts src/features/mori/
 - Modify: `docs/PRODUCT_SHAPE.md`
 - Modify: `ACCEPTANCE.md`
 
-- [ ] **Step 1: Document the capability boundary**
+- [x] **Step 1: Document the capability boundary**
 
 Record that Add Vocals / Add Instrumental are whole-Version `add_part` variants in Stems, not global tools; their output goes to Take Lanes and requires explicit promotion.
 
-- [ ] **Step 2: Inspect desktop rendering and the browser console**
+- [x] **Step 2: Inspect desktop rendering and the browser console**
 
 Run `pnpm dev --hostname 127.0.0.1 --port 3004`, inspect Stems separation, Add Vocals setup/review, Add Instrumental setup/review, and successful Review Takes state at 1280×720. Confirm no browser error logs.
 
-- [ ] **Step 3: Run the full repository gate**
+- [x] **Step 3: Run the full repository gate**
 
 Run: `git diff --check && pnpm lint && pnpm typecheck && pnpm test && pnpm build`
 
-- [ ] **Step 4: Restore generated noise and commit**
+- [x] **Step 4: Restore generated noise and commit**
 
 Restore `next-env.d.ts`, remove `.playwright-cli` and `output/playwright`, stop the server, verify a clean diff, and commit with `feat: add contextual Studio layers`.

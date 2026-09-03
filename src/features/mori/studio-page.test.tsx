@@ -614,6 +614,202 @@ describe("Mori studio page", () => {
     expect(within(plan).getByRole("button", { name: "Separate detected stems" })).toBeInTheDocument()
   })
 
+  it("keeps Add vocals and Add instrumental as contextual Stems workflows", () => {
+    renderStudio()
+
+    fireEvent.click(screen.getByRole("button", { name: "Stems" }))
+    const stemsEditor = screen.getByRole("region", { name: "Stems editor" })
+    expect(within(stemsEditor).getByRole("button", { name: "Separate mix" })).toHaveAttribute("aria-pressed", "true")
+    expect(within(stemsEditor).getByRole("button", { name: "Add vocals" })).toBeInTheDocument()
+    expect(within(stemsEditor).getByRole("button", { name: "Add instrumental" })).toBeInTheDocument()
+
+    fireEvent.click(within(stemsEditor).getByRole("button", { name: "Add vocals" }))
+    const layerComposer = within(stemsEditor).getByRole("region", { name: "Add vocals workflow" })
+    expect(within(layerComposer).getByText("Layer a vocal across this version.")).toBeInTheDocument()
+    expect(within(layerComposer).getByRole("button", { name: "Review vocal layer" })).toBeDisabled()
+
+    fireEvent.change(within(layerComposer).getByRole("textbox", { name: "Lyrics for vocal layer" }), {
+      target: { value: "Meet me where the streetlights fade." },
+    })
+    fireEvent.change(within(layerComposer).getByRole("textbox", { name: "Vocal direction" }), {
+      target: { value: "Keep the delivery close and unhurried." },
+    })
+    fireEvent.change(within(layerComposer).getByRole("combobox", { name: "Voice profile" }), {
+      target: { value: "voice_preview_mira" },
+    })
+    fireEvent.click(within(layerComposer).getByRole("button", { name: "Review vocal layer" }))
+
+    const plan = within(layerComposer).getByRole("region", { name: "Studio layer plan" })
+    expect(within(plan).getByText("Add vocals")).toBeInTheDocument()
+    expect(within(plan).getByText("Whole song")).toBeInTheDocument()
+    expect(within(plan).getByText("Melody · Tempo · Structure")).toBeInTheDocument()
+    expect(within(plan).getByText("2 alternatives · Take lanes")).toBeInTheDocument()
+    expect(within(plan).getByText("Current version stays untouched.")).toBeInTheDocument()
+    expect(within(plan).getByRole("button", { name: "Generate 2 takes" })).toBeInTheDocument()
+  })
+
+  it("preserves an unsubmitted layer draft while comparing Stems workflows", () => {
+    renderStudio()
+
+    fireEvent.click(screen.getByRole("button", { name: "Stems" }))
+    const stemsEditor = screen.getByRole("region", { name: "Stems editor" })
+    fireEvent.click(within(stemsEditor).getByRole("button", { name: "Add vocals" }))
+    fireEvent.change(within(stemsEditor).getByRole("textbox", { name: "Lyrics for vocal layer" }), {
+      target: { value: "A line worth keeping." },
+    })
+    fireEvent.change(within(stemsEditor).getByRole("textbox", { name: "Vocal direction" }), {
+      target: { value: "A quiet close-mic lead." },
+    })
+
+    fireEvent.click(within(stemsEditor).getByRole("button", { name: "Add instrumental" }))
+    expect(within(stemsEditor).getByRole("region", { name: "Add instrumental workflow" })).toBeInTheDocument()
+    fireEvent.click(within(stemsEditor).getByRole("button", { name: "Add vocals" }))
+
+    expect(within(stemsEditor).getByRole("textbox", { name: "Lyrics for vocal layer" })).toHaveValue("A line worth keeping.")
+    expect(within(stemsEditor).getByRole("textbox", { name: "Vocal direction" })).toHaveValue("A quiet close-mic lead.")
+  })
+
+  it("renders a reviewed vocal layer into Take Lanes without replacing the current version", async () => {
+    let submittedVersionRef = ""
+    let submittedInput: StudioChangeGenerationInput | null = null
+    renderStudio({
+      createStudioChange: async (versionRef, input) => {
+        submittedVersionRef = versionRef
+        submittedInput = input
+        return { data: { generation_ref: "generation_vocal_layer_1", status: "queued" }, meta: { request_id: "request_vocal_layer_1" } }
+      },
+      getGeneration: async () => ({
+        data: {
+          generation_ref: "generation_vocal_layer_1",
+          generation_kind: "studio_change",
+          project_ref: "project_preview_first_light",
+          song_plan_ref: null,
+          mode: null,
+          source_version_ref: "version_preview_first_light_a",
+          operation: "add_part",
+          status: "succeeded",
+          progress: 100,
+          candidate_refs: ["candidate_vocal_layer_1"],
+          created_at: "2026-09-03T12:00:00.000Z",
+        },
+        meta: { request_id: "request_vocal_layer_snapshot_1" },
+      }),
+      getGenerationEvents: async () => [],
+      listCandidates: async () => ({
+        data: {
+          candidates: [{
+            candidate_ref: "candidate_vocal_layer_1",
+            generation_ref: "generation_vocal_layer_1",
+            version_ref: "version_vocal_layer_1",
+            project_ref: "project_preview_first_light",
+            title: "First Light · New Vocal",
+            duration_seconds: 182,
+            audio_asset_ref: "asset_vocal_layer_1",
+            waveform_asset_ref: "waveform_vocal_layer_1",
+            style_tags: ["intimate vocal", "source music preserved"],
+            created_at: "2026-09-03T12:01:00.000Z",
+          }],
+          next_cursor: null,
+        },
+        meta: { request_id: "request_vocal_layer_candidates_1" },
+      }),
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: "Stems" }))
+    const stemsEditor = screen.getByRole("region", { name: "Stems editor" })
+    fireEvent.click(within(stemsEditor).getByRole("button", { name: "Add vocals" }))
+    const layerComposer = within(stemsEditor).getByRole("region", { name: "Add vocals workflow" })
+    fireEvent.change(within(layerComposer).getByRole("textbox", { name: "Lyrics for vocal layer" }), {
+      target: { value: "Meet me where the streetlights fade." },
+    })
+    fireEvent.change(within(layerComposer).getByRole("textbox", { name: "Vocal direction" }), {
+      target: { value: "Keep the delivery close and unhurried." },
+    })
+    fireEvent.change(within(layerComposer).getByRole("combobox", { name: "Voice profile" }), {
+      target: { value: "voice_preview_mira" },
+    })
+    fireEvent.click(within(layerComposer).getByRole("button", { name: "Review vocal layer" }))
+    fireEvent.click(within(layerComposer).getByRole("button", { name: "Generate 2 takes" }))
+
+    await waitFor(() => expect(submittedVersionRef).toBe("version_preview_first_light_a"))
+    expect(submittedInput).toEqual({
+      operation: "add_part",
+      scope: { type: "whole_version" },
+      part_kind: "vocals",
+      instruction: "Keep the delivery close and unhurried.",
+      lyrics: "Meet me where the streetlights fade.",
+      voice_ref: "voice_preview_mira",
+      preserve: ["melody", "tempo", "structure"],
+      reference_asset_refs: [],
+      output_count: 2,
+    })
+
+    const reviewTakes = await within(layerComposer).findByRole("button", { name: "Review takes in Arrangement" })
+    fireEvent.click(reviewTakes)
+    expect(screen.getByRole("button", { name: "Arrangement" })).toHaveAttribute("aria-pressed", "true")
+    const takeLanes = screen.getByRole("region", { name: "Take lanes" })
+    expect(within(takeLanes).getByRole("article", { name: "Take 3: First Light · New Vocal" })).toBeInTheDocument()
+    expect(within(within(takeLanes).getByRole("article", { name: "Take 1: First Light" })).getByText("Current version")).toBeInTheDocument()
+  })
+
+  it("keeps an active vocal layer reachable across Studio tools", async () => {
+    let cancelledGenerationRef = ""
+    renderStudio({
+      createStudioChange: async () => ({
+        data: { generation_ref: "generation_vocal_layer_active", status: "queued" },
+        meta: { request_id: "request_vocal_layer_active" },
+      }),
+      getGeneration: async () => ({
+        data: {
+          generation_ref: "generation_vocal_layer_active",
+          generation_kind: "studio_change",
+          project_ref: "project_preview_first_light",
+          song_plan_ref: null,
+          mode: null,
+          source_version_ref: "version_preview_first_light_a",
+          operation: "add_part",
+          status: "generating",
+          progress: 44,
+          candidate_refs: [],
+          created_at: "2026-09-03T12:00:00.000Z",
+        },
+        meta: { request_id: "request_vocal_layer_active_snapshot" },
+      }),
+      getGenerationEvents: async () => [],
+      cancelGeneration: async (generationRef) => {
+        cancelledGenerationRef = generationRef
+        return {
+          data: { generation_ref: generationRef, status: "cancelled" },
+          meta: { request_id: "request_vocal_layer_cancel" },
+        }
+      },
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: "Stems" }))
+    let stemsEditor = screen.getByRole("region", { name: "Stems editor" })
+    fireEvent.click(within(stemsEditor).getByRole("button", { name: "Add vocals" }))
+    let layerComposer = within(stemsEditor).getByRole("region", { name: "Add vocals workflow" })
+    fireEvent.change(within(layerComposer).getByRole("textbox", { name: "Lyrics for vocal layer" }), {
+      target: { value: "Meet me where the streetlights fade." },
+    })
+    fireEvent.change(within(layerComposer).getByRole("textbox", { name: "Vocal direction" }), {
+      target: { value: "Keep the delivery close and unhurried." },
+    })
+    fireEvent.click(within(layerComposer).getByRole("button", { name: "Review vocal layer" }))
+    fireEvent.click(within(layerComposer).getByRole("button", { name: "Generate 2 takes" }))
+    await waitFor(() => expect(within(layerComposer).getByRole("progressbar", { name: "Studio layer progress" })).toHaveAttribute("aria-valuenow", "44"))
+
+    fireEvent.click(screen.getByRole("button", { name: "Lyrics" }))
+    fireEvent.click(screen.getByRole("button", { name: "Stems" }))
+
+    stemsEditor = screen.getByRole("region", { name: "Stems editor" })
+    expect(within(stemsEditor).getByRole("button", { name: "Add vocals" })).toHaveAttribute("aria-pressed", "true")
+    layerComposer = within(stemsEditor).getByRole("region", { name: "Add vocals workflow" })
+    fireEvent.click(within(layerComposer).getByRole("button", { name: "Cancel layer" }))
+    await waitFor(() => expect(cancelledGenerationRef).toBe("generation_vocal_layer_active"))
+    expect(within(layerComposer).getByText("Layer cancelled")).toBeInTheDocument()
+  })
+
   it("submits a stem separation and exposes only returned assets as mix controls", async () => {
     let submittedVersionRef = ""
     let submittedInput: Parameters<MoriApi["createStemSeparation"]>[1] | null = null

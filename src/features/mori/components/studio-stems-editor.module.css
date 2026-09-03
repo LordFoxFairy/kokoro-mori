@@ -83,6 +83,47 @@
   background: rgba(231, 246, 239, 0.84);
 }
 
+.workflowTabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  padding: 10px 18px;
+  border-bottom: 1px solid rgba(109, 92, 231, 0.08);
+  background: rgba(249, 247, 252, 0.66);
+}
+
+.workflowTabs button {
+  display: inline-flex;
+  min-height: 35px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  color: var(--mori-muted);
+  font-size: 10px;
+  font-weight: 800;
+  background: transparent;
+}
+
+.workflowTabs button svg {
+  width: 13px;
+  height: 13px;
+}
+
+.workflowTabs button:hover:not(:disabled),
+.workflowTabs button[aria-pressed="true"] {
+  border-color: rgba(109, 92, 231, 0.16);
+  color: var(--mori-primary-deep);
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 5px 14px rgba(62, 45, 86, 0.045);
+}
+
+.workflowTabs button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .setupPanel {
   display: grid;
   gap: 14px;
@@ -534,6 +575,7 @@
 }
 
 .modeGrid button:focus-visible,
+.workflowTabs button:focus-visible,
 .midiOption:has(input:focus-visible),
 .reviewButton:focus-visible,
 .separationPlan button:focus-visible,
@@ -543,6 +585,10 @@
 }
 
 @container (max-width: 560px) {
+  .workflowTabs {
+    grid-template-columns: 1fr;
+  }
+
   .modeGrid,
   .planFacts {
     grid-template-columns: 1fr;

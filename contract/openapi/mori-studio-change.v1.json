@@ -163,36 +163,14 @@
         }
       },
       "AddPartGenerationInput": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "operation",
-          "scope",
-          "instruction",
-          "preserve",
-          "reference_asset_refs",
-          "output_count"
-        ],
-        "properties": {
-          "operation": {
-            "const": "add_part"
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/InsertPartGenerationInput"
           },
-          "scope": {
-            "$ref": "#/components/schemas/InsertionPointScope"
-          },
-          "instruction": {
-            "$ref": "#/components/schemas/Instruction"
-          },
-          "preserve": {
-            "$ref": "#/components/schemas/PreserveList"
-          },
-          "reference_asset_refs": {
-            "$ref": "#/components/schemas/ReferenceAssetRefs"
-          },
-          "output_count": {
-            "$ref": "#/components/schemas/OutputCount"
+          {
+            "$ref": "#/components/schemas/WholeVersionLayerGenerationInput"
           }
-        }
+        ]
       },
       "ReplaceSectionGenerationInput": {
         "type": "object",
@@ -712,6 +690,142 @@
             "minLength": 1
           }
         }
+      },
+      "InsertPartGenerationInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "scope",
+          "instruction",
+          "preserve",
+          "reference_asset_refs",
+          "output_count"
+        ],
+        "properties": {
+          "operation": {
+            "const": "add_part"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/InsertionPointScope"
+          },
+          "instruction": {
+            "$ref": "#/components/schemas/Instruction"
+          },
+          "preserve": {
+            "$ref": "#/components/schemas/PreserveList"
+          },
+          "reference_asset_refs": {
+            "$ref": "#/components/schemas/ReferenceAssetRefs"
+          },
+          "output_count": {
+            "$ref": "#/components/schemas/OutputCount"
+          }
+        }
+      },
+      "WholeVersionLayerGenerationInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "scope",
+          "part_kind",
+          "instruction",
+          "lyrics",
+          "voice_ref",
+          "preserve",
+          "reference_asset_refs",
+          "output_count"
+        ],
+        "properties": {
+          "operation": {
+            "const": "add_part"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/WholeVersionScope"
+          },
+          "part_kind": {
+            "type": "string",
+            "enum": [
+              "vocals",
+              "instrumental"
+            ]
+          },
+          "instruction": {
+            "$ref": "#/components/schemas/Instruction"
+          },
+          "lyrics": {
+            "oneOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 20000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "voice_ref": {
+            "oneOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "preserve": {
+            "$ref": "#/components/schemas/PreserveList"
+          },
+          "reference_asset_refs": {
+            "$ref": "#/components/schemas/ReferenceAssetRefs"
+          },
+          "output_count": {
+            "$ref": "#/components/schemas/OutputCount"
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "part_kind": {
+                  "const": "vocals"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "lyrics": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 20000
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "part_kind": {
+                  "const": "instrumental"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "lyrics": {
+                  "const": null
+                },
+                "voice_ref": {
+                  "const": null
+                }
+              }
+            }
+          }
+        ]
       }
     }
   }

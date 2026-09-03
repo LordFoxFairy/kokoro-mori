@@ -130,6 +130,35 @@ Commit       Apply to draft；应用后仍可 Undo，最终由 Save draft 持久
 Lyrics Revision seam：一次请求默认返回两个可切换 Suggestion，运行中展示 snapshot / SSE 进度并允许取消，
 失败时保留已复核方向供重试；BFF 未接通时明确显示离线状态，不在组件内伪造歌词结果。
 
+### Voice & Stems 的图层工作流
+
+Add Vocals、Add Instrumental 与 Separate mix 统一留在当前 Version 的 **Voice & stems** 工作面，不复制 Tad
+把每一种能力都提升成全局工具页的做法。用户先选择意图，再只看到该任务真正需要的输入：
+
+```text
+Add Vocals
+  Lyrics       必填
+  Voice        可选的稳定 voice_ref，与 Vocal direction 分离
+  Direction    本次演唱要求
+  Scope        Whole song
+  Keep         Melody + Tempo + Structure
+
+Add Instrumental
+  Direction    编曲与留白要求
+  Scope        Whole song
+  Keep         Melody + Lyrics + Voice + Tempo + Structure
+```
+
+两条路径都先 Review Layer Plan，默认生成两个 alternatives，并复用 Studio Change 的 Generation lifecycle；
+成功结果进入 Arrangement 的 Take Lanes，用户明确 `Use take` 前不替换 Current Version。切换 Add Vocals、
+Add Instrumental 与 Separate mix 时，本地未提交草稿不会丢失；运行中的图层在离开并返回 Stems 后仍恢复到原意图，
+保留取消和重试入口。该层级吸收 [Suno Add Vocals](https://help.suno.com/en/articles/6882817)
+的“歌词 + 声音身份 + 当前伴奏”关系，以及 [Suno Studio 2.0](https://help.suno.com/en/articles/13670529)
+在作品内创建 vocals / instruments 的连续工作流；但 Mori 使用结构化、provider-neutral 请求，不让自然语言承担关键类型判断。
+
+在契约中，两者仍属于稳定一层操作 `add_part`：时间线内容使用 `insertion_point`，整首图层使用
+`whole_version + part_kind`。这样不会为了两个入口再创建新的任务状态机或顶层 operation。
+
 ### Stems 的 AI 分离模型
 
 Stems 吸收 Tad Vocal Remover 的两层选择，但不要求用户重新上传当前歌曲，也不做成全局工具页：
@@ -175,6 +204,10 @@ StudioChangeGenerationInput
     time_range              start_ms + end_ms
     from_position           position_ms
     whole_version
+  add_part whole_version
+    part_kind               vocals | instrumental
+    lyrics                  vocals 必填；instrumental 为 null
+    voice_ref               vocals 可选；instrumental 为 null
   instruction
   preserve                  melody | lyrics | vocal_identity | tempo | structure
   reference_asset_refs[]
@@ -190,6 +223,7 @@ Generation snapshot 使用 `generation_kind: new_song | studio_change` 做显式
 - Command 使用 `Idempotency-Key` 和 request digest。
 - 异步执行返回 `202`、稳定 job ref、状态与事件回放。
 - Replace 必须有 range；Extend 必须有起点；Transform 必须有 source version。
+- Add part 的时间线插入必须有 insertion point；整首图层必须有 `part_kind`，Vocal layer 必须有歌词。
 - 输出只创建 Candidate/Take，不原地修改 Current Version。
 - `Use take` 是独立、可审计、带并发版本条件的提交动作。
 
@@ -289,7 +323,8 @@ Command 使用 `Idempotency-Key`；恢复使用 durable snapshot 与 `Last-Event
   Mute/Solo 作为本地 mix selection 已就位，待可播放 stem renderer 接入后再驱动真实试听。已固定
   version-scoped OpenAPI、client、运行时 parser 与 contract tests。
 - 定向 Isolate one part 与 Custom stems 等 owner 能力协商稳定后再进入渐进式高级选项。
-- Add Vocal、Add Instrumental。
+- Add Vocal、Add Instrumental 已落地为 Stems 内的 whole-Version `add_part` 图层工作流：意图选择、结构化输入、
+  Review、进度/取消/重试与 Take Lanes 去向均复用既有 Generation lifecycle，不新增全局工具或第二套任务状态机。
 - Create 已建立 Audio / Voice / Inspiration 的统一选择位，并把 `voice_ref` 与 Vocal direction 分离；Library
   已加入同源 preview 素材架、类型筛选、搜索和 `Use in Create` 上下文恢复。下一步由 storage/music owner
   adapter 提供正式 Audio、Voice、Persona、Style preset 与 Reference projection，替换当前 preview 目录。

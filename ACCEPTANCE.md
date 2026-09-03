@@ -18,7 +18,7 @@ pnpm build
 
 - `pnpm lint`：通过，`--max-warnings=0`
 - `pnpm typecheck`：通过
-- `pnpm test`：通过，19 个测试文件、151 个测试
+- `pnpm test`：通过，20 个测试文件、161 个测试
 - `pnpm build`：通过，生成 `/`、`/create`、`/projects`、`/library`、`/settings`、Project Overview 和 Studio 路由
 
 ## 页面巡检
@@ -81,6 +81,9 @@ Studio Change 的浏览器契约已固定为 version-scoped generation：四种 
 machine-readable OpenAPI 与 contract tests 会阻止 camelCase、provider、tenant 或 subject 字段进入公开 Schema；
 Generation snapshot 通过 `generation_kind` 区分新歌与 Studio Change，Studio 分支保留
 `source_version_ref` 和 `operation`，刷新后仍可恢复正确上下文；
+`add_part` 在保持四种一层 operation 不变的前提下增加严格的 whole-version layer 分支：`part_kind` 明确为
+`vocals | instrumental`，Vocal layer 携带非空 `lyrics` 与可选 `voice_ref`，Instrumental layer 将两者固定为
+`null`；OpenAPI、request builder 与 contract tests 共同约束该 provider-neutral 语义；
 Lyrics 已升级为双工作面：左侧保留可编辑 Draft，右侧 Mori lyric partner 提供 Rewrite、Continue、Find rhyme、
 Restructure，并能选择 Verse、Chorus 或 Whole lyrics；用户先 Review direction，再通过同源 Lyrics Revision API
 获得多个独立且可编辑的 Suggestion。运行态展示 snapshot / SSE 进度，支持取消、失败保留与重试；切换 Studio 工具
@@ -92,6 +95,12 @@ Stems 已升级为当前 Version 内的非破坏式分离工作面：用户可�
 显示进度并支持取消、失败重试和切换工具后恢复；成功态只渲染 API 实际返回的 version-bound stem assets，逐轨
 Mute/Solo 当前只保存本地 mix selection，不修改资产或 Current Version；可播放 stem renderer 接入前不宣称改变
 实际音频，BFF 离线时显示真实失败状态，不伪造可播放结果。
+Stems 顶层已经收敛为 Voice & stems，并在同一上下文中提供 Separate mix、Add vocals、Add instrumental 三种意图；
+不为 Tad 式能力分类继续增加全局导航。Add vocals 要求 Lyrics，将可选 Voice profile 与 Vocal direction 分开；
+Add instrumental 只要求编曲方向。两者作用于 Whole song，先 Review Layer Plan，固定输出两个 alternatives 到
+Take Lanes，并明确 Current Version stays untouched。未提交草稿可在三个子工作流间保留；运行中的 Vocal layer
+离开并返回 Stems 后仍恢复原意图、进度和取消入口。成功 Candidate 只追加到 Arrangement 的 Take Lanes，用户
+点击 Review takes in Arrangement 后仍需显式 Use take 才会改变 Current Version。
 Stem Separation 的 OpenAPI、request builder、same-origin client、运行时 parser 与 contract tests 已固定
 `snake_case`、`Idempotency-Key`、`Last-Event-ID`、cancel 和 caller identity 边界；
 Lyrics Revision 的浏览器契约已固定为 version-scoped 异步资源：输入明确 direction、section / whole lyrics

@@ -40,11 +40,28 @@ describe("Mori Studio change OpenAPI contract", () => {
     ])
 
     const operations = variantNames.map((name) => {
-      const schema = recordValue(schemas[name], name)
+      const schema = recordValue(schemas[name === "AddPartGenerationInput" ? "InsertPartGenerationInput" : name], name)
       const properties = recordValue(schema.properties, `${name} properties`)
       return recordValue(properties.operation, `${name} operation`).const
     })
     expect(operations).toEqual(["add_part", "replace_section", "extend", "transform"])
+  })
+
+  it("models whole-version vocal and instrumental layers as typed add-part variants", () => {
+    const schemas = contractSchemas(readContract())
+    const addPart = recordValue(schemas.AddPartGenerationInput, "AddPartGenerationInput")
+    const variants = arrayValue(addPart.oneOf, "Add part variants").map((value) => {
+      const ref = stringValue(recordValue(value, "Add part variant").$ref, "Add part variant ref")
+      return ref.split("/").at(-1) ?? ""
+    })
+    expect(variants).toEqual(["InsertPartGenerationInput", "WholeVersionLayerGenerationInput"])
+
+    const layer = recordValue(schemas.WholeVersionLayerGenerationInput, "WholeVersionLayerGenerationInput")
+    const required = arrayValue(layer.required, "Whole-Version layer required fields")
+    expect(required).toEqual(expect.arrayContaining(["part_kind", "lyrics", "voice_ref"]))
+    const properties = recordValue(layer.properties, "Whole-Version layer properties")
+    expect(recordValue(properties.scope, "Whole-Version layer scope").$ref).toBe("#/components/schemas/WholeVersionScope")
+    expect(recordValue(properties.part_kind, "Whole-Version layer kind").enum).toEqual(["vocals", "instrumental"])
   })
 
   it("publishes refresh-safe generation snapshots for both creation paths", () => {

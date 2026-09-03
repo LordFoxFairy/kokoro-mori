@@ -1,8 +1,10 @@
 "use client"
 
-import { ArrowRight, Check, FileMusic, Layers3, RotateCcw, Scissors, Sparkles, Volume2, VolumeX, X } from "lucide-react"
+import { ArrowRight, Check, FileMusic, Layers3, Mic2, Music2, RotateCcw, Scissors, Sparkles, Volume2, VolumeX, X } from "lucide-react"
 import { useState } from "react"
 import type { MoriStem, StemSeparationStatus } from "@/lib/mori-api"
+import { isActiveStudioChangeStatus, type StudioChangePlan } from "../studio-change"
+import { isStudioLayerPlan } from "../studio-layers"
 import {
   buildStudioStemSeparationPlan,
   isActiveStemSeparationStatus,
@@ -13,6 +15,8 @@ import {
   type StudioStemSeparationPlan,
 } from "../studio-stems"
 import { Waveform } from "./waveform"
+import { StudioLayerComposer } from "./studio-layer-composer"
+import type { StudioAiRunState } from "./studio-ai-composer"
 import styles from "./studio-stems-editor.module.css"
 
 export type StudioStemSeparationRunState = {
@@ -27,15 +31,29 @@ export type StudioStemSeparationRunState = {
 }
 
 type StudioStemsEditorProps = {
+  durationSeconds: number
   run: StudioStemSeparationRunState
+  layerRun: StudioAiRunState
   onSeparate: (plan: StudioStemSeparationPlan) => void
   onCancel: () => void
   onReset: () => void
+  onGenerateLayer: (plan: StudioChangePlan) => void
+  onCancelLayer: () => void
+  onResetLayer: () => void
+  onReviewTakes: () => void
 }
 
 const modes: readonly StudioStemSeparationMode[] = ["vocals_instrumental", "auto_stems"]
+type StemsWorkflow = "separate" | "vocals" | "instrumental"
 
-export function StudioStemsEditor({ run, onSeparate, onCancel, onReset }: StudioStemsEditorProps) {
+const workflows = [
+  { id: "separate", label: "Separate mix", Icon: Scissors },
+  { id: "vocals", label: "Add vocals", Icon: Mic2 },
+  { id: "instrumental", label: "Add instrumental", Icon: Music2 },
+] satisfies readonly { id: StemsWorkflow; label: string; Icon: typeof Scissors }[]
+
+export function StudioStemsEditor({ durationSeconds, run, layerRun, onSeparate, onCancel, onReset, onGenerateLayer, onCancelLayer, onResetLayer, onReviewTakes }: StudioStemsEditorProps) {
+  const [workflow, setWorkflow] = useState<StemsWorkflow>(() => isStudioLayerPlan(layerRun.plan) ? layerRun.plan.layerKind : "separate")
   const [mode, setMode] = useState<StudioStemSeparationMode>(() => run.plan?.mode ?? "vocals_instrumental")
   const [includeMidi, setIncludeMidi] = useState(() => run.plan?.includeMidi ?? false)
   const [reviewedPlan, setReviewedPlan] = useState<StudioStemSeparationPlan | null>(() => run.status === "idle" ? null : run.plan)
@@ -43,6 +61,7 @@ export function StudioStemsEditor({ run, onSeparate, onCancel, onReset }: Studio
   const [soloStemRef, setSoloStemRef] = useState<string | null>(null)
   const visiblePlan = run.status === "idle" ? reviewedPlan : run.plan
   const ready = run.status === "succeeded" && run.stems.length > 0
+  const workflowLocked = isActiveStemSeparationStatus(run.status) || isActiveStudioChangeStatus(layerRun.status)
 
   const review = () => setReviewedPlan(buildStudioStemSeparationPlan(mode, includeMidi))
 
@@ -69,11 +88,19 @@ export function StudioStemsEditor({ run, onSeparate, onCancel, onReset }: Studio
   return (
     <section className={styles.stemsEditor} aria-label="Stems editor">
       <header className={styles.surfaceHeader}>
-        <div><span>Separate the current version</span><h3>Stem workspace</h3></div>
+        <div><span>Build or separate this version</span><h3>Voice & stems</h3></div>
         <span className={ready ? styles.readyBadge : styles.setupBadge}>{ready ? `${run.stems.length} stems ready` : "Non-destructive"}</span>
       </header>
 
-      {visiblePlan === null ? (
+      <div className={styles.workflowTabs} role="group" aria-label="Stems workflow">
+        {workflows.map(({ id, label, Icon }) => (
+          <button type="button" aria-pressed={workflow === id} disabled={workflowLocked && workflow !== id} key={id} onClick={() => setWorkflow(id)}>
+            <Icon aria-hidden="true" /> {label}
+          </button>
+        ))}
+      </div>
+
+      {workflow === "separate" && visiblePlan === null ? (
         <section className={styles.setupPanel} aria-label="Stem separation setup">
           <div className={styles.setupIntro}>
             <span className={styles.setupIcon} aria-hidden="true"><Scissors size={16} /></span>
@@ -98,7 +125,7 @@ export function StudioStemsEditor({ run, onSeparate, onCancel, onReset }: Studio
         </section>
       ) : null}
 
-      {visiblePlan !== null && !ready ? (
+      {workflow === "separate" && visiblePlan !== null && !ready ? (
         <StemSeparationPlan
           plan={visiblePlan}
           run={run}
@@ -108,7 +135,7 @@ export function StudioStemsEditor({ run, onSeparate, onCancel, onReset }: Studio
         />
       ) : null}
 
-      {visiblePlan !== null && ready ? (
+      {workflow === "separate" && visiblePlan !== null && ready ? (
         <section className={styles.results} aria-label="Stem tracks">
           <header className={styles.resultsHeader}>
             <div><span>Separated from this version</span><h4>Stem tracks</h4></div>
@@ -136,6 +163,29 @@ export function StudioStemsEditor({ run, onSeparate, onCancel, onReset }: Studio
           <p className={styles.resultNote}>Mix controls are staged locally until playable stem audio is connected.</p>
         </section>
       ) : null}
+
+      <div hidden={workflow !== "vocals"}>
+        <StudioLayerComposer
+          mode="vocals"
+          durationSeconds={durationSeconds}
+          run={layerRun}
+          onGenerate={onGenerateLayer}
+          onCancel={onCancelLayer}
+          onReset={onResetLayer}
+          onReviewTakes={onReviewTakes}
+        />
+      </div>
+      <div hidden={workflow !== "instrumental"}>
+        <StudioLayerComposer
+          mode="instrumental"
+          durationSeconds={durationSeconds}
+          run={layerRun}
+          onGenerate={onGenerateLayer}
+          onCancel={onCancelLayer}
+          onReset={onResetLayer}
+          onReviewTakes={onReviewTakes}
+        />
+      </div>
     </section>
   )
 }
