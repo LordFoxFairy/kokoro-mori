@@ -1,5 +1,5 @@
 import type { GenerationStatus } from "./domain"
-import { createGenerationRequest, type GenerationCreateInput, type GenerationReceipt, type LyricsRevisionInput, type MoriApi, type MoriGenerationDraft, type MoriProjectCreateInput, type SongPlanCreateInput, type StemSeparationInput, type StudioChangeGenerationInput } from "@/lib/mori-api"
+import { createGenerationRequest, type GenerationCreateInput, type GenerationReceipt, type LyricsRevisionInput, type MixRevisionInput, type MoriApi, type MoriGenerationDraft, type MoriProjectCreateInput, type SongPlanCreateInput, type StemSeparationInput, type StudioChangeGenerationInput } from "@/lib/mori-api"
 import type { MoriRef } from "./domain"
 
 export type GenerationControllerState = {
@@ -222,6 +222,44 @@ export const previewMoriApi: MoriApi = {
       },
       meta: {
         request_id: "preview-stem-separation-cancel-request",
+      },
+    }
+  },
+  async createMixRevision(versionRef: MoriRef, input: MixRevisionInput, idempotencyKey: string) {
+    return {
+      data: {
+        mix_revision_ref: `mix_revision_preview_${idempotencyKey}`,
+        version_ref: versionRef,
+        source_stem_separation_ref: input.source_stem_separation_ref,
+        name: input.name,
+        revision: 1,
+        tracks: input.tracks,
+        created_at: "2026-09-03T12:01:00.000Z",
+      },
+      meta: {
+        request_id: `preview-mix-revision-request-${idempotencyKey}`,
+      },
+    }
+  },
+  async getMixRevision(mixRevisionRef: MoriRef) {
+    return {
+      data: {
+        mix_revision_ref: mixRevisionRef,
+        version_ref: "version_preview_first_light_a",
+        source_stem_separation_ref: "stem_separation_preview_first_light",
+        name: "Stem mix",
+        revision: 1,
+        tracks: [
+          { stem_ref: "stem_preview_vocals", gain: 1, muted: false },
+          { stem_ref: "stem_preview_backing", gain: 1, muted: false },
+          { stem_ref: "stem_preview_drums", gain: 1, muted: false },
+          { stem_ref: "stem_preview_bass", gain: 1, muted: false },
+          { stem_ref: "stem_preview_other", gain: 1, muted: false },
+        ],
+        created_at: "2026-09-03T12:01:00.000Z",
+      },
+      meta: {
+        request_id: "preview-mix-revision-status-request",
       },
     }
   },

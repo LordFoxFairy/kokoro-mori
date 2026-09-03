@@ -172,6 +172,7 @@ Review       先确认输出数量、来源与结果去向
 Run          snapshot / SSE 进度、取消、失败重试
 Result       实际返回的 version-bound stem assets
 Audition     一个同步 Transport + Seek；逐轨 Mute / Solo / Level
+Save         完整 Gain / Mute → 不可变 Mix Revision；Solo 不持久化
 Export       每个返回音轨可独立下载
 ```
 
@@ -184,7 +185,8 @@ Studio 内 Review，原版本保持不变。成功后只展示 API 真正返回�
 Stem mixer 以第一条返回音轨为时钟，在播放和 seek 前对齐全部通道，并在漂移超过阈值时重新同步；Mute、Solo、
 Level 会立即改变 audition 通道，任一媒体失败则停止整组并显示真实失败。开始分轨试听会暂停全局 Player；全局
 Player 再次开始时也会暂停 mixer，避免两套声音竞争。逐轨 Download 与试听都使用同一个受信同源媒体 seam，
-不会把 Storage 或 provider URL 暴露给浏览器。
+不会把 Storage 或 provider URL 暴露给浏览器。用户明确保存时，完整逐轨 Gain / Mute 被写入新的不可变
+Mix Revision；未改动的状态不会重复保存，继续调整后则创建下一 revision。Solo 只用于快速监听，永不进入持久化请求。
 
 ## 4. Studio Change API 契约
 
@@ -298,6 +300,32 @@ Command 使用 `Idempotency-Key`；恢复使用 durable snapshot 与 `Last-Event
 机器事实源见
 [`contract/openapi/mori-stem-separation.v1.json`](../contract/openapi/mori-stem-separation.v1.json)。
 
+### Mix Revision API
+
+Mix Revision 保存混音元数据，不执行音频渲染，因此使用同步 `201` command 与可读取的不可变资源：
+
+```http
+POST /api/v1/mori/versions/{version_ref}/mix_revisions  → 201
+GET  /api/v1/mori/mix_revisions/{mix_revision_ref}
+```
+
+```text
+MixRevisionInput
+  source_stem_separation_ref
+  name                1–120 字符
+  tracks[]            1–12；stem_ref + gain(0–1) + muted
+
+MixRevision
+  mix_revision_ref + version_ref + revision
+  source_stem_separation_ref + name + tracks[]
+  created_at
+```
+
+owner 必须验证 separation 属于路径 Version，并要求请求中的 stem 集合与完成的 separation 精确一致。
+Command 使用 `Idempotency-Key`；相同内容没有变化时浏览器禁用重复提交，任一 Gain / Mute / Name 改动后再次保存
+创建新的 revision。Solo 是监听状态，不属于 durable contract。机器事实源见
+[`contract/openapi/mori-mix-revision.v1.json`](../contract/openapi/mori-mix-revision.v1.json)。
+
 ### Media Access API
 
 Stem snapshot 继续只保存稳定的 opaque `audio_asset_ref`。浏览器通过独立、只读的同源媒体投影访问字节：
@@ -341,7 +369,8 @@ BFF 必须按受信会话校验该 asset 与用户可见 Mori 资源的关联，
   snapshot / SSE / cancel seam 已接入组件运行态，多候选保持独立且只应用用户选中的草稿。
 - Stem split 已完成浏览器侧闭环：Isolate part、Auto split、Custom stems、可选 MIDI、Review、snapshot / SSE、
   取消、重试与实际资产。成功结果已接入同步 Transport、Seek、逐轨 Mute / Solo / Level 与单轨下载；媒体通过
-  同源、支持 Range 的 asset content seam 读取，失败不回退到假音频。下一步固定并接入可持久化 Mix Revision。
+  同源、支持 Range 的 asset content seam 读取，失败不回退到假音频。Gain / Mute 现可明确保存为不可变
+  Mix Revision，保存失败保留当前调整，未变化时不重复创建；Solo 保持 preview-only。
 - Add Vocal、Add Instrumental 已落地为 Stems 内的 whole-Version `add_part` 图层工作流：意图选择、结构化输入、
   Review、进度/取消/重试与 Take Lanes 去向均复用既有 Generation lifecycle，不新增全局工具或第二套任务状态机。
 - Create 已建立 Audio / Voice / Inspiration 的统一选择位，并把 `voice_ref` 与 Vocal direction 分离；Library
@@ -350,7 +379,7 @@ BFF 必须按受信会话校验该 asset 与用户可见 Mori 资源的关联，
 
 ### P3 · 完成与发布
 
-- Remaster strength、mix revision、全曲/选区/多轨导出。
+- Remaster strength、以 Mix Revision 为输入的全曲/选区/多轨渲染导出。
 - Cover artwork 与发布信息。
 - AI MV 作为完成歌曲的后置流程，不抢占创作主路径。
 

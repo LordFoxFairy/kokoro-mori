@@ -1,8 +1,8 @@
 "use client"
 
-import { Download, Pause, Play, Volume2, VolumeX } from "lucide-react"
+import { Check, Download, Pause, Play, Save, Volume2, VolumeX } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
-import type { MoriStem } from "@/lib/mori-api"
+import { createMixRevisionRequest, type MixRevisionInput, type MoriMixRevision, type MoriStem } from "@/lib/mori-api"
 import { buildMoriAssetContentUrl } from "@/lib/mori-media"
 import {
   createHtmlStemPlaybackController,
@@ -15,14 +15,16 @@ import styles from "./studio-stem-mixer.module.css"
 
 type StudioStemMixerProps = {
   stems: readonly MoriStem[]
+  sourceStemSeparationRef: string
   externalPlaybackActive: boolean
   onPlaybackStart: () => void
+  onSaveMix: (input: MixRevisionInput) => Promise<MoriMixRevision>
   playbackFactory?: StemPlaybackFactory
 }
 
 const playbackFailureMessage = "Stem audio is unavailable right now. Check the connection and try again."
 
-export function StudioStemMixer({ stems, externalPlaybackActive, onPlaybackStart, playbackFactory = createHtmlStemPlaybackController }: StudioStemMixerProps) {
+export function StudioStemMixer({ stems, sourceStemSeparationRef, externalPlaybackActive, onPlaybackStart, onSaveMix, playbackFactory = createHtmlStemPlaybackController }: StudioStemMixerProps) {
   const [playing, setPlaying] = useState(false)
   const [starting, setStarting] = useState(false)
   const [positionSeconds, setPositionSeconds] = useState(0)
@@ -30,6 +32,10 @@ export function StudioStemMixer({ stems, externalPlaybackActive, onPlaybackStart
   const [soloStemRef, setSoloStemRef] = useState<string | null>(null)
   const [gains, setGains] = useState<Record<string, number>>(() => initialGains(stems))
   const [playbackError, setPlaybackError] = useState<string | null>(null)
+  const [mixName, setMixName] = useState("Stem mix")
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "failed">("idle")
+  const [savedFingerprint, setSavedFingerprint] = useState<string | null>(null)
+  const [savedRevision, setSavedRevision] = useState<MoriMixRevision | null>(null)
   const controllerRef = useRef<StemPlaybackController | null>(null)
   const playbackRequestRef = useRef(0)
   const durationSeconds = stems.reduce((duration, stem) => Math.max(duration, stem.duration_seconds), 0)
@@ -39,6 +45,10 @@ export function StudioStemMixer({ stems, externalPlaybackActive, onPlaybackStart
     muted: mutedStemRefs.includes(stem.stem_ref),
     solo: soloStemRef === stem.stem_ref,
   })), [gains, mutedStemRefs, soloStemRef, stems])
+  const mixRevisionInput = useMemo(() => buildMixRevisionInput(sourceStemSeparationRef, mixName, mix), [mix, mixName, sourceStemSeparationRef])
+  const mixFingerprint = mixRevisionInput === null ? null : JSON.stringify(mixRevisionInput)
+  const mixChanged = mixFingerprint !== savedFingerprint
+  const matchesSavedRevision = savedFingerprint !== null && !mixChanged
 
   useEffect(() => {
     const controller = playbackFactory({
@@ -123,6 +133,30 @@ export function StudioStemMixer({ stems, externalPlaybackActive, onPlaybackStart
     setGains((current) => ({ ...current, [stemRef]: clamp(gainPercent / 100, 0, 1) }))
   }
 
+  const saveMix = async () => {
+    if (mixRevisionInput === null || mixFingerprint === null || saveStatus === "saving") return
+    const submittedFingerprint = mixFingerprint
+    setSaveStatus("saving")
+    try {
+      const revision = await onSaveMix(mixRevisionInput)
+      setSavedFingerprint(submittedFingerprint)
+      setSavedRevision(revision)
+      setSaveStatus("saved")
+    } catch {
+      setSaveStatus("failed")
+    }
+  }
+
+  const saveLabel = matchesSavedRevision
+    ? "Mix saved"
+    : saveStatus === "saving"
+      ? "Saving…"
+      : saveStatus === "failed"
+        ? "Retry save"
+        : savedFingerprint !== null
+          ? "Save new revision"
+          : "Save mix"
+
   return (
     <section className={styles.mixer} aria-label="Stem mixer">
       <div className={styles.transport}>
@@ -180,9 +214,49 @@ export function StudioStemMixer({ stems, externalPlaybackActive, onPlaybackStart
           )
         })}
       </div>
-      <p className={styles.mixNote}>Audition only · Mute, Solo, and Level never alter the Current Version or source stems.</p>
+      <div className={styles.savePanel}>
+        <label className={styles.mixName}>
+          <span>Mix name</span>
+          <input value={mixName} maxLength={120} aria-label="Mix name" onChange={(event) => setMixName(event.target.value)} />
+        </label>
+        <div className={styles.saveCopy}>
+          <strong>Keep this balance</strong>
+          <span>Gain and mute are saved as a new immutable Mix Revision. Solo is preview-only.</span>
+        </div>
+        <button
+          className={styles.saveButton}
+          type="button"
+          aria-label={saveLabel}
+          disabled={saveStatus === "saving" || !mixChanged || mixRevisionInput === null}
+          onClick={() => { void saveMix() }}
+        >
+          {matchesSavedRevision ? <Check size={13} /> : <Save size={13} />}
+          {saveLabel}
+        </button>
+      </div>
+      <div className={styles.saveFeedback} aria-live="polite">
+        {matchesSavedRevision && savedRevision !== null ? <span><Check size={12} /> Mix revision {savedRevision.revision} saved</span> : null}
+        {saveStatus === "failed" && mixChanged ? <span className={styles.saveError}>Mix was not saved. Your levels and mutes are still here.</span> : null}
+      </div>
+      <p className={styles.mixNote}>Non-destructive · Saving creates a Mix Revision; the Current Version and source stems stay unchanged.</p>
     </section>
   )
+}
+
+function buildMixRevisionInput(sourceStemSeparationRef: string, name: string, mix: readonly StemMixTrack[]): MixRevisionInput | null {
+  try {
+    return createMixRevisionRequest({
+      sourceStemSeparationRef,
+      name,
+      tracks: mix.map((track) => ({
+        stemRef: track.stemRef,
+        gain: track.gain,
+        muted: track.muted,
+      })),
+    })
+  } catch {
+    return null
+  }
 }
 
 function initialGains(stems: readonly MoriStem[]): Record<string, number> {

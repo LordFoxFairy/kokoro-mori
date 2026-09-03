@@ -2,7 +2,7 @@
 
 import { ArrowRight, Check, FileMusic, Layers3, Mic2, Music2, RotateCcw, Scissors, Sparkles, X } from "lucide-react"
 import { useState } from "react"
-import type { MoriStem, StemSeparationStatus, StemTargetKind } from "@/lib/mori-api"
+import type { MixRevisionInput, MoriMixRevision, MoriStem, StemSeparationStatus, StemTargetKind } from "@/lib/mori-api"
 import { isActiveStudioChangeStatus, type StudioChangePlan } from "../studio-change"
 import { isStudioLayerPlan } from "../studio-layers"
 import type { StemPlaybackFactory } from "../stem-playback"
@@ -26,6 +26,7 @@ import styles from "./studio-stems-editor.module.css"
 export type StudioStemSeparationRunState = {
   status: "idle" | "preparing" | StemSeparationStatus
   sourceVersionRef: string | null
+  stemSeparationRef: string | null
   progress: number
   plan: StudioStemSeparationPlan | null
   stems: MoriStem[]
@@ -41,6 +42,7 @@ type StudioStemsEditorProps = {
   onSeparate: (plan: StudioStemSeparationPlan) => void
   onCancel: () => void
   onReset: () => void
+  onSaveMix: (input: MixRevisionInput) => Promise<MoriMixRevision>
   onGenerateLayer: (plan: StudioChangePlan) => void
   onCancelLayer: () => void
   onResetLayer: () => void
@@ -61,7 +63,7 @@ const workflows = [
   { id: "instrumental", label: "Add instrumental", Icon: Music2 },
 ] satisfies readonly { id: StemsWorkflow; label: string; Icon: typeof Scissors }[]
 
-export function StudioStemsEditor({ durationSeconds, run, layerRun, onSeparate, onCancel, onReset, onGenerateLayer, onCancelLayer, onResetLayer, onReviewTakes, playbackFactory }: StudioStemsEditorProps) {
+export function StudioStemsEditor({ durationSeconds, run, layerRun, onSeparate, onCancel, onReset, onSaveMix, onGenerateLayer, onCancelLayer, onResetLayer, onReviewTakes, playbackFactory }: StudioStemsEditorProps) {
   const { playing: globalPlaybackActive, setPlaying: setGlobalPlaying } = useMoriApp()
   const [workflow, setWorkflow] = useState<StemsWorkflow>(() => isStudioLayerPlan(layerRun.plan) ? layerRun.plan.layerKind : "separate")
   const [mode, setMode] = useState<StudioStemSeparationMode>(() => run.plan?.mode ?? "isolate_part")
@@ -70,7 +72,7 @@ export function StudioStemsEditor({ durationSeconds, run, layerRun, onSeparate, 
   const [includeMidi, setIncludeMidi] = useState(() => run.plan?.includeMidi ?? false)
   const [reviewedPlan, setReviewedPlan] = useState<StudioStemSeparationPlan | null>(() => run.status === "idle" ? null : run.plan)
   const visiblePlan = run.status === "idle" ? reviewedPlan : run.plan
-  const ready = run.status === "succeeded" && run.stems.length > 0
+  const ready = run.status === "succeeded" && run.stems.length > 0 && run.stemSeparationRef !== null
   const workflowLocked = isActiveStemSeparationStatus(run.status) || isActiveStudioChangeStatus(layerRun.status)
   const selectedTargetKinds = mode === "isolate_part" ? [isolateTarget] : mode === "custom_stems" ? customTargets : []
   const canReview = mode !== "custom_stems" || customTargets.length >= 2
@@ -184,7 +186,7 @@ export function StudioStemsEditor({ durationSeconds, run, layerRun, onSeparate, 
             <div><span>Separated from this version</span><h4>Mix &amp; export</h4></div>
             <button type="button" onClick={startOver}><RotateCcw size={12} /> New separation</button>
           </header>
-          <StudioStemMixer stems={run.stems} externalPlaybackActive={globalPlaybackActive} onPlaybackStart={() => setGlobalPlaying(false)} playbackFactory={playbackFactory} />
+          <StudioStemMixer stems={run.stems} sourceStemSeparationRef={run.stemSeparationRef ?? ""} externalPlaybackActive={globalPlaybackActive} onPlaybackStart={() => setGlobalPlaying(false)} onSaveMix={onSaveMix} playbackFactory={playbackFactory} />
           {run.midiAssetRef !== null ? <div className={styles.midiReady}><FileMusic size={15} /><div><strong>MIDI transcription ready</strong><span>Stored as a version-bound asset.</span></div></div> : null}
         </section>
       ) : null}

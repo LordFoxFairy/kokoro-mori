@@ -13,8 +13,9 @@ describe("Studio stem mixer", () => {
   it("auditions only returned assets with one transport and direct track controls", async () => {
     const harness = createPlaybackHarness()
     const onPlaybackStart = vi.fn()
+    const onSaveMix = vi.fn(async () => savedMixRevision())
     const view = render(
-      <StudioStemMixer stems={stems} externalPlaybackActive={false} onPlaybackStart={onPlaybackStart} playbackFactory={harness.factory} />,
+      <StudioStemMixer stems={stems} sourceStemSeparationRef="stem_separation_1" externalPlaybackActive={false} onPlaybackStart={onPlaybackStart} onSaveMix={onSaveMix} playbackFactory={harness.factory} />,
     )
 
     expect(harness.controller.setTracks).toHaveBeenCalledWith(stems)
@@ -38,6 +39,19 @@ describe("Studio stem mixer", () => {
       { stemRef: "stem_drums", gain: 1, muted: true, solo: false },
     ])
 
+    fireEvent.change(screen.getByRole("textbox", { name: "Mix name" }), { target: { value: "  Close vocal mix  " } })
+    fireEvent.click(screen.getByRole("button", { name: "Save mix" }))
+    await waitFor(() => expect(onSaveMix).toHaveBeenCalledWith({
+      source_stem_separation_ref: "stem_separation_1",
+      name: "Close vocal mix",
+      tracks: [
+        { stem_ref: "stem_vocal", gain: 0.35, muted: false },
+        { stem_ref: "stem_drums", gain: 1, muted: true },
+      ],
+    }))
+    expect(screen.getByText("Mix revision 1 saved")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Mix saved" })).toBeDisabled()
+
     fireEvent.change(screen.getByRole("slider", { name: "Seek stem mix" }), { target: { value: "44" } })
     expect(harness.controller.seek).toHaveBeenCalledWith(44)
 
@@ -45,7 +59,7 @@ describe("Studio stem mixer", () => {
     expect(screen.getByRole("region", { name: "Stem mixer" })).toHaveTextContent("0:21 / 3:02")
 
     view.rerender(
-      <StudioStemMixer stems={stems} externalPlaybackActive onPlaybackStart={onPlaybackStart} playbackFactory={harness.factory} />,
+      <StudioStemMixer stems={stems} sourceStemSeparationRef="stem_separation_1" externalPlaybackActive onPlaybackStart={onPlaybackStart} onSaveMix={onSaveMix} playbackFactory={harness.factory} />,
     )
     expect(harness.controller.pause).toHaveBeenCalled()
     await waitFor(() => expect(screen.getByRole("button", { name: "Play stem mix" })).toBeInTheDocument())
@@ -56,7 +70,7 @@ describe("Studio stem mixer", () => {
 
   it("reports a real playback failure without replacing the audio", async () => {
     const harness = createPlaybackHarness(new Error("media unavailable"))
-    render(<StudioStemMixer stems={stems} externalPlaybackActive={false} onPlaybackStart={vi.fn()} playbackFactory={harness.factory} />)
+    render(<StudioStemMixer stems={stems} sourceStemSeparationRef="stem_separation_1" externalPlaybackActive={false} onPlaybackStart={vi.fn()} onSaveMix={async () => savedMixRevision()} playbackFactory={harness.factory} />)
 
     fireEvent.click(screen.getByRole("button", { name: "Play stem mix" }))
     expect(await screen.findByRole("alert")).toHaveTextContent("Stem audio is unavailable right now. Check the connection and try again.")
@@ -65,14 +79,61 @@ describe("Studio stem mixer", () => {
 
   it("keeps mixer rows readable as independent tracks", () => {
     const harness = createPlaybackHarness()
-    render(<StudioStemMixer stems={stems} externalPlaybackActive={false} onPlaybackStart={vi.fn()} playbackFactory={harness.factory} />)
+    render(<StudioStemMixer stems={stems} sourceStemSeparationRef="stem_separation_1" externalPlaybackActive={false} onPlaybackStart={vi.fn()} onSaveMix={async () => savedMixRevision()} playbackFactory={harness.factory} />)
 
     const vocalTrack = screen.getByRole("article", { name: "Lead vocal stem" })
     expect(within(vocalTrack).getByText("Lead vocal")).toBeInTheDocument()
     expect(within(vocalTrack).getByText("3:02")).toBeInTheDocument()
     expect(within(vocalTrack).getByRole("slider", { name: "Volume Lead vocal" })).toHaveValue("100")
   })
+
+  it("keeps changed settings available when saving a Mix Revision fails", async () => {
+    const harness = createPlaybackHarness()
+    render(<StudioStemMixer stems={stems} sourceStemSeparationRef="stem_separation_1" externalPlaybackActive={false} onPlaybackStart={vi.fn()} onSaveMix={async () => { throw new Error("offline") }} playbackFactory={harness.factory} />)
+
+    fireEvent.change(screen.getByRole("slider", { name: "Volume Lead vocal" }), { target: { value: "64" } })
+    fireEvent.click(screen.getByRole("button", { name: "Save mix" }))
+
+    expect(await screen.findByText("Mix was not saved. Your levels and mutes are still here.")).toBeInTheDocument()
+    expect(screen.getByRole("slider", { name: "Volume Lead vocal" })).toHaveValue("64")
+    expect(screen.getByRole("button", { name: "Retry save" })).toBeInTheDocument()
+  })
+
+  it("recognizes the last saved revision when a failed edit is reverted", async () => {
+    const harness = createPlaybackHarness()
+    const onSaveMix = vi.fn()
+      .mockResolvedValueOnce(savedMixRevision())
+      .mockRejectedValueOnce(new Error("offline"))
+    render(<StudioStemMixer stems={stems} sourceStemSeparationRef="stem_separation_1" externalPlaybackActive={false} onPlaybackStart={vi.fn()} onSaveMix={onSaveMix} playbackFactory={harness.factory} />)
+
+    fireEvent.click(screen.getByRole("button", { name: "Save mix" }))
+    await waitFor(() => expect(screen.getByRole("button", { name: "Mix saved" })).toBeDisabled())
+
+    fireEvent.change(screen.getByRole("slider", { name: "Volume Lead vocal" }), { target: { value: "64" } })
+    fireEvent.click(screen.getByRole("button", { name: "Save new revision" }))
+    expect(await screen.findByText("Mix was not saved. Your levels and mutes are still here.")).toBeInTheDocument()
+
+    fireEvent.change(screen.getByRole("slider", { name: "Volume Lead vocal" }), { target: { value: "100" } })
+    expect(screen.getByRole("button", { name: "Mix saved" })).toBeDisabled()
+    expect(screen.queryByText("Mix was not saved. Your levels and mutes are still here.")).not.toBeInTheDocument()
+    expect(screen.getByText("Mix revision 1 saved")).toBeInTheDocument()
+  })
 })
+
+function savedMixRevision() {
+  return {
+    mix_revision_ref: "mix_revision_1",
+    version_ref: "version_1",
+    source_stem_separation_ref: "stem_separation_1",
+    name: "Close vocal mix",
+    revision: 1,
+    tracks: [
+      { stem_ref: "stem_vocal", gain: 0.35, muted: false },
+      { stem_ref: "stem_drums", gain: 1, muted: true },
+    ],
+    created_at: "2026-09-03T12:00:00.000Z",
+  }
+}
 
 function createPlaybackHarness(playError?: Error): {
   callbacks: StemPlaybackCallbacks

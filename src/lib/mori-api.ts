@@ -210,6 +210,25 @@ export type StemSeparationSnapshot = {
   created_at: string
 }
 
+export type MoriMixTrack = {
+  stem_ref: MoriRef
+  gain: number
+  muted: boolean
+}
+
+export type MixRevisionInput = {
+  source_stem_separation_ref: MoriRef
+  name: string
+  tracks: MoriMixTrack[]
+}
+
+export type MoriMixRevision = MixRevisionInput & {
+  mix_revision_ref: MoriRef
+  version_ref: MoriRef
+  revision: number
+  created_at: string
+}
+
 export type MoriStemSeparationEvent = {
   id: string
   event: string
@@ -368,6 +387,8 @@ export type MoriApi = {
   getStemSeparation: (stemSeparationRef: MoriRef) => Promise<ApiSuccess<StemSeparationSnapshot>>
   getStemSeparationEvents: (stemSeparationRef: MoriRef, lastEventId?: string | null, signal?: AbortSignal) => Promise<MoriStemSeparationEvent[]>
   cancelStemSeparation: (stemSeparationRef: MoriRef, idempotencyKey: string) => Promise<ApiSuccess<StemSeparationCancelReceipt>>
+  createMixRevision: (versionRef: MoriRef, input: MixRevisionInput, idempotencyKey: string) => Promise<ApiSuccess<MoriMixRevision>>
+  getMixRevision: (mixRevisionRef: MoriRef) => Promise<ApiSuccess<MoriMixRevision>>
   getGeneration: (generationRef: MoriRef) => Promise<ApiSuccess<GenerationSnapshot>>
   getGenerationEvents: (generationRef: MoriRef, lastEventId?: string | null) => Promise<MoriGenerationEvent[]>
   listCandidates: (projectRef: MoriRef) => Promise<ApiSuccess<{ candidates: MoriCandidate[]; next_cursor: string | null }>>
@@ -427,6 +448,16 @@ export type MoriStemSeparationDraft = {
   mode: StemSeparationMode
   targetKinds: StemTargetKind[]
   includeMidi: boolean
+}
+
+export type MoriMixRevisionDraft = {
+  sourceStemSeparationRef: MoriRef
+  name: string
+  tracks: Array<{
+    stemRef: MoriRef
+    gain: number
+    muted: boolean
+  }>
 }
 
 export function createGenerationRequest(draft: MoriGenerationDraft): GenerationCreateInput {
@@ -587,6 +618,45 @@ export function createStemSeparationRequest(draft: MoriStemSeparationDraft): Ste
     mode: draft.mode,
     target_kinds: targetKinds,
     include_midi: draft.includeMidi,
+  }
+}
+
+export function createMixRevisionRequest(draft: MoriMixRevisionDraft): MixRevisionInput {
+  const sourceStemSeparationRef = draft.sourceStemSeparationRef.trim()
+  if (sourceStemSeparationRef === "") throw new Error("mix_revision_source_required")
+
+  const name = draft.name.trim()
+  if (name === "") throw new Error("mix_revision_name_required")
+  if (name.length > 120) throw new Error("mix_revision_name_too_long")
+
+  if (!Array.isArray(draft.tracks) || draft.tracks.length < 1 || draft.tracks.length > 12) {
+    throw new Error("mix_revision_tracks_invalid")
+  }
+
+  const seenStemRefs = new Set<string>()
+  const tracks: MoriMixTrack[] = draft.tracks.map((track) => {
+    const stemRef = track.stemRef.trim()
+    if (
+      stemRef === ""
+      || seenStemRefs.has(stemRef)
+      || !Number.isFinite(track.gain)
+      || track.gain < 0
+      || track.gain > 1
+      || typeof track.muted !== "boolean"
+    ) throw new Error("mix_revision_tracks_invalid")
+
+    seenStemRefs.add(stemRef)
+    return {
+      stem_ref: stemRef,
+      gain: Math.round(track.gain * 100) / 100,
+      muted: track.muted,
+    }
+  })
+
+  return {
+    source_stem_separation_ref: sourceStemSeparationRef,
+    name,
+    tracks,
   }
 }
 

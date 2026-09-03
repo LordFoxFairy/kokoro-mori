@@ -1,0 +1,211 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Mori Mix Revision API",
+    "version": "0.1.0",
+    "description": "Version-scoped immutable mixer settings saved from one completed stem separation."
+  },
+  "paths": {
+    "/api/v1/mori/versions/{version_ref}/mix_revisions": {
+      "post": {
+        "operationId": "createMixRevision",
+        "summary": "Save an immutable Mix Revision for a version",
+        "parameters": [
+          {
+            "name": "version_ref",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "minLength": 1 }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string", "minLength": 1, "maxLength": 200 }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/MixRevisionInput" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The immutable Mix Revision was saved or replayed",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiMixRevision" }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is malformed",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiErrorResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "The source version, separation, or stem was not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiErrorResponse" }
+              }
+            }
+          },
+          "409": {
+            "description": "The idempotency key or source relationship conflicts",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiErrorResponse" }
+              }
+            }
+          },
+          "422": {
+            "description": "The submitted tracks do not exactly match the completed separation",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/mori/mix_revisions/{mix_revision_ref}": {
+      "get": {
+        "operationId": "getMixRevision",
+        "summary": "Read one immutable Mix Revision",
+        "parameters": [
+          {
+            "name": "mix_revision_ref",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "minLength": 1 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The saved Mix Revision",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiMixRevision" }
+              }
+            }
+          },
+          "404": {
+            "description": "The Mix Revision was not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "MixTrack": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["stem_ref", "gain", "muted"],
+        "properties": {
+          "stem_ref": { "type": "string", "minLength": 1 },
+          "gain": { "type": "number", "minimum": 0, "maximum": 1, "multipleOf": 0.01 },
+          "muted": { "type": "boolean" }
+        }
+      },
+      "MixRevisionInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["source_stem_separation_ref", "name", "tracks"],
+        "properties": {
+          "source_stem_separation_ref": { "type": "string", "minLength": 1 },
+          "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "tracks": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 12,
+            "items": { "$ref": "#/components/schemas/MixTrack" }
+          }
+        }
+      },
+      "MixRevision": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["mix_revision_ref", "version_ref", "source_stem_separation_ref", "name", "revision", "tracks", "created_at"],
+        "properties": {
+          "mix_revision_ref": { "type": "string", "minLength": 1 },
+          "version_ref": { "type": "string", "minLength": 1 },
+          "source_stem_separation_ref": { "type": "string", "minLength": 1 },
+          "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "revision": { "type": "integer", "minimum": 1 },
+          "tracks": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 12,
+            "items": { "$ref": "#/components/schemas/MixTrack" }
+          },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ApiMixRevision": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["data", "meta"],
+        "properties": {
+          "data": { "$ref": "#/components/schemas/MixRevision" },
+          "meta": { "$ref": "#/components/schemas/ApiMeta" }
+        }
+      },
+      "ApiMeta": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["request_id"],
+        "properties": {
+          "request_id": { "type": "string", "minLength": 1 }
+        }
+      },
+      "ApiErrorDetail": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["field", "reason"],
+        "properties": {
+          "field": { "type": ["string", "null"] },
+          "reason": { "type": "string", "minLength": 1 }
+        }
+      },
+      "ApiError": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "message", "retryable", "details"],
+        "properties": {
+          "code": { "type": "string", "minLength": 1 },
+          "message": { "type": "string", "minLength": 1 },
+          "retryable": { "type": "boolean" },
+          "details": {
+            "oneOf": [
+              { "type": "null" },
+              { "type": "array", "items": { "$ref": "#/components/schemas/ApiErrorDetail" } }
+            ]
+          }
+        }
+      },
+      "ApiErrorResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["error", "meta"],
+        "properties": {
+          "error": { "$ref": "#/components/schemas/ApiError" },
+          "meta": { "$ref": "#/components/schemas/ApiMeta" }
+        }
+      }
+    }
+  }
+}

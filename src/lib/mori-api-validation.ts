@@ -19,6 +19,8 @@ import type {
   MoriLibraryItem,
   MoriLyricsRevisionEvent,
   MoriLyricsSuggestion,
+  MoriMixRevision,
+  MoriMixTrack,
   MoriProject,
   MoriProjectPage,
   MoriSongPlan,
@@ -380,6 +382,54 @@ export function parseMoriStem(value: unknown): MoriStem | null {
     audio_asset_ref: value.audio_asset_ref,
     waveform_asset_ref: value.waveform_asset_ref,
     duration_seconds: value.duration_seconds,
+  }
+}
+
+export function parseMoriMixTrack(value: unknown): MoriMixTrack | null {
+  if (
+    !isRecord(value)
+    || !nonEmptyString(value.stem_ref)
+    || typeof value.gain !== "number"
+    || !Number.isFinite(value.gain)
+    || value.gain < 0
+    || value.gain > 1
+    || typeof value.muted !== "boolean"
+  ) return null
+  return {
+    stem_ref: value.stem_ref,
+    gain: value.gain,
+    muted: value.muted,
+  }
+}
+
+export function parseMoriMixRevision(value: unknown): MoriMixRevision | null {
+  if (
+    !isRecord(value)
+    || !nonEmptyString(value.mix_revision_ref)
+    || !nonEmptyString(value.version_ref)
+    || !nonEmptyString(value.source_stem_separation_ref)
+    || !nonEmptyString(value.name)
+    || value.name.length > 120
+    || !integer(value.revision, 1)
+    || !Array.isArray(value.tracks)
+    || value.tracks.length < 1
+    || value.tracks.length > 12
+    || !dateString(value.created_at)
+  ) return null
+
+  const tracks = value.tracks.map(parseMoriMixTrack)
+  if (!tracks.every(present)) return null
+  const stemRefs = tracks.map((track) => track.stem_ref)
+  if (new Set(stemRefs).size !== stemRefs.length) return null
+
+  return {
+    mix_revision_ref: value.mix_revision_ref,
+    version_ref: value.version_ref,
+    source_stem_separation_ref: value.source_stem_separation_ref,
+    name: value.name,
+    revision: value.revision,
+    tracks,
+    created_at: value.created_at,
   }
 }
 

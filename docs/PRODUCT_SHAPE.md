@@ -104,9 +104,10 @@ Workspace nav    内容随项目上下文变化                     跨页面保
 - 已落地第一版：Song Plan 从提示说明升级为可编辑、可确认的中间状态，并在确认后通过契约持久化再创建生成任务。
 - 已落地第一版：Studio Take Lanes 支持试听、选择和明确提交当前版本；Lyrics 支持本地草稿保存、分段 AI Revision、
   多 Suggestion 对比以及 Apply / Undo；Stems 支持基于当前 Version 的 Isolate part、Auto split、Custom stems
-  三种渐进意图、可选 MIDI、异步恢复/取消/重试，以及对真实返回资产的逐轨 Mute/Solo 本地 mix selection；
+  三种渐进意图、可选 MIDI、异步恢复/取消/重试，以及对真实返回资产的逐轨 Mute/Solo/Level；
   Isolate 明确一个目标与 remaining mix，Custom 要求 2–10 个稳定目标。成功结果现已提供共享 Play/Pause、Seek、
-  同步校正、逐轨 Level 和单轨下载；与全局 Player 互斥，媒体失败时明确报错，不用 preview 音频顶替。
+  同步校正和单轨下载；与全局 Player 互斥，媒体失败时明确报错，不用 preview 音频顶替。用户可以把完整 Gain / Mute
+  明确保存为不可变 Mix Revision，失败时调整仍保留，Solo 只属于试听态，不进入持久化请求。
 - 已落地第一版：Stems 已形成 Voice & stems 上下文工作面，在 Separate mix 旁提供 Add vocals 与 Add instrumental。
   Vocal layer 将必填 Lyrics、可选 Voice profile 和 Vocal direction 分开；Instrumental layer 只要求编曲方向。
   两者都先显示 whole-song Layer Plan，复用 version-scoped `add_part` Generation lifecycle，并把结果送入现有
@@ -123,7 +124,7 @@ Workspace nav    内容随项目上下文变化                     跨页面保
   Style。Library 的 All 视图已经将作品与素材分区，Sources 视图按 Audio / Voices / Inspiration 渐进筛选；
   `Use in Create` 会通过经校验的 provider-neutral source ref 恢复同一个创作上下文。当前素材为确定性 preview，
   正式资产引用与 projection 继续由 storage/music owner adapter 承接。
-- 后续：Song Plan 的服务端版本历史、音频上传、可持久化 Mix Revision、版本自动保存和更多导出格式。
+- 后续：Song Plan 的服务端版本历史、音频上传、以 Mix Revision 为输入的渲染导出、版本自动保存和更多导出格式。
 
 ## 五、明确不做的方向
 

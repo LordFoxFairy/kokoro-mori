@@ -27,6 +27,7 @@ import {
   parseMoriExportReceipt,
   parseMoriExportSnapshot,
   parseMoriLibraryPage,
+  parseMoriMixRevision,
   parseMoriProject,
   parseMoriProjectPage,
   parseMoriSongPlan,
@@ -201,6 +202,20 @@ export function createMoriApiClient(options: MoriApiClientOptions = {}): MoriApi
       })
       const payload = await readJson(response)
       return parseSuccessResponse(response, payload, parseStemSeparationCancelReceipt)
+    },
+    async createMixRevision(versionRef, input, idempotencyKey) {
+      const response = await fetchImpl(`${apiBasePath}/versions/${encodeURIComponent(versionRef)}/mix_revisions`, {
+        method: "POST",
+        headers: createMutationHeaders(idempotencyKey),
+        body: JSON.stringify(input),
+      })
+      const payload = await readJson(response)
+      return parseSuccessResponse(response, payload, parseMoriMixRevision)
+    },
+    async getMixRevision(mixRevisionRef) {
+      const response = await fetchImpl(`${apiBasePath}/mix_revisions/${encodeURIComponent(mixRevisionRef)}`)
+      const payload = await readJson(response)
+      return parseSuccessResponse(response, payload, parseMoriMixRevision)
     },
     async getGeneration(generationRef: MoriRef) {
       const response = await fetchImpl(`${apiBasePath}/generations/${encodeURIComponent(generationRef)}`)

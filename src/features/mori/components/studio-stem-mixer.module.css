@@ -255,6 +255,108 @@
   background: var(--mori-primary-soft);
 }
 
+.savePanel {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.62fr) minmax(210px, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+  margin: 4px 10px 0;
+  padding: 11px;
+  border: 1px solid rgba(109, 92, 231, 0.1);
+  border-radius: 10px;
+  background: linear-gradient(115deg, rgba(247, 245, 255, 0.92), rgba(255, 250, 246, 0.88));
+}
+
+.mixName,
+.saveCopy {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.mixName > span,
+.saveCopy strong {
+  color: var(--mori-text);
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.mixName > span {
+  color: var(--mori-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.mixName input {
+  width: 100%;
+  height: 32px;
+  padding: 0 9px;
+  border: 1px solid var(--mori-border);
+  border-radius: 8px;
+  color: var(--mori-text);
+  font: inherit;
+  font-size: 10px;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.saveCopy span,
+.saveFeedback {
+  color: var(--mori-muted);
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.saveButton {
+  display: inline-flex;
+  min-width: 108px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 11px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  white-space: nowrap;
+  background: var(--mori-primary);
+  box-shadow: 0 5px 12px rgba(109, 92, 231, 0.16);
+}
+
+.saveButton:hover:not(:disabled) {
+  background: var(--mori-primary-deep);
+}
+
+.saveButton:disabled {
+  cursor: default;
+  color: var(--mori-muted);
+  border-color: var(--mori-border);
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: none;
+}
+
+.saveFeedback {
+  min-height: 15px;
+  margin: 5px 12px 0;
+}
+
+.saveFeedback:empty {
+  display: none;
+}
+
+.saveFeedback span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #388662;
+  font-weight: 700;
+}
+
+.saveFeedback .saveError {
+  color: #9a514d;
+}
+
 .mixNote {
   margin: 0;
   padding: 6px 11px 10px;
@@ -274,7 +376,9 @@
 .masterSeek input:focus-visible,
 .level input:focus-visible,
 .trackActions button:focus-visible,
-.trackActions a:focus-visible {
+.trackActions a:focus-visible,
+.mixName input:focus-visible,
+.saveButton:focus-visible {
   outline: 2px solid rgba(109, 92, 231, 0.48);
   outline-offset: 2px;
 }
@@ -303,6 +407,15 @@
     grid-column: 1 / -1;
     grid-row: 3;
   }
+
+  .savePanel {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .saveCopy {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
 }
 
 @container (max-width: 430px) {
@@ -316,5 +429,22 @@
 
   .transportTime {
     font-size: 8px;
+  }
+
+  .savePanel {
+    grid-template-columns: 1fr;
+  }
+
+  .saveCopy,
+  .saveButton {
+    grid-column: 1;
+  }
+
+  .saveCopy {
+    grid-row: auto;
+  }
+
+  .saveButton {
+    width: 100%;
   }
 }

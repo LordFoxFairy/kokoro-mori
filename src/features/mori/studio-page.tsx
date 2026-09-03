@@ -3,7 +3,7 @@
 import { ArrowLeft, AudioLines, AudioWaveform, Download, FileText, Play, Share2, Sparkles } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useMemo, useRef, useState } from "react"
-import { createLyricsRevisionRequest, createStemSeparationRequest, createStudioChangeRequest, type LyricsRevisionSnapshot, type MoriApi, type MoriCandidate, type MoriExportSnapshot, type StemSeparationSnapshot } from "@/lib/mori-api"
+import { createLyricsRevisionRequest, createStemSeparationRequest, createStudioChangeRequest, type LyricsRevisionSnapshot, type MixRevisionInput, type MoriApi, type MoriCandidate, type MoriExportSnapshot, type MoriMixRevision, type StemSeparationSnapshot } from "@/lib/mori-api"
 import { createMoriApiClient, MoriApiRequestError } from "@/lib/mori-api-client"
 import type { Candidate } from "./domain"
 import { MoriStudioShell } from "./components/mori-studio-shell"
@@ -26,7 +26,7 @@ type StudioPageContentProps = {
   candidate: Candidate
   projectRef?: string
   versionRef?: string
-  api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "listCandidates" | "createStudioChange" | "getGeneration" | "getGenerationEvents" | "cancelGeneration" | "createLyricsRevision" | "getLyricsRevision" | "getLyricsRevisionEvents" | "cancelLyricsRevision" | "createStemSeparation" | "getStemSeparation" | "getStemSeparationEvents" | "cancelStemSeparation">>
+  api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "listCandidates" | "createStudioChange" | "getGeneration" | "getGenerationEvents" | "cancelGeneration" | "createLyricsRevision" | "getLyricsRevision" | "getLyricsRevisionEvents" | "cancelLyricsRevision" | "createStemSeparation" | "getStemSeparation" | "getStemSeparationEvents" | "cancelStemSeparation" | "createMixRevision">>
   stemPlaybackFactory?: StemPlaybackFactory
 }
 
@@ -68,6 +68,7 @@ const idleLyricsRevisionRun: StudioLyricsRunState = {
 const idleStemSeparationRun: StudioStemSeparationRunState = {
   status: "idle",
   sourceVersionRef: null,
+  stemSeparationRef: null,
   progress: 0,
   plan: null,
   stems: [],
@@ -469,6 +470,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api, stem
     setStemSeparationRun({
       status: "preparing",
       sourceVersionRef,
+      stemSeparationRef: null,
       progress: 4,
       plan,
       stems: [],
@@ -487,6 +489,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api, stem
       setStemSeparationRun({
         status: response.data.status,
         sourceVersionRef,
+        stemSeparationRef: response.data.stem_separation_ref,
         progress: response.data.status === "queued" ? 0 : 12,
         plan,
         stems: [],
@@ -504,6 +507,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api, stem
       setStemSeparationRun({
         status: "failed",
         sourceVersionRef,
+        stemSeparationRef: null,
         progress: 0,
         plan,
         stems: [],
@@ -540,6 +544,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api, stem
           setStemSeparationRun({
             status: "succeeded",
             sourceVersionRef: tracked.sourceVersionRef,
+            stemSeparationRef: tracked.stemSeparationRef,
             progress: 100,
             plan: tracked.plan,
             stems: snapshot.stems,
@@ -555,6 +560,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api, stem
           setStemSeparationRun({
             status: snapshot.status,
             sourceVersionRef: tracked.sourceVersionRef,
+            stemSeparationRef: tracked.stemSeparationRef,
             progress: snapshot.progress,
             plan: tracked.plan,
             stems: [],
@@ -664,6 +670,23 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api, stem
     if (trackedStemSeparation !== null) ignoredStemSeparationsRef.current.add(trackedStemSeparation.stemSeparationRef)
     setTrackedStemSeparation(null)
     setStemSeparationRun(idleStemSeparationRun)
+  }
+
+  const saveMixRevision = async (input: MixRevisionInput): Promise<MoriMixRevision> => {
+    const versionRef = activeVersionRefRef.current
+    if (versionRef === null) throw new Error("mix_revision_version_required")
+    const response = await studioApi.createMixRevision(
+      versionRef,
+      input,
+      `mori-mix-revision-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    )
+    const revision = response.data
+    if (
+      activeVersionRefRef.current !== versionRef
+      || revision.version_ref !== versionRef
+      || !mixRevisionMatchesInput(revision, input)
+    ) throw new Error("mix_revision_context_mismatch")
+    return revision
   }
 
   const preview = () => {
@@ -798,7 +821,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api, stem
           <div className={styles.studioCanvasTop}><div><span className={styles.eyebrow}><span className={styles.eyebrowDot} />Editing with intention</span><h2>Shape the feeling.</h2></div><button className={styles.generateButton} type="button" onClick={preview}><Play size={14} fill="currentColor" /> {playerCandidate?.versionRef === activeCandidate.versionRef && playing ? "Pause" : "Preview"}</button></div>
           {activeTool === "arrangement" ? <ArrangementEditor candidate={activeCandidate} takes={studioCandidates} currentVersionRef={currentVersionRef} playerVersionRef={playerCandidate?.versionRef ?? ""} positionSeconds={playerCandidate?.versionRef === activeCandidate.versionRef ? positionSeconds : 0} playing={playerCandidate?.versionRef === activeCandidate.versionRef && playing} studioChangeRun={studioChangeRun} onSeekTimeline={(nextPositionSeconds) => seekTimeline(activeCandidate, nextPositionSeconds)} onGenerateStudioChange={(plan) => { void generateStudioChange(plan) }} onCancelStudioChange={() => { void cancelStudioChange() }} onResetStudioChange={resetStudioChange} onSelectTake={selectTake} onPreviewTake={previewTake} onPromoteTake={promoteTake} /> : null}
           {activeTool === "lyrics" ? <StudioLyricsEditor key={activeCandidate.versionRef} versionRef={activeCandidate.versionRef} run={lyricsRevisionRun} onGenerate={(plan) => { void generateLyricsRevision(plan) }} onCancel={() => { void cancelLyricsRevision() }} onReset={resetLyricsRevision} /> : null}
-          {activeTool === "stems" ? <StudioStemsEditor key={activeVersionRef ?? "no-version"} durationSeconds={activeCandidate.durationSeconds} run={stemSeparationRun} layerRun={studioChangeRun} onSeparate={(plan) => { void generateStemSeparation(plan) }} onCancel={() => { void cancelStemSeparation() }} onReset={resetStemSeparation} onGenerateLayer={(plan) => { void generateStudioChange(plan) }} onCancelLayer={() => { void cancelStudioChange() }} onResetLayer={resetStudioChange} onReviewTakes={() => setActiveTool("arrangement")} playbackFactory={stemPlaybackFactory} /> : null}
+          {activeTool === "stems" ? <StudioStemsEditor key={activeVersionRef ?? "no-version"} durationSeconds={activeCandidate.durationSeconds} run={stemSeparationRun} layerRun={studioChangeRun} onSeparate={(plan) => { void generateStemSeparation(plan) }} onCancel={() => { void cancelStemSeparation() }} onReset={resetStemSeparation} onSaveMix={saveMixRevision} onGenerateLayer={(plan) => { void generateStudioChange(plan) }} onCancelLayer={() => { void cancelStudioChange() }} onResetLayer={resetStudioChange} onReviewTakes={() => setActiveTool("arrangement")} playbackFactory={stemPlaybackFactory} /> : null}
         </section>
         <aside className={styles.versionRail} aria-label="Version history"><div className={styles.versionRailHeader}><div><span>Project history</span><h2>Versions</h2></div></div>{studioCandidates.map((item, index) => <Link className={`${styles.versionItem} ${item.versionRef === activeCandidate.versionRef ? styles.versionItemActive : ""}`} href={`/projects/${activeProjectRef}/studio/${item.versionRef}`} key={item.versionRef}><div className={`${styles.versionThumb} ${index === 1 ? styles.versionThumbAlt : ""}`}><Play size={12} fill="currentColor" /></div><div><strong>{item.title}</strong><span>{index === 0 ? "Current" : "Draft"} · {Math.floor(item.durationSeconds / 60)}:{String(item.durationSeconds % 60).padStart(2, "0")}</span></div></Link>)}</aside>
       </div>}
@@ -835,6 +858,20 @@ function mergeStudioCandidates(current: Candidate[], generated: Candidate[]): Ca
     ...current.filter((candidate) => !generatedRefs.has(candidate.candidateRef)),
     ...generated,
   ]
+}
+
+function mixRevisionMatchesInput(revision: MoriMixRevision, input: MixRevisionInput): boolean {
+  if (
+    revision.source_stem_separation_ref !== input.source_stem_separation_ref
+    || revision.name !== input.name
+    || revision.tracks.length !== input.tracks.length
+  ) return false
+
+  const returnedTracks = new Map(revision.tracks.map((track) => [track.stem_ref, track]))
+  return input.tracks.every((track) => {
+    const returned = returnedTracks.get(track.stem_ref)
+    return returned !== undefined && returned.gain === track.gain && returned.muted === track.muted
+  })
 }
 
 function studioChangeFailureMessage(error: unknown): string {

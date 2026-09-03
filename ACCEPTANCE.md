@@ -94,8 +94,10 @@ Stems 已升级为当前 Version 内的非破坏式分离工作面：默认 Isol
 remaining mix；Auto split 按内容检测最多 12 个制作轨；Custom stems 要求选择 2–10 个稳定目标，未达到两个时
 Review 明确禁用。三种模式共用可选 MIDI transcription，先 Review Requested、Output、Source 和结果去向，再提交异步任务。运行态通过 snapshot / SSE
 显示进度并支持取消、失败重试和切换工具后恢复；成功态只渲染 API 实际返回的 version-bound stem assets，逐轨
-Mute/Solo 当前只保存本地 mix selection，不修改资产或 Current Version；可播放 stem renderer 接入前不宣称改变
-实际音频，BFF 离线时显示真实失败状态，不伪造可播放结果。三种 Setup 与 Review Plan 已在 1280×720 下巡检，
+Mute/Solo/Level 会即时作用于同步试听通道，但不修改资产或 Current Version；共享 Play/Pause、Seek、漂移校正和
+逐轨下载都只使用 snapshot 返回的 asset refs，并通过支持 Range 的同源媒体 seam 读取。媒体不可用时停止整组并显示
+真实错误，不使用 preview 音频顶替。用户可将完整 Gain / Mute 显式保存为不可变 Mix Revision；Solo 只属于监听态，
+保存失败保留当前调整，未变化时禁用重复保存。三种 Setup、Review Plan 与成功试听态已在 1280×720 下巡检，
 快路径无需额外参数页，Custom 选择通过页面正常滚动避开固定 Player，浏览器日志无运行时错误。
 Stems 顶层已经收敛为 Voice & stems，并在同一上下文中提供 Separate mix、Add vocals、Add instrumental 三种意图；
 不为 Tad 式能力分类继续增加全局导航。Add vocals 要求 Lyrics，将可选 Voice profile 与 Vocal direction 分开；
@@ -106,6 +108,8 @@ Take Lanes，并明确 Current Version stays untouched。未提交草稿可在�
 Stem Separation 的 OpenAPI、request builder、same-origin client、运行时 parser 与 contract tests 已固定
 `mode + target_kinds[]` 的意图与数量不变量，以及 `snake_case`、`Idempotency-Key`、`Last-Event-ID`、cancel
 和 caller identity 边界；snapshot 会回显目标，浏览器在恢复时同时核对 Version、模式、目标与 MIDI 选择；
+Mix Revision 的独立 OpenAPI、request builder、same-origin client 与运行时 parser 固定 `201` 同步 command、
+完整逐轨 `stem_ref + gain + muted`、不可变 revision、幂等与来源 Version/Separation 校验；
 Lyrics Revision 的浏览器契约已固定为 version-scoped 异步资源：输入明确 direction、section / whole lyrics
 scope、完整 lyrics context、source text、constraints 与 1–4 个输出；snapshot 返回 source digest 和文本
 suggestions，支持 SSE `Last-Event-ID` 回放与幂等 cancel。OpenAPI、request builder、same-origin client、运行时

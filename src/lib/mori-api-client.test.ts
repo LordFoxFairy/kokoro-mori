@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { createGenerationRequest, createLyricsRevisionRequest, createStemSeparationRequest, createStudioChangeRequest } from "./mori-api"
+import { createGenerationRequest, createLyricsRevisionRequest, createMixRevisionRequest, createStemSeparationRequest, createStudioChangeRequest } from "./mori-api"
 import { createMoriApiClient } from "./mori-api-client"
 
 describe("Mori same-origin API client", () => {
@@ -597,6 +597,93 @@ describe("Mori same-origin API client", () => {
     ])
     expect(events[0]?.data).toMatchObject({ status: "separating", progress: 58 })
     expect(cancelled.data.status).toBe("cancelled")
+  })
+
+  it("creates and reads an immutable Mix Revision through exact version-scoped fields", async () => {
+    const calls: Array<{ url: string; method: string | undefined; body: unknown; headers: HeadersInit | undefined }> = []
+    const revision = {
+      mix_revision_ref: "mix_revision_1",
+      version_ref: "version_1",
+      source_stem_separation_ref: "stem_separation_1",
+      name: "Close vocal mix",
+      revision: 1,
+      tracks: [
+        { stem_ref: "stem_vocals_1", gain: 0.48, muted: false },
+        { stem_ref: "stem_drums_1", gain: 1, muted: true },
+      ],
+      created_at: "2026-09-03T12:00:00.000Z",
+    }
+    const api = createMoriApiClient({
+      fetchImpl: async (input, init) => {
+        calls.push({
+          url: String(input),
+          method: init?.method,
+          body: typeof init?.body === "string" ? JSON.parse(init.body) : null,
+          headers: init?.headers,
+        })
+        return new Response(JSON.stringify({ data: revision, meta: { request_id: "request_mix_revision_1" } }), {
+          status: init?.method === "POST" ? 201 : 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      },
+    })
+    const input = createMixRevisionRequest({
+      sourceStemSeparationRef: "stem_separation_1",
+      name: "  Close vocal mix  ",
+      tracks: [
+        { stemRef: "stem_vocals_1", gain: 0.478, muted: false },
+        { stemRef: "stem_drums_1", gain: 1, muted: true },
+      ],
+    })
+
+    const created = await api.createMixRevision("version_1", input, "idem-mix-revision-1")
+    const restored = await api.getMixRevision(created.data.mix_revision_ref)
+
+    expect(calls).toEqual([
+      {
+        url: "/api/v1/mori/versions/version_1/mix_revisions",
+        method: "POST",
+        body: {
+          source_stem_separation_ref: "stem_separation_1",
+          name: "Close vocal mix",
+          tracks: [
+            { stem_ref: "stem_vocals_1", gain: 0.48, muted: false },
+            { stem_ref: "stem_drums_1", gain: 1, muted: true },
+          ],
+        },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": "idem-mix-revision-1" },
+      },
+      { url: "/api/v1/mori/mix_revisions/mix_revision_1", method: undefined, body: null, headers: undefined },
+    ])
+    expect(restored.data).toEqual(revision)
+  })
+
+  it("rejects ambiguous Mix Revision tracks before write and after read", async () => {
+    expect(() => createMixRevisionRequest({
+      sourceStemSeparationRef: "stem_separation_1",
+      name: "Mix",
+      tracks: [
+        { stemRef: "stem_vocals_1", gain: 1, muted: false },
+        { stemRef: "stem_vocals_1", gain: 0.5, muted: true },
+      ],
+    })).toThrow("mix_revision_tracks_invalid")
+
+    const api = createMoriApiClient({
+      fetchImpl: async () => new Response(JSON.stringify({
+        data: {
+          mix_revision_ref: "mix_revision_invalid",
+          version_ref: "version_1",
+          source_stem_separation_ref: "stem_separation_1",
+          name: "Invalid mix",
+          revision: 1,
+          tracks: [{ stem_ref: "stem_vocals_1", gain: 1.4, muted: false }],
+          created_at: "2026-09-03T12:00:00.000Z",
+        },
+        meta: { request_id: "request_mix_revision_invalid" },
+      }), { status: 200, headers: { "Content-Type": "application/json" } }),
+    })
+
+    await expect(api.getMixRevision("mix_revision_invalid")).rejects.toMatchObject({ code: "invalid_api_response" })
   })
 
   it("returns the first complete stem event without waiting for the SSE connection to close", async () => {

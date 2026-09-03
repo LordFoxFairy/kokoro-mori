@@ -16,7 +16,7 @@ const createTestStemPlaybackController: StemPlaybackFactory = () => ({
 })
 
 describe("Mori studio page", () => {
-  function renderStudio(api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "listCandidates" | "createStudioChange" | "getGeneration" | "getGenerationEvents" | "cancelGeneration" | "createLyricsRevision" | "getLyricsRevision" | "getLyricsRevisionEvents" | "cancelLyricsRevision" | "createStemSeparation" | "getStemSeparation" | "getStemSeparationEvents" | "cancelStemSeparation">>) {
+  function renderStudio(api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "listCandidates" | "createStudioChange" | "getGeneration" | "getGenerationEvents" | "cancelGeneration" | "createLyricsRevision" | "getLyricsRevision" | "getLyricsRevisionEvents" | "cancelLyricsRevision" | "createStemSeparation" | "getStemSeparation" | "getStemSeparationEvents" | "cancelStemSeparation" | "createMixRevision">>) {
     return render(
       <MoriAppProvider>
         <StudioPageContent candidate={previewCandidates[0]} api={api} stemPlaybackFactory={createTestStemPlaybackController} />
@@ -848,6 +848,8 @@ describe("Mori studio page", () => {
   it("submits a stem separation and exposes only returned assets as mix controls", async () => {
     let submittedVersionRef = ""
     let submittedInput: Parameters<MoriApi["createStemSeparation"]>[1] | null = null
+    let submittedMixVersionRef = ""
+    const submittedMixInputs: Array<Parameters<MoriApi["createMixRevision"]>[1]> = []
     renderStudio({
       createStemSeparation: async (versionRef, input) => {
         submittedVersionRef = versionRef
@@ -880,6 +882,22 @@ describe("Mori studio page", () => {
         meta: { request_id: "request_stem_snapshot_ui_1" },
       }),
       getStemSeparationEvents: async () => [],
+      createMixRevision: async (versionRef, input) => {
+        submittedMixVersionRef = versionRef
+        submittedMixInputs.push(input)
+        return {
+          data: {
+            mix_revision_ref: "mix_revision_ui_1",
+            version_ref: versionRef,
+            source_stem_separation_ref: input.source_stem_separation_ref,
+            name: input.name,
+            revision: 1,
+            tracks: input.tracks,
+            created_at: "2026-09-03T12:01:00.000Z",
+          },
+          meta: { request_id: "request_mix_revision_ui_1" },
+        }
+      },
     })
 
     fireEvent.click(screen.getByRole("button", { name: "Stems" }))
@@ -897,13 +915,22 @@ describe("Mori studio page", () => {
     const mixer = within(stemTracks).getByRole("region", { name: "Stem mixer" })
     expect(within(mixer).getByText("5 tracks · synchronized from this Version")).toBeInTheDocument()
     expect(within(mixer).getAllByRole("link", { name: /Download .+ stem/u })).toHaveLength(5)
-    expect(within(mixer).getByText("Audition only · Mute, Solo, and Level never alter the Current Version or source stems.")).toBeInTheDocument()
+    expect(within(mixer).getByText("Non-destructive · Saving creates a Mix Revision; the Current Version and source stems stay unchanged.")).toBeInTheDocument()
 
     const muteLead = within(stemTracks).getByRole("button", { name: "Mute Lead vocal" })
     fireEvent.click(muteLead)
     expect(within(stemTracks).getByRole("button", { name: "Unmute Lead vocal" })).toHaveAttribute("aria-pressed", "true")
     fireEvent.click(within(stemTracks).getByRole("button", { name: "Solo Drums" }))
     expect(within(stemTracks).getByRole("button", { name: "Unsolo Drums" })).toHaveAttribute("aria-pressed", "true")
+    fireEvent.change(within(stemTracks).getByRole("slider", { name: "Volume Lead vocal" }), { target: { value: "48" } })
+    fireEvent.click(within(stemTracks).getByRole("button", { name: "Save mix" }))
+    await waitFor(() => expect(submittedMixVersionRef).toBe("version_preview_first_light_a"))
+    expect(submittedMixInputs[0]).toMatchObject({
+      source_stem_separation_ref: "stem_separation_ui_1",
+      name: "Stem mix",
+    })
+    expect(submittedMixInputs[0]?.tracks[0]).toEqual({ stem_ref: "stem_ui_vocals", gain: 0.48, muted: true })
+    expect(within(stemTracks).getByText("Mix revision 1 saved")).toBeInTheDocument()
   })
 
   it("keeps an active stem separation across Studio tools and lets the user cancel it", async () => {

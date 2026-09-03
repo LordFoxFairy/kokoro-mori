@@ -25,6 +25,10 @@ music owner、BFF 或其他 Kokoro 子仓的内部模型。
   `asset_ref` 进行同源音频播放与显式下载的 byte-range 读取边界，不暴露对象存储位置或供应商 URL。
 - [`tests/mori-media-access.contract.test.ts`](./tests/mori-media-access.contract.test.ts)：检查 `Range` / `If-Range`、
   `200` / `206`、inline / attachment、授权错误与 provider-neutral 边界。
+- [`openapi/mori-mix-revision.v1.json`](./openapi/mori-mix-revision.v1.json)：把一次完成的 Stem Separation
+  上的逐轨 Gain / Mute 保存成 version-scoped、不可变的 Mix Revision；Solo 明确只属于试听态。
+- [`tests/mori-mix-revision.contract.test.ts`](./tests/mori-mix-revision.contract.test.ts)：检查 `201` 创建、读取资源、
+  幂等 Header、完整音轨集合、`snake_case` 与 provider-neutral 边界。
 
 Studio Change 不建立第二套异步任务状态机。它通过
 `POST /api/v1/mori/versions/{version_ref}/generations` 创建既有 Generation 资源，并继续复用
@@ -51,7 +55,12 @@ Stem Separation 同样不伪装成 Generation Candidate。它从一个不可变 
 `isolate_part` 要求一个目标，`auto_stems` 不接受手选目标，`custom_stems` 要求两个至十个唯一目标；snapshot
 回显来源 Version、完整意图、进度、`source_audio_digest`、实际生成的 stems 与可选 MIDI asset。浏览器中的
 Stem mixer 只读取 snapshot 返回的 `audio_asset_ref`，通过同源媒体投影同步试听，并把 Mute、Solo 与 Level
-即时应用到浏览器播放通道；这些选择当前仍是 audition-only，不修改资产，也不覆盖 Current Version。
+即时应用到浏览器播放通道。用户明确 Save 后，浏览器把完整逐轨 Gain / Mute 作为新的不可变 Mix Revision
+提交；Solo 只影响当前试听，不进入持久化模型。保存既不修改 stem asset，也不覆盖 Current Version。
+
+`POST /api/v1/mori/versions/{version_ref}/mix_revisions` 是同步 metadata command，成功返回 `201`，不伪装成
+音频渲染任务。owner 必须确认 `source_stem_separation_ref` 属于路径 Version，并要求 `tracks` 与该 separation
+实际返回的 stem 集合完全一致；相同幂等键重放同一个结果，改动后的再次保存创建下一个 revision。
 
 `GET /api/v1/mori/assets/{asset_ref}/content` 是浏览器媒体读取 seam，不是第二份 Asset 事实源。BFF 必须从
 受信会话与资源关联完成授权，再向 Storage owner 解析对象字节；浏览器不能提交 tenant/subject，也不能得到
