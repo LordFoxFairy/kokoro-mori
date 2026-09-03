@@ -66,12 +66,12 @@
 - `StudioReleasePanel` consumes controlled `StudioReleaseDraft`, `StudioArtworkRunState`, and `StudioReleaseSaveState`, plus callbacks for draft changes, artwork generate/cancel/reset/select, and release save.
 - `StudioFinishDialog` consumes controlled `view: "remaster" | "release"` and `onViewChange`, preserves the existing Remaster callbacks, and mounts `StudioReleasePanel` without cancelling either workflow when switching views.
 
-- [ ] **Step 1: Write failing component tests** for Remaster/Release tab semantics, retained controlled fields, private default, independent Link/Public and remix controls, required title, artwork brief/style/palette review, exact four-concept plan submission, running/cancel/failed/retry/success states, candidate selection, generated image asset URLs, explicit-content control, and `Save release draft` copy that never claims to publish.
-- [ ] **Step 2: Run RED** with `pnpm test -- src/features/mori/components/studio-release-panel.test.tsx src/features/mori/components/studio-finish-dialog.test.tsx` and confirm the missing Release UI causes the failure.
-- [ ] **Step 3: Implement the light Finish Center** using a quiet two-tab strip beneath the existing header, a desktop artwork/details split that stacks on mobile, warm dawn/violet/mint/monochrome palette previews, one square artwork stage, and a sticky footer whose sole emphasized action is `Save release draft`.
-- [ ] **Step 4: Preserve accessibility** with tab/tabpanel linkage, visible focus, labelled controls, `aria-live` status, image alt text, existing dialog focus trap/Escape/body-lock behavior, and reduced-motion support.
-- [ ] **Step 5: Run GREEN** with the focused component test command and confirm no console warnings.
-- [ ] **Step 6: Commit** with `git add src/features/mori/components && git commit -m "feat: add studio release finish view"`.
+- [x] **Step 1: Write failing component tests** for Remaster/Release tab semantics, retained controlled fields, private default, independent Link/Public and remix controls, required title, artwork brief/style/palette review, exact four-concept plan submission, running/cancel/failed/retry/success states, candidate selection, generated image asset URLs, explicit-content control, and `Save release draft` copy that never claims to publish.
+- [x] **Step 2: Run RED** with `pnpm test -- src/features/mori/components/studio-release-panel.test.tsx src/features/mori/components/studio-finish-dialog.test.tsx` and confirm the missing Release UI causes the failure.
+- [x] **Step 3: Implement the light Finish Center** using a quiet two-tab strip beneath the existing header, a desktop artwork/details split that stacks on mobile, warm dawn/violet/mint/monochrome palette previews, one square artwork stage, and a sticky footer whose sole emphasized action is `Save release draft`.
+- [x] **Step 4: Preserve accessibility** with tab/tabpanel linkage, visible focus, labelled controls, `aria-live` status, image alt text, existing dialog focus trap/Escape/body-lock behavior, and reduced-motion support.
+- [x] **Step 5: Run GREEN** with the focused component test command and confirm no console warnings.
+- [x] **Step 6: Commit** with `git add src/features/mori/components && git commit -m "feat: add studio release finish view"`.
 
 ### Task 3: Connect Release state and resources to Studio with RED tests
 

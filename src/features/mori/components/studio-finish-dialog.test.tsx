@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, within } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 import type { MoriMixRevision } from "@/lib/mori-api"
+import { createInitialStudioReleaseDraft, idleStudioArtworkRun, idleStudioReleaseSave } from "../studio-release"
 import { buildStudioRemasterPlan } from "../studio-remaster"
 import type { StudioAiRunState } from "./studio-ai-composer"
 import { StudioFinishDialog } from "./studio-finish-dialog"
@@ -27,6 +28,44 @@ const mixRevision: MoriMixRevision = {
 }
 
 describe("Studio Finish dialog", () => {
+  it("keeps Remaster and Release as contextual Finish views", () => {
+    const onViewChange = vi.fn()
+    render(
+      <StudioFinishDialog
+        versionRef="version_1"
+        versionTitle="First Light"
+        durationSeconds={182}
+        latestMixRevision={null}
+        run={idleRun}
+        view="remaster"
+        onViewChange={onViewChange}
+        release={{
+          versionRef: "version_1",
+          draft: createInitialStudioReleaseDraft("First Light"),
+          artworkDraft: { prompt: "", style: "abstract", palette: "warm_dawn" },
+          artworkRun: idleStudioArtworkRun,
+          saveState: idleStudioReleaseSave,
+          onDraftChange: vi.fn(),
+          onArtworkDraftChange: vi.fn(),
+          onGenerateArtwork: vi.fn(),
+          onCancelArtwork: vi.fn(),
+          onResetArtwork: vi.fn(),
+          onSave: vi.fn(),
+        }}
+        onClose={vi.fn()}
+        onReset={vi.fn()}
+        onSubmit={vi.fn()}
+        onCancel={vi.fn()}
+        onReviewTakes={vi.fn()}
+      />,
+    )
+
+    const tabs = screen.getByRole("tablist", { name: "Finish workflow" })
+    expect(within(tabs).getByRole("tab", { name: "Remaster" })).toHaveAttribute("aria-selected", "true")
+    fireEvent.click(within(tabs).getByRole("tab", { name: "Release" }))
+    expect(onViewChange).toHaveBeenCalledWith("release")
+  })
+
   it("reviews a mix-aware strength choice before creating two protected Takes", () => {
     const onSubmit = vi.fn()
     render(

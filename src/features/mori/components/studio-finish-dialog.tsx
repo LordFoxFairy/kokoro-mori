@@ -7,7 +7,10 @@ import type { MoriMixRevision, MoriStudioRemasterSource, StudioRemasterStrength 
 import { buildStudioRemasterPlan, isStudioRemasterPlan, type StudioRemasterPlan } from "../studio-remaster"
 import { isActiveStudioChangeStatus } from "../studio-change"
 import type { StudioAiRunState } from "./studio-ai-composer"
+import { StudioReleasePanel, type StudioReleasePanelProps } from "./studio-release-panel"
 import styles from "./studio-finish-dialog.module.css"
+
+export type StudioFinishView = "remaster" | "release"
 
 type StudioFinishDialogProps = {
   versionRef: string
@@ -15,6 +18,9 @@ type StudioFinishDialogProps = {
   durationSeconds: number
   latestMixRevision: MoriMixRevision | null
   run: StudioAiRunState
+  view?: StudioFinishView
+  onViewChange?: (view: StudioFinishView) => void
+  release?: StudioReleasePanelProps
   onClose: () => void
   onReset: () => void
   onSubmit: (plan: StudioRemasterPlan) => void
@@ -39,6 +45,9 @@ export function StudioFinishDialog({
   durationSeconds,
   latestMixRevision,
   run,
+  view = "remaster",
+  onViewChange,
+  release,
   onClose,
   onReset,
   onSubmit,
@@ -47,8 +56,16 @@ export function StudioFinishDialog({
 }: StudioFinishDialogProps) {
   const titleId = useId()
   const descriptionId = useId()
+  const remasterTabId = useId()
+  const remasterPanelId = useId()
+  const releaseTabId = useId()
+  const releasePanelId = useId()
   const dialogRef = useRef<HTMLElement>(null)
   const sourceRef = useRef<HTMLInputElement>(null)
+  const remasterTabRef = useRef<HTMLButtonElement>(null)
+  const releaseTabRef = useRef<HTMLButtonElement>(null)
+  const initialViewRef = useRef(view)
+  const initialHasReleaseRef = useRef(release !== undefined)
   const onCloseRef = useRef(onClose)
   const runPlan = isStudioRemasterPlan(run.plan) ? run.plan : null
   const initialSource = runPlan?.source.type ?? (latestMixRevision === null ? "version" : "mix_revision")
@@ -67,7 +84,8 @@ export function StudioFinishDialog({
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = "hidden"
-    sourceRef.current?.focus()
+    if (initialHasReleaseRef.current && initialViewRef.current === "release") releaseTabRef.current?.focus()
+    else sourceRef.current?.focus()
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -135,6 +153,23 @@ export function StudioFinishDialog({
     window.requestAnimationFrame(() => sourceRef.current?.focus())
   }
 
+  function changeView(nextView: StudioFinishView) {
+    if (release === undefined || onViewChange === undefined || nextView === view) return
+    onViewChange(nextView)
+  }
+
+  function moveView(event: React.KeyboardEvent<HTMLButtonElement>, currentView: StudioFinishView) {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight" && event.key !== "Home" && event.key !== "End") return
+    event.preventDefault()
+    const nextView = event.key === "ArrowLeft" || event.key === "Home"
+      ? "remaster"
+      : event.key === "ArrowRight" || event.key === "End"
+        ? "release"
+        : currentView
+    changeView(nextView)
+    window.requestAnimationFrame(() => (nextView === "release" ? releaseTabRef : remasterTabRef).current?.focus())
+  }
+
   if (typeof document === "undefined") return null
 
   return createPortal(
@@ -142,7 +177,7 @@ export function StudioFinishDialog({
       <button className={styles.backdrop} type="button" aria-label="Dismiss Finish" onClick={onClose} />
       <section
         ref={dialogRef}
-        className={styles.dialog}
+        className={`${styles.dialog} ${release !== undefined && view === "release" ? styles.dialogRelease : ""}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -154,11 +189,52 @@ export function StudioFinishDialog({
           <div className={styles.headerCopy}>
             <span>Studio finish</span>
             <h2 id={titleId}>Finish {versionTitle}</h2>
-            <p id={descriptionId}>Polish the sound without rewriting the song. Every result returns as a new Take.</p>
+            <p id={descriptionId}>{release === undefined ? "Polish the sound without rewriting the song. Every result returns as a new Take." : "Finish the sound, shape its visual identity, and prepare a release draft without leaving this Version."}</p>
           </div>
           <button className={styles.closeButton} type="button" aria-label="Close Finish" onClick={onClose}><X size={18} /></button>
         </header>
 
+        {release !== undefined ? (
+          <div className={styles.finishTabs} role="tablist" aria-label="Finish workflow">
+            <button
+              ref={remasterTabRef}
+              id={remasterTabId}
+              type="button"
+              role="tab"
+              aria-label="Remaster"
+              aria-selected={view === "remaster"}
+              aria-controls={remasterPanelId}
+              tabIndex={view === "remaster" ? 0 : -1}
+              onClick={() => changeView("remaster")}
+              onKeyDown={(event) => moveView(event, "remaster")}
+            >
+              <AudioWaveform size={14} />
+              <span><strong>Remaster</strong><small>Finish the sound</small></span>
+            </button>
+            <button
+              ref={releaseTabRef}
+              id={releaseTabId}
+              type="button"
+              role="tab"
+              aria-label="Release"
+              aria-selected={view === "release"}
+              aria-controls={releasePanelId}
+              tabIndex={view === "release" ? 0 : -1}
+              onClick={() => changeView("release")}
+              onKeyDown={(event) => moveView(event, "release")}
+            >
+              <Sparkles size={14} />
+              <span><strong>Release</strong><small>Artwork & details</small></span>
+            </button>
+          </div>
+        ) : null}
+
+        {release !== undefined && view === "release" ? (
+          <div className={styles.finishPanel} id={releasePanelId} role="tabpanel" aria-labelledby={releaseTabId}>
+            <StudioReleasePanel {...release} />
+          </div>
+        ) : (
+          <div className={styles.finishPanel} id={release === undefined ? undefined : remasterPanelId} role={release === undefined ? undefined : "tabpanel"} aria-labelledby={release === undefined ? undefined : remasterTabId}>
         {blockedByOtherChange ? (
           <section className={styles.blocked} role="status">
             <span><LoaderCircle size={18} /></span>
@@ -248,6 +324,8 @@ export function StudioFinishDialog({
         )}
 
         {blockedByOtherChange ? <footer className={styles.footer}><p>The active job remains available in its Studio tool.</p><div className={styles.actions}><button className={styles.primaryButton} type="button" onClick={onClose}>Close</button></div></footer> : null}
+          </div>
+        )}
       </section>
     </div>,
     document.body,

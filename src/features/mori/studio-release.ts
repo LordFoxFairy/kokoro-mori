@@ -19,6 +19,12 @@ export type StudioArtworkPlan = {
   outputCount: 4
 }
 
+export type StudioArtworkDraft = {
+  prompt: string
+  style: ArtworkStyle
+  palette: ArtworkPalette
+}
+
 export type StudioReleaseArtwork =
   | { type: "current" }
   | { type: "artwork_candidate"; artworkCandidateRef: string }
