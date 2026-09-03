@@ -54,6 +54,15 @@ Mori 的落地：
 - AI 的解释以 Song Plan、生成阶段、候选标签和版本历史出现。
 - 用户可以直接操作歌词、结构、试听、版本和导出；AI 不替用户隐藏关键决策。
 
+### 4. Tad：能力分类清楚，但要回到作品上下文
+
+[Tad AI Music Generator](https://tad.ai/ai-music-generator) 用 Generate、Reference、Remix、Edit
+区分用户意图，并继续提供 Cover、Vocal Remover 和 MV 等独立能力。Mori 吸收它清晰的操作分类，
+但不把这些能力全部提升为全局工具页：Reference 留在 Create/Library，Remix、Edit、Extend、Cover
+回到当前 Version 的 Studio 上下文，Vocal Remover 回到 Stems，MV 放在 Finish/Publish。
+
+完整能力归属、操作语义与打磨顺序见 [`MUSIC_CAPABILITIES.md`](./MUSIC_CAPABILITIES.md)。
+
 ## 三、Mori 的布局法则
 
 ### 桌面端
@@ -94,6 +103,9 @@ Workspace nav    内容随项目上下文变化                     跨页面保
 - 已落地第一版：Song Plan 从提示说明升级为可编辑、可确认的中间状态，并在确认后通过契约持久化再创建生成任务。
 - 已落地第一版：Studio Take Lanes 支持试听、选择和明确提交当前版本；Lyrics 支持本地草稿保存，
   Stems 支持 Preview only 的逐轨 Mute/Solo 交互。
+- 已落地第一版：Studio 的 Mori AI Changes 把 Add part、Replace section、Extend、Transform 放在
+  Arrangement 时间线上下文中；用户可先选择段落，再输入指令并复核 Change Plan，最后进入 Stage，
+  当前版本不会被直接覆盖。
 - 已落地第一版：从项目详情、Studio 或项目上下文中的 Rail 进入 Create 时保留 `project_ref`，
   生成命令不再意外落到预览项目；可用时先读取项目 projection 展示项目名称，读取失败保留中性上下文。
 - 已落地第一版：Reference audio 使用真实文件选择与前端格式/大小校验，选择结果在 Smart 与 Custom

@@ -7,6 +7,7 @@ import type { MoriApi, MoriCandidate, MoriExportSnapshot } from "@/lib/mori-api"
 import { createMoriApiClient } from "@/lib/mori-api-client"
 import type { Candidate } from "./domain"
 import { MoriStudioShell } from "./components/mori-studio-shell"
+import { StudioAiComposer } from "./components/studio-ai-composer"
 import { useMoriApp } from "./components/mori-app-provider"
 import { Waveform } from "./components/waveform"
 import { previewCandidates, previewProject, previewSongPlan } from "./preview-data"
@@ -245,14 +246,17 @@ type ArrangementEditorProps = {
 }
 
 function ArrangementEditor({ candidate, takes, currentVersionRef, playerVersionRef, playing, onSelectTake, onPreviewTake, onPromoteTake }: ArrangementEditorProps) {
+  const [selectedSection, setSelectedSection] = useState("Chorus")
+
   return (
     <section aria-label="Arrangement editor">
       <div className={styles.timelineCard}>
         <div className={styles.timelineHeader}><span>Arrangement</span><span>0:36 / {Math.floor(candidate.durationSeconds / 60)}:{String(candidate.durationSeconds % 60).padStart(2, "0")}</span></div>
         <div className={styles.timelineRuler}><span>0:00</span><span>0:45</span><span>1:30</span><span>2:15</span><span>3:00</span></div>
         <div className={styles.timelineWave}><Waveform seed={candidate.waveformSeed} progress={0.2} /></div>
-        <div className={styles.timelineSegments}>{previewSongPlan.structure.map((item, index) => <div className={`${styles.timelineSegment} ${index === 3 ? styles.timelineSegmentAccent : ""}`} key={item} style={{ flex: index === 0 || index === 4 ? 0.75 : index === 3 ? 1.3 : 1 }}>{item}</div>)}</div>
+        <div className={styles.timelineSegments}>{previewSongPlan.structure.map((item, index) => <button className={`${styles.timelineSegment} ${item === selectedSection ? styles.timelineSegmentAccent : ""}`} type="button" aria-pressed={item === selectedSection} aria-label={`Select ${item} section`} key={item} onClick={() => setSelectedSection(item)} style={{ flex: index === 0 || index === 4 ? 0.75 : index === 3 ? 1.3 : 1 }}>{item}</button>)}</div>
       </div>
+      <StudioAiComposer key={selectedSection} selectedSection={selectedSection} />
       <section className={styles.takeLanes} aria-label="Take lanes">
         <div className={styles.takeLanesHeader}>
           <div><span>Compare before committing</span><h3>Take lanes</h3></div>

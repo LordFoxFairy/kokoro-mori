@@ -43,6 +43,37 @@ describe("Mori studio page", () => {
     expect(within(firstTake).getByRole("button", { name: "Use First Light as current" })).toBeInTheDocument()
   })
 
+  it("turns a contextual AI instruction into a reviewable protected change plan", () => {
+    renderStudio()
+
+    const arrangement = screen.getByRole("region", { name: "Arrangement editor" })
+    fireEvent.click(within(arrangement).getByRole("button", { name: "Select Verse section" }))
+
+    const aiChanges = screen.getByRole("region", { name: "Mori AI changes" })
+    expect(within(aiChanges).getByRole("button", { name: "Add part" })).toHaveAttribute("aria-pressed", "true")
+    expect(within(aiChanges).getByRole("button", { name: "Replace section" })).toBeInTheDocument()
+    expect(within(aiChanges).getByRole("button", { name: "Extend" })).toBeInTheDocument()
+    expect(within(aiChanges).getByRole("button", { name: "Transform" })).toBeInTheDocument()
+
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Replace section" }))
+    expect(within(aiChanges).getByText("Selected section · Verse")).toBeInTheDocument()
+
+    fireEvent.change(within(aiChanges).getByRole("textbox", { name: "Tell Mori what to change" }), {
+      target: { value: "Make the chorus wider, warmer, and more memorable." },
+    })
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Review change" }))
+
+    const changePlan = within(aiChanges).getByRole("region", { name: "AI change plan" })
+    expect(within(changePlan).getByText("Replace section")).toBeInTheDocument()
+    expect(within(changePlan).getByText("Make the chorus wider, warmer, and more memorable.")).toBeInTheDocument()
+    expect(within(changePlan).getByText("Selected section · Verse")).toBeInTheDocument()
+    expect(within(changePlan).getByText("2 alternatives · Take lanes")).toBeInTheDocument()
+    expect(within(changePlan).getByText("Current version stays untouched.")).toBeInTheDocument()
+
+    fireEvent.click(within(changePlan).getByRole("button", { name: "Stage change" }))
+    expect(within(changePlan).getByText("Ready for rendering")).toBeInTheDocument()
+  })
+
   it("keeps lyrics editable with an explicit local save state", () => {
     renderStudio()
 

@@ -18,7 +18,7 @@ pnpm build
 
 - `pnpm lint`：通过，`--max-warnings=0`
 - `pnpm typecheck`：通过
-- `pnpm test`：通过，15 个测试文件、102 个测试
+- `pnpm test`：通过，15 个测试文件、103 个测试
 - `pnpm build`：通过，生成 `/`、`/create`、`/projects`、`/library`、`/settings`、Project Overview 和 Studio 路由
 
 ## 页面巡检
@@ -62,6 +62,10 @@ Project Overview 与 Studio 会读取 provider-neutral 项目/候选 projection�
 反馈、无可播放结果时的明确空状态和失败后的 Try again 重试入口；打开时焦点进入 Queue、背景滚动锁定，移动端使用全宽工作表；状态同步优先读取快照并通过 SSE `Last-Event-ID` 回放事件。Studio 已巡检
 Arrangement/Lyrics/Stems 切换、Preview、Share 反馈和 Export queued → completed download
 action；Arrangement 已提供 Take Lanes，可试听、选择方向并明确 Use take 后切换当前版本；
+Arrangement 现在提供与时间线连在一起的 Mori AI Changes：Add part、Replace section、Extend、Transform
+共享同一套上下文式输入；Intro、Verse、Lift、Chorus、Outro 可直接选为 AI 操作上下文，操作范围和结果去向
+始终可见；提交前先展示 Change Plan，Stage 后明确反馈
+Ready for rendering，并持续声明 Current version stays untouched；
 Lyrics 已提供可编辑草稿、按版本恢复的本地保存和明确的 Saved locally 状态；Stems 已提供 Preview only 的逐轨 Mute/Solo
 控制，明确当前仍是音频渲染器接入前的交互层；
 Create 的 Smart 模式会先展示可编辑 Song Plan 摘要，用户确认后才持久化 Song Plan 并创建
