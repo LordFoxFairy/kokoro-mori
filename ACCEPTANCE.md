@@ -66,6 +66,11 @@ Arrangement/Lyrics/Stems 切换、Preview 与 Share 反馈；Export 不再点击
 Escape 关闭的明确工作窗，选择 Studio 当前打开的 Version 或该 Version 最新保存的 Mix Revision、MP3/WAV 与 Full song 后再提交。
 异步状态覆盖 queued/processing、失败保留选择与重试、完成下载；创建结果不确定时重试复用同一 Idempotency-Key，
 瞬时读取失败继续跟踪原任务；snapshot 必须回显完全一致的 Project/Version/source/scope/format，错误上下文不会生成下载动作；
+Studio 顶部现在提供上下文化的 Finish，而不是新增全局 AI 工具：Remaster 可从当前打开的 Version 或其最新 Mix Revision
+开始，默认 Balanced，并提供 Subtle / Balanced / Bold 三档可解释强度。用户先 Review source、strength、Whole song、
+五项保护约束和“两条 Take”去向，再执行已有的 version-scoped Generation；窗口关闭后任务仍被 Studio 跟踪并可重新打开。
+Remaster snapshot 必须回显完全一致的 `intent`、source 与 `variation_strength`，否则整单拒收；成功结果只追加到 Take Lanes，
+不会覆盖源 Version、Mix Revision 或 Current Version；
 Arrangement 已提供 Take Lanes，可试听、选择方向并明确 Use take 后切换当前版本；
 Arrangement 现在提供与时间线连在一起的 Mori AI Changes：Add part、Replace section、Extend、Transform
 共享同一套上下文式输入；Intro、Verse、Lift、Chorus、Outro 可直接选为 AI 操作上下文，操作范围和结果去向
@@ -83,7 +88,7 @@ Studio Change 的浏览器契约已固定为 version-scoped generation：四种 
 并由同源 `POST /api/v1/mori/versions/{version_ref}/generations` 携带 `Idempotency-Key` 提交；
 machine-readable OpenAPI 与 contract tests 会阻止 camelCase、provider、tenant 或 subject 字段进入公开 Schema；
 Generation snapshot 通过 `generation_kind` 区分新歌与 Studio Change，Studio 分支保留
-`source_version_ref` 和 `operation`，刷新后仍可恢复正确上下文；
+`source_version_ref` 和 `operation`，Remaster 分支额外保留 `intent + source + variation_strength`，刷新后仍可恢复正确上下文；
 `add_part` 在保持四种一层 operation 不变的前提下增加严格的 whole-version layer 分支：`part_kind` 明确为
 `vocals | instrumental`，Vocal layer 携带非空 `lyrics` 与可选 `voice_ref`，Instrumental layer 将两者固定为
 `null`；OpenAPI、request builder 与 contract tests 共同约束该 provider-neutral 语义；

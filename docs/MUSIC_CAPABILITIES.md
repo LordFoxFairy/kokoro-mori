@@ -111,6 +111,26 @@ Commit       用户试听后显式 Use take
 还可在 Selected section 与 Whole song 之间切换。生成后可看到进度、取消或重试；成功 Candidate 直接追加到
 Take Lanes，但不会替换 Current Version。它不挤入全局 Rail，也不伪装成聊天记录。
 
+### Finish / Remaster 的 AI 完成模型
+
+Remaster 不是 Arrangement 中自由 Transform 的另一个参数，也不是全局工具。它作为 Studio 顶部的 **Finish**
+动作出现：用户已经选定作品方向后，用最短路径完成制作层精修。
+
+```text
+Source       Open Version | Latest saved Mix Revision
+Strength     Subtle | Balanced | Bold
+Scope        Whole song
+Protected    Melody + Lyrics + Vocal identity + Tempo + Structure
+Review       执行前确认完整计划
+Result       固定 2 个 Remastered Takes
+Commit       对比后显式 Use take；源与 Current 均不改变
+```
+
+这个层级吸收 Suno Remaster 的“保持作品身份、用强度控制制作变化”，以及 Tad 把 AI 能力意图说清楚的优点；
+但 Mori 把来源、约束和结果去向全部结构化。运行中关闭 Finish 不会取消任务，重新打开可恢复进度；snapshot 的
+source 或 strength 与 Review Plan 不一致时不会挂接任何 Candidate。保存过 Mix 时默认选择最新 Mix Revision，
+否则默认当前 Version，避免用户刚完成的 Gain / Mute 调整在精修时悄悄丢失。
+
 ### Lyrics 的 AI 协作模型
 
 Lyrics 不再只是一个孤立 textarea，也不复制 Tad 的工具入口列表。当前界面把可保存的歌词 Draft 与
@@ -214,6 +234,13 @@ StudioChangeGenerationInput
     part_kind               vocals | instrumental
     lyrics                  vocals 必填；instrumental 为 null
     voice_ref               vocals 可选；instrumental 为 null
+  transform remaster
+    intent                  remaster
+    source                  version | mix_revision(mix_revision_ref)
+    variation_strength      subtle | balanced | bold
+    scope                   whole_version
+    preserve                melody + lyrics + vocal_identity + tempo + structure
+    output_count            fixed 2
   instruction
   preserve                  melody | lyrics | vocal_identity | tempo | structure
   reference_asset_refs[]
@@ -382,8 +409,10 @@ BFF 必须按受信会话校验该 asset 与用户可见 Mori 资源的关联，
 - 已完成浏览器侧第一刀：显式选择 Studio 当前打开的 Version / 最新 Mix Revision、Full song、MP3/WAV；异步 render snapshot
   回显完整 Project/Version/source/scope/format 上下文，创建不确定时复用幂等键，瞬时读取失败继续跟踪原任务，失败保留选择，
   成功后下载。界面只呈现真实已发布能力，不放选区/多轨死入口。
-- 后续：Remaster strength，以及在真实时间选区与多轨 artifact contract 完成后的选区/多轨渲染导出。
-- Cover artwork 与发布信息。
+- 已完成浏览器侧第二刀：Studio 顶部 Finish 提供 Version / 最新 Mix Revision 来源与 Subtle / Balanced / Bold
+  Remaster strength；先 Review 再复用 typed `transform + intent: remaster` Generation，snapshot 严格回显来源与强度，
+  结果固定为两个非破坏式 Takes。关闭窗口不丢运行态，也不自动替换 Current。
+- 下一步：Cover artwork 与发布信息；选区/多轨渲染等待真实时间选区与多轨 artifact contract 后再开放。
 - AI MV 作为完成歌曲的后置流程，不抢占创作主路径。
 
 ## 6. 体验门禁

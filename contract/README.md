@@ -7,7 +7,8 @@ music owner、BFF 或其他 Kokoro 子仓的内部模型。
 
 - [`openapi/mori-studio-change.v1.json`](./openapi/mori-studio-change.v1.json)：Studio 中
   Add part、Replace section、Extend、Transform 的 version-scoped generation command；其中 Add part 同时覆盖
-  时间线插入与 whole-Version Add Vocals / Add Instrumental 图层，以及刷新恢复所需的 discriminated Generation snapshot。
+  时间线插入与 whole-Version Add Vocals / Add Instrumental 图层，Transform 的 typed `remaster` 分支覆盖
+  Version / Mix Revision 来源与 Subtle / Balanced / Bold 强度，以及刷新恢复所需的 discriminated Generation snapshot。
 - [`tests/mori-studio-change.contract.test.ts`](./tests/mori-studio-change.contract.test.ts)：检查路径、
   幂等 Header、operation/scope 对应关系、`generation_kind` 快照分支、`snake_case` 与
   provider-neutral 边界。
@@ -44,8 +45,14 @@ Add Vocals / Add Instrumental 仍是 `add_part` 的二层意图，不扩张 Stud
 Vocal layer 要求非空歌词，Voice profile 可选；Instrumental layer 的 `lyrics` 与 `voice_ref` 固定为 `null`。
 两者都从路径中的不可变 Version 取源，默认输出两个 Candidate 到 Take Lanes。
 
+Remaster 仍属于稳定一层操作 `transform`，但使用严格的 `intent: remaster` 二层分支。它固定
+`whole_version` scope、两条输出与 Melody / Lyrics / Vocal identity / Tempo / Structure 五项保护约束；
+`source` 可指向路径中的 Version，或该 Version 已保存的 Mix Revision；`variation_strength` 为
+`subtle | balanced | bold`。这样 Finish 能表达“精修当前作品”而不与自由 Restyle 混淆，也不新增另一套 job。
+
 `GET /api/v1/mori/generations/{generation_ref}` 通过 `generation_kind` 区分 `new_song` 与
-`studio_change`。Studio 快照必须返回 `source_version_ref` 和 `operation`，因此页面刷新后不依赖
+`studio_change`。Studio 快照必须返回 `source_version_ref` 和 `operation`；Remaster 快照还必须原样回显
+`intent`、`source` 与 `variation_strength`。页面刷新后不依赖
 内存中的表单状态，也能恢复正确的来源、操作与进度。
 
 Lyrics Revision 不混入音频 Generation：它输出可编辑的文本 Suggestion，而不是 Candidate/Take。
