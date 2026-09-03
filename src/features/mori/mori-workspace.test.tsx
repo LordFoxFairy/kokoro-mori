@@ -5,6 +5,7 @@ import type { GenerationCreateInput, MoriApi } from "@/lib/mori-api"
 import { MoriAppProvider, useMoriApp } from "./components/mori-app-provider"
 import { CreateCanvas, type CreationDraft } from "./components/create-canvas"
 import { MoriWorkspace } from "./mori-workspace"
+import { previewCandidates } from "./preview-data"
 
 function renderWorkspace() {
   return render(
@@ -14,7 +15,26 @@ function renderWorkspace() {
   )
 }
 
+function ModalShortcutHarness() {
+  const { playing, selectPlayerCandidate } = useMoriApp()
+  return <>
+    <button type="button" onClick={() => selectPlayerCandidate(previewCandidates[0])}>Load player</button>
+    <span role="status">{playing ? "playing" : "paused"}</span>
+    <section role="dialog" aria-modal="true" aria-label="Test modal" tabIndex={-1}>Modal</section>
+  </>
+}
+
 describe("Mori workspace", () => {
+  it("does not trigger global playback shortcuts from an active modal", () => {
+    render(<MoriAppProvider><ModalShortcutHarness /></MoriAppProvider>)
+    fireEvent.click(screen.getByRole("button", { name: "Load player" }))
+
+    const modal = screen.getByRole("dialog", { name: "Test modal" })
+    fireEvent.keyDown(modal, { code: "Space" })
+
+    expect(screen.getByRole("status")).toHaveTextContent("paused")
+  })
+
   it("starts in Smart Create mode without a permanent queue column", () => {
     renderWorkspace()
     expect(screen.getByRole("navigation", { name: "Mori" })).toBeInTheDocument()

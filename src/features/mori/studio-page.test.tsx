@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
-import { describe, expect, it } from "vitest"
-import type { MoriApi, StudioChangeGenerationInput } from "@/lib/mori-api"
+import { describe, expect, it, vi } from "vitest"
+import type { MoriApi, MoriExportInput, StudioChangeGenerationInput } from "@/lib/mori-api"
 import { MoriAppProvider } from "./components/mori-app-provider"
 import { previewCandidates } from "./preview-data"
 import type { StemPlaybackFactory } from "./stem-playback"
@@ -850,6 +850,10 @@ describe("Mori studio page", () => {
     let submittedInput: Parameters<MoriApi["createStemSeparation"]>[1] | null = null
     let submittedMixVersionRef = ""
     const submittedMixInputs: Array<Parameters<MoriApi["createMixRevision"]>[1]> = []
+    let releaseExportStatus: () => void = () => undefined
+    let releaseMixSave: () => void = () => undefined
+    const exportStatusGate = new Promise<void>((resolve) => { releaseExportStatus = resolve })
+    const mixSaveGate = new Promise<void>((resolve) => { releaseMixSave = resolve })
     renderStudio({
       createStemSeparation: async (versionRef, input) => {
         submittedVersionRef = versionRef
@@ -885,6 +889,7 @@ describe("Mori studio page", () => {
       createMixRevision: async (versionRef, input) => {
         submittedMixVersionRef = versionRef
         submittedMixInputs.push(input)
+        await mixSaveGate
         return {
           data: {
             mix_revision_ref: "mix_revision_ui_1",
@@ -898,7 +903,31 @@ describe("Mori studio page", () => {
           meta: { request_id: "request_mix_revision_ui_1" },
         }
       },
+      createExport: async () => ({ data: { export_ref: "export_before_mix", status: "queued" }, meta: { request_id: "request_export_before_mix" } }),
+      getExport: async () => {
+        await exportStatusGate
+        return {
+          data: {
+            export_ref: "export_before_mix",
+            project_ref: "project_preview_first_light",
+            version_ref: "version_preview_first_light_a",
+            source: { type: "version" },
+            scope: { type: "full_song" },
+            format: "mp3",
+            status: "failed",
+            download_url: null,
+            created_at: "2026-09-03T12:00:00.000Z",
+          },
+          meta: { request_id: "request_export_before_mix_failed" },
+        }
+      },
     })
+
+    fireEvent.click(screen.getByRole("button", { name: "Export" }))
+    let exportDialog = screen.getByRole("dialog", { name: "Export First Light" })
+    fireEvent.click(within(exportDialog).getByRole("button", { name: "Start export" }))
+    expect(await within(exportDialog).findByRole("status")).toHaveTextContent("Waiting to render MP3")
+    fireEvent.click(within(exportDialog).getByRole("button", { name: "Close export" }))
 
     fireEvent.click(screen.getByRole("button", { name: "Stems" }))
     const stemsEditor = screen.getByRole("region", { name: "Stems editor" })
@@ -925,12 +954,21 @@ describe("Mori studio page", () => {
     fireEvent.change(within(stemTracks).getByRole("slider", { name: "Volume Lead vocal" }), { target: { value: "48" } })
     fireEvent.click(within(stemTracks).getByRole("button", { name: "Save mix" }))
     await waitFor(() => expect(submittedMixVersionRef).toBe("version_preview_first_light_a"))
+    releaseExportStatus()
+    await waitFor(() => expect(screen.getByRole("button", { name: "Export" })).toHaveAttribute("data-export-status", "failed"))
+    releaseMixSave()
     expect(submittedMixInputs[0]).toMatchObject({
       source_stem_separation_ref: "stem_separation_ui_1",
       name: "Stem mix",
     })
     expect(submittedMixInputs[0]?.tracks[0]).toEqual({ stem_ref: "stem_ui_vocals", gain: 0.48, muted: true })
-    expect(within(stemTracks).getByText("Mix revision 1 saved")).toBeInTheDocument()
+    expect(await within(stemTracks).findByText("Mix revision 1 saved")).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole("button", { name: "Export" }))
+    exportDialog = screen.getByRole("dialog", { name: "Export First Light" })
+    expect(within(exportDialog).getByRole("radio", { name: /Mix revision 1/u })).toBeChecked()
+    expect(within(exportDialog).queryByRole("alert")).not.toBeInTheDocument()
+    expect(within(exportDialog).getByRole("button", { name: "Start export" })).toBeInTheDocument()
   })
 
   it("keeps an active stem separation across Studio tools and lets the user cancel it", async () => {
@@ -1096,22 +1134,48 @@ describe("Mori studio page", () => {
     expect(screen.getByText("Link copied")).toBeInTheDocument()
   })
 
-  it("queues an mp3 export from the studio", async () => {
+  it("reviews an explicit full-song export before queuing it", async () => {
     let exportedVersion = ""
+    let exportedInput: MoriExportInput | null = null
     renderStudio({
-      createExport: async (versionRef) => {
+      createExport: async (versionRef, input) => {
         exportedVersion = versionRef
+        exportedInput = input
         return { data: { export_ref: "export_1", status: "queued" }, meta: { request_id: "request_export_1" } }
       },
     })
 
     fireEvent.click(screen.getByRole("button", { name: "Export" }))
+    expect(exportedVersion).toBe("")
+    const dialog = screen.getByRole("dialog", { name: "Export First Light" })
+    expect(within(dialog).getByText("Full song")).toBeInTheDocument()
+    expect(within(dialog).getByRole("radio", { name: /Open version/u })).toBeChecked()
+    fireEvent.click(within(dialog).getByRole("button", { name: "Start export" }))
 
     expect(exportedVersion).toBe("version_preview_first_light_a")
-    expect(await screen.findByText("Export queued")).toBeInTheDocument()
+    expect(exportedInput).toEqual({ source: { type: "version" }, scope: { type: "full_song" }, format: "mp3" })
+    expect(await within(dialog).findByRole("status")).toHaveTextContent("Waiting to render MP3")
   })
 
-  it("turns a completed export into a download action", async () => {
+  it("exports the open Take without implying that it was promoted to Current", async () => {
+    let exportedVersion = ""
+    renderStudio({
+      createExport: async (versionRef) => {
+        exportedVersion = versionRef
+        return { data: { export_ref: "export_open_take", status: "queued" }, meta: { request_id: "request_export_open_take" } }
+      },
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: "Select First Light · Afterglow take" }))
+    fireEvent.click(screen.getByRole("button", { name: "Export" }))
+    const dialog = screen.getByRole("dialog", { name: "Export First Light · Afterglow" })
+    expect(within(dialog).getByRole("radio", { name: /Open version/u })).toBeChecked()
+    fireEvent.click(within(dialog).getByRole("button", { name: "Start export" }))
+
+    expect(exportedVersion).toBe("version_preview_first_light_b")
+  })
+
+  it("turns a completed WAV export into a download action without replacing Export", async () => {
     renderStudio({
       createExport: async () => ({ data: { export_ref: "export_1", status: "queued" }, meta: { request_id: "request_export_1" } }),
       getExport: async () => ({
@@ -1119,9 +1183,11 @@ describe("Mori studio page", () => {
           export_ref: "export_1",
           project_ref: "project_preview_first_light",
           version_ref: "version_preview_first_light_a",
-          format: "mp3",
+          source: { type: "version" },
+          scope: { type: "full_song" },
+          format: "wav",
           status: "succeeded",
-          download_url: "https://download.kokoro.invalid/export_1.mp3",
+          download_url: "https://download.kokoro.invalid/export_1.wav",
           created_at: "2026-09-02T12:00:00.000Z",
         },
         meta: { request_id: "request_export_2" },
@@ -1129,9 +1195,134 @@ describe("Mori studio page", () => {
     })
 
     fireEvent.click(screen.getByRole("button", { name: "Export" }))
+    const dialog = screen.getByRole("dialog", { name: "Export First Light" })
+    fireEvent.click(within(dialog).getByRole("radio", { name: "WAV" }))
+    fireEvent.click(within(dialog).getByRole("button", { name: "Start export" }))
 
-    const download = await screen.findByRole("link", { name: "Download MP3" })
-    expect(download).toHaveAttribute("href", "https://download.kokoro.invalid/export_1.mp3")
+    const download = await within(dialog).findByRole("link", { name: "Download WAV" })
+    expect(download).toHaveAttribute("href", "https://download.kokoro.invalid/export_1.wav")
+    const exportButton = screen.getByRole("button", { name: "Export" })
+    const statusDescriptionId = exportButton.getAttribute("aria-describedby")
+    expect(statusDescriptionId).not.toBeNull()
+    expect(document.getElementById(statusDescriptionId ?? "missing-export-status")).toHaveTextContent("Export ready to download")
+  })
+
+  it("preserves export choices for retry when creation fails", async () => {
+    const submitted: MoriExportInput[] = []
+    const idempotencyKeys: string[] = []
+    renderStudio({
+      createExport: async (_versionRef, input, idempotencyKey) => {
+        submitted.push(input)
+        idempotencyKeys.push(idempotencyKey)
+        throw new Error("render unavailable")
+      },
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: "Export" }))
+    const dialog = screen.getByRole("dialog", { name: "Export First Light" })
+    fireEvent.click(within(dialog).getByRole("radio", { name: "WAV" }))
+    fireEvent.click(within(dialog).getByRole("button", { name: "Start export" }))
+
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("Retry will safely resume the same request.")
+    expect(within(dialog).getByRole("radio", { name: "WAV" })).toBeChecked()
+    fireEvent.click(within(dialog).getByRole("button", { name: "Retry export" }))
+    await waitFor(() => expect(submitted).toHaveLength(2))
+    expect(submitted[0]).toEqual(submitted[1])
+    expect(idempotencyKeys[0]).toBe(idempotencyKeys[1])
+  })
+
+  it("keeps tracking the same export through a transient status read failure", async () => {
+    let statusReads = 0
+    const createExport = vi.fn<MoriApi["createExport"]>(async () => ({
+      data: { export_ref: "export_recovering", status: "queued" },
+      meta: { request_id: "request_export_recovering" },
+    }))
+    renderStudio({
+      createExport,
+      getExport: async () => {
+        statusReads += 1
+        if (statusReads === 1) throw new Error("temporary network failure")
+        return {
+          data: {
+            export_ref: "export_recovering",
+            project_ref: "project_preview_first_light",
+            version_ref: "version_preview_first_light_a",
+            source: { type: "version" },
+            scope: { type: "full_song" },
+            format: "mp3",
+            status: "succeeded",
+            download_url: "https://download.kokoro.invalid/export_recovering.mp3",
+            created_at: "2026-09-02T12:00:00.000Z",
+          },
+          meta: { request_id: "request_export_recovered" },
+        }
+      },
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: "Export" }))
+    const dialog = screen.getByRole("dialog", { name: "Export First Light" })
+    fireEvent.click(within(dialog).getByRole("button", { name: "Start export" }))
+
+    expect(await within(dialog).findByRole("link", { name: "Download MP3" })).toBeInTheDocument()
+    expect(statusReads).toBe(2)
+    expect(createExport).toHaveBeenCalledOnce()
+  })
+
+  it("ignores an export receipt that returns after an A to B to A Version switch", async () => {
+    let releaseCreate: () => void = () => undefined
+    const createGate = new Promise<void>((resolve) => { releaseCreate = resolve })
+    let createStarted = false
+    renderStudio({
+      createExport: async () => {
+        createStarted = true
+        await createGate
+        return { data: { export_ref: "export_stale_aba", status: "queued" }, meta: { request_id: "request_export_stale_aba" } }
+      },
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: "Export" }))
+    let dialog = screen.getByRole("dialog", { name: "Export First Light" })
+    fireEvent.click(within(dialog).getByRole("button", { name: "Start export" }))
+    await waitFor(() => expect(createStarted).toBe(true))
+    fireEvent.click(within(dialog).getByRole("button", { name: "Close export" }))
+
+    fireEvent.click(screen.getByRole("button", { name: "Select First Light · Afterglow take" }))
+    await waitFor(() => expect(screen.getByRole("button", { name: "Select First Light · Afterglow take" })).toHaveAttribute("aria-pressed", "true"))
+    fireEvent.click(screen.getByRole("button", { name: "Select First Light take" }))
+    await waitFor(() => expect(screen.getByRole("button", { name: "Select First Light take" })).toHaveAttribute("aria-pressed", "true"))
+    releaseCreate()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    fireEvent.click(screen.getByRole("button", { name: "Export" }))
+    dialog = screen.getByRole("dialog", { name: "Export First Light" })
+    expect(within(dialog).getByRole("button", { name: "Start export" })).toBeInTheDocument()
+  })
+
+  it("rejects an export snapshot from a different render context", async () => {
+    renderStudio({
+      createExport: async () => ({ data: { export_ref: "export_wrong", status: "queued" }, meta: { request_id: "request_export_wrong" } }),
+      getExport: async () => ({
+        data: {
+          export_ref: "export_wrong",
+          project_ref: "project_other",
+          version_ref: "version_preview_first_light_a",
+          source: { type: "version" },
+          scope: { type: "full_song" },
+          format: "mp3",
+          status: "succeeded",
+          download_url: "https://download.kokoro.invalid/export_wrong.mp3",
+          created_at: "2026-09-02T12:00:00.000Z",
+        },
+        meta: { request_id: "request_export_wrong_snapshot" },
+      }),
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: "Export" }))
+    const dialog = screen.getByRole("dialog", { name: "Export First Light" })
+    fireEvent.click(within(dialog).getByRole("button", { name: "Start export" }))
+
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("The export result did not match this Version. Your choices are still here.")
+    expect(within(dialog).queryByRole("link", { name: /Download/u })).not.toBeInTheDocument()
   })
 
   it("hydrates the studio version from the requested project projection", async () => {

@@ -29,6 +29,10 @@ music owner、BFF 或其他 Kokoro 子仓的内部模型。
   上的逐轨 Gain / Mute 保存成 version-scoped、不可变的 Mix Revision；Solo 明确只属于试听态。
 - [`tests/mori-mix-revision.contract.test.ts`](./tests/mori-mix-revision.contract.test.ts)：检查 `201` 创建、读取资源、
   幂等 Header、完整音轨集合、`snake_case` 与 provider-neutral 边界。
+- [`openapi/mori-export.v1.json`](./openapi/mori-export.v1.json)：从路径 Version 或该 Version 的 Mix Revision
+  创建异步全曲渲染；请求显式携带 source、scope 与 MP3/WAV format，snapshot 回显完整渲染上下文。
+- [`tests/mori-export.contract.test.ts`](./tests/mori-export.contract.test.ts)：检查 `202` 创建、幂等 Header、
+  Version / Mix Revision 来源分支、仅已实现的 full-song scope、异步读取与 provider-neutral 边界。
 
 Studio Change 不建立第二套异步任务状态机。它通过
 `POST /api/v1/mori/versions/{version_ref}/generations` 创建既有 Generation 资源，并继续复用
@@ -61,6 +65,12 @@ Stem mixer 只读取 snapshot 返回的 `audio_asset_ref`，通过同源媒体�
 `POST /api/v1/mori/versions/{version_ref}/mix_revisions` 是同步 metadata command，成功返回 `201`，不伪装成
 音频渲染任务。owner 必须确认 `source_stem_separation_ref` 属于路径 Version，并要求 `tracks` 与该 separation
 实际返回的 stem 集合完全一致；相同幂等键重放同一个结果，改动后的再次保存创建下一个 revision。
+
+`POST /api/v1/mori/versions/{version_ref}/exports` 是异步音频渲染 command，成功返回 `202`。`source.type`
+区分路径中的 Version 与已保存 Mix Revision；Mix Revision ref 必须归属路径 Version。当前 `scope` 只发布实际可用的
+`full_song`，不提前暴露尚无时间选区或多轨交付语义的死选项。`GET /exports/{export_ref}` 回显 Version、source、
+scope 与 format，浏览器连同 Project 上下文阻止错误轮询结果被挂到当前 Studio；只有 succeeded snapshot 携带 download URL。
+创建响应不确定时消费者必须复用原 `Idempotency-Key`；状态读取的瞬时失败不得创建第二个 render task。
 
 `GET /api/v1/mori/assets/{asset_ref}/content` 是浏览器媒体读取 seam，不是第二份 Asset 事实源。BFF 必须从
 受信会话与资源关联完成授权，再向 Storage owner 解析对象字节；浏览器不能提交 tenant/subject，也不能得到

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { createGenerationController, previewMoriApi } from "./generation-controller"
 import { previewProject } from "./preview-data"
-import { createGenerationRequest, createMutationHeaders } from "@/lib/mori-api"
+import { createGenerationRequest, createMutationHeaders, type MoriExportInput } from "@/lib/mori-api"
 
 describe("Mori generation contract seam", () => {
   it("serializes browser input with the public snake_case contract", () => {
@@ -76,5 +76,23 @@ describe("Mori generation contract seam", () => {
 
     expect(capturedProjectRef).toBe(previewProject.projectRef)
     expect(state.generationRef).toBe("generation_preview_first_light_next")
+  })
+
+  it("echoes the requested Version, Mix Revision, and format through preview exports", async () => {
+    const input: MoriExportInput = {
+      source: { type: "mix_revision", mix_revision_ref: "mix_revision_preview_4" },
+      scope: { type: "full_song" },
+      format: "wav",
+    }
+
+    const receipt = await previewMoriApi.createExport("version_preview_first_light_b", input, "preview-export-4")
+    const snapshot = await previewMoriApi.getExport(receipt.data.export_ref)
+
+    expect(snapshot.data).toMatchObject({
+      version_ref: "version_preview_first_light_b",
+      source: input.source,
+      scope: input.scope,
+      format: "wav",
+    })
   })
 })

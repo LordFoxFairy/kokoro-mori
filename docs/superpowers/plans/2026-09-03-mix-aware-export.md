@@ -1,6 +1,6 @@
 # Mix-aware Export Implementation Plan
 
-> **Goal:** Replace the one-click MP3 shortcut with an explicit, accessible export flow that renders either the current Version or its latest saved Mix Revision without exposing unfinished range or multitrack controls.
+> **Goal:** Replace the one-click MP3 shortcut with an explicit, accessible export flow that renders either the Version open in Studio or its latest saved Mix Revision without exposing unfinished range or multitrack controls.
 
 ## Boundary decisions
 
@@ -8,7 +8,8 @@
 - Export remains an asynchronous, idempotent render command under one Version.
 - The request explicitly names `source`, `scope`, and `format`; this slice supports `version | mix_revision`, `full_song`, and `mp3 | wav`.
 - A successful Mix Revision save becomes the preferred export source for that Version. Switching Version clears that contextual source.
-- The durable export snapshot echoes source and scope so polling cannot attach a result from another context.
+- The durable export snapshot echoes Project, Version, source, scope, and format so polling cannot attach a result from another context.
+- An uncertain create retry reuses its original idempotency key; transient snapshot failures continue tracking the same render.
 - Selected-range and multitrack exports remain roadmap items until real timeline selection and track-delivery contracts exist; the UI does not show dead options.
 
 ## Task 1 — Establish RED tests

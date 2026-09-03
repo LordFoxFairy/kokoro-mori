@@ -14,7 +14,9 @@ import type {
   LyricsRevisionStatus,
   MoriCandidate,
   MoriExportReceipt,
+  MoriExportScope,
   MoriExportSnapshot,
+  MoriExportSource,
   MoriGenerationEvent,
   MoriLibraryItem,
   MoriLyricsRevisionEvent,
@@ -561,13 +563,31 @@ export function parseMoriExportReceipt(value: unknown): MoriExportReceipt | null
 
 export function parseMoriExportSnapshot(value: unknown): MoriExportSnapshot | null {
   if (!isRecord(value) || !nonEmptyString(value.export_ref) || !nonEmptyString(value.project_ref) || !nonEmptyString(value.version_ref) || (value.format !== "mp3" && value.format !== "wav") || (value.status !== "queued" && value.status !== "processing" && value.status !== "succeeded" && value.status !== "failed") || !nullableString(value.download_url) || !dateString(value.created_at)) return null
+  const source = parseMoriExportSource(value.source)
+  const scope = parseMoriExportScope(value.scope)
+  if (source === null || scope === null) return null
+  if ((value.status === "succeeded") !== (value.download_url !== null)) return null
   return {
     export_ref: value.export_ref,
     project_ref: value.project_ref,
     version_ref: value.version_ref,
+    source,
+    scope,
     format: value.format,
     status: value.status,
     download_url: value.download_url,
     created_at: value.created_at,
   }
+}
+
+function parseMoriExportSource(value: unknown): MoriExportSource | null {
+  if (!isRecord(value)) return null
+  if (value.type === "version") return Object.keys(value).length === 1 ? { type: "version" } : null
+  if (value.type !== "mix_revision" || !nonEmptyString(value.mix_revision_ref) || Object.keys(value).length !== 2) return null
+  return { type: "mix_revision", mix_revision_ref: value.mix_revision_ref }
+}
+
+function parseMoriExportScope(value: unknown): MoriExportScope | null {
+  if (!isRecord(value) || value.type !== "full_song" || Object.keys(value).length !== 1) return null
+  return { type: "full_song" }
 }

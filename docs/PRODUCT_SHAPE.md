@@ -107,7 +107,10 @@ Workspace nav    内容随项目上下文变化                     跨页面保
   三种渐进意图、可选 MIDI、异步恢复/取消/重试，以及对真实返回资产的逐轨 Mute/Solo/Level；
   Isolate 明确一个目标与 remaining mix，Custom 要求 2–10 个稳定目标。成功结果现已提供共享 Play/Pause、Seek、
   同步校正和单轨下载；与全局 Player 互斥，媒体失败时明确报错，不用 preview 音频顶替。用户可以把完整 Gain / Mute
-  明确保存为不可变 Mix Revision，失败时调整仍保留，Solo 只属于试听态，不进入持久化请求。
+  明确保存为不可变 Mix Revision，失败时调整仍保留，Solo 只属于试听态，不进入持久化请求。Studio Export 已从
+  固定 MP3 快捷动作升级为显式渲染流程：可选择 Studio 当前打开的 Version 或最新 Mix Revision、MP3/WAV 与 Full song，
+  提交后在同一窗口跟踪异步状态；创建结果不确定时使用原幂等键安全重试，瞬时状态读取失败继续跟踪原任务，成功才提供下载。
+  Project/Version/source/scope/format 任一上下文不匹配都会被拒绝；尚未具备真实输入的选区和多轨范围不会伪装成可用控件。
 - 已落地第一版：Stems 已形成 Voice & stems 上下文工作面，在 Separate mix 旁提供 Add vocals 与 Add instrumental。
   Vocal layer 将必填 Lyrics、可选 Voice profile 和 Vocal direction 分开；Instrumental layer 只要求编曲方向。
   两者都先显示 whole-song Layer Plan，复用 version-scoped `add_part` Generation lifecycle，并把结果送入现有
@@ -124,7 +127,7 @@ Workspace nav    内容随项目上下文变化                     跨页面保
   Style。Library 的 All 视图已经将作品与素材分区，Sources 视图按 Audio / Voices / Inspiration 渐进筛选；
   `Use in Create` 会通过经校验的 provider-neutral source ref 恢复同一个创作上下文。当前素材为确定性 preview，
   正式资产引用与 projection 继续由 storage/music owner adapter 承接。
-- 后续：Song Plan 的服务端版本历史、音频上传、以 Mix Revision 为输入的渲染导出、版本自动保存和更多导出格式。
+- 后续：Song Plan 的服务端版本历史、正式音频上传、版本自动保存，以及建立在真实时间选区和多轨交付模型上的更多导出 scope。
 
 ## 五、明确不做的方向
 

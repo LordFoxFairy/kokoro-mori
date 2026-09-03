@@ -379,7 +379,10 @@ BFF 必须按受信会话校验该 asset 与用户可见 Mori 资源的关联，
 
 ### P3 · 完成与发布
 
-- Remaster strength、以 Mix Revision 为输入的全曲/选区/多轨渲染导出。
+- 已完成浏览器侧第一刀：显式选择 Studio 当前打开的 Version / 最新 Mix Revision、Full song、MP3/WAV；异步 render snapshot
+  回显完整 Project/Version/source/scope/format 上下文，创建不确定时复用幂等键，瞬时读取失败继续跟踪原任务，失败保留选择，
+  成功后下载。界面只呈现真实已发布能力，不放选区/多轨死入口。
+- 后续：Remaster strength，以及在真实时间选区与多轨 artifact contract 完成后的选区/多轨渲染导出。
 - Cover artwork 与发布信息。
 - AI MV 作为完成歌曲的后置流程，不抢占创作主路径。
 

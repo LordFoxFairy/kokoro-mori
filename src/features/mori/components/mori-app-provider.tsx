@@ -182,6 +182,7 @@ export function MoriAppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.code !== "Space" || playerCandidate === null) return
+      if (document.querySelector('[aria-modal="true"]') !== null) return
       const target = event.target
       if (target instanceof HTMLElement && (target.isContentEditable || ["BUTTON", "INPUT", "SELECT", "TEXTAREA"].includes(target.tagName))) return
       event.preventDefault()

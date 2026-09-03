@@ -7,6 +7,7 @@ import {
   type LyricsRevisionInput,
   type MoriGenerationEvent,
   type MoriApi,
+  type MoriExportInput,
   type MoriLyricsRevisionEvent,
   type MoriStemSeparationEvent,
   type StemSeparationInput,
@@ -272,11 +273,11 @@ export function createMoriApiClient(options: MoriApiClientOptions = {}): MoriApi
       const payload = await readJson(response)
       return parseSuccessResponse(response, payload, parseMoriLibraryPage)
     },
-    async createExport(versionRef, format, idempotencyKey) {
+    async createExport(versionRef: MoriRef, input: MoriExportInput, idempotencyKey: string) {
       const response = await fetchImpl(`${apiBasePath}/versions/${encodeURIComponent(versionRef)}/exports`, {
         method: "POST",
         headers: createMutationHeaders(idempotencyKey),
-        body: JSON.stringify({ format }),
+        body: JSON.stringify(input),
       })
       const payload = await readJson(response)
       return parseSuccessResponse(response, payload, parseMoriExportReceipt)

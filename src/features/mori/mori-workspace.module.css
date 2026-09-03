@@ -2346,6 +2346,19 @@
   color: var(--mori-foreground);
 }
 
+.exportActivity {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--mori-primary);
+  box-shadow: 0 0 0 4px rgba(109, 92, 231, 0.1);
+  animation: exportPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes exportPulse {
+  50% { opacity: 0.38; transform: scale(0.82); }
+}
+
 .studioBack {
   display: inline-flex;
   align-items: center;
@@ -4650,7 +4663,9 @@
   .railToggle,
   .navItem,
   .playerButton,
-  .playerTool {
+  .playerTool,
+  .exportActivity {
     transition: none;
+    animation: none;
   }
 }

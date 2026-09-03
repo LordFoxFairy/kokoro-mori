@@ -357,6 +357,20 @@ export type MoriLibraryItem = {
 
 export type MoriExportStatus = "queued" | "processing" | "succeeded" | "failed"
 
+export type MoriExportFormat = "mp3" | "wav"
+
+export type MoriExportSource =
+  | { type: "version" }
+  | { type: "mix_revision"; mix_revision_ref: MoriRef }
+
+export type MoriExportScope = { type: "full_song" }
+
+export type MoriExportInput = {
+  source: MoriExportSource
+  scope: MoriExportScope
+  format: MoriExportFormat
+}
+
 export type MoriExportReceipt = {
   export_ref: MoriRef
   status: Extract<MoriExportStatus, "queued" | "processing">
@@ -366,7 +380,9 @@ export type MoriExportSnapshot = {
   export_ref: MoriRef
   project_ref: MoriRef
   version_ref: MoriRef
-  format: "mp3" | "wav"
+  source: MoriExportSource
+  scope: MoriExportScope
+  format: MoriExportFormat
   status: MoriExportStatus
   download_url: string | null
   created_at: string
@@ -394,7 +410,7 @@ export type MoriApi = {
   listCandidates: (projectRef: MoriRef) => Promise<ApiSuccess<{ candidates: MoriCandidate[]; next_cursor: string | null }>>
   cancelGeneration: (generationRef: MoriRef, idempotencyKey: string) => Promise<ApiSuccess<GenerationCancelReceipt>>
   listLibrary: (kind?: "all" | "version") => Promise<ApiSuccess<{ items: MoriLibraryItem[]; next_cursor: string | null }>>
-  createExport: (versionRef: MoriRef, format: "mp3" | "wav", idempotencyKey: string) => Promise<ApiSuccess<MoriExportReceipt>>
+  createExport: (versionRef: MoriRef, input: MoriExportInput, idempotencyKey: string) => Promise<ApiSuccess<MoriExportReceipt>>
   getExport: (exportRef: MoriRef) => Promise<ApiSuccess<MoriExportSnapshot>>
 }
 
@@ -458,6 +474,14 @@ export type MoriMixRevisionDraft = {
     gain: number
     muted: boolean
   }>
+}
+
+export type MoriExportDraft = {
+  source:
+    | { type: "version" }
+    | { type: "mix_revision"; mixRevisionRef: MoriRef }
+  scope: MoriExportScope
+  format: MoriExportFormat
 }
 
 export function createGenerationRequest(draft: MoriGenerationDraft): GenerationCreateInput {
@@ -660,6 +684,24 @@ export function createMixRevisionRequest(draft: MoriMixRevisionDraft): MixRevisi
   }
 }
 
+export function createExportRequest(draft: MoriExportDraft): MoriExportInput {
+  if (draft.scope.type !== "full_song") throw new Error("export_scope_invalid")
+  if (draft.format !== "mp3" && draft.format !== "wav") throw new Error("export_format_invalid")
+
+  const source: MoriExportSource = draft.source.type === "version"
+    ? { type: "version" }
+    : {
+        type: "mix_revision",
+        mix_revision_ref: requiredExportMixRevisionRef(draft.source.mixRevisionRef),
+      }
+
+  return {
+    source,
+    scope: { type: "full_song" },
+    format: draft.format,
+  }
+}
+
 export function createMutationHeaders(idempotencyKey: string): MoriMutationHeaders {
   const normalizedKey = idempotencyKey.trim()
   if (!normalizedKey) {
@@ -689,6 +731,12 @@ function uniqueNonEmpty(values: string[]): string[] {
 
 function uniqueValues<T extends string>(values: T[]): T[] {
   return values.filter((value, index) => values.indexOf(value) === index)
+}
+
+function requiredExportMixRevisionRef(value: string): string {
+  const normalized = value.trim()
+  if (normalized === "") throw new Error("export_mix_revision_required")
+  return normalized
 }
 
 const lyricsRevisionConstraints: readonly LyricsRevisionConstraint[] = ["meaning", "cadence", "rhyme_scheme", "section_length"]

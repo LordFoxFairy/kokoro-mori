@@ -1,0 +1,262 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Mori Export API",
+    "version": "0.1.0",
+    "description": "Asynchronous full-song rendering from one immutable Version or a Mix Revision owned by that Version."
+  },
+  "paths": {
+    "/api/v1/mori/versions/{version_ref}/exports": {
+      "post": {
+        "operationId": "createVersionExport",
+        "summary": "Queue a full-song render from a Version context",
+        "parameters": [
+          {
+            "name": "version_ref",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "minLength": 1 }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string", "minLength": 1, "maxLength": 200 }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ExportInput" }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "The export was queued or an idempotent receipt was replayed",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiExportReceipt" }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is malformed",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiErrorResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "The Version or Mix Revision was not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiErrorResponse" }
+              }
+            }
+          },
+          "409": {
+            "description": "The idempotency key conflicts or the Mix Revision belongs to another Version",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiErrorResponse" }
+              }
+            }
+          },
+          "422": {
+            "description": "The source cannot be rendered",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/mori/exports/{export_ref}": {
+      "get": {
+        "operationId": "getExport",
+        "summary": "Read durable export status and download readiness",
+        "parameters": [
+          {
+            "name": "export_ref",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "minLength": 1 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The durable export snapshot",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiExportSnapshot" }
+              }
+            }
+          },
+          "404": {
+            "description": "The export was not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "VersionExportSource": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type"],
+        "properties": {
+          "type": { "const": "version" }
+        }
+      },
+      "MixRevisionExportSource": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "mix_revision_ref"],
+        "properties": {
+          "type": { "const": "mix_revision" },
+          "mix_revision_ref": { "type": "string", "minLength": 1 }
+        }
+      },
+      "ExportSource": {
+        "oneOf": [
+          { "$ref": "#/components/schemas/VersionExportSource" },
+          { "$ref": "#/components/schemas/MixRevisionExportSource" }
+        ],
+        "discriminator": { "propertyName": "type" }
+      },
+      "FullSongExportScope": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type"],
+        "properties": {
+          "type": { "const": "full_song" }
+        }
+      },
+      "ExportInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["source", "scope", "format"],
+        "properties": {
+          "source": { "$ref": "#/components/schemas/ExportSource" },
+          "scope": { "$ref": "#/components/schemas/FullSongExportScope" },
+          "format": { "type": "string", "enum": ["mp3", "wav"] }
+        }
+      },
+      "ExportReceipt": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["export_ref", "status"],
+        "properties": {
+          "export_ref": { "type": "string", "minLength": 1 },
+          "status": { "type": "string", "enum": ["queued", "processing"] }
+        }
+      },
+      "ExportSnapshot": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["export_ref", "project_ref", "version_ref", "source", "scope", "format", "status", "download_url", "created_at"],
+        "oneOf": [
+          {
+            "properties": {
+              "status": { "type": "string", "enum": ["queued", "processing", "failed"] },
+              "download_url": { "type": "null" }
+            }
+          },
+          {
+            "properties": {
+              "status": { "type": "string", "const": "succeeded" },
+              "download_url": { "type": "string", "minLength": 1 }
+            }
+          }
+        ],
+        "properties": {
+          "export_ref": { "type": "string", "minLength": 1 },
+          "project_ref": { "type": "string", "minLength": 1 },
+          "version_ref": { "type": "string", "minLength": 1 },
+          "source": { "$ref": "#/components/schemas/ExportSource" },
+          "scope": { "$ref": "#/components/schemas/FullSongExportScope" },
+          "format": { "type": "string", "enum": ["mp3", "wav"] },
+          "status": { "type": "string", "enum": ["queued", "processing", "succeeded", "failed"] },
+          "download_url": {
+            "oneOf": [
+              { "type": "string", "minLength": 1 },
+              { "type": "null" }
+            ]
+          },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ApiExportReceipt": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["data", "meta"],
+        "properties": {
+          "data": { "$ref": "#/components/schemas/ExportReceipt" },
+          "meta": { "$ref": "#/components/schemas/ApiMeta" }
+        }
+      },
+      "ApiExportSnapshot": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["data", "meta"],
+        "properties": {
+          "data": { "$ref": "#/components/schemas/ExportSnapshot" },
+          "meta": { "$ref": "#/components/schemas/ApiMeta" }
+        }
+      },
+      "ApiMeta": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["request_id"],
+        "properties": {
+          "request_id": { "type": "string", "minLength": 1 }
+        }
+      },
+      "ApiErrorDetail": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["field", "reason"],
+        "properties": {
+          "field": { "type": ["string", "null"] },
+          "reason": { "type": "string", "minLength": 1 }
+        }
+      },
+      "ApiError": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "message", "retryable", "details"],
+        "properties": {
+          "code": { "type": "string", "minLength": 1 },
+          "message": { "type": "string", "minLength": 1 },
+          "retryable": { "type": "boolean" },
+          "details": {
+            "oneOf": [
+              { "type": "null" },
+              { "type": "array", "items": { "$ref": "#/components/schemas/ApiErrorDetail" } }
+            ]
+          }
+        }
+      },
+      "ApiErrorResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["error", "meta"],
+        "properties": {
+          "error": { "$ref": "#/components/schemas/ApiError" },
+          "meta": { "$ref": "#/components/schemas/ApiMeta" }
+        }
+      }
+    }
+  }
+}

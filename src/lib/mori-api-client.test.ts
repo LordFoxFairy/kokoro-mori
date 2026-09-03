@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { createGenerationRequest, createLyricsRevisionRequest, createMixRevisionRequest, createStemSeparationRequest, createStudioChangeRequest } from "./mori-api"
+import { createExportRequest, createGenerationRequest, createLyricsRevisionRequest, createMixRevisionRequest, createStemSeparationRequest, createStudioChangeRequest } from "./mori-api"
 import { createMoriApiClient } from "./mori-api-client"
 
 describe("Mori same-origin API client", () => {
@@ -901,11 +901,16 @@ describe("Mori same-origin API client", () => {
     expect(response?.data.next_cursor).toBe("mori_projects_1")
   })
 
-  it("queues and reads a version export through the Mori contract", async () => {
-    const calls: Array<{ url: string; method: string | undefined }> = []
+  it("queues and reads a mix-aware full-song export through the Mori contract", async () => {
+    const calls: Array<{ url: string; method: string | undefined; body: unknown; headers: HeadersInit | undefined }> = []
     const api = createMoriApiClient({
       fetchImpl: async (input, init) => {
-        calls.push({ url: String(input), method: init?.method })
+        calls.push({
+          url: String(input),
+          method: init?.method,
+          body: typeof init?.body === "string" ? JSON.parse(init.body) : null,
+          headers: init?.headers,
+        })
         const isCreate = init?.method === "POST"
         return new Response(JSON.stringify(isCreate ? {
           data: { export_ref: "export_1", status: "queued" },
@@ -915,9 +920,11 @@ describe("Mori same-origin API client", () => {
             export_ref: "export_1",
             project_ref: "project_preview_first_light",
             version_ref: "version_preview_first_light_a",
-            format: "mp3",
+            source: { type: "mix_revision", mix_revision_ref: "mix_revision_7" },
+            scope: { type: "full_song" },
+            format: "wav",
             status: "succeeded",
-            download_url: "https://download.kokoro.invalid/export_1.mp3",
+            download_url: "https://download.kokoro.invalid/export_1.wav",
             created_at: "2026-09-02T12:00:00.000Z",
           },
           meta: { request_id: "request_5" },
@@ -925,14 +932,60 @@ describe("Mori same-origin API client", () => {
       },
     })
 
-    const receipt = await api.createExport("version_preview_first_light_a", "mp3", "idem-export-1")
+    const input = createExportRequest({
+      source: { type: "mix_revision", mixRevisionRef: "  mix_revision_7  " },
+      scope: { type: "full_song" },
+      format: "wav",
+    })
+    const receipt = await api.createExport("version_preview_first_light_a", input, "idem-export-1")
     const snapshot = await api.getExport(receipt.data.export_ref)
 
     expect(calls).toEqual([
-      { url: "/api/v1/mori/versions/version_preview_first_light_a/exports", method: "POST" },
-      { url: "/api/v1/mori/exports/export_1", method: undefined },
+      {
+        url: "/api/v1/mori/versions/version_preview_first_light_a/exports",
+        method: "POST",
+        body: {
+          source: { type: "mix_revision", mix_revision_ref: "mix_revision_7" },
+          scope: { type: "full_song" },
+          format: "wav",
+        },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": "idem-export-1" },
+      },
+      { url: "/api/v1/mori/exports/export_1", method: undefined, body: null, headers: undefined },
     ])
-    expect(snapshot.data.download_url).toContain("export_1.mp3")
+    expect(snapshot.data).toMatchObject({
+      source: { type: "mix_revision", mix_revision_ref: "mix_revision_7" },
+      scope: { type: "full_song" },
+      format: "wav",
+      download_url: "https://download.kokoro.invalid/export_1.wav",
+    })
+  })
+
+  it("rejects an empty Mix Revision source and contradictory export results", async () => {
+    expect(() => createExportRequest({
+      source: { type: "mix_revision", mixRevisionRef: "   " },
+      scope: { type: "full_song" },
+      format: "mp3",
+    })).toThrow("export_mix_revision_required")
+
+    const api = createMoriApiClient({
+      fetchImpl: async () => new Response(JSON.stringify({
+        data: {
+          export_ref: "export_invalid",
+          project_ref: "project_preview_first_light",
+          version_ref: "version_preview_first_light_a",
+          source: { type: "version" },
+          scope: { type: "full_song" },
+          format: "mp3",
+          status: "succeeded",
+          download_url: null,
+          created_at: "2026-09-02T12:00:00.000Z",
+        },
+        meta: { request_id: "request_export_invalid" },
+      }), { status: 200, headers: { "Content-Type": "application/json" } }),
+    })
+
+    await expect(api.getExport("export_invalid")).rejects.toMatchObject({ code: "invalid_api_response" })
   })
 
   it("rejects a malformed success payload instead of trusting a type assertion", async () => {

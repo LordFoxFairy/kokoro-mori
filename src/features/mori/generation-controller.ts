@@ -1,5 +1,5 @@
 import type { GenerationStatus } from "./domain"
-import { createGenerationRequest, type GenerationCreateInput, type GenerationReceipt, type LyricsRevisionInput, type MixRevisionInput, type MoriApi, type MoriGenerationDraft, type MoriProjectCreateInput, type SongPlanCreateInput, type StemSeparationInput, type StudioChangeGenerationInput } from "@/lib/mori-api"
+import { createGenerationRequest, type GenerationCreateInput, type GenerationReceipt, type LyricsRevisionInput, type MixRevisionInput, type MoriApi, type MoriExportInput, type MoriGenerationDraft, type MoriProjectCreateInput, type SongPlanCreateInput, type StemSeparationInput, type StudioChangeGenerationInput } from "@/lib/mori-api"
 import type { MoriRef } from "./domain"
 
 export type GenerationControllerState = {
@@ -47,6 +47,8 @@ function receiptState(receipt: GenerationReceipt, requestId: string): Generation
     errorCode: null,
   }
 }
+
+const previewExports = new Map<MoriRef, { versionRef: MoriRef; input: MoriExportInput }>()
 
 export const previewMoriApi: MoriApi = {
   async listProjects() {
@@ -319,10 +321,12 @@ export const previewMoriApi: MoriApi = {
       },
     }
   },
-  async createExport(_versionRef: MoriRef, _format: "mp3" | "wav", idempotencyKey: string) {
+  async createExport(versionRef: MoriRef, input: MoriExportInput, idempotencyKey: string) {
+    const exportRef = `export_${idempotencyKey}`
+    previewExports.set(exportRef, { versionRef, input })
     return {
       data: {
-        export_ref: `export_${idempotencyKey}`,
+        export_ref: exportRef,
         status: "queued" as const,
       },
       meta: {
@@ -331,12 +335,15 @@ export const previewMoriApi: MoriApi = {
     }
   },
   async getExport(exportRef: MoriRef) {
+    const tracked = previewExports.get(exportRef)
     return {
       data: {
         export_ref: exportRef,
         project_ref: "project_preview_first_light",
-        version_ref: "version_preview_first_light_a",
-        format: "mp3" as const,
+        version_ref: tracked?.versionRef ?? "version_preview_first_light_a",
+        source: tracked?.input.source ?? { type: "version" as const },
+        scope: tracked?.input.scope ?? { type: "full_song" as const },
+        format: tracked?.input.format ?? "mp3" as const,
         status: "queued" as const,
         download_url: null,
         created_at: "2026-09-02T12:00:00.000Z",

@@ -2,12 +2,13 @@
 
 import { ArrowLeft, AudioLines, AudioWaveform, Download, FileText, Play, Share2, Sparkles } from "lucide-react"
 import Link from "next/link"
-import { useEffect, useMemo, useRef, useState } from "react"
-import { createLyricsRevisionRequest, createStemSeparationRequest, createStudioChangeRequest, type LyricsRevisionSnapshot, type MixRevisionInput, type MoriApi, type MoriCandidate, type MoriExportSnapshot, type MoriMixRevision, type StemSeparationSnapshot } from "@/lib/mori-api"
+import { useEffect, useId, useMemo, useRef, useState } from "react"
+import { createLyricsRevisionRequest, createStemSeparationRequest, createStudioChangeRequest, type LyricsRevisionSnapshot, type MixRevisionInput, type MoriApi, type MoriCandidate, type MoriExportInput, type MoriExportSnapshot, type MoriExportStatus, type MoriMixRevision, type StemSeparationSnapshot } from "@/lib/mori-api"
 import { createMoriApiClient, MoriApiRequestError } from "@/lib/mori-api-client"
 import type { Candidate } from "./domain"
 import { MoriStudioShell } from "./components/mori-studio-shell"
 import { StudioAiComposer, type StudioAiRunState } from "./components/studio-ai-composer"
+import { StudioExportDialog } from "./components/studio-export-dialog"
 import { StudioLyricsEditor, type StudioLyricsRunState } from "./components/studio-lyrics-editor"
 import { StudioStemsEditor, type StudioStemSeparationRunState } from "./components/studio-stems-editor"
 import { StudioTimeline } from "./components/studio-timeline"
@@ -48,6 +49,21 @@ type TrackedStemSeparation = {
   plan: StudioStemSeparationPlan
 }
 
+type TrackedExport = {
+  exportRef: string
+  projectRef: string
+  sourceVersionRef: string
+  input: MoriExportInput
+  commandEpoch: number
+}
+
+type PendingExportCommand = {
+  projectRef: string
+  sourceVersionRef: string
+  input: MoriExportInput
+  idempotencyKey: string
+}
+
 const idleStudioChangeRun: StudioAiRunState = {
   status: "idle",
   progress: 0,
@@ -79,18 +95,24 @@ const idleStemSeparationRun: StudioStemSeparationRunState = {
 
 export function StudioPageContent({ candidate, projectRef, versionRef, api, stemPlaybackFactory = createHtmlStemPlaybackController }: StudioPageContentProps) {
   const { playerCandidate, playing, positionSeconds, seekPlayer, selectPlayerCandidate, setPlaying } = useMoriApp()
+  const exportStatusDescriptionId = useId()
   const defaultApi = useMemo(() => createMoriApiClient(), [])
   const studioApi = useMemo(() => ({ ...defaultApi, ...(api ?? {}) }), [api, defaultApi])
   const initialCandidate = resolveInitialCandidate(candidate, projectRef, versionRef)
+  const activeProjectRef = projectRef?.trim() || previewProject.projectRef
   const [activeCandidate, setActiveCandidate] = useState<Candidate | null>(() => initialCandidate)
   const [studioCandidates, setStudioCandidates] = useState(() => initialCandidate === null ? [] : [initialCandidate, ...previewCandidates.filter((item) => item.versionRef !== initialCandidate.versionRef)])
   const [currentVersionRef, setCurrentVersionRef] = useState(() => previewCandidates.find((item) => item.isCurrent)?.versionRef ?? candidate.versionRef)
   const [projectTitle, setProjectTitle] = useState<string | null>(null)
   const [activeTool, setActiveTool] = useState<StudioTool>("arrangement")
   const [shareFeedback, setShareFeedback] = useState(false)
-  const [exportFeedback, setExportFeedback] = useState<"idle" | "queued" | "processing" | "succeeded" | "failed">("idle")
-  const [exportRef, setExportRef] = useState<string | null>(null)
+  const [exportDialogOpen, setExportDialogOpen] = useState(false)
+  const [exportFeedback, setExportFeedback] = useState<"idle" | MoriExportStatus>("idle")
+  const [exportInput, setExportInput] = useState<MoriExportInput | null>(null)
   const [exportSnapshot, setExportSnapshot] = useState<MoriExportSnapshot | null>(null)
+  const [exportMessage, setExportMessage] = useState<string | null>(null)
+  const [trackedExport, setTrackedExport] = useState<TrackedExport | null>(null)
+  const [latestMixRevision, setLatestMixRevision] = useState<MoriMixRevision | null>(null)
   const [studioChangeRun, setStudioChangeRun] = useState<StudioAiRunState>(idleStudioChangeRun)
   const [trackedStudioChange, setTrackedStudioChange] = useState<TrackedStudioChange | null>(null)
   const [lyricsRevisionRun, setLyricsRevisionRun] = useState<StudioLyricsRunState>(idleLyricsRevisionRun)
@@ -99,13 +121,20 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api, stem
   const [trackedStemSeparation, setTrackedStemSeparation] = useState<TrackedStemSeparation | null>(null)
   const activeVersionRef = activeCandidate?.versionRef ?? null
   const activeVersionRefRef = useRef(activeVersionRef)
+  const activeProjectRefRef = useRef(activeProjectRef)
+  const exportCommandEpochRef = useRef(0)
+  const exportFeedbackRef = useRef<"idle" | MoriExportStatus>("idle")
+  const pendingExportCommandRef = useRef<PendingExportCommand | null>(null)
   const stemSeparationCommandEpochRef = useRef(0)
   const ignoredStemSeparationsRef = useRef(new Set<string>())
   const activeStemEventRequestRef = useRef<{ stemSeparationRef: string; controller: AbortController } | null>(null)
   activeVersionRefRef.current = activeVersionRef
+  activeProjectRefRef.current = activeProjectRef
 
   useEffect(() => {
     stemSeparationCommandEpochRef.current += 1
+    exportCommandEpochRef.current += 1
+    pendingExportCommandRef.current = null
     setTrackedStemSeparation((current) => {
       if (current === null || current.sourceVersionRef === activeVersionRef) return current
       ignoredStemSeparationsRef.current.add(current.stemSeparationRef)
@@ -118,7 +147,15 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api, stem
         ? current
         : idleStemSeparationRun
     ))
-  }, [activeVersionRef])
+    setLatestMixRevision((current) => current?.version_ref === activeVersionRef ? current : null)
+    setTrackedExport(null)
+    exportFeedbackRef.current = "idle"
+    setExportFeedback("idle")
+    setExportInput(null)
+    setExportSnapshot(null)
+    setExportMessage(null)
+    setExportDialogOpen(false)
+  }, [activeProjectRef, activeVersionRef])
 
   useEffect(() => {
     const requestedProjectRef = projectRef?.trim()
@@ -686,6 +723,8 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api, stem
       || revision.version_ref !== versionRef
       || !mixRevisionMatchesInput(revision, input)
     ) throw new Error("mix_revision_context_mismatch")
+    setLatestMixRevision(revision)
+    if (exportFeedbackRef.current === "failed" || exportFeedbackRef.current === "succeeded") resetExport()
     return revision
   }
 
@@ -732,43 +771,111 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api, stem
     window.setTimeout(() => setShareFeedback(false), 1800)
   }
 
-  const exportVersion = async () => {
-    if (activeCandidate === null) return
+  const startExport = async (input: MoriExportInput) => {
+    const sourceVersionRef = activeVersionRefRef.current
+    if (sourceVersionRef === null) return
+    const sourceProjectRef = activeProjectRefRef.current
+    const previousCommand = pendingExportCommandRef.current
+    const idempotencyKey = previousCommand !== null
+      && previousCommand.projectRef === sourceProjectRef
+      && previousCommand.sourceVersionRef === sourceVersionRef
+      && exportInputsMatch(previousCommand.input, input)
+      ? previousCommand.idempotencyKey
+      : `mori-export-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    const commandEpoch = exportCommandEpochRef.current + 1
+    exportCommandEpochRef.current = commandEpoch
+    pendingExportCommandRef.current = { projectRef: sourceProjectRef, sourceVersionRef, input, idempotencyKey }
+    exportFeedbackRef.current = "queued"
     setExportFeedback("queued")
-    setExportRef(null)
+    setTrackedExport(null)
+    setExportInput(input)
     setExportSnapshot(null)
+    setExportMessage(null)
     try {
-      const response = await studioApi.createExport(activeCandidate.versionRef, "mp3", `mori-export-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
-      setExportRef(response.data.export_ref)
-      setExportFeedback(response.data.status === "processing" ? "processing" : "queued")
+      const response = await studioApi.createExport(sourceVersionRef, input, idempotencyKey)
+      if (
+        exportCommandEpochRef.current !== commandEpoch
+        || activeProjectRefRef.current !== sourceProjectRef
+        || activeVersionRefRef.current !== sourceVersionRef
+      ) return
+      pendingExportCommandRef.current = null
+      setTrackedExport({
+        exportRef: response.data.export_ref,
+        projectRef: sourceProjectRef,
+        sourceVersionRef,
+        input,
+        commandEpoch,
+      })
+      const nextStatus = response.data.status === "processing" ? "processing" : "queued"
+      exportFeedbackRef.current = nextStatus
+      setExportFeedback(nextStatus)
     } catch {
+      if (
+        exportCommandEpochRef.current !== commandEpoch
+        || activeProjectRefRef.current !== sourceProjectRef
+        || activeVersionRefRef.current !== sourceVersionRef
+      ) return
+      exportFeedbackRef.current = "failed"
       setExportFeedback("failed")
+      setExportMessage("Mori could not confirm the export start. Retry will safely resume the same request.")
     }
   }
 
   useEffect(() => {
     const getExport = studioApi.getExport
-    if (exportRef === null || getExport === undefined) return
+    if (trackedExport === null || getExport === undefined) return
+    const tracked = trackedExport
     let disposed = false
     let timer: number | undefined
+    let retryDelayMs = 360
+    const isCurrent = () => !disposed
+      && exportCommandEpochRef.current === tracked.commandEpoch
+      && activeProjectRefRef.current === tracked.projectRef
+      && activeVersionRefRef.current === tracked.sourceVersionRef
 
     const syncExport = async () => {
       try {
-        const response = await getExport(exportRef)
-        if (disposed) return
-        setExportSnapshot(response.data)
-        if (response.data.status === "succeeded") {
+        const response = await getExport(tracked.exportRef)
+        if (!isCurrent()) return
+        const snapshot = response.data
+        if (
+          snapshot.export_ref !== tracked.exportRef
+          || snapshot.project_ref !== tracked.projectRef
+          || snapshot.version_ref !== tracked.sourceVersionRef
+          || !exportSnapshotMatchesInput(snapshot, tracked.input)
+        ) throw new Error("export_snapshot_context_mismatch")
+
+        retryDelayMs = 360
+        setExportSnapshot(snapshot)
+        setExportMessage(null)
+        if (snapshot.status === "succeeded") {
+          exportFeedbackRef.current = "succeeded"
           setExportFeedback("succeeded")
+          setTrackedExport(null)
           return
         }
-        if (response.data.status === "failed") {
+        if (snapshot.status === "failed") {
+          exportFeedbackRef.current = "failed"
           setExportFeedback("failed")
+          setExportMessage("The export did not finish. Your choices are still here.")
+          setTrackedExport(null)
           return
         }
-        setExportFeedback(response.data.status)
+        exportFeedbackRef.current = snapshot.status
+        setExportFeedback(snapshot.status)
         timer = window.setTimeout(() => { void syncExport() }, 220)
-      } catch {
-        if (!disposed) setExportFeedback("failed")
+      } catch (error) {
+        if (!isCurrent()) return
+        if (error instanceof Error && error.message === "export_snapshot_context_mismatch") {
+          exportFeedbackRef.current = "failed"
+          setExportFeedback("failed")
+          setExportMessage("The export result did not match this Version. Your choices are still here.")
+          setTrackedExport(null)
+          return
+        }
+        setExportMessage("Mori is reconnecting to this export. The render is still being tracked.")
+        timer = window.setTimeout(() => { void syncExport() }, retryDelayMs)
+        retryDelayMs = Math.min(retryDelayMs * 2, 2_000)
       }
     }
 
@@ -777,19 +884,19 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api, stem
       disposed = true
       if (timer !== undefined) window.clearTimeout(timer)
     }
-  }, [exportRef, studioApi])
+  }, [studioApi, trackedExport])
 
-  const downloadUrl = exportSnapshot?.download_url
-  const exportReady = exportFeedback === "succeeded" && typeof downloadUrl === "string"
-  const exportLabel = exportFeedback === "queued"
-    ? "Export queued"
-    : exportFeedback === "processing"
-      ? "Exporting…"
-      : exportFeedback === "failed"
-        ? "Retry export"
-        : "Export"
+  function resetExport() {
+    exportCommandEpochRef.current += 1
+    pendingExportCommandRef.current = null
+    setTrackedExport(null)
+    exportFeedbackRef.current = "idle"
+    setExportFeedback("idle")
+    setExportInput(null)
+    setExportSnapshot(null)
+    setExportMessage(null)
+  }
 
-  const activeProjectRef = projectRef?.trim() || previewProject.projectRef
   const activeProjectTitle = projectTitle ?? (activeProjectRef === previewProject.projectRef ? previewProject.title : "Project")
 
   return (
@@ -798,7 +905,10 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api, stem
           <div className={styles.studioHeaderLeft}><Link className={styles.studioBack} href={`/projects/${activeProjectRef}`}><ArrowLeft size={15} /> {activeProjectTitle}</Link><span>/</span><strong>Studio</strong></div>
           <div className={styles.studioHeaderActions}>
             <button className={styles.ghostButton} type="button" onClick={share}><Share2 size={14} /> {shareFeedback ? "Link copied" : "Share"}</button>
-          {activeCandidate !== null ? exportReady ? <a className={styles.ghostButton} href={downloadUrl} download aria-label={`Download ${exportSnapshot?.format.toUpperCase() ?? "MP3"}`}><Download size={14} /> Download {exportSnapshot?.format.toUpperCase() ?? "MP3"}</a> : <button className={styles.ghostButton} type="button" onClick={() => { void exportVersion() }} disabled={exportFeedback === "queued" || exportFeedback === "processing"}>{exportFeedback === "queued" || exportFeedback === "processing" ? exportLabel : exportFeedback === "failed" ? "Retry export" : <><Download size={14} /> Export</>}</button> : null}
+          {activeCandidate !== null ? <>
+            <button className={styles.ghostButton} type="button" aria-label="Export" aria-describedby={exportStatusDescriptionId} data-export-status={exportFeedback} onClick={() => setExportDialogOpen(true)}><Download size={14} /> Export{exportFeedback === "queued" || exportFeedback === "processing" ? <span className={styles.exportActivity} aria-hidden="true" /> : null}</button>
+            <span className={styles.srOnly} id={exportStatusDescriptionId} aria-live="polite">{exportStatusDescription(exportFeedback)}</span>
+          </> : null}
         </div>
       </header>
       {activeCandidate === null ? <section className={styles.studioUnavailable} aria-label="Studio version unavailable">
@@ -825,6 +935,18 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api, stem
         </section>
         <aside className={styles.versionRail} aria-label="Version history"><div className={styles.versionRailHeader}><div><span>Project history</span><h2>Versions</h2></div></div>{studioCandidates.map((item, index) => <Link className={`${styles.versionItem} ${item.versionRef === activeCandidate.versionRef ? styles.versionItemActive : ""}`} href={`/projects/${activeProjectRef}/studio/${item.versionRef}`} key={item.versionRef}><div className={`${styles.versionThumb} ${index === 1 ? styles.versionThumbAlt : ""}`}><Play size={12} fill="currentColor" /></div><div><strong>{item.title}</strong><span>{index === 0 ? "Current" : "Draft"} · {Math.floor(item.durationSeconds / 60)}:{String(item.durationSeconds % 60).padStart(2, "0")}</span></div></Link>)}</aside>
       </div>}
+      {exportDialogOpen && activeCandidate !== null ? <StudioExportDialog
+        versionRef={activeCandidate.versionRef}
+        versionTitle={activeCandidate.title}
+        latestMixRevision={latestMixRevision}
+        status={exportFeedback}
+        activeInput={exportInput}
+        snapshot={exportSnapshot}
+        message={exportMessage}
+        onClose={() => setExportDialogOpen(false)}
+        onReset={resetExport}
+        onSubmit={(input) => { void startExport(input) }}
+      /> : null}
     </MoriStudioShell>
   )
 }
@@ -872,6 +994,26 @@ function mixRevisionMatchesInput(revision: MoriMixRevision, input: MixRevisionIn
     const returned = returnedTracks.get(track.stem_ref)
     return returned !== undefined && returned.gain === track.gain && returned.muted === track.muted
   })
+}
+
+function exportSnapshotMatchesInput(snapshot: MoriExportSnapshot, input: MoriExportInput): boolean {
+  return exportInputsMatch({ source: snapshot.source, scope: snapshot.scope, format: snapshot.format }, input)
+}
+
+function exportInputsMatch(left: MoriExportInput, right: MoriExportInput): boolean {
+  if (left.format !== right.format || left.scope.type !== right.scope.type || left.source.type !== right.source.type) return false
+  return left.source.type === "version"
+    || (right.source.type === "mix_revision" && left.source.mix_revision_ref === right.source.mix_revision_ref)
+}
+
+function exportStatusDescription(status: "idle" | MoriExportStatus): string {
+  switch (status) {
+    case "idle": return "Export options"
+    case "queued": return "Export queued"
+    case "processing": return "Export rendering"
+    case "succeeded": return "Export ready to download"
+    case "failed": return "Export needs attention"
+  }
 }
 
 function studioChangeFailureMessage(error: unknown): string {
