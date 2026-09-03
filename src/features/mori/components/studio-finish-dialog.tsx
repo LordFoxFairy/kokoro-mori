@@ -55,9 +55,9 @@ export function StudioFinishDialog({
   const [sourceType, setSourceType] = useState<"version" | "mix_revision">(initialSource)
   const [variationStrength, setVariationStrength] = useState<StudioRemasterStrength>(runPlan?.variationStrength ?? "balanced")
   const [reviewedPlan, setReviewedPlan] = useState<StudioRemasterPlan | null>(null)
-  const visiblePlan = run.status === "idle" ? reviewedPlan : runPlan
+  const visiblePlan = runPlan ?? reviewedPlan
   const busy = runPlan !== null && isActiveStudioChangeStatus(run.status)
-  const blockedByOtherChange = run.status !== "idle" && runPlan === null
+  const blockedByOtherChange = runPlan === null && isActiveStudioChangeStatus(run.status)
 
   useEffect(() => {
     onCloseRef.current = onClose

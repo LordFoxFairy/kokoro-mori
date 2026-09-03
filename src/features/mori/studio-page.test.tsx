@@ -969,6 +969,11 @@ describe("Mori studio page", () => {
     expect(within(exportDialog).getByRole("radio", { name: /Mix revision 1/u })).toBeChecked()
     expect(within(exportDialog).queryByRole("alert")).not.toBeInTheDocument()
     expect(within(exportDialog).getByRole("button", { name: "Start export" })).toBeInTheDocument()
+    fireEvent.click(within(exportDialog).getByRole("button", { name: "Close export" }))
+
+    fireEvent.click(screen.getByRole("button", { name: "Finish" }))
+    const finishDialog = screen.getByRole("dialog", { name: "Finish First Light" })
+    expect(within(finishDialog).getByRole("radio", { name: /Mix revision 1/u })).toBeChecked()
   })
 
   it("keeps an active stem separation across Studio tools and lets the user cancel it", async () => {
@@ -1132,6 +1137,136 @@ describe("Mori studio page", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Share" }))
     expect(screen.getByText("Link copied")).toBeInTheDocument()
+  })
+
+  it("creates a reviewed Remaster as new Takes without replacing Current", async () => {
+    let submittedVersionRef = ""
+    let submittedInput: StudioChangeGenerationInput | null = null
+    renderStudio({
+      createStudioChange: async (versionRef, input) => {
+        submittedVersionRef = versionRef
+        submittedInput = input
+        return { data: { generation_ref: "generation_remaster_1", status: "queued" }, meta: { request_id: "request_remaster_1" } }
+      },
+      getGeneration: async () => ({
+        data: {
+          generation_ref: "generation_remaster_1",
+          generation_kind: "studio_change",
+          project_ref: "project_preview_first_light",
+          song_plan_ref: null,
+          mode: null,
+          source_version_ref: "version_preview_first_light_a",
+          operation: "transform",
+          intent: "remaster",
+          source: { type: "version" },
+          variation_strength: "bold",
+          status: "succeeded",
+          progress: 100,
+          candidate_refs: ["candidate_remaster_1", "candidate_remaster_2"],
+          created_at: "2026-09-03T12:00:00.000Z",
+        },
+        meta: { request_id: "request_remaster_snapshot_1" },
+      }),
+      getGenerationEvents: async () => [],
+      listCandidates: async () => ({
+        data: {
+          candidates: [
+            {
+              candidate_ref: "candidate_remaster_1",
+              generation_ref: "generation_remaster_1",
+              version_ref: "version_remaster_1",
+              project_ref: "project_preview_first_light",
+              title: "First Light · Clear Master",
+              duration_seconds: 182,
+              audio_asset_ref: "asset_remaster_1",
+              waveform_asset_ref: "waveform_remaster_1",
+              style_tags: ["clearer balance", "bold polish"],
+              created_at: "2026-09-03T12:01:00.000Z",
+            },
+            {
+              candidate_ref: "candidate_remaster_2",
+              generation_ref: "generation_remaster_1",
+              version_ref: "version_remaster_2",
+              project_ref: "project_preview_first_light",
+              title: "First Light · Wide Master",
+              duration_seconds: 182,
+              audio_asset_ref: "asset_remaster_2",
+              waveform_asset_ref: "waveform_remaster_2",
+              style_tags: ["wider image", "bold polish"],
+              created_at: "2026-09-03T12:01:01.000Z",
+            },
+          ],
+          next_cursor: null,
+        },
+        meta: { request_id: "request_remaster_candidates_1" },
+      }),
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: "Finish" }))
+    const dialog = screen.getByRole("dialog", { name: "Finish First Light" })
+    expect(submittedVersionRef).toBe("")
+    fireEvent.click(within(dialog).getByRole("radio", { name: /Bold/u }))
+    fireEvent.click(within(dialog).getByRole("button", { name: "Review remaster" }))
+    fireEvent.click(within(dialog).getByRole("button", { name: "Create 2 remastered takes" }))
+
+    await waitFor(() => expect(submittedVersionRef).toBe("version_preview_first_light_a"))
+    expect(submittedInput).toEqual({
+      operation: "transform",
+      scope: { type: "whole_version" },
+      intent: "remaster",
+      source: { type: "version" },
+      variation_strength: "bold",
+      instruction: "Push clarity, impact, and spatial depth further while preserving the song's identity and structure.",
+      preserve: ["melody", "lyrics", "vocal_identity", "tempo", "structure"],
+      reference_asset_refs: [],
+      output_count: 2,
+    })
+
+    expect(await within(dialog).findByText("2 remastered takes are ready.")).toBeInTheDocument()
+    fireEvent.click(within(dialog).getByRole("button", { name: "Review 2 takes" }))
+    expect(screen.queryByRole("dialog", { name: "Finish First Light" })).not.toBeInTheDocument()
+    const takeLanes = screen.getByRole("region", { name: "Take lanes" })
+    expect(within(takeLanes).getByRole("article", { name: "Take 3: First Light · Clear Master" })).toBeInTheDocument()
+    expect(within(takeLanes).getByRole("article", { name: "Take 4: First Light · Wide Master" })).toBeInTheDocument()
+    expect(within(within(takeLanes).getByRole("article", { name: "Take 1: First Light" })).getByText("Current version")).toBeInTheDocument()
+  })
+
+  it("rejects a Remaster snapshot with a different source or strength", async () => {
+    renderStudio({
+      createStudioChange: async () => ({
+        data: { generation_ref: "generation_remaster_wrong", status: "queued" },
+        meta: { request_id: "request_remaster_wrong" },
+      }),
+      getGeneration: async () => ({
+        data: {
+          generation_ref: "generation_remaster_wrong",
+          generation_kind: "studio_change",
+          project_ref: "project_preview_first_light",
+          song_plan_ref: null,
+          mode: null,
+          source_version_ref: "version_preview_first_light_a",
+          operation: "transform",
+          intent: "remaster",
+          source: { type: "version" },
+          variation_strength: "subtle",
+          status: "succeeded",
+          progress: 100,
+          candidate_refs: ["candidate_wrong"],
+          created_at: "2026-09-03T12:00:00.000Z",
+        },
+        meta: { request_id: "request_remaster_wrong_snapshot" },
+      }),
+      getGenerationEvents: async () => [],
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: "Finish" }))
+    const dialog = screen.getByRole("dialog", { name: "Finish First Light" })
+    fireEvent.click(within(dialog).getByRole("radio", { name: /Bold/u }))
+    fireEvent.click(within(dialog).getByRole("button", { name: "Review remaster" }))
+    fireEvent.click(within(dialog).getByRole("button", { name: "Create 2 remastered takes" }))
+
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("The returned Remaster did not match this source or strength. Nothing was applied.")
+    expect(within(dialog).getByRole("button", { name: "Retry remaster" })).toBeInTheDocument()
   })
 
   it("reviews an explicit full-song export before queuing it", async () => {

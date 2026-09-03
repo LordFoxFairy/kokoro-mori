@@ -3,12 +3,13 @@
 import { ArrowLeft, AudioLines, AudioWaveform, Download, FileText, Play, Share2, Sparkles } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useId, useMemo, useRef, useState } from "react"
-import { createLyricsRevisionRequest, createStemSeparationRequest, createStudioChangeRequest, type LyricsRevisionSnapshot, type MixRevisionInput, type MoriApi, type MoriCandidate, type MoriExportInput, type MoriExportSnapshot, type MoriExportStatus, type MoriMixRevision, type StemSeparationSnapshot } from "@/lib/mori-api"
+import { createLyricsRevisionRequest, createStemSeparationRequest, createStudioChangeRequest, type LyricsRevisionSnapshot, type MixRevisionInput, type MoriApi, type MoriCandidate, type MoriExportInput, type MoriExportSnapshot, type MoriExportStatus, type MoriMixRevision, type StemSeparationSnapshot, type StudioChangeGenerationSnapshot } from "@/lib/mori-api"
 import { createMoriApiClient, MoriApiRequestError } from "@/lib/mori-api-client"
 import type { Candidate } from "./domain"
 import { MoriStudioShell } from "./components/mori-studio-shell"
 import { StudioAiComposer, type StudioAiRunState } from "./components/studio-ai-composer"
 import { StudioExportDialog } from "./components/studio-export-dialog"
+import { StudioFinishDialog } from "./components/studio-finish-dialog"
 import { StudioLyricsEditor, type StudioLyricsRunState } from "./components/studio-lyrics-editor"
 import { StudioStemsEditor, type StudioStemSeparationRunState } from "./components/studio-stems-editor"
 import { StudioTimeline } from "./components/studio-timeline"
@@ -17,6 +18,7 @@ import { Waveform } from "./components/waveform"
 import { previewCandidates, previewProject, previewSongPlan } from "./preview-data"
 import { buildStudioTimelineSections, isActiveStudioChangeStatus, type StudioChangePlan, type StudioTimelineSection } from "./studio-change"
 import { createStudioLyricsRevisionDraft, isActiveLyricsRevisionStatus, studioLyricsScopeLabel, type StudioLyricsPlan } from "./studio-lyrics"
+import { isStudioRemasterPlan, isStudioRemasterSnapshot } from "./studio-remaster"
 import { createStudioStemSeparationDraft, isActiveStemSeparationStatus, stemSeparationSnapshotMatchesPlan, type StudioStemSeparationPlan } from "./studio-stems"
 import { createHtmlStemPlaybackController, type StemPlaybackFactory } from "./stem-playback"
 import styles from "./mori-workspace.module.css"
@@ -34,7 +36,7 @@ type StudioPageContentProps = {
 type TrackedStudioChange = {
   generationRef: string
   sourceVersionRef: string
-  operation: StudioChangePlan["operation"]
+  plan: StudioChangePlan
 }
 
 type TrackedLyricsRevision = {
@@ -96,6 +98,7 @@ const idleStemSeparationRun: StudioStemSeparationRunState = {
 export function StudioPageContent({ candidate, projectRef, versionRef, api, stemPlaybackFactory = createHtmlStemPlaybackController }: StudioPageContentProps) {
   const { playerCandidate, playing, positionSeconds, seekPlayer, selectPlayerCandidate, setPlaying } = useMoriApp()
   const exportStatusDescriptionId = useId()
+  const finishStatusDescriptionId = useId()
   const defaultApi = useMemo(() => createMoriApiClient(), [])
   const studioApi = useMemo(() => ({ ...defaultApi, ...(api ?? {}) }), [api, defaultApi])
   const initialCandidate = resolveInitialCandidate(candidate, projectRef, versionRef)
@@ -106,6 +109,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api, stem
   const [projectTitle, setProjectTitle] = useState<string | null>(null)
   const [activeTool, setActiveTool] = useState<StudioTool>("arrangement")
   const [shareFeedback, setShareFeedback] = useState(false)
+  const [finishDialogOpen, setFinishDialogOpen] = useState(false)
   const [exportDialogOpen, setExportDialogOpen] = useState(false)
   const [exportFeedback, setExportFeedback] = useState<"idle" | MoriExportStatus>("idle")
   const [exportInput, setExportInput] = useState<MoriExportInput | null>(null)
@@ -154,6 +158,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api, stem
     setExportInput(null)
     setExportSnapshot(null)
     setExportMessage(null)
+    setFinishDialogOpen(false)
     setExportDialogOpen(false)
   }, [activeProjectRef, activeVersionRef])
 
@@ -220,7 +225,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api, stem
       setTrackedStudioChange({
         generationRef: response.data.generation_ref,
         sourceVersionRef,
-        operation: plan.operation,
+        plan,
       })
     } catch (error) {
       setStudioChangeRun({
@@ -243,12 +248,11 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api, stem
       try {
         const snapshot = await studioApi.getGeneration(trackedStudioChange.generationRef)
         if (disposed) return
-        if (
-          snapshot.data.generation_kind !== "studio_change"
-          || snapshot.data.source_version_ref !== trackedStudioChange.sourceVersionRef
-          || snapshot.data.operation !== trackedStudioChange.operation
-        ) {
-          throw new Error("studio_change_snapshot_context_mismatch")
+        if (snapshot.data.generation_kind !== "studio_change") throw new Error("studio_change_snapshot_context_mismatch")
+        if (!studioChangeSnapshotMatchesPlan(snapshot.data, trackedStudioChange)) {
+          throw new Error(isStudioRemasterPlan(trackedStudioChange.plan)
+            ? "studio_remaster_snapshot_context_mismatch"
+            : "studio_change_snapshot_context_mismatch")
         }
 
         let status = snapshot.data.status
@@ -898,6 +902,9 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api, stem
   }
 
   const activeProjectTitle = projectTitle ?? (activeProjectRef === previewProject.projectRef ? previewProject.title : "Project")
+  const remasterRun = isStudioRemasterPlan(studioChangeRun.plan)
+  const remasterActive = remasterRun && isActiveStudioChangeStatus(studioChangeRun.status)
+  const finishDisabled = !remasterRun && isActiveStudioChangeStatus(studioChangeRun.status)
 
   return (
     <MoriStudioShell candidate={activeCandidate} playerCandidates={studioCandidates}>
@@ -906,6 +913,19 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api, stem
           <div className={styles.studioHeaderActions}>
             <button className={styles.ghostButton} type="button" onClick={share}><Share2 size={14} /> {shareFeedback ? "Link copied" : "Share"}</button>
           {activeCandidate !== null ? <>
+            <button
+              className={`${styles.ghostButton} ${styles.finishButton}`}
+              type="button"
+              aria-label="Finish"
+              aria-describedby={finishStatusDescriptionId}
+              data-finish-status={studioChangeRun.status}
+              disabled={finishDisabled}
+              onClick={() => setFinishDialogOpen(true)}
+            >
+              <Sparkles size={14} /> Finish
+              {remasterActive ? <span className={styles.studioActionActivity} aria-hidden="true" /> : null}
+            </button>
+            <span className={styles.srOnly} id={finishStatusDescriptionId} aria-live="polite">{finishStatusDescription(studioChangeRun, finishDisabled)}</span>
             <button className={styles.ghostButton} type="button" aria-label="Export" aria-describedby={exportStatusDescriptionId} data-export-status={exportFeedback} onClick={() => setExportDialogOpen(true)}><Download size={14} /> Export{exportFeedback === "queued" || exportFeedback === "processing" ? <span className={styles.exportActivity} aria-hidden="true" /> : null}</button>
             <span className={styles.srOnly} id={exportStatusDescriptionId} aria-live="polite">{exportStatusDescription(exportFeedback)}</span>
           </> : null}
@@ -946,6 +966,21 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api, stem
         onClose={() => setExportDialogOpen(false)}
         onReset={resetExport}
         onSubmit={(input) => { void startExport(input) }}
+      /> : null}
+      {finishDialogOpen && activeCandidate !== null ? <StudioFinishDialog
+        versionRef={activeCandidate.versionRef}
+        versionTitle={activeCandidate.title}
+        durationSeconds={activeCandidate.durationSeconds}
+        latestMixRevision={latestMixRevision}
+        run={studioChangeRun}
+        onClose={() => setFinishDialogOpen(false)}
+        onReset={resetStudioChange}
+        onSubmit={(plan) => { void generateStudioChange(plan) }}
+        onCancel={() => { void cancelStudioChange() }}
+        onReviewTakes={() => {
+          setActiveTool("arrangement")
+          setFinishDialogOpen(false)
+        }}
       /> : null}
     </MoriStudioShell>
   )
@@ -1016,12 +1051,46 @@ function exportStatusDescription(status: "idle" | MoriExportStatus): string {
   }
 }
 
+function finishStatusDescription(run: StudioAiRunState, disabled: boolean): string {
+  if (disabled) return "Finish is available after the active Studio change completes"
+  if (!isStudioRemasterPlan(run.plan)) return "Review a non-destructive Remaster"
+  switch (run.status) {
+    case "idle": return "Review a non-destructive Remaster"
+    case "preparing": return "Preparing Remaster"
+    case "queued": return "Remaster queued"
+    case "generating": return "Remastering two Takes"
+    case "post_processing": return "Finishing two Remastered Takes"
+    case "succeeded": return run.resultCount > 0 ? `${run.resultCount} Remastered Takes ready` : "Remaster returned no Takes"
+    case "failed": return "Remaster needs attention"
+    case "cancelled": return "Remaster cancelled"
+    case "expired": return "Remaster expired"
+  }
+}
+
+function studioChangeSnapshotMatchesPlan(snapshot: StudioChangeGenerationSnapshot, tracked: TrackedStudioChange): boolean {
+  if (
+    snapshot.generation_ref !== tracked.generationRef
+    || snapshot.source_version_ref !== tracked.sourceVersionRef
+    || snapshot.operation !== tracked.plan.operation
+  ) return false
+
+  if (!isStudioRemasterPlan(tracked.plan)) return !isStudioRemasterSnapshot(snapshot)
+  if (!isStudioRemasterSnapshot(snapshot)) return false
+  if (snapshot.variation_strength !== tracked.plan.variationStrength) return false
+  if (snapshot.source.type !== tracked.plan.source.type) return false
+  return snapshot.source.type === "version"
+    || (tracked.plan.source.type === "mix_revision" && snapshot.source.mix_revision_ref === tracked.plan.source.mixRevisionRef)
+}
+
 function studioChangeFailureMessage(error: unknown): string {
   if (error instanceof MoriApiRequestError && error.code === "mori_bff_unavailable") {
     return "Mori is offline right now. Your reviewed change is ready to retry."
   }
   if (error instanceof Error && error.message === "studio_change_snapshot_context_mismatch") {
     return "The returned generation did not match this version. Nothing was applied."
+  }
+  if (error instanceof Error && error.message === "studio_remaster_snapshot_context_mismatch") {
+    return "The returned Remaster did not match this source or strength. Nothing was applied."
   }
   return "This change did not finish. Your request is preserved for retry."
 }
