@@ -3471,6 +3471,10 @@
   margin-bottom: 16px;
 }
 
+.railCollapsed .brandIdentity {
+  display: none;
+}
+
 .railCollapsed .railToggle {
   position: static;
   width: 40px;
@@ -4220,35 +4224,77 @@
 
 @media (max-width: 700px) {
   .appShell {
-    grid-template-columns: 64px minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 56px minmax(0, 1fr);
   }
 
-  .appShell .rail {
+  .appShell[data-rail-collapsed="true"] .rail {
     grid-column: 1;
+    grid-row: 1;
     position: relative;
-    width: 64px;
-    min-height: 100dvh;
-    height: 100dvh;
-    padding: 12px 12px 84px;
+    width: 100%;
+    min-height: 56px;
+    height: 56px;
+    padding: 8px 12px;
+    overflow: hidden;
+    border-right: 0;
+    border-bottom: 1px solid var(--mori-border);
+    box-shadow: 0 6px 18px rgba(62, 45, 86, 0.035);
+  }
+
+  .appShell[data-rail-collapsed="true"] .brandRow {
+    width: 100%;
+    margin: 0;
+    justify-content: space-between;
+  }
+
+  .appShell[data-rail-collapsed="true"] .brandIdentity {
+    display: flex;
+  }
+
+  .appShell[data-rail-collapsed="true"] .brandMark {
+    width: 32px;
+    height: 32px;
+    flex-basis: 32px;
+    border-radius: 10px;
+    font-size: 18px;
+  }
+
+  .appShell[data-rail-collapsed="true"] .brandName {
+    display: inline;
+    font-size: 18px;
+  }
+
+  .appShell[data-rail-collapsed="true"] .newButton,
+  .appShell[data-rail-collapsed="true"] .navGroup,
+  .appShell[data-rail-collapsed="true"] .railBottom {
+    display: none;
   }
 
   .appShell .surface {
-    grid-column: 2;
-    min-height: 100dvh;
-    height: 100dvh;
+    grid-column: 1;
+    grid-row: 2;
+    min-height: 0;
+    height: calc(100dvh - 56px);
   }
 
   .appShell:not([data-rail-collapsed="true"]) .rail {
-    position: absolute;
-    inset: 0 auto auto 0;
+    grid-row: 1 / -1;
+    position: fixed;
+    inset: 0 auto 0 0;
     z-index: 8;
     width: 256px;
+    min-height: 100dvh;
+    height: 100dvh;
+    padding: 14px 12px 84px;
     border-right: 1px solid var(--mori-border);
     box-shadow: 14px 0 36px rgba(62, 45, 86, 0.1);
   }
 
   .appShell:not([data-rail-collapsed="true"]) .surface {
-    grid-column: 1 / -1;
+    grid-column: 1;
+    grid-row: 1 / -1;
+    height: 100dvh;
   }
 
   .railBackdrop {

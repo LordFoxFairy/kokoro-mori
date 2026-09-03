@@ -18,7 +18,7 @@ pnpm build
 
 - `pnpm lint`：通过，`--max-warnings=0`
 - `pnpm typecheck`：通过
-- `pnpm test`：通过，15 个测试文件、96 个测试
+- `pnpm test`：通过，15 个测试文件、98 个测试
 - `pnpm build`：通过，生成 `/`、`/create`、`/projects`、`/library`、`/settings`、Project Overview 和 Studio 路由
 
 ## 页面巡检
@@ -46,7 +46,8 @@ pnpm dev --hostname 127.0.0.1 --port 3001
 品牌行内，桌面宽度下始终可见。Global Player 是跨页面、跨 Rail 的固定底部 transport
 dock；桌面端提供歌曲、波形、进度和 transport，小屏幕收敛为歌曲信息、播放和队列入口。
 Create 的 Queue 默认关闭，可通过 Queue 动作打开并通过 Close generation queue 关闭；
-移动端 390px 视口默认收起 Rail，内容仍保持可见。Player 桌面端采用左侧当前歌曲、中部
+移动端 390px 视口将收起的 Rail 收敛为 56px 顶部栏，只保留品牌与展开入口，内容使用完整宽度；
+展开后使用带遮罩的导航抽屉，选择目的地、点击遮罩或按 Escape 都会关闭。Player 桌面端采用左侧当前歌曲、中部
 transport + progress、右侧音量/队列的音乐播放器层级；移动端收敛为当前歌曲、播放和队列入口。
 播放支持在非输入控件上使用 Space 快捷键，输入歌词或表单时不会拦截空格；播放主按钮声明对应键盘快捷键。
 

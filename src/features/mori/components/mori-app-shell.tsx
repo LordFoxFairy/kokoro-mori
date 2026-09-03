@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, type CSSProperties, type ReactNode } from "react"
+import { useCallback, useEffect, type CSSProperties, type ReactNode } from "react"
 import { useMoriApp } from "./mori-app-provider"
 import { MoriRail, type MoriNavigationKey } from "./mori-rail"
 import { PersistentPlayer } from "./persistent-player"
@@ -15,7 +15,11 @@ type MoriAppShellProps = {
 }
 
 export function MoriAppShell({ activeKey, ariaLabel, children, onQueueOpen, showQueueButton = false }: MoriAppShellProps) {
-  const { railCollapsed, toggleRail, playerCandidate, playing, muted, positionSeconds, togglePlaying, toggleMuted, seekPlayer, previousPlayerCandidate, nextPlayerCandidate, preferences } = useMoriApp()
+  const { railCollapsed, toggleRail, setRailCollapsed, playerCandidate, playing, muted, positionSeconds, togglePlaying, toggleMuted, seekPlayer, previousPlayerCandidate, nextPlayerCandidate, preferences } = useMoriApp()
+
+  const handleRailNavigation = useCallback(() => {
+    if (window.innerWidth <= 700) setRailCollapsed(true)
+  }, [setRailCollapsed])
 
   useEffect(() => {
     if (railCollapsed || window.innerWidth > 700) return
@@ -41,6 +45,7 @@ export function MoriAppShell({ activeKey, ariaLabel, children, onQueueOpen, show
       <MoriRail
         activeKey={activeKey}
         collapsed={railCollapsed}
+        onNavigate={handleRailNavigation}
         onToggle={toggleRail}
       />
       {!railCollapsed ? <button className={styles.railBackdrop} type="button" onClick={toggleRail} aria-label="Close sidebar" /> : null}

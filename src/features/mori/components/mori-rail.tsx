@@ -8,6 +8,7 @@ export type MoriNavigationKey = "home" | "create" | "projects" | "library" | "se
 type MoriRailProps = {
   activeKey?: MoriNavigationKey
   collapsed?: boolean
+  onNavigate?: () => void
   onToggle?: () => void
 }
 
@@ -18,7 +19,7 @@ const navigation = [
   { key: "library" as const, label: "Library", href: "/library", icon: Library },
 ]
 
-export function MoriRail({ activeKey = "create", collapsed = false, onToggle }: MoriRailProps) {
+export function MoriRail({ activeKey = "create", collapsed = false, onNavigate, onToggle }: MoriRailProps) {
   const [settingsHref, setSettingsHref] = useState("/settings?return_to=%2F")
   const [createHref, setCreateHref] = useState("/create")
 
@@ -40,16 +41,14 @@ export function MoriRail({ activeKey = "create", collapsed = false, onToggle }: 
   return (
     <nav className={`${styles.rail} ${collapsed ? styles.railCollapsed : ""}`} aria-label="Mori" data-rail-state={collapsed ? "collapsed" : "expanded"}>
       <div className={styles.brandRow}>
-        {!collapsed ? (
-          <Link className={styles.brandIdentity} href="/" aria-label="Mori home">
-            <div className={styles.brandMark} aria-hidden="true">M</div>
-            <span className={styles.brandName}>Mori</span>
-          </Link>
-        ) : null}
+        <Link className={styles.brandIdentity} href="/" aria-label="Mori home" onClick={onNavigate}>
+          <div className={styles.brandMark} aria-hidden="true">M</div>
+          <span className={styles.brandName}>Mori</span>
+        </Link>
         {onToggle ? <button className={styles.railToggle} type="button" onClick={onToggle} aria-expanded={!collapsed} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} title={collapsed ? "Expand sidebar" : "Collapse sidebar"}>{collapsed ? <PanelLeftOpen /> : <PanelLeftClose />}</button> : null}
       </div>
 
-      <Link className={styles.newButton} href={createHref} aria-label="New creation" title={collapsed ? "New creation" : undefined}>
+      <Link className={styles.newButton} href={createHref} aria-label="New creation" title={collapsed ? "New creation" : undefined} onClick={onNavigate}>
         <Plus size={16} strokeWidth={2.4} />
         <span>New creation</span>
       </Link>
@@ -57,7 +56,7 @@ export function MoriRail({ activeKey = "create", collapsed = false, onToggle }: 
       <div className={styles.navGroup}>
         <div className={styles.navLabel}>Workspace</div>
         {navigation.map(({ key, label, href, icon: Icon }) => (
-          <Link className={`${styles.navItem} ${activeKey === key ? styles.navItemActive : ""}`} href={key === "create" ? createHref : href} key={key} aria-current={activeKey === key ? "page" : undefined} title={collapsed ? label : undefined}>
+          <Link className={`${styles.navItem} ${activeKey === key ? styles.navItemActive : ""}`} href={key === "create" ? createHref : href} key={key} aria-current={activeKey === key ? "page" : undefined} title={collapsed ? label : undefined} onClick={onNavigate}>
             <Icon />
             <span>{label}</span>
           </Link>
@@ -65,11 +64,11 @@ export function MoriRail({ activeKey = "create", collapsed = false, onToggle }: 
       </div>
 
       <div className={styles.railBottom}>
-        <Link className={`${styles.railFooterLink} ${activeKey === "settings" ? styles.railFooterLinkActive : ""}`} href={settingsHref} aria-label="Settings" aria-current={activeKey === "settings" ? "page" : undefined} title={collapsed ? "Settings" : undefined}>
+        <Link className={`${styles.railFooterLink} ${activeKey === "settings" ? styles.railFooterLinkActive : ""}`} href={settingsHref} aria-label="Settings" aria-current={activeKey === "settings" ? "page" : undefined} title={collapsed ? "Settings" : undefined} onClick={onNavigate}>
           <Settings2 size={16} />
           <span>Settings</span>
         </Link>
-        <Link className={`${styles.railFooterLink} ${activeKey === "help" ? styles.railFooterLinkActive : ""}`} href="/help" aria-label="Help and feedback" aria-current={activeKey === "help" ? "page" : undefined} title={collapsed ? "Help and feedback" : undefined}>
+        <Link className={`${styles.railFooterLink} ${activeKey === "help" ? styles.railFooterLinkActive : ""}`} href="/help" aria-label="Help and feedback" aria-current={activeKey === "help" ? "page" : undefined} title={collapsed ? "Help and feedback" : undefined} onClick={onNavigate}>
           <CircleHelp size={16} />
           <span>Help &amp; feedback</span>
         </Link>

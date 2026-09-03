@@ -98,7 +98,7 @@ describe("Mori application navigation", () => {
         </MoriAppProvider>,
       )
       await waitFor(() => expect(screen.getByRole("button", { name: "Expand sidebar" })).toBeInTheDocument())
-      expect(screen.queryByRole("link", { name: "Mori home" })).not.toBeInTheDocument()
+      expect(screen.getByRole("navigation", { name: "Mori" })).toHaveAttribute("data-rail-state", "collapsed")
       expect(screen.getByRole("link", { name: "Library" })).toHaveAttribute("aria-current", "page")
     } finally {
       Object.defineProperty(window, "innerWidth", { configurable: true, value: originalWidth })
@@ -150,6 +150,30 @@ describe("Mori application navigation", () => {
       fireEvent.keyDown(window, { key: "Escape" })
       await waitFor(() => expect(document.body.style.overflow).toBe(""))
       expect(screen.getByRole("button", { name: "Expand sidebar" })).toBeInTheDocument()
+    } finally {
+      document.body.style.overflow = ""
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: originalWidth })
+    }
+  })
+
+  it("dismisses the mobile rail when a destination is chosen", async () => {
+    const originalWidth = window.innerWidth
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 390 })
+
+    try {
+      render(
+        <MoriAppProvider>
+          <MoriCatalogShell activeKey="library" ariaLabel="Library">
+            <div>Library content</div>
+          </MoriCatalogShell>
+        </MoriAppProvider>,
+      )
+      await waitFor(() => expect(screen.getByRole("button", { name: "Expand sidebar" })).toBeInTheDocument())
+
+      fireEvent.click(screen.getByRole("button", { name: "Expand sidebar" }))
+      fireEvent.click(screen.getByRole("link", { name: "Home" }))
+
+      await waitFor(() => expect(screen.getByRole("button", { name: "Expand sidebar" })).toBeInTheDocument())
     } finally {
       document.body.style.overflow = ""
       Object.defineProperty(window, "innerWidth", { configurable: true, value: originalWidth })
