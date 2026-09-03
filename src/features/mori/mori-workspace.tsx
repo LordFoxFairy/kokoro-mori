@@ -241,8 +241,6 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, api: injectedAp
       <MoriAppShell
         activeKey="create"
         ariaLabel="Create workspace"
-        showQueueButton
-        onQueueOpen={() => setQueueOpen(true)}
       >
         <div className={`${styles.workspaceLayout} ${queueOpen ? styles.workspaceLayoutWithDrawer : ""}`}>
           <section className={styles.createSurface} aria-label="Create canvas">

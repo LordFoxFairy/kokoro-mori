@@ -30,6 +30,7 @@ type MoriAppContextValue = {
   toggleRail: () => void
   setRailCollapsed: (collapsed: boolean) => void
   playerCandidate: Candidate | null
+  playerCandidates: Candidate[]
   clearPlayerCandidate: () => void
   playing: boolean
   muted: boolean
@@ -196,6 +197,7 @@ export function MoriAppProvider({ children }: { children: ReactNode }) {
     toggleRail,
     setRailCollapsed,
     playerCandidate,
+    playerCandidates,
     clearPlayerCandidate,
     playing,
     muted,
@@ -210,7 +212,7 @@ export function MoriAppProvider({ children }: { children: ReactNode }) {
     nextPlayerCandidate,
     preferences,
     updatePreferences,
-  }), [clearPlayerCandidate, muted, nextPlayerCandidate, playerCandidate, playing, positionSeconds, preferences, previousPlayerCandidate, railCollapsed, replacePlayerCandidates, seekPlayer, selectPlayerCandidate, setRailCollapsed, toggleMuted, togglePlaying, toggleRail, updatePreferences])
+  }), [clearPlayerCandidate, muted, nextPlayerCandidate, playerCandidate, playerCandidates, playing, positionSeconds, preferences, previousPlayerCandidate, railCollapsed, replacePlayerCandidates, seekPlayer, selectPlayerCandidate, setRailCollapsed, toggleMuted, togglePlaying, toggleRail, updatePreferences])
 
   return <MoriAppContext.Provider value={value}>{children}</MoriAppContext.Provider>
 }

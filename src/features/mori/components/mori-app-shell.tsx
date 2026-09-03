@@ -1,8 +1,10 @@
 "use client"
 
-import { useCallback, useEffect, type CSSProperties, type ReactNode } from "react"
+import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from "react"
+import { createPortal } from "react-dom"
 import { useMoriApp } from "./mori-app-provider"
 import { MoriRail, type MoriNavigationKey } from "./mori-rail"
+import { PlaybackQueue } from "./playback-queue"
 import { PersistentPlayer } from "./persistent-player"
 import styles from "../mori-workspace.module.css"
 
@@ -10,16 +12,31 @@ type MoriAppShellProps = {
   activeKey: MoriNavigationKey
   ariaLabel: string
   children: ReactNode
-  onQueueOpen?: () => void
-  showQueueButton?: boolean
 }
 
-export function MoriAppShell({ activeKey, ariaLabel, children, onQueueOpen, showQueueButton = false }: MoriAppShellProps) {
-  const { railCollapsed, toggleRail, setRailCollapsed, playerCandidate, playing, muted, positionSeconds, togglePlaying, toggleMuted, seekPlayer, previousPlayerCandidate, nextPlayerCandidate, preferences } = useMoriApp()
+export function MoriAppShell({ activeKey, ariaLabel, children }: MoriAppShellProps) {
+  const { railCollapsed, toggleRail, setRailCollapsed, playerCandidate, playerCandidates, playing, muted, positionSeconds, togglePlaying, toggleMuted, setPlaying, seekPlayer, selectPlayerCandidate, previousPlayerCandidate, nextPlayerCandidate, preferences } = useMoriApp()
+  const [playbackQueueOpen, setPlaybackQueueOpen] = useState(false)
 
   const handleRailNavigation = useCallback(() => {
     if (window.innerWidth <= 700) setRailCollapsed(true)
   }, [setRailCollapsed])
+
+  const openPlaybackQueue = useCallback(() => {
+    if (window.innerWidth <= 700) setRailCollapsed(true)
+    setPlaybackQueueOpen(true)
+  }, [setRailCollapsed])
+
+  const closePlaybackQueue = useCallback(() => setPlaybackQueueOpen(false), [])
+
+  const chooseQueuedCandidate = useCallback((candidate: (typeof playerCandidates)[number]) => {
+    if (playerCandidate?.candidateRef === candidate.candidateRef) {
+      togglePlaying()
+      return
+    }
+    selectPlayerCandidate(candidate)
+    setPlaying(true)
+  }, [playerCandidate?.candidateRef, selectPlayerCandidate, setPlaying, togglePlaying])
 
   useEffect(() => {
     if (railCollapsed || window.innerWidth > 700) return
@@ -63,9 +80,20 @@ export function MoriAppShell({ activeKey, ariaLabel, children, onQueueOpen, show
           onSeek={seekPlayer}
           onPrevious={previousPlayerCandidate}
           onNext={nextPlayerCandidate}
-          onSelectQueue={showQueueButton ? onQueueOpen : undefined}
+          queueOpen={playbackQueueOpen}
+          onSelectQueue={playerCandidates.length > 0 ? openPlaybackQueue : undefined}
         />
       </div>
+      {playbackQueueOpen && typeof document !== "undefined" ? createPortal(
+        <PlaybackQueue
+          candidates={playerCandidates}
+          currentCandidateRef={playerCandidate?.candidateRef ?? null}
+          playing={playing}
+          onChoose={chooseQueuedCandidate}
+          onClose={closePlaybackQueue}
+        />,
+        document.body,
+      ) : null}
     </div>
   )
 }

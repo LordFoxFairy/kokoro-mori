@@ -18,7 +18,7 @@ pnpm build
 
 - `pnpm lint`：通过，`--max-warnings=0`
 - `pnpm typecheck`：通过
-- `pnpm test`：通过，15 个测试文件、98 个测试
+- `pnpm test`：通过，15 个测试文件、99 个测试
 - `pnpm build`：通过，生成 `/`、`/create`、`/projects`、`/library`、`/settings`、Project Overview 和 Studio 路由
 
 ## 页面巡检
@@ -45,6 +45,8 @@ pnpm dev --hostname 127.0.0.1 --port 3001
 类似 Codex 的整高固定 Rail + 内容面布局，展开状态不再使用悬浮窗口；Rail 折叠按钮位于
 品牌行内，桌面宽度下始终可见。Global Player 是跨页面、跨 Rail 的固定底部 transport
 dock；桌面端提供歌曲、波形、进度和 transport，小屏幕收敛为歌曲信息、播放和队列入口。
+播放队列现在属于全局 Player，而不是 Create 的生成队列：所有页面都可打开 `Up next`，选择版本后
+立即切换播放；桌面端作为播放器上方的轻量面板，移动端作为紧贴播放器的底部 sheet，播放器本身保持可操作。
 Create 的 Queue 默认关闭，可通过 Queue 动作打开并通过 Close generation queue 关闭；
 移动端 390px 视口将收起的 Rail 收敛为 56px 顶部栏，只保留品牌与展开入口，内容使用完整宽度；
 展开后使用带遮罩的导航抽屉，选择目的地、点击遮罩或按 Escape 都会关闭。Player 桌面端采用左侧当前歌曲、中部

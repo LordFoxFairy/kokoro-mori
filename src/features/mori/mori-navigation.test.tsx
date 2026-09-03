@@ -68,6 +68,35 @@ describe("Mori application navigation", () => {
     expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("01")
   })
 
+  it("opens a playback queue from the shared global player and plays a chosen version", async () => {
+    render(
+      <MoriAppProvider>
+        <MoriCatalogShell activeKey="library" ariaLabel="Library">
+          <div>Library content</div>
+        </MoriCatalogShell>
+      </MoriAppProvider>,
+    )
+
+    const trigger = screen.getByRole("button", { name: "Open playback queue" })
+    fireEvent.click(screen.getByRole("button", { name: "Play" }))
+    trigger.focus()
+    expect(trigger).toHaveAttribute("aria-expanded", "false")
+    fireEvent.click(trigger)
+
+    const queue = screen.getByRole("dialog", { name: "Up next" })
+    await waitFor(() => expect(queue).toHaveFocus())
+    expect(trigger).toHaveAttribute("aria-expanded", "true")
+    expect(screen.getByRole("button", { name: "Pause First Light from queue" })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole("button", { name: "Play First Light · Afterglow from queue" }))
+    expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("First Light · Afterglow")
+    expect(screen.getByRole("button", { name: "Pause First Light · Afterglow from queue" })).toBeInTheDocument()
+
+    fireEvent.keyDown(window, { key: "Escape" })
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Up next" })).not.toBeInTheDocument())
+    expect(trigger).toHaveFocus()
+  })
+
   it("lets a listener seek through the current version", () => {
     render(
       <MoriAppProvider>

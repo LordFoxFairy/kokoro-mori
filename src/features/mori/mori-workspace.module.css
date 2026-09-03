@@ -3850,6 +3850,198 @@
   height: 15px;
 }
 
+.playbackQueueLayer {
+  position: fixed;
+  inset: 0 0 90px;
+  z-index: 24;
+  pointer-events: none;
+}
+
+.playbackQueueBackdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: rgba(38, 34, 48, 0.035);
+  pointer-events: auto;
+}
+
+.playbackQueuePanel {
+  position: absolute;
+  right: 16px;
+  bottom: 14px;
+  z-index: 1;
+  display: flex;
+  width: min(360px, calc(100vw - 32px));
+  max-height: min(480px, calc(100dvh - 124px));
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgba(221, 215, 228, 0.96);
+  border-radius: 17px;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 22px 60px rgba(62, 45, 86, 0.17);
+  backdrop-filter: blur(20px);
+  pointer-events: auto;
+}
+
+.playbackQueuePanel:focus-visible {
+  outline: 3px solid rgba(109, 92, 231, 0.2);
+  outline-offset: 2px;
+}
+
+.playbackQueueHeader {
+  display: flex;
+  min-height: 76px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 15px 16px 13px;
+  border-bottom: 1px solid var(--mori-border);
+}
+
+.playbackQueueHeader > div {
+  min-width: 0;
+}
+
+.playbackQueueHeader span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--mori-primary);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.playbackQueueHeader h2 {
+  margin: 5px 0 0;
+  font-family: var(--mori-font-display);
+  font-size: 25px;
+  font-weight: 500;
+  letter-spacing: -0.04em;
+}
+
+.playbackQueueClose {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  padding: 0;
+  place-items: center;
+  border: 1px solid var(--mori-border);
+  border-radius: 10px;
+  color: var(--mori-muted);
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.playbackQueueClose:hover {
+  color: var(--mori-foreground);
+  background: var(--mori-primary-soft);
+}
+
+.playbackQueueClose svg {
+  width: 15px;
+  height: 15px;
+}
+
+.playbackQueueList {
+  display: grid;
+  gap: 4px;
+  min-height: 0;
+  padding: 8px;
+  overflow: auto;
+}
+
+.playbackQueueItem {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  min-width: 0;
+  min-height: 58px;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 11px;
+  color: var(--mori-foreground);
+  text-align: left;
+  background: transparent;
+}
+
+.playbackQueueItem:hover {
+  background: #f8f7f6;
+}
+
+.playbackQueueItemCurrent {
+  background: linear-gradient(105deg, rgba(237, 233, 254, 0.88), rgba(253, 231, 218, 0.34));
+}
+
+.playbackQueueItemCurrent:hover {
+  background: linear-gradient(105deg, rgba(232, 227, 253, 0.96), rgba(253, 226, 210, 0.44));
+}
+
+.playbackQueueArtwork {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--mori-primary-deep);
+  background: linear-gradient(145deg, #c9bcf6, #efd6de);
+}
+
+.playbackQueueArtworkPeach {
+  color: #98654e;
+  background: linear-gradient(145deg, #f5d6c4, #f4e8d6);
+}
+
+.playbackQueueArtworkMint {
+  color: #4d806d;
+  background: linear-gradient(145deg, #d6eee3, #e9ecd9);
+}
+
+.playbackQueueArtwork svg {
+  width: 13px;
+  height: 13px;
+}
+
+.playbackQueueCopy,
+.playbackQueueState {
+  min-width: 0;
+}
+
+.playbackQueueCopy strong,
+.playbackQueueCopy small,
+.playbackQueueState b,
+.playbackQueueState small {
+  display: block;
+}
+
+.playbackQueueCopy strong {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.playbackQueueCopy small,
+.playbackQueueState small {
+  margin-top: 3px;
+  color: var(--mori-muted);
+  font-size: 9px;
+}
+
+.playbackQueueState {
+  text-align: right;
+}
+
+.playbackQueueState b {
+  color: var(--mori-primary);
+  font-size: 9px;
+}
+
 .railBackdrop {
   display: none;
 }
@@ -4465,6 +4657,21 @@
 
   .playerTool span {
     display: none;
+  }
+
+  .playbackQueueLayer {
+    inset: 0 0 70px;
+  }
+
+  .playbackQueuePanel {
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-height: min(62dvh, 480px);
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 18px 18px 0 0;
   }
 
   .drawerLayer .inspector {

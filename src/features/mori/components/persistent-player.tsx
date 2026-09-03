@@ -13,6 +13,7 @@ type PersistentPlayerProps = {
   onToggle: () => void
   onToggleMute: () => void
   onSeek: (positionSeconds: number) => void
+  queueOpen?: boolean
   onSelectQueue?: () => void
   onPrevious?: () => void
   onNext?: () => void
@@ -24,7 +25,7 @@ function formatDuration(seconds: number): string {
   return `${minutes}:${remaining}`
 }
 
-export function PersistentPlayer({ candidate, playing, muted, positionSeconds, onToggle, onToggleMute, onSeek, onSelectQueue, onPrevious, onNext }: PersistentPlayerProps) {
+export function PersistentPlayer({ candidate, playing, muted, positionSeconds, onToggle, onToggleMute, onSeek, queueOpen = false, onSelectQueue, onPrevious, onNext }: PersistentPlayerProps) {
   const hasCandidate = candidate !== null
 
   return (
@@ -66,7 +67,7 @@ export function PersistentPlayer({ candidate, playing, muted, positionSeconds, o
       </div>
       <div className={styles.playerTools} role="group" aria-label="Player tools">
         <button className={`${styles.playerButton} ${styles.playerMuteButton}`} type="button" onClick={onToggleMute} aria-label={muted ? "Unmute" : "Mute"} disabled={!hasCandidate}>{muted ? <VolumeX /> : <Volume2 />}</button>
-        {onSelectQueue ? <button className={styles.playerTool} type="button" onClick={onSelectQueue} aria-label="Open playback queue"><ListMusic /> <span>Queue</span></button> : null}
+        {onSelectQueue ? <button className={styles.playerTool} type="button" onClick={onSelectQueue} aria-label="Open playback queue" aria-haspopup="dialog" aria-expanded={queueOpen}><ListMusic /> <span>Queue</span></button> : null}
       </div>
     </section>
   )
