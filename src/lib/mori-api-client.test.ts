@@ -1044,6 +1044,151 @@ describe("Mori same-origin API client", () => {
     })
   })
 
+  it("creates, reads, replays, and cancels a version-bound artwork generation", async () => {
+    const calls: Array<{ url: string; method: string | undefined; headers: HeadersInit | undefined; body: unknown }> = []
+    const api = createMoriApiClient({
+      fetchImpl: async (input, init) => {
+        const url = String(input)
+        calls.push({
+          url,
+          method: init?.method,
+          headers: init?.headers,
+          body: typeof init?.body === "string" ? JSON.parse(init.body) : null,
+        })
+        if (url.endsWith("/events")) {
+          return new Response([
+            "id: artwork_generation_1:4",
+            "event: artwork_generation.generating",
+            'data: {"data":{"artwork_generation_ref":"artwork_generation_1","version_ref":"version_1","status":"generating","progress":64,"artwork_candidate_refs":[]},"meta":{"request_id":"request_artwork_event_1"}}',
+            "",
+            "",
+          ].join("\n"), { status: 200, headers: { "Content-Type": "text/event-stream" } })
+        }
+        if (url.endsWith("/cancel")) {
+          return jsonResponse({ data: { artwork_generation_ref: "artwork_generation_1", status: "cancelled" }, meta: { request_id: "request_artwork_cancel_1" } }, 202)
+        }
+        if (init?.method === "POST") {
+          return jsonResponse({ data: { artwork_generation_ref: "artwork_generation_1", status: "queued" }, meta: { request_id: "request_artwork_create_1" } }, 202)
+        }
+        return jsonResponse({
+          data: {
+            artwork_generation_ref: "artwork_generation_1",
+            version_ref: "version_1",
+            status: "succeeded",
+            progress: 100,
+            prompt: "Dawn reflected in rain",
+            style: "illustrated",
+            palette: "violet_night",
+            aspect_ratio: "1:1",
+            text_policy: "no_text",
+            output_count: 4,
+            candidates: Array.from({ length: 4 }, (_, index) => ({
+              artwork_candidate_ref: `artwork_candidate_${index + 1}`,
+              image_asset_ref: `asset_artwork_${index + 1}`,
+              thumbnail_asset_ref: `asset_artwork_thumb_${index + 1}`,
+              alt_text: `Purple dawn concept ${index + 1}`,
+            })),
+            created_at: "2026-09-03T12:00:00.000Z",
+          },
+          meta: { request_id: "request_artwork_snapshot_1" },
+        })
+      },
+    })
+    const input = {
+      prompt: "Dawn reflected in rain",
+      style: "illustrated" as const,
+      palette: "violet_night" as const,
+      aspect_ratio: "1:1" as const,
+      text_policy: "no_text" as const,
+      output_count: 4 as const,
+    }
+
+    const receipt = await api.createArtworkGeneration("version_1", input, "idem-artwork-1")
+    const snapshot = await api.getArtworkGeneration(receipt.data.artwork_generation_ref)
+    const events = await api.getArtworkGenerationEvents(receipt.data.artwork_generation_ref, "artwork_generation_1:3")
+    const cancelled = await api.cancelArtworkGeneration(receipt.data.artwork_generation_ref, "idem-artwork-cancel-1")
+
+    expect(calls).toEqual([
+      {
+        url: "/api/v1/mori/versions/version_1/artwork_generations",
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": "idem-artwork-1" },
+        body: input,
+      },
+      { url: "/api/v1/mori/artwork_generations/artwork_generation_1", method: undefined, headers: undefined, body: null },
+      {
+        url: "/api/v1/mori/artwork_generations/artwork_generation_1/events",
+        method: undefined,
+        headers: { Accept: "text/event-stream", "Last-Event-ID": "artwork_generation_1:3" },
+        body: null,
+      },
+      {
+        url: "/api/v1/mori/artwork_generations/artwork_generation_1/cancel",
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": "idem-artwork-cancel-1" },
+        body: null,
+      },
+    ])
+    expect(snapshot.data.candidates[0]?.image_asset_ref).toBe("asset_artwork_1")
+    expect(events[0]?.data.progress).toBe(64)
+    expect(cancelled.data.status).toBe("cancelled")
+  })
+
+  it("reads and saves an optimistic release draft without publishing it", async () => {
+    const calls: Array<{ url: string; method: string | undefined; headers: HeadersInit | undefined; body: unknown }> = []
+    const api = createMoriApiClient({
+      fetchImpl: async (input, init) => {
+        calls.push({
+          url: String(input),
+          method: init?.method,
+          headers: init?.headers,
+          body: typeof init?.body === "string" ? JSON.parse(init.body) : null,
+        })
+        const revision = init?.method === "PUT" ? 3 : 2
+        return jsonResponse({
+          data: {
+            release_draft_ref: "release_draft_1",
+            version_ref: "version_1",
+            revision,
+            state: "draft",
+            title: "First Light",
+            description: "A quiet ride toward morning.",
+            visibility: "public",
+            allow_remix: false,
+            explicit_content: false,
+            artwork: { type: "artwork_candidate", artwork_candidate_ref: "artwork_candidate_2" },
+            updated_at: "2026-09-03T12:00:00.000Z",
+          },
+          meta: { request_id: `request_release_${revision}` },
+        })
+      },
+    })
+    const input = {
+      title: "First Light",
+      description: "A quiet ride toward morning.",
+      visibility: "public" as const,
+      allow_remix: false,
+      explicit_content: false,
+      artwork: { type: "artwork_candidate" as const, artwork_candidate_ref: "artwork_candidate_2" },
+      expected_revision: 2,
+    }
+
+    const current = await api.getReleaseDraft("version_1")
+    const saved = await api.putReleaseDraft("version_1", input, "idem-release-1")
+
+    expect(calls).toEqual([
+      { url: "/api/v1/mori/versions/version_1/release_draft", method: undefined, headers: undefined, body: null },
+      {
+        url: "/api/v1/mori/versions/version_1/release_draft",
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": "idem-release-1" },
+        body: input,
+      },
+    ])
+    expect(current.data).toMatchObject({ revision: 2, state: "draft" })
+    expect(saved.data).toMatchObject({ revision: 3, visibility: "public", allow_remix: false, state: "draft" })
+  })
+
   it("rejects an empty Mix Revision source and contradictory export results", async () => {
     expect(() => createExportRequest({
       source: { type: "mix_revision", mixRevisionRef: "   " },
@@ -1106,3 +1251,7 @@ describe("Mori same-origin API client", () => {
     })
   })
 })
+
+function jsonResponse(payload: unknown, status = 200): Response {
+  return new Response(JSON.stringify(payload), { status, headers: { "Content-Type": "application/json" } })
+}

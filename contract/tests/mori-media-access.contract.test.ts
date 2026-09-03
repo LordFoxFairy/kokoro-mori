@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest"
 const contractPath = resolve(process.cwd(), "contract/openapi/mori-media-access.v1.json")
 
 describe("Mori media access OpenAPI contract", () => {
-  it("publishes authenticated byte-range playback and explicit attachment download", () => {
+  it("publishes authenticated media playback and explicit attachment download", () => {
     const document = readContract()
     expect(document.openapi).toBe("3.1.0")
     const paths = recordValue(document.paths, "paths")
@@ -20,7 +20,9 @@ describe("Mori media access OpenAPI contract", () => {
     expect(recordValue(disposition?.schema, "disposition schema").enum).toEqual(["inline", "attachment"])
 
     const responses = recordValue(get.responses, "responses")
-    expect(recordValue(responses["200"], "200 response").content).toBeDefined()
+    const completeContent = recordValue(recordValue(responses["200"], "200 response").content, "200 content")
+    expect(recordValue(completeContent["audio/*"], "audio media").schema).toEqual({ type: "string", contentEncoding: "binary" })
+    expect(recordValue(completeContent["image/*"], "image media").schema).toEqual({ type: "string", contentEncoding: "binary" })
     const partial = recordValue(responses["206"], "206 response")
     expect(recordValue(partial.headers, "206 headers")).toMatchObject({
       "Accept-Ranges": expect.any(Object),

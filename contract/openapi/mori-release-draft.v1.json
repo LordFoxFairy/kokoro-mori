@@ -1,0 +1,115 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Mori Release Draft API",
+    "version": "0.1.0",
+    "description": "Version-scoped release metadata and artwork intent saved as a draft; this contract does not publish music."
+  },
+  "paths": {
+    "/api/v1/mori/versions/{version_ref}/release_draft": {
+      "get": {
+        "operationId": "getReleaseDraft",
+        "summary": "Read the current release draft for a version",
+        "parameters": [
+          { "name": "version_ref", "in": "path", "required": true, "schema": { "type": "string", "minLength": 1 } }
+        ],
+        "responses": {
+          "200": { "description": "The current release draft", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiReleaseDraft" } } } },
+          "404": { "description": "The version or release draft was not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiErrorResponse" } } } }
+        }
+      },
+      "put": {
+        "operationId": "putReleaseDraft",
+        "summary": "Create or replace the optimistic release draft for a version",
+        "parameters": [
+          { "name": "version_ref", "in": "path", "required": true, "schema": { "type": "string", "minLength": 1 } },
+          { "name": "Idempotency-Key", "in": "header", "required": true, "schema": { "type": "string", "minLength": 1, "maxLength": 200 } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ReleaseDraftInput" } } }
+        },
+        "responses": {
+          "200": { "description": "The release draft was saved or replayed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiReleaseDraft" } } } },
+          "400": { "description": "The request is malformed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiErrorResponse" } } } },
+          "404": { "description": "The version or artwork candidate was not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiErrorResponse" } } } },
+          "409": { "description": "The expected revision, idempotency key, or resource relationship conflicts", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiErrorResponse" } } } },
+          "422": { "description": "Release metadata or artwork is not valid for this version", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiErrorResponse" } } } }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ReleaseVisibility": { "type": "string", "enum": ["private", "link_only", "public"] },
+      "CurrentArtwork": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type"],
+        "properties": { "type": { "type": "string", "const": "current" } }
+      },
+      "GeneratedArtwork": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "artwork_candidate_ref"],
+        "properties": {
+          "type": { "type": "string", "const": "artwork_candidate" },
+          "artwork_candidate_ref": { "type": "string", "minLength": 1 }
+        }
+      },
+      "ReleaseArtwork": {
+        "oneOf": [
+          { "$ref": "#/components/schemas/CurrentArtwork" },
+          { "$ref": "#/components/schemas/GeneratedArtwork" }
+        ]
+      },
+      "ReleaseDraftInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["title", "description", "visibility", "allow_remix", "explicit_content", "artwork", "expected_revision"],
+        "properties": {
+          "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "description": { "type": "string", "maxLength": 500 },
+          "visibility": { "$ref": "#/components/schemas/ReleaseVisibility" },
+          "allow_remix": { "type": "boolean", "default": false },
+          "explicit_content": { "type": "boolean", "default": false },
+          "artwork": { "$ref": "#/components/schemas/ReleaseArtwork" },
+          "expected_revision": { "oneOf": [{ "type": "null" }, { "type": "integer", "minimum": 1 }] }
+        }
+      },
+      "ReleaseDraft": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["release_draft_ref", "version_ref", "revision", "state", "title", "description", "visibility", "allow_remix", "explicit_content", "artwork", "updated_at"],
+        "properties": {
+          "release_draft_ref": { "type": "string", "minLength": 1 },
+          "version_ref": { "type": "string", "minLength": 1 },
+          "revision": { "type": "integer", "minimum": 1 },
+          "state": { "type": "string", "const": "draft" },
+          "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "description": { "type": "string", "maxLength": 500 },
+          "visibility": { "$ref": "#/components/schemas/ReleaseVisibility" },
+          "allow_remix": { "type": "boolean" },
+          "explicit_content": { "type": "boolean" },
+          "artwork": { "$ref": "#/components/schemas/ReleaseArtwork" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ApiReleaseDraft": { "type": "object", "additionalProperties": false, "required": ["data", "meta"], "properties": { "data": { "$ref": "#/components/schemas/ReleaseDraft" }, "meta": { "$ref": "#/components/schemas/ApiMeta" } } },
+      "ApiMeta": { "type": "object", "additionalProperties": false, "required": ["request_id"], "properties": { "request_id": { "type": "string", "minLength": 1 } } },
+      "ApiErrorDetail": { "type": "object", "additionalProperties": false, "required": ["field", "reason"], "properties": { "field": { "type": ["string", "null"] }, "reason": { "type": "string", "minLength": 1 } } },
+      "ApiError": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "message", "retryable", "details"],
+        "properties": {
+          "code": { "type": "string", "minLength": 1 },
+          "message": { "type": "string", "minLength": 1 },
+          "retryable": { "type": "boolean" },
+          "details": { "oneOf": [{ "type": "null" }, { "type": "array", "items": { "$ref": "#/components/schemas/ApiErrorDetail" } }] }
+        }
+      },
+      "ApiErrorResponse": { "type": "object", "additionalProperties": false, "required": ["error", "meta"], "properties": { "error": { "$ref": "#/components/schemas/ApiError" }, "meta": { "$ref": "#/components/schemas/ApiMeta" } } }
+    }
+  }
+}

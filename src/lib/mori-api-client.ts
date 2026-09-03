@@ -3,19 +3,26 @@ import {
   createMutationHeaders,
   type ApiError,
   type ApiSuccess,
+  type ArtworkGenerationInput,
   type GenerationCreateInput,
   type LyricsRevisionInput,
   type MoriGenerationEvent,
   type MoriApi,
+  type MoriArtworkGenerationEvent,
   type MoriExportInput,
   type MoriLyricsRevisionEvent,
   type MoriStemSeparationEvent,
+  type ReleaseDraftInput,
   type StemSeparationInput,
   type StudioChangeGenerationInput,
 } from "./mori-api"
 import {
   parseApiError,
   parseApiSuccess,
+  parseArtworkGenerationCancelReceipt,
+  parseArtworkGenerationEventData,
+  parseArtworkGenerationReceipt,
+  parseArtworkGenerationSnapshot,
   parseGenerationCancelReceipt,
   parseGenerationEventData,
   parseGenerationReceipt,
@@ -31,6 +38,7 @@ import {
   parseMoriMixRevision,
   parseMoriProject,
   parseMoriProjectPage,
+  parseMoriReleaseDraft,
   parseMoriSongPlan,
   parseStemSeparationCancelReceipt,
   parseStemSeparationEventData,
@@ -204,6 +212,59 @@ export function createMoriApiClient(options: MoriApiClientOptions = {}): MoriApi
       const payload = await readJson(response)
       return parseSuccessResponse(response, payload, parseStemSeparationCancelReceipt)
     },
+    async createArtworkGeneration(versionRef: MoriRef, input: ArtworkGenerationInput, idempotencyKey: string) {
+      const response = await fetchImpl(`${apiBasePath}/versions/${encodeURIComponent(versionRef)}/artwork_generations`, {
+        method: "POST",
+        headers: createMutationHeaders(idempotencyKey),
+        body: JSON.stringify(input),
+      })
+      const payload = await readJson(response)
+      return parseSuccessResponse(response, payload, parseArtworkGenerationReceipt)
+    },
+    async getArtworkGeneration(artworkGenerationRef: MoriRef) {
+      const response = await fetchImpl(`${apiBasePath}/artwork_generations/${encodeURIComponent(artworkGenerationRef)}`)
+      const payload = await readJson(response)
+      return parseSuccessResponse(response, payload, parseArtworkGenerationSnapshot)
+    },
+    async getArtworkGenerationEvents(artworkGenerationRef: MoriRef, lastEventId = null, signal) {
+      const headers: HeadersInit = { Accept: "text/event-stream" }
+      if (lastEventId !== null && lastEventId.trim() !== "") headers["Last-Event-ID"] = lastEventId
+      const response = await fetchImpl(`${apiBasePath}/artwork_generations/${encodeURIComponent(artworkGenerationRef)}/events`, { headers, signal })
+      if (!response.ok) {
+        const body = await response.text()
+        throwEventStreamError(response, body, "Mori artwork generation event stream")
+      }
+      if (!(response.headers.get("content-type") || "").toLowerCase().startsWith("text/event-stream")) {
+        throw invalidEventStreamResponse("Mori artwork generation event stream returned an invalid content type", response.status)
+      }
+      const events = await readFirstCompleteEventBatch(response, parseArtworkGenerationEvents)
+      if (events === null) {
+        throw invalidEventStreamResponse("Mori artwork generation event stream returned an invalid response", response.status)
+      }
+      return events
+    },
+    async cancelArtworkGeneration(artworkGenerationRef: MoriRef, idempotencyKey: string) {
+      const response = await fetchImpl(`${apiBasePath}/artwork_generations/${encodeURIComponent(artworkGenerationRef)}/cancel`, {
+        method: "POST",
+        headers: createMutationHeaders(idempotencyKey),
+      })
+      const payload = await readJson(response)
+      return parseSuccessResponse(response, payload, parseArtworkGenerationCancelReceipt)
+    },
+    async getReleaseDraft(versionRef: MoriRef) {
+      const response = await fetchImpl(`${apiBasePath}/versions/${encodeURIComponent(versionRef)}/release_draft`)
+      const payload = await readJson(response)
+      return parseSuccessResponse(response, payload, parseMoriReleaseDraft)
+    },
+    async putReleaseDraft(versionRef: MoriRef, input: ReleaseDraftInput, idempotencyKey: string) {
+      const response = await fetchImpl(`${apiBasePath}/versions/${encodeURIComponent(versionRef)}/release_draft`, {
+        method: "PUT",
+        headers: createMutationHeaders(idempotencyKey),
+        body: JSON.stringify(input),
+      })
+      const payload = await readJson(response)
+      return parseSuccessResponse(response, payload, parseMoriReleaseDraft)
+    },
     async createMixRevision(versionRef, input, idempotencyKey) {
       const response = await fetchImpl(`${apiBasePath}/versions/${encodeURIComponent(versionRef)}/mix_revisions`, {
         method: "POST",
@@ -341,6 +402,10 @@ function parseLyricsRevisionEvents(body: string): MoriLyricsRevisionEvent[] | nu
 
 function parseStemSeparationEvents(body: string): MoriStemSeparationEvent[] | null {
   return parseServerSentEvents(body, "stem_separation.", parseStemSeparationEventData)
+}
+
+function parseArtworkGenerationEvents(body: string): MoriArtworkGenerationEvent[] | null {
+  return parseServerSentEvents(body, "artwork_generation.", parseArtworkGenerationEventData)
 }
 
 async function readFirstCompleteEventBatch<T>(

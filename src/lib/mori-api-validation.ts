@@ -1,7 +1,13 @@
-import { stemSeparationModes, stemTargetKinds, studioRemasterStrengths } from "./mori-api"
+import { artworkPalettes, artworkStyles, releaseVisibilities, stemSeparationModes, stemTargetKinds, studioRemasterStrengths } from "./mori-api"
 import type {
   ApiError,
   ApiSuccess,
+  ArtworkGenerationCancelReceipt,
+  ArtworkGenerationReceipt,
+  ArtworkGenerationSnapshot,
+  ArtworkGenerationStatus,
+  ArtworkPalette,
+  ArtworkStyle,
   GenerationCancelReceipt,
   GenerationReceipt,
   GenerationSnapshot,
@@ -13,6 +19,8 @@ import type {
   LyricsRevisionSnapshotScope,
   LyricsRevisionStatus,
   MoriCandidate,
+  MoriArtworkCandidate,
+  MoriArtworkGenerationEvent,
   MoriExportReceipt,
   MoriExportScope,
   MoriExportSnapshot,
@@ -25,9 +33,12 @@ import type {
   MoriMixTrack,
   MoriProject,
   MoriProjectPage,
+  MoriReleaseDraft,
   MoriSongPlan,
   MoriStem,
   MoriStemSeparationEvent,
+  ReleaseArtwork,
+  ReleaseVisibility,
   StemKind,
   StemSeparationCancelReceipt,
   StemSeparationMode,
@@ -99,6 +110,37 @@ function studioRemasterSource(value: unknown): StudioRemasterSource | null {
   if (value.type === "version") return { type: "version" }
   if (value.type === "mix_revision" && nonEmptyString(value.mix_revision_ref)) {
     return { type: "mix_revision", mix_revision_ref: value.mix_revision_ref }
+  }
+  return null
+}
+
+function artworkStyle(value: unknown): value is ArtworkStyle {
+  return typeof value === "string" && artworkStyles.some((style) => style === value)
+}
+
+function artworkPalette(value: unknown): value is ArtworkPalette {
+  return typeof value === "string" && artworkPalettes.some((palette) => palette === value)
+}
+
+function artworkGenerationStatus(value: unknown): value is ArtworkGenerationStatus {
+  return value === "queued"
+    || value === "generating"
+    || value === "post_processing"
+    || value === "succeeded"
+    || value === "failed"
+    || value === "cancelled"
+    || value === "expired"
+}
+
+function releaseVisibility(value: unknown): value is ReleaseVisibility {
+  return typeof value === "string" && releaseVisibilities.some((visibility) => visibility === value)
+}
+
+function parseReleaseArtwork(value: unknown): ReleaseArtwork | null {
+  if (!isRecord(value)) return null
+  if (value.type === "current" && Object.keys(value).length === 1) return { type: "current" }
+  if (value.type === "artwork_candidate" && nonEmptyString(value.artwork_candidate_ref) && Object.keys(value).length === 2) {
+    return { type: "artwork_candidate", artwork_candidate_ref: value.artwork_candidate_ref }
   }
   return null
 }
@@ -250,6 +292,119 @@ export function parseStemSeparationReceipt(value: unknown): StemSeparationReceip
 export function parseStemSeparationCancelReceipt(value: unknown): StemSeparationCancelReceipt | null {
   if (!isRecord(value) || !nonEmptyString(value.stem_separation_ref) || !stemSeparationStatus(value.status)) return null
   return { stem_separation_ref: value.stem_separation_ref, status: value.status }
+}
+
+export function parseArtworkGenerationReceipt(value: unknown): ArtworkGenerationReceipt | null {
+  if (!isRecord(value) || !nonEmptyString(value.artwork_generation_ref) || (value.status !== "queued" && value.status !== "generating")) return null
+  return { artwork_generation_ref: value.artwork_generation_ref, status: value.status }
+}
+
+export function parseArtworkGenerationCancelReceipt(value: unknown): ArtworkGenerationCancelReceipt | null {
+  if (!isRecord(value) || !nonEmptyString(value.artwork_generation_ref) || !artworkGenerationStatus(value.status)) return null
+  return { artwork_generation_ref: value.artwork_generation_ref, status: value.status }
+}
+
+export function parseMoriArtworkCandidate(value: unknown): MoriArtworkCandidate | null {
+  if (
+    !isRecord(value)
+    || !nonEmptyString(value.artwork_candidate_ref)
+    || !nonEmptyString(value.image_asset_ref)
+    || !nonEmptyString(value.thumbnail_asset_ref)
+    || !nonEmptyString(value.alt_text)
+  ) return null
+  return {
+    artwork_candidate_ref: value.artwork_candidate_ref,
+    image_asset_ref: value.image_asset_ref,
+    thumbnail_asset_ref: value.thumbnail_asset_ref,
+    alt_text: value.alt_text,
+  }
+}
+
+export function parseArtworkGenerationSnapshot(value: unknown): ArtworkGenerationSnapshot | null {
+  if (
+    !isRecord(value)
+    || !nonEmptyString(value.artwork_generation_ref)
+    || !nonEmptyString(value.version_ref)
+    || !artworkGenerationStatus(value.status)
+    || !integer(value.progress, 0, 100)
+    || !nonEmptyString(value.prompt)
+    || value.prompt.length > 400
+    || !artworkStyle(value.style)
+    || !artworkPalette(value.palette)
+    || value.aspect_ratio !== "1:1"
+    || value.text_policy !== "no_text"
+    || value.output_count !== 4
+    || !Array.isArray(value.candidates)
+    || !dateString(value.created_at)
+  ) return null
+  const candidates = value.candidates.map(parseMoriArtworkCandidate)
+  if (!candidates.every(present) || !validArtworkCandidates(value.status, candidates)) return null
+  return {
+    artwork_generation_ref: value.artwork_generation_ref,
+    version_ref: value.version_ref,
+    status: value.status,
+    progress: value.progress,
+    prompt: value.prompt,
+    style: value.style,
+    palette: value.palette,
+    aspect_ratio: "1:1",
+    text_policy: "no_text",
+    output_count: 4,
+    candidates,
+    created_at: value.created_at,
+  }
+}
+
+export function parseArtworkGenerationEventData(value: unknown): MoriArtworkGenerationEvent["data"] | null {
+  if (
+    !isRecord(value)
+    || !nonEmptyString(value.artwork_generation_ref)
+    || !nonEmptyString(value.version_ref)
+    || !artworkGenerationStatus(value.status)
+    || !integer(value.progress, 0, 100)
+    || !stringArray(value.artwork_candidate_refs)
+    || value.artwork_candidate_refs.length > 4
+  ) return null
+  return {
+    artwork_generation_ref: value.artwork_generation_ref,
+    version_ref: value.version_ref,
+    status: value.status,
+    progress: value.progress,
+    artwork_candidate_refs: value.artwork_candidate_refs,
+  }
+}
+
+export function parseMoriReleaseDraft(value: unknown): MoriReleaseDraft | null {
+  if (
+    !isRecord(value)
+    || !nonEmptyString(value.release_draft_ref)
+    || !nonEmptyString(value.version_ref)
+    || !integer(value.revision, 1)
+    || value.state !== "draft"
+    || !nonEmptyString(value.title)
+    || value.title.length > 120
+    || typeof value.description !== "string"
+    || value.description.length > 500
+    || !releaseVisibility(value.visibility)
+    || typeof value.allow_remix !== "boolean"
+    || typeof value.explicit_content !== "boolean"
+    || !dateString(value.updated_at)
+  ) return null
+  const artwork = parseReleaseArtwork(value.artwork)
+  if (artwork === null) return null
+  return {
+    release_draft_ref: value.release_draft_ref,
+    version_ref: value.version_ref,
+    revision: value.revision,
+    state: "draft",
+    title: value.title,
+    description: value.description,
+    visibility: value.visibility,
+    allow_remix: value.allow_remix,
+    explicit_content: value.explicit_content,
+    artwork,
+    updated_at: value.updated_at,
+  }
 }
 
 export function parseGenerationSnapshot(value: unknown): GenerationSnapshot | null {
@@ -503,6 +658,14 @@ export function parseStemSeparationSnapshot(value: unknown): StemSeparationSnaps
     midi_asset_ref: value.midi_asset_ref,
     created_at: value.created_at,
   }
+}
+
+function validArtworkCandidates(status: ArtworkGenerationStatus, candidates: MoriArtworkCandidate[]): boolean {
+  if (status !== "succeeded") return candidates.length === 0
+  if (candidates.length !== 4) return false
+  const candidateRefs = candidates.map((candidate) => candidate.artwork_candidate_ref)
+  const imageRefs = candidates.map((candidate) => candidate.image_asset_ref)
+  return new Set(candidateRefs).size === candidateRefs.length && new Set(imageRefs).size === imageRefs.length
 }
 
 export function parseStemSeparationEventData(value: unknown): MoriStemSeparationEvent["data"] | null {

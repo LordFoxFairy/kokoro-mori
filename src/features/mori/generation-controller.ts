@@ -1,5 +1,5 @@
 import type { GenerationStatus } from "./domain"
-import { createGenerationRequest, type GenerationCreateInput, type GenerationReceipt, type LyricsRevisionInput, type MixRevisionInput, type MoriApi, type MoriExportInput, type MoriGenerationDraft, type MoriProjectCreateInput, type SongPlanCreateInput, type StemSeparationInput, type StudioChangeGenerationInput } from "@/lib/mori-api"
+import { createGenerationRequest, type ArtworkGenerationInput, type GenerationCreateInput, type GenerationReceipt, type LyricsRevisionInput, type MixRevisionInput, type MoriApi, type MoriExportInput, type MoriGenerationDraft, type MoriProjectCreateInput, type MoriReleaseDraft, type ReleaseDraftInput, type SongPlanCreateInput, type StemSeparationInput, type StudioChangeGenerationInput } from "@/lib/mori-api"
 import type { MoriRef } from "./domain"
 
 export type GenerationControllerState = {
@@ -49,6 +49,8 @@ function receiptState(receipt: GenerationReceipt, requestId: string): Generation
 }
 
 const previewExports = new Map<MoriRef, { versionRef: MoriRef; input: MoriExportInput }>()
+const previewArtworkGenerations = new Map<MoriRef, { versionRef: MoriRef; input: ArtworkGenerationInput }>()
+const previewReleaseDrafts = new Map<MoriRef, MoriReleaseDraft>()
 
 export const previewMoriApi: MoriApi = {
   async listProjects() {
@@ -226,6 +228,87 @@ export const previewMoriApi: MoriApi = {
         request_id: "preview-stem-separation-cancel-request",
       },
     }
+  },
+  async createArtworkGeneration(versionRef: MoriRef, input: ArtworkGenerationInput, idempotencyKey: string) {
+    const artworkGenerationRef = `artwork_generation_preview_${idempotencyKey}`
+    previewArtworkGenerations.set(artworkGenerationRef, { versionRef, input })
+    return {
+      data: { artwork_generation_ref: artworkGenerationRef, status: "queued" as const },
+      meta: { request_id: `preview-artwork-request-${idempotencyKey}` },
+    }
+  },
+  async getArtworkGeneration(artworkGenerationRef: MoriRef) {
+    const tracked = previewArtworkGenerations.get(artworkGenerationRef)
+    const input = tracked?.input ?? {
+      prompt: "Warm dawn through a train window",
+      style: "editorial" as const,
+      palette: "warm_dawn" as const,
+      aspect_ratio: "1:1" as const,
+      text_policy: "no_text" as const,
+      output_count: 4 as const,
+    }
+    return {
+      data: {
+        artwork_generation_ref: artworkGenerationRef,
+        version_ref: tracked?.versionRef ?? "version_preview_first_light_a",
+        status: "succeeded" as const,
+        progress: 100,
+        ...input,
+        candidates: Array.from({ length: 4 }, (_, index) => ({
+          artwork_candidate_ref: `artwork_candidate_preview_${index + 1}`,
+          image_asset_ref: `asset_artwork_preview_${index + 1}`,
+          thumbnail_asset_ref: `asset_artwork_preview_thumb_${index + 1}`,
+          alt_text: `Warm abstract dawn artwork concept ${index + 1}`,
+        })),
+        created_at: "2026-09-03T12:02:00.000Z",
+      },
+      meta: { request_id: "preview-artwork-status-request" },
+    }
+  },
+  async getArtworkGenerationEvents() {
+    return []
+  },
+  async cancelArtworkGeneration(artworkGenerationRef: MoriRef) {
+    return {
+      data: { artwork_generation_ref: artworkGenerationRef, status: "cancelled" as const },
+      meta: { request_id: "preview-artwork-cancel-request" },
+    }
+  },
+  async getReleaseDraft(versionRef: MoriRef) {
+    const saved = previewReleaseDrafts.get(versionRef)
+    return {
+      data: saved ?? {
+        release_draft_ref: `release_draft_preview_${versionRef}`,
+        version_ref: versionRef,
+        revision: 1,
+        state: "draft" as const,
+        title: "First Light",
+        description: "",
+        visibility: "private" as const,
+        allow_remix: false,
+        explicit_content: false,
+        artwork: { type: "current" as const },
+        updated_at: "2026-09-03T12:03:00.000Z",
+      },
+      meta: { request_id: "preview-release-read-request" },
+    }
+  },
+  async putReleaseDraft(versionRef: MoriRef, input: ReleaseDraftInput, idempotencyKey: string) {
+    const saved: MoriReleaseDraft = {
+      release_draft_ref: previewReleaseDrafts.get(versionRef)?.release_draft_ref ?? `release_draft_preview_${versionRef}`,
+      version_ref: versionRef,
+      revision: (input.expected_revision ?? 0) + 1,
+      state: "draft",
+      title: input.title,
+      description: input.description,
+      visibility: input.visibility,
+      allow_remix: input.allow_remix,
+      explicit_content: input.explicit_content,
+      artwork: input.artwork,
+      updated_at: "2026-09-03T12:04:00.000Z",
+    }
+    previewReleaseDrafts.set(versionRef, saved)
+    return { data: saved, meta: { request_id: `preview-release-save-request-${idempotencyKey}` } }
   },
   async createMixRevision(versionRef: MoriRef, input: MixRevisionInput, idempotencyKey: string) {
     return {

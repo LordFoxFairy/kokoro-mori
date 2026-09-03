@@ -58,6 +58,89 @@ export type StudioRemasterSource =
   | { type: "version" }
   | { type: "mix_revision"; mix_revision_ref: MoriRef }
 
+export const artworkStyles = ["abstract", "editorial", "illustrated", "photographic"] as const
+
+export type ArtworkStyle = typeof artworkStyles[number]
+
+export const artworkPalettes = ["warm_dawn", "violet_night", "mint_haze", "monochrome"] as const
+
+export type ArtworkPalette = typeof artworkPalettes[number]
+
+export type ArtworkGenerationStatus = "queued" | "generating" | "post_processing" | "succeeded" | "failed" | "cancelled" | "expired"
+
+export type ArtworkGenerationInput = {
+  prompt: string
+  style: ArtworkStyle
+  palette: ArtworkPalette
+  aspect_ratio: "1:1"
+  text_policy: "no_text"
+  output_count: 4
+}
+
+export type ArtworkGenerationReceipt = {
+  artwork_generation_ref: MoriRef
+  status: Extract<ArtworkGenerationStatus, "queued" | "generating">
+}
+
+export type ArtworkGenerationCancelReceipt = {
+  artwork_generation_ref: MoriRef
+  status: ArtworkGenerationStatus
+}
+
+export type MoriArtworkCandidate = {
+  artwork_candidate_ref: MoriRef
+  image_asset_ref: MoriRef
+  thumbnail_asset_ref: MoriRef
+  alt_text: string
+}
+
+export type ArtworkGenerationSnapshot = ArtworkGenerationInput & {
+  artwork_generation_ref: MoriRef
+  version_ref: MoriRef
+  status: ArtworkGenerationStatus
+  progress: number
+  candidates: MoriArtworkCandidate[]
+  created_at: string
+}
+
+export type MoriArtworkGenerationEvent = {
+  id: string
+  event: string
+  data: {
+    artwork_generation_ref: MoriRef
+    version_ref: MoriRef
+    status: ArtworkGenerationStatus
+    progress: number
+    artwork_candidate_refs: MoriRef[]
+  }
+}
+
+export const releaseVisibilities = ["private", "link_only", "public"] as const
+
+export type ReleaseVisibility = typeof releaseVisibilities[number]
+
+export type ReleaseArtwork =
+  | { type: "current" }
+  | { type: "artwork_candidate"; artwork_candidate_ref: MoriRef }
+
+export type ReleaseDraftInput = {
+  title: string
+  description: string
+  visibility: ReleaseVisibility
+  allow_remix: boolean
+  explicit_content: boolean
+  artwork: ReleaseArtwork
+  expected_revision: number | null
+}
+
+export type MoriReleaseDraft = Omit<ReleaseDraftInput, "expected_revision"> & {
+  release_draft_ref: MoriRef
+  version_ref: MoriRef
+  revision: number
+  state: "draft"
+  updated_at: string
+}
+
 export type StudioChangeInsertionScope = {
   type: "insertion_point"
   position_ms: number
@@ -450,6 +533,12 @@ export type MoriApi = {
   getStemSeparation: (stemSeparationRef: MoriRef) => Promise<ApiSuccess<StemSeparationSnapshot>>
   getStemSeparationEvents: (stemSeparationRef: MoriRef, lastEventId?: string | null, signal?: AbortSignal) => Promise<MoriStemSeparationEvent[]>
   cancelStemSeparation: (stemSeparationRef: MoriRef, idempotencyKey: string) => Promise<ApiSuccess<StemSeparationCancelReceipt>>
+  createArtworkGeneration: (versionRef: MoriRef, input: ArtworkGenerationInput, idempotencyKey: string) => Promise<ApiSuccess<ArtworkGenerationReceipt>>
+  getArtworkGeneration: (artworkGenerationRef: MoriRef) => Promise<ApiSuccess<ArtworkGenerationSnapshot>>
+  getArtworkGenerationEvents: (artworkGenerationRef: MoriRef, lastEventId?: string | null, signal?: AbortSignal) => Promise<MoriArtworkGenerationEvent[]>
+  cancelArtworkGeneration: (artworkGenerationRef: MoriRef, idempotencyKey: string) => Promise<ApiSuccess<ArtworkGenerationCancelReceipt>>
+  getReleaseDraft: (versionRef: MoriRef) => Promise<ApiSuccess<MoriReleaseDraft>>
+  putReleaseDraft: (versionRef: MoriRef, input: ReleaseDraftInput, idempotencyKey: string) => Promise<ApiSuccess<MoriReleaseDraft>>
   createMixRevision: (versionRef: MoriRef, input: MixRevisionInput, idempotencyKey: string) => Promise<ApiSuccess<MoriMixRevision>>
   getMixRevision: (mixRevisionRef: MoriRef) => Promise<ApiSuccess<MoriMixRevision>>
   getGeneration: (generationRef: MoriRef) => Promise<ApiSuccess<GenerationSnapshot>>

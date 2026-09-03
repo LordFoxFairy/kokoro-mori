@@ -1,0 +1,181 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Mori Artwork Generation API",
+    "version": "0.1.0",
+    "description": "Version-scoped, review-first generation of square release artwork candidates."
+  },
+  "paths": {
+    "/api/v1/mori/versions/{version_ref}/artwork_generations": {
+      "post": {
+        "operationId": "createArtworkGeneration",
+        "summary": "Generate four release artwork concepts for a version",
+        "parameters": [
+          { "name": "version_ref", "in": "path", "required": true, "schema": { "type": "string", "minLength": 1 } },
+          { "name": "Idempotency-Key", "in": "header", "required": true, "schema": { "type": "string", "minLength": 1, "maxLength": 200 } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ArtworkGenerationInput" } } }
+        },
+        "responses": {
+          "202": { "description": "Artwork generation was accepted", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiArtworkGenerationReceipt" } } } },
+          "400": { "description": "The request is malformed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiErrorResponse" } } } },
+          "404": { "description": "The source version was not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiErrorResponse" } } } },
+          "409": { "description": "The idempotency key or source state conflicts", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiErrorResponse" } } } },
+          "422": { "description": "The source cannot be used for this artwork plan", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiErrorResponse" } } } },
+          "429": { "description": "Artwork generation capacity is temporarily exhausted", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiErrorResponse" } } } }
+        }
+      }
+    },
+    "/api/v1/mori/artwork_generations/{artwork_generation_ref}": {
+      "get": {
+        "operationId": "getArtworkGeneration",
+        "summary": "Read the durable artwork generation snapshot",
+        "parameters": [
+          { "name": "artwork_generation_ref", "in": "path", "required": true, "schema": { "type": "string", "minLength": 1 } }
+        ],
+        "responses": {
+          "200": { "description": "The latest artwork snapshot", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiArtworkGenerationSnapshot" } } } },
+          "404": { "description": "The artwork generation was not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiErrorResponse" } } } }
+        }
+      }
+    },
+    "/api/v1/mori/artwork_generations/{artwork_generation_ref}/events": {
+      "get": {
+        "operationId": "getArtworkGenerationEvents",
+        "summary": "Replay ordered artwork generation events",
+        "parameters": [
+          { "name": "artwork_generation_ref", "in": "path", "required": true, "schema": { "type": "string", "minLength": 1 } },
+          { "name": "Last-Event-ID", "in": "header", "required": false, "schema": { "type": "string", "minLength": 1, "maxLength": 200 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "A replayable server-sent event stream",
+            "content": {
+              "text/event-stream": {
+                "schema": { "type": "string" },
+                "x-sse-event-prefix": "artwork_generation.",
+                "x-sse-event-payload": { "$ref": "#/components/schemas/ApiArtworkGenerationEventPayload" }
+              }
+            }
+          },
+          "404": { "description": "The artwork generation was not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiErrorResponse" } } } }
+        }
+      }
+    },
+    "/api/v1/mori/artwork_generations/{artwork_generation_ref}/cancel": {
+      "post": {
+        "operationId": "cancelArtworkGeneration",
+        "summary": "Request cancellation of an active artwork generation",
+        "parameters": [
+          { "name": "artwork_generation_ref", "in": "path", "required": true, "schema": { "type": "string", "minLength": 1 } },
+          { "name": "Idempotency-Key", "in": "header", "required": true, "schema": { "type": "string", "minLength": 1, "maxLength": 200 } }
+        ],
+        "responses": {
+          "202": { "description": "Cancellation was accepted or replayed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiArtworkGenerationCancelReceipt" } } } },
+          "404": { "description": "The artwork generation was not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiErrorResponse" } } } },
+          "409": { "description": "The generation is already terminal or the command conflicts", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiErrorResponse" } } } }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ArtworkStyle": { "type": "string", "enum": ["abstract", "editorial", "illustrated", "photographic"] },
+      "ArtworkPalette": { "type": "string", "enum": ["warm_dawn", "violet_night", "mint_haze", "monochrome"] },
+      "ArtworkGenerationStatus": { "type": "string", "enum": ["queued", "generating", "post_processing", "succeeded", "failed", "cancelled", "expired"] },
+      "ArtworkGenerationInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["prompt", "style", "palette", "aspect_ratio", "text_policy", "output_count"],
+        "properties": {
+          "prompt": { "type": "string", "minLength": 1, "maxLength": 400 },
+          "style": { "$ref": "#/components/schemas/ArtworkStyle" },
+          "palette": { "$ref": "#/components/schemas/ArtworkPalette" },
+          "aspect_ratio": { "type": "string", "const": "1:1" },
+          "text_policy": { "type": "string", "const": "no_text" },
+          "output_count": { "type": "integer", "const": 4 }
+        }
+      },
+      "ArtworkCandidate": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["artwork_candidate_ref", "image_asset_ref", "thumbnail_asset_ref", "alt_text"],
+        "properties": {
+          "artwork_candidate_ref": { "type": "string", "minLength": 1 },
+          "image_asset_ref": { "type": "string", "minLength": 1 },
+          "thumbnail_asset_ref": { "type": "string", "minLength": 1 },
+          "alt_text": { "type": "string", "minLength": 1, "maxLength": 300 }
+        }
+      },
+      "ArtworkGenerationReceipt": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["artwork_generation_ref", "status"],
+        "properties": {
+          "artwork_generation_ref": { "type": "string", "minLength": 1 },
+          "status": { "type": "string", "enum": ["queued", "generating"] }
+        }
+      },
+      "ArtworkGenerationCancelReceipt": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["artwork_generation_ref", "status"],
+        "properties": {
+          "artwork_generation_ref": { "type": "string", "minLength": 1 },
+          "status": { "$ref": "#/components/schemas/ArtworkGenerationStatus" }
+        }
+      },
+      "ArtworkGenerationSnapshot": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["artwork_generation_ref", "version_ref", "status", "progress", "prompt", "style", "palette", "aspect_ratio", "text_policy", "output_count", "candidates", "created_at"],
+        "properties": {
+          "artwork_generation_ref": { "type": "string", "minLength": 1 },
+          "version_ref": { "type": "string", "minLength": 1 },
+          "status": { "$ref": "#/components/schemas/ArtworkGenerationStatus" },
+          "progress": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "prompt": { "type": "string", "minLength": 1, "maxLength": 400 },
+          "style": { "$ref": "#/components/schemas/ArtworkStyle" },
+          "palette": { "$ref": "#/components/schemas/ArtworkPalette" },
+          "aspect_ratio": { "type": "string", "const": "1:1" },
+          "text_policy": { "type": "string", "const": "no_text" },
+          "output_count": { "type": "integer", "const": 4 },
+          "candidates": { "type": "array", "maxItems": 4, "items": { "$ref": "#/components/schemas/ArtworkCandidate" } },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ArtworkGenerationEventData": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["artwork_generation_ref", "version_ref", "status", "progress", "artwork_candidate_refs"],
+        "properties": {
+          "artwork_generation_ref": { "type": "string", "minLength": 1 },
+          "version_ref": { "type": "string", "minLength": 1 },
+          "status": { "$ref": "#/components/schemas/ArtworkGenerationStatus" },
+          "progress": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "artwork_candidate_refs": { "type": "array", "maxItems": 4, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } }
+        }
+      },
+      "ApiArtworkGenerationReceipt": { "type": "object", "additionalProperties": false, "required": ["data", "meta"], "properties": { "data": { "$ref": "#/components/schemas/ArtworkGenerationReceipt" }, "meta": { "$ref": "#/components/schemas/ApiMeta" } } },
+      "ApiArtworkGenerationCancelReceipt": { "type": "object", "additionalProperties": false, "required": ["data", "meta"], "properties": { "data": { "$ref": "#/components/schemas/ArtworkGenerationCancelReceipt" }, "meta": { "$ref": "#/components/schemas/ApiMeta" } } },
+      "ApiArtworkGenerationSnapshot": { "type": "object", "additionalProperties": false, "required": ["data", "meta"], "properties": { "data": { "$ref": "#/components/schemas/ArtworkGenerationSnapshot" }, "meta": { "$ref": "#/components/schemas/ApiMeta" } } },
+      "ApiArtworkGenerationEventPayload": { "type": "object", "additionalProperties": false, "required": ["data", "meta"], "properties": { "data": { "$ref": "#/components/schemas/ArtworkGenerationEventData" }, "meta": { "$ref": "#/components/schemas/ApiMeta" } } },
+      "ApiMeta": { "type": "object", "additionalProperties": false, "required": ["request_id"], "properties": { "request_id": { "type": "string", "minLength": 1 } } },
+      "ApiErrorDetail": { "type": "object", "additionalProperties": false, "required": ["field", "reason"], "properties": { "field": { "type": ["string", "null"] }, "reason": { "type": "string", "minLength": 1 } } },
+      "ApiError": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "message", "retryable", "details"],
+        "properties": {
+          "code": { "type": "string", "minLength": 1 },
+          "message": { "type": "string", "minLength": 1 },
+          "retryable": { "type": "boolean" },
+          "details": { "oneOf": [{ "type": "null" }, { "type": "array", "items": { "$ref": "#/components/schemas/ApiErrorDetail" } }] }
+        }
+      },
+      "ApiErrorResponse": { "type": "object", "additionalProperties": false, "required": ["error", "meta"], "properties": { "error": { "$ref": "#/components/schemas/ApiError" }, "meta": { "$ref": "#/components/schemas/ApiMeta" } } }
+    }
+  }
+}

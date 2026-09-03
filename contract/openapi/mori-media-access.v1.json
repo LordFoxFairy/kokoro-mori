@@ -3,13 +3,13 @@
   "info": {
     "title": "Mori Media Access API",
     "version": "0.1.0",
-    "description": "Authenticated same-origin byte-range access to Mori audio assets used by browser playback and explicit downloads."
+    "description": "Authenticated same-origin access to Mori audio and image assets used by browser playback, artwork display, and explicit downloads."
   },
   "paths": {
     "/api/v1/mori/assets/{asset_ref}/content": {
       "get": {
         "operationId": "getMoriAssetContent",
-        "summary": "Read audio content attached to an authorized Mori resource",
+        "summary": "Read media content attached to an authorized Mori resource",
         "description": "Resolves an opaque asset reference inside the trusted service context. The browser never receives a storage location or provider URL.",
         "security": [
           {
@@ -63,7 +63,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Complete authorized audio content",
+            "description": "Complete authorized audio or image content",
             "headers": {
               "Accept-Ranges": {
                 "schema": {
@@ -84,6 +84,12 @@
             },
             "content": {
               "audio/*": {
+                "schema": {
+                  "type": "string",
+                  "contentEncoding": "binary"
+                }
+              },
+              "image/*": {
                 "schema": {
                   "type": "string",
                   "contentEncoding": "binary"
