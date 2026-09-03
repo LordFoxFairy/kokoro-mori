@@ -1,19 +1,21 @@
 "use client"
 
-import { ArrowLeft, AudioLines, AudioWaveform, Download, FileText, Play, Share2, Sparkles, Volume2, VolumeX } from "lucide-react"
+import { ArrowLeft, AudioLines, AudioWaveform, Download, FileText, Play, Share2, Sparkles } from "lucide-react"
 import Link from "next/link"
-import { useEffect, useMemo, useState } from "react"
-import { createLyricsRevisionRequest, createStudioChangeRequest, type LyricsRevisionSnapshot, type MoriApi, type MoriCandidate, type MoriExportSnapshot } from "@/lib/mori-api"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { createLyricsRevisionRequest, createStemSeparationRequest, createStudioChangeRequest, type LyricsRevisionSnapshot, type MoriApi, type MoriCandidate, type MoriExportSnapshot, type StemSeparationSnapshot } from "@/lib/mori-api"
 import { createMoriApiClient, MoriApiRequestError } from "@/lib/mori-api-client"
 import type { Candidate } from "./domain"
 import { MoriStudioShell } from "./components/mori-studio-shell"
 import { StudioAiComposer, type StudioAiRunState } from "./components/studio-ai-composer"
 import { StudioLyricsEditor, type StudioLyricsRunState } from "./components/studio-lyrics-editor"
+import { StudioStemsEditor, type StudioStemSeparationRunState } from "./components/studio-stems-editor"
 import { useMoriApp } from "./components/mori-app-provider"
 import { Waveform } from "./components/waveform"
 import { previewCandidates, previewProject, previewSongPlan } from "./preview-data"
 import { buildStudioTimelineSections, isActiveStudioChangeStatus, type StudioChangePlan } from "./studio-change"
 import { createStudioLyricsRevisionDraft, isActiveLyricsRevisionStatus, studioLyricsScopeLabel, type StudioLyricsPlan } from "./studio-lyrics"
+import { createStudioStemSeparationDraft, isActiveStemSeparationStatus, type StudioStemSeparationPlan } from "./studio-stems"
 import styles from "./mori-workspace.module.css"
 
 type StudioTool = "arrangement" | "lyrics" | "stems"
@@ -22,7 +24,7 @@ type StudioPageContentProps = {
   candidate: Candidate
   projectRef?: string
   versionRef?: string
-  api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "listCandidates" | "createStudioChange" | "getGeneration" | "getGenerationEvents" | "cancelGeneration" | "createLyricsRevision" | "getLyricsRevision" | "getLyricsRevisionEvents" | "cancelLyricsRevision">>
+  api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "listCandidates" | "createStudioChange" | "getGeneration" | "getGenerationEvents" | "cancelGeneration" | "createLyricsRevision" | "getLyricsRevision" | "getLyricsRevisionEvents" | "cancelLyricsRevision" | "createStemSeparation" | "getStemSeparation" | "getStemSeparationEvents" | "cancelStemSeparation">>
 }
 
 type TrackedStudioChange = {
@@ -35,6 +37,12 @@ type TrackedLyricsRevision = {
   lyricsRevisionRef: string
   sourceVersionRef: string
   plan: StudioLyricsPlan
+}
+
+type TrackedStemSeparation = {
+  stemSeparationRef: string
+  sourceVersionRef: string
+  plan: StudioStemSeparationPlan
 }
 
 const idleStudioChangeRun: StudioAiRunState = {
@@ -51,6 +59,17 @@ const idleLyricsRevisionRun: StudioLyricsRunState = {
   plan: null,
   suggestions: [],
   sourceDigest: null,
+  message: null,
+}
+
+const idleStemSeparationRun: StudioStemSeparationRunState = {
+  status: "idle",
+  sourceVersionRef: null,
+  progress: 0,
+  plan: null,
+  stems: [],
+  midiAssetRef: null,
+  sourceAudioDigest: null,
   message: null,
 }
 
@@ -72,6 +91,30 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api }: St
   const [trackedStudioChange, setTrackedStudioChange] = useState<TrackedStudioChange | null>(null)
   const [lyricsRevisionRun, setLyricsRevisionRun] = useState<StudioLyricsRunState>(idleLyricsRevisionRun)
   const [trackedLyricsRevision, setTrackedLyricsRevision] = useState<TrackedLyricsRevision | null>(null)
+  const [stemSeparationRun, setStemSeparationRun] = useState<StudioStemSeparationRunState>(idleStemSeparationRun)
+  const [trackedStemSeparation, setTrackedStemSeparation] = useState<TrackedStemSeparation | null>(null)
+  const activeVersionRef = activeCandidate?.versionRef ?? null
+  const activeVersionRefRef = useRef(activeVersionRef)
+  const stemSeparationCommandEpochRef = useRef(0)
+  const ignoredStemSeparationsRef = useRef(new Set<string>())
+  const activeStemEventRequestRef = useRef<{ stemSeparationRef: string; controller: AbortController } | null>(null)
+  activeVersionRefRef.current = activeVersionRef
+
+  useEffect(() => {
+    stemSeparationCommandEpochRef.current += 1
+    setTrackedStemSeparation((current) => {
+      if (current === null || current.sourceVersionRef === activeVersionRef) return current
+      ignoredStemSeparationsRef.current.add(current.stemSeparationRef)
+      const eventRequest = activeStemEventRequestRef.current
+      if (eventRequest?.stemSeparationRef === current.stemSeparationRef) eventRequest.controller.abort()
+      return null
+    })
+    setStemSeparationRun((current) => (
+      current.sourceVersionRef === null || current.sourceVersionRef === activeVersionRef
+        ? current
+        : idleStemSeparationRun
+    ))
+  }, [activeVersionRef])
 
   useEffect(() => {
     const requestedProjectRef = projectRef?.trim()
@@ -414,6 +457,212 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api }: St
     setLyricsRevisionRun(idleLyricsRevisionRun)
   }
 
+  const generateStemSeparation = async (plan: StudioStemSeparationPlan) => {
+    if (activeCandidate === null || isActiveStemSeparationStatus(stemSeparationRun.status)) return
+    const sourceVersionRef = activeCandidate.versionRef
+    const commandEpoch = stemSeparationCommandEpochRef.current + 1
+    stemSeparationCommandEpochRef.current = commandEpoch
+    setTrackedStemSeparation(null)
+    setStemSeparationRun({
+      status: "preparing",
+      sourceVersionRef,
+      progress: 4,
+      plan,
+      stems: [],
+      midiAssetRef: null,
+      sourceAudioDigest: null,
+      message: null,
+    })
+    try {
+      const response = await studioApi.createStemSeparation(
+        sourceVersionRef,
+        createStemSeparationRequest(createStudioStemSeparationDraft(plan)),
+        `mori-stem-separation-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      )
+      if (commandEpoch !== stemSeparationCommandEpochRef.current || activeVersionRefRef.current !== sourceVersionRef) return
+      ignoredStemSeparationsRef.current.delete(response.data.stem_separation_ref)
+      setStemSeparationRun({
+        status: response.data.status,
+        sourceVersionRef,
+        progress: response.data.status === "queued" ? 0 : 12,
+        plan,
+        stems: [],
+        midiAssetRef: null,
+        sourceAudioDigest: null,
+        message: null,
+      })
+      setTrackedStemSeparation({
+        stemSeparationRef: response.data.stem_separation_ref,
+        sourceVersionRef,
+        plan,
+      })
+    } catch (error) {
+      if (commandEpoch !== stemSeparationCommandEpochRef.current || activeVersionRefRef.current !== sourceVersionRef) return
+      setStemSeparationRun({
+        status: "failed",
+        sourceVersionRef,
+        progress: 0,
+        plan,
+        stems: [],
+        midiAssetRef: null,
+        sourceAudioDigest: null,
+        message: stemSeparationFailureMessage(error),
+      })
+    }
+  }
+
+  useEffect(() => {
+    if (trackedStemSeparation === null) return
+    const tracked = trackedStemSeparation
+    let disposed = false
+    let timer: number | undefined
+    let eventTimeout: number | undefined
+    let eventController: AbortController | null = null
+    let lastEventId: string | null = null
+    const isCurrent = () => !disposed
+      && activeVersionRefRef.current === tracked.sourceVersionRef
+      && !ignoredStemSeparationsRef.current.has(tracked.stemSeparationRef)
+
+    const sync = async () => {
+      if (!isCurrent()) return
+      try {
+        const response = await studioApi.getStemSeparation(tracked.stemSeparationRef)
+        if (!isCurrent()) return
+        const snapshot = response.data
+        if (!stemSeparationSnapshotMatches(snapshot, tracked)) {
+          throw new Error("stem_separation_snapshot_context_mismatch")
+        }
+
+        if (snapshot.status === "succeeded") {
+          setStemSeparationRun({
+            status: "succeeded",
+            sourceVersionRef: tracked.sourceVersionRef,
+            progress: 100,
+            plan: tracked.plan,
+            stems: snapshot.stems,
+            midiAssetRef: snapshot.midi_asset_ref,
+            sourceAudioDigest: snapshot.source_audio_digest,
+            message: null,
+          })
+          setTrackedStemSeparation(null)
+          return
+        }
+
+        if (snapshot.status === "failed" || snapshot.status === "cancelled" || snapshot.status === "expired") {
+          setStemSeparationRun({
+            status: snapshot.status,
+            sourceVersionRef: tracked.sourceVersionRef,
+            progress: snapshot.progress,
+            plan: tracked.plan,
+            stems: [],
+            midiAssetRef: null,
+            sourceAudioDigest: snapshot.source_audio_digest,
+            message: stemSeparationTerminalMessage(snapshot.status),
+          })
+          setTrackedStemSeparation(null)
+          return
+        }
+
+        let status = snapshot.status
+        let progress = snapshot.progress
+        try {
+          eventController = new AbortController()
+          activeStemEventRequestRef.current = { stemSeparationRef: tracked.stemSeparationRef, controller: eventController }
+          eventTimeout = window.setTimeout(() => eventController?.abort(), 650)
+          const events = await studioApi.getStemSeparationEvents(tracked.stemSeparationRef, lastEventId, eventController.signal)
+          if (!isCurrent()) return
+          const latest = events.at(-1)
+          if (
+            latest !== undefined
+            && latest.data.stem_separation_ref === tracked.stemSeparationRef
+            && latest.data.version_ref === tracked.sourceVersionRef
+            && (latest.data.status === "queued" || latest.data.status === "separating")
+          ) {
+            lastEventId = latest.id
+            status = latest.data.status
+            progress = latest.data.progress
+          }
+        } catch {
+          // The durable snapshot remains authoritative if event replay is unavailable.
+        } finally {
+          if (eventTimeout !== undefined) window.clearTimeout(eventTimeout)
+          eventTimeout = undefined
+          if (activeStemEventRequestRef.current?.controller === eventController) activeStemEventRequestRef.current = null
+          eventController = null
+        }
+
+        if (!isCurrent()) return
+        setStemSeparationRun((current) => ({ ...current, status, progress, message: null }))
+        timer = window.setTimeout(() => { void sync() }, 800)
+      } catch (error) {
+        if (isCurrent()) {
+          setStemSeparationRun((current) => ({
+            ...current,
+            status: "failed",
+            message: stemSeparationFailureMessage(error),
+          }))
+          setTrackedStemSeparation(null)
+        }
+      }
+    }
+
+    void sync()
+    return () => {
+      disposed = true
+      if (timer !== undefined) window.clearTimeout(timer)
+      if (eventTimeout !== undefined) window.clearTimeout(eventTimeout)
+      eventController?.abort()
+      if (activeStemEventRequestRef.current?.controller === eventController) activeStemEventRequestRef.current = null
+    }
+  }, [studioApi, trackedStemSeparation])
+
+  const cancelStemSeparation = async () => {
+    if (trackedStemSeparation === null) return
+    const tracked = trackedStemSeparation
+    const stemSeparationRef = tracked.stemSeparationRef
+    ignoredStemSeparationsRef.current.add(stemSeparationRef)
+    const eventRequest = activeStemEventRequestRef.current
+    if (eventRequest?.stemSeparationRef === stemSeparationRef) eventRequest.controller.abort()
+    setStemSeparationRun((current) => ({ ...current, message: "Stopping after the current separation step…" }))
+    try {
+      const response = await studioApi.cancelStemSeparation(
+        stemSeparationRef,
+        `mori-stem-cancel-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      )
+      if (activeVersionRefRef.current !== tracked.sourceVersionRef) return
+      const status = response.data.status
+      const stopped = status === "failed" || status === "cancelled" || status === "expired"
+      if (stopped) setTrackedStemSeparation(null)
+      else {
+        ignoredStemSeparationsRef.current.delete(stemSeparationRef)
+        setTrackedStemSeparation((current) => current?.stemSeparationRef === stemSeparationRef ? { ...current } : current)
+      }
+      setStemSeparationRun((current) => ({
+        ...current,
+        status: status === "succeeded" ? current.status : status,
+        progress: Math.min(current.progress, 99),
+        message: stopped
+          ? stemSeparationTerminalMessage(status)
+          : status === "succeeded"
+            ? "Separation finished while cancellation was requested. Loading stems…"
+            : null,
+      }))
+    } catch {
+      if (activeVersionRefRef.current !== tracked.sourceVersionRef) return
+      ignoredStemSeparationsRef.current.delete(stemSeparationRef)
+      setTrackedStemSeparation((current) => current?.stemSeparationRef === stemSeparationRef ? { ...current } : current)
+      setStemSeparationRun((current) => ({ ...current, message: "Cancellation did not complete. This separation is still being tracked." }))
+    }
+  }
+
+  const resetStemSeparation = () => {
+    if (isActiveStemSeparationStatus(stemSeparationRun.status)) return
+    stemSeparationCommandEpochRef.current += 1
+    if (trackedStemSeparation !== null) ignoredStemSeparationsRef.current.add(trackedStemSeparation.stemSeparationRef)
+    setTrackedStemSeparation(null)
+    setStemSeparationRun(idleStemSeparationRun)
+  }
+
   const preview = () => {
     if (activeCandidate === null) return
     if (playerCandidate?.versionRef === activeCandidate.versionRef) {
@@ -538,7 +787,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api }: St
           <div className={styles.studioCanvasTop}><div><span className={styles.eyebrow}><span className={styles.eyebrowDot} />Editing with intention</span><h2>Shape the feeling.</h2></div><button className={styles.generateButton} type="button" onClick={preview}><Play size={14} fill="currentColor" /> {playerCandidate?.versionRef === activeCandidate.versionRef && playing ? "Pause" : "Preview"}</button></div>
           {activeTool === "arrangement" ? <ArrangementEditor candidate={activeCandidate} takes={studioCandidates} currentVersionRef={currentVersionRef} playerVersionRef={playerCandidate?.versionRef ?? ""} playing={playing} studioChangeRun={studioChangeRun} onGenerateStudioChange={(plan) => { void generateStudioChange(plan) }} onCancelStudioChange={() => { void cancelStudioChange() }} onResetStudioChange={resetStudioChange} onSelectTake={selectTake} onPreviewTake={previewTake} onPromoteTake={promoteTake} /> : null}
           {activeTool === "lyrics" ? <StudioLyricsEditor key={activeCandidate.versionRef} versionRef={activeCandidate.versionRef} run={lyricsRevisionRun} onGenerate={(plan) => { void generateLyricsRevision(plan) }} onCancel={() => { void cancelLyricsRevision() }} onReset={resetLyricsRevision} /> : null}
-          {activeTool === "stems" ? <StemsEditor /> : null}
+          {activeTool === "stems" ? <StudioStemsEditor key={activeVersionRef ?? "no-version"} run={stemSeparationRun} onSeparate={(plan) => { void generateStemSeparation(plan) }} onCancel={() => { void cancelStemSeparation() }} onReset={resetStemSeparation} /> : null}
         </section>
         <aside className={styles.versionRail} aria-label="Version history"><div className={styles.versionRailHeader}><div><span>Project history</span><h2>Versions</h2></div></div>{studioCandidates.map((item, index) => <Link className={`${styles.versionItem} ${item.versionRef === activeCandidate.versionRef ? styles.versionItemActive : ""}`} href={`/projects/${activeProjectRef}/studio/${item.versionRef}`} key={item.versionRef}><div className={`${styles.versionThumb} ${index === 1 ? styles.versionThumbAlt : ""}`}><Play size={12} fill="currentColor" /></div><div><strong>{item.title}</strong><span>{index === 0 ? "Current" : "Draft"} · {Math.floor(item.durationSeconds / 60)}:{String(item.durationSeconds % 60).padStart(2, "0")}</span></div></Link>)}</aside>
       </div>}
@@ -625,6 +874,31 @@ function lyricsRevisionTerminalMessage(status: "failed" | "cancelled" | "expired
   }
 }
 
+function stemSeparationSnapshotMatches(snapshot: StemSeparationSnapshot, tracked: TrackedStemSeparation): boolean {
+  return snapshot.stem_separation_ref === tracked.stemSeparationRef
+    && snapshot.version_ref === tracked.sourceVersionRef
+    && snapshot.mode === tracked.plan.mode
+    && snapshot.include_midi === tracked.plan.includeMidi
+}
+
+function stemSeparationFailureMessage(error: unknown): string {
+  if (error instanceof MoriApiRequestError && error.code === "mori_bff_unavailable") {
+    return "Mori is offline right now. Your separation plan is ready to retry."
+  }
+  if (error instanceof Error && error.message === "stem_separation_snapshot_context_mismatch") {
+    return "The returned stems did not match this version or plan. Nothing was attached."
+  }
+  return "This separation did not finish. Your plan is preserved for retry."
+}
+
+function stemSeparationTerminalMessage(status: "failed" | "cancelled" | "expired"): string {
+  switch (status) {
+    case "failed": return "Mori could not separate this version. Your plan is ready to retry."
+    case "cancelled": return "Separation cancelled. Your plan is still here."
+    case "expired": return "This separation expired before completion. Your plan is ready to retry."
+  }
+}
+
 type ArrangementEditorProps = {
   candidate: Candidate
   takes: Candidate[]
@@ -695,45 +969,4 @@ function ArrangementEditor({ candidate, takes, currentVersionRef, playerVersionR
 
 function LyricsCard() {
   return <div className={styles.lyricsCard}><div className={styles.lyricsHeader}><div><span>Lyrics</span><strong>Draft 01</strong></div></div><p>We were headlights in the quiet<br />finding a little gold in the blue<br /><em>and every road became a reason<br />to carry the morning through</em></p></div>
-}
-
-function StemsEditor() {
-  const stems = [
-    { name: "Lead vocal", detail: "Center · close", seed: 17 },
-    { name: "Harmony", detail: "Wide · soft", seed: 23 },
-    { name: "Rhythm", detail: "Room · organic", seed: 31 },
-    { name: "Texture", detail: "Air · low", seed: 37 },
-  ]
-  const [mutedStems, setMutedStems] = useState<string[]>([])
-  const [soloStem, setSoloStem] = useState<string | null>(null)
-
-  function toggleMute(name: string) {
-    setMutedStems((current) => current.includes(name) ? current.filter((item) => item !== name) : [...current, name])
-  }
-
-  return (
-    <section className={styles.stemsEditor} aria-label="Stems editor">
-      <header className={styles.editorSurfaceHeader}>
-        <div><span>Preview mix for the current take</span><h3>Stem balance</h3></div>
-        <span className={styles.stemPreviewBadge}>Preview only</span>
-      </header>
-      <div className={styles.stemTrackList}>
-        {stems.map((stem) => {
-          const muted = mutedStems.includes(stem.name)
-          const solo = soloStem === stem.name
-          return (
-            <div className={`${styles.stemTrack} ${muted ? styles.stemTrackMuted : ""}`} key={stem.name}>
-              <div className={styles.stemTrackCopy}><strong>{stem.name}</strong><span>{stem.detail}</span></div>
-              <div className={styles.stemTrackWave}><Waveform seed={stem.seed} compact progress={muted ? 0.1 : solo ? 0.9 : 0.56} /></div>
-              <div className={styles.stemActions}>
-                <button className={styles.stemAction} type="button" aria-pressed={muted} aria-label={`${muted ? "Unmute" : "Mute"} ${stem.name}`} onClick={() => toggleMute(stem.name)}>{muted ? <VolumeX size={14} /> : <Volume2 size={14} />}</button>
-                <button className={`${styles.stemSolo} ${solo ? styles.stemSoloActive : ""}`} type="button" aria-pressed={solo} aria-label={`${solo ? "Unsolo" : "Solo"} ${stem.name}`} onClick={() => setSoloStem(solo ? null : stem.name)}>Solo</button>
-              </div>
-            </div>
-          )
-        })}
-      </div>
-      <p className={styles.stemNote}>Mute and solo are ready for the connected audio renderer.</p>
-    </section>
-  )
 }

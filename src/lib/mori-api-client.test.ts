@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { createGenerationRequest, createLyricsRevisionRequest, createStudioChangeRequest } from "./mori-api"
+import { createGenerationRequest, createLyricsRevisionRequest, createStemSeparationRequest, createStudioChangeRequest } from "./mori-api"
 import { createMoriApiClient } from "./mori-api-client"
 
 describe("Mori same-origin API client", () => {
@@ -342,6 +342,167 @@ describe("Mori same-origin API client", () => {
       instruction: "   ",
       lyricsContext: "A line",
     })).toThrow("lyrics_revision_instruction_required")
+  })
+
+  it("posts a reviewed version-scoped stem separation", async () => {
+    let capturedUrl = ""
+    let capturedInit: RequestInit | undefined
+    const api = createMoriApiClient({
+      fetchImpl: async (input, init) => {
+        capturedUrl = String(input)
+        capturedInit = init
+        return new Response(JSON.stringify({
+          data: { stem_separation_ref: "stem_separation_1", status: "queued" },
+          meta: { request_id: "request_stem_separation_1" },
+        }), { status: 202, headers: { "Content-Type": "application/json" } })
+      },
+    })
+
+    const request = createStemSeparationRequest({ mode: "auto_stems", includeMidi: true })
+    const response = await api.createStemSeparation("version/stems 1", request, "idem-stems-1")
+
+    expect(capturedUrl).toBe("/api/v1/mori/versions/version%2Fstems%201/stem_separations")
+    expect(capturedInit?.method).toBe("POST")
+    expect(capturedInit?.headers).toEqual({
+      "Content-Type": "application/json",
+      "Idempotency-Key": "idem-stems-1",
+    })
+    expect(JSON.parse(String(capturedInit?.body))).toEqual({ mode: "auto_stems", include_midi: true })
+    expect(response.data).toEqual({ stem_separation_ref: "stem_separation_1", status: "queued" })
+  })
+
+  it("reads durable separated stem assets", async () => {
+    const api = createMoriApiClient({
+      fetchImpl: async () => new Response(JSON.stringify({
+        data: {
+          stem_separation_ref: "stem_separation_1",
+          version_ref: "version_1",
+          status: "succeeded",
+          progress: 100,
+          mode: "vocals_instrumental",
+          include_midi: false,
+          source_audio_digest: "sha256:source-audio-1",
+          stems: [
+            { stem_ref: "stem_vocals_1", kind: "vocals", label: "Vocals", audio_asset_ref: "asset_vocals_1", waveform_asset_ref: "waveform_vocals_1", duration_seconds: 182 },
+            { stem_ref: "stem_instrumental_1", kind: "instrumental", label: "Instrumental", audio_asset_ref: "asset_instrumental_1", waveform_asset_ref: "waveform_instrumental_1", duration_seconds: 182 },
+          ],
+          midi_asset_ref: null,
+          created_at: "2026-09-03T12:00:00.000Z",
+        },
+        meta: { request_id: "request_stem_snapshot_1" },
+      }), { status: 200, headers: { "Content-Type": "application/json" } }),
+    })
+
+    const response = await api.getStemSeparation("stem_separation_1")
+
+    expect(response.data).toMatchObject({
+      status: "succeeded",
+      mode: "vocals_instrumental",
+      source_audio_digest: "sha256:source-audio-1",
+      midi_asset_ref: null,
+    })
+    expect(response.data.stems.map((stem) => stem.kind)).toEqual(["vocals", "instrumental"])
+  })
+
+  it("replays and cancels a stem separation through stable resource paths", async () => {
+    const calls: Array<{ url: string; method: string | undefined; headers: HeadersInit | undefined }> = []
+    const api = createMoriApiClient({
+      fetchImpl: async (input, init) => {
+        const url = String(input)
+        calls.push({ url, method: init?.method, headers: init?.headers })
+        if (url.endsWith("/events")) {
+          return new Response([
+            "id: stem_separation_1:3",
+            "event: stem_separation.separating",
+            'data: {"data":{"stem_separation_ref":"stem_separation_1","version_ref":"version_1","status":"separating","progress":58,"stem_refs":[]},"meta":{"request_id":"request_stem_event_1"}}',
+            "",
+            "",
+          ].join("\n"), { status: 200, headers: { "Content-Type": "text/event-stream" } })
+        }
+        return new Response(JSON.stringify({
+          data: { stem_separation_ref: "stem_separation_1", status: "cancelled" },
+          meta: { request_id: "request_stem_cancel_1" },
+        }), { status: 202, headers: { "Content-Type": "application/json" } })
+      },
+    })
+
+    const events = await api.getStemSeparationEvents("stem_separation_1", "stem_separation_1:2")
+    const cancelled = await api.cancelStemSeparation("stem_separation_1", "idem-stem-cancel-1")
+
+    expect(calls).toEqual([
+      {
+        url: "/api/v1/mori/stem_separations/stem_separation_1/events",
+        method: undefined,
+        headers: { Accept: "text/event-stream", "Last-Event-ID": "stem_separation_1:2" },
+      },
+      {
+        url: "/api/v1/mori/stem_separations/stem_separation_1/cancel",
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": "idem-stem-cancel-1" },
+      },
+    ])
+    expect(events[0]?.data).toMatchObject({ status: "separating", progress: 58 })
+    expect(cancelled.data.status).toBe("cancelled")
+  })
+
+  it("returns the first complete stem event without waiting for the SSE connection to close", async () => {
+    let streamCancelled = false
+    const eventBytes = new TextEncoder().encode([
+      "id: stem_separation_1:4",
+      "event: stem_separation.separating",
+      'data: {"data":{"stem_separation_ref":"stem_separation_1","version_ref":"version_1","status":"separating","progress":68,"stem_refs":[]},"meta":{"request_id":"request_stem_event_stream_1"}}',
+      "",
+      "",
+    ].join("\n"))
+    const api = createMoriApiClient({
+      fetchImpl: async () => new Response(new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(eventBytes)
+        },
+        cancel() {
+          streamCancelled = true
+        },
+      }), { status: 200, headers: { "Content-Type": "text/event-stream" } }),
+    })
+
+    const result = await Promise.race([
+      api.getStemSeparationEvents("stem_separation_1").then((events) => ({ kind: "events" as const, events })),
+      new Promise<{ kind: "timeout" }>((resolve) => setTimeout(() => resolve({ kind: "timeout" }), 80)),
+    ])
+
+    expect(result.kind).toBe("events")
+    if (result.kind === "events") expect(result.events[0]?.data.progress).toBe(68)
+    expect(streamCancelled).toBe(true)
+  })
+
+  it("rejects stem snapshots that violate mode and asset-count invariants", async () => {
+    const buildStem = (index: number) => ({
+      stem_ref: `stem_${index}`,
+      kind: index === 0 ? "vocals" : "other",
+      label: `Stem ${index}`,
+      audio_asset_ref: `asset_${index}`,
+      waveform_asset_ref: `waveform_${index}`,
+      duration_seconds: 182,
+    })
+    const api = createMoriApiClient({
+      fetchImpl: async () => new Response(JSON.stringify({
+        data: {
+          stem_separation_ref: "stem_separation_invalid",
+          version_ref: "version_1",
+          status: "succeeded",
+          progress: 100,
+          mode: "auto_stems",
+          include_midi: false,
+          source_audio_digest: "sha256:source-audio-invalid",
+          stems: Array.from({ length: 13 }, (_, index) => buildStem(index)),
+          midi_asset_ref: null,
+          created_at: "2026-09-03T12:00:00.000Z",
+        },
+        meta: { request_id: "request_stem_snapshot_invalid" },
+      }), { status: 200, headers: { "Content-Type": "application/json" } }),
+    })
+
+    await expect(api.getStemSeparation("stem_separation_invalid")).rejects.toMatchObject({ code: "invalid_api_response" })
   })
 
   it("rejects an invalid studio change before it reaches the API", () => {

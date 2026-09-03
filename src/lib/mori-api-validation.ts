@@ -21,6 +21,14 @@ import type {
   MoriProject,
   MoriProjectPage,
   MoriSongPlan,
+  MoriStem,
+  MoriStemSeparationEvent,
+  StemKind,
+  StemSeparationCancelReceipt,
+  StemSeparationMode,
+  StemSeparationReceipt,
+  StemSeparationSnapshot,
+  StemSeparationStatus,
   StudioChangeOperation,
 } from "./mori-api"
 import type { GenerationStatus } from "@/features/mori/domain"
@@ -84,6 +92,29 @@ function lyricsRevisionStatus(value: unknown): value is LyricsRevisionStatus {
 
 function lyricsRevisionConstraint(value: unknown): value is LyricsRevisionConstraint {
   return value === "meaning" || value === "cadence" || value === "rhyme_scheme" || value === "section_length"
+}
+
+function stemSeparationMode(value: unknown): value is StemSeparationMode {
+  return value === "vocals_instrumental" || value === "auto_stems"
+}
+
+function stemSeparationStatus(value: unknown): value is StemSeparationStatus {
+  return value === "queued" || value === "separating" || value === "succeeded" || value === "failed" || value === "cancelled" || value === "expired"
+}
+
+function stemKind(value: unknown): value is StemKind {
+  return value === "vocals"
+    || value === "backing_vocals"
+    || value === "instrumental"
+    || value === "drums"
+    || value === "bass"
+    || value === "guitar"
+    || value === "keys"
+    || value === "strings"
+    || value === "wind"
+    || value === "synth"
+    || value === "percussion"
+    || value === "other"
 }
 
 function requestMeta(value: unknown): { request_id: string } | null {
@@ -177,6 +208,16 @@ export function parseLyricsRevisionReceipt(value: unknown): LyricsRevisionReceip
 export function parseLyricsRevisionCancelReceipt(value: unknown): LyricsRevisionCancelReceipt | null {
   if (!isRecord(value) || !nonEmptyString(value.lyrics_revision_ref) || !lyricsRevisionStatus(value.status)) return null
   return { lyrics_revision_ref: value.lyrics_revision_ref, status: value.status }
+}
+
+export function parseStemSeparationReceipt(value: unknown): StemSeparationReceipt | null {
+  if (!isRecord(value) || !nonEmptyString(value.stem_separation_ref) || (value.status !== "queued" && value.status !== "separating")) return null
+  return { stem_separation_ref: value.stem_separation_ref, status: value.status }
+}
+
+export function parseStemSeparationCancelReceipt(value: unknown): StemSeparationCancelReceipt | null {
+  if (!isRecord(value) || !nonEmptyString(value.stem_separation_ref) || !stemSeparationStatus(value.status)) return null
+  return { stem_separation_ref: value.stem_separation_ref, status: value.status }
 }
 
 export function parseGenerationSnapshot(value: unknown): GenerationSnapshot | null {
@@ -307,6 +348,92 @@ export function parseLyricsRevisionEventData(value: unknown): MoriLyricsRevision
     progress: value.progress,
     suggestion_refs: value.suggestion_refs,
   }
+}
+
+export function parseMoriStem(value: unknown): MoriStem | null {
+  if (
+    !isRecord(value)
+    || !nonEmptyString(value.stem_ref)
+    || !stemKind(value.kind)
+    || !nonEmptyString(value.label)
+    || !nonEmptyString(value.audio_asset_ref)
+    || !nonEmptyString(value.waveform_asset_ref)
+    || !integer(value.duration_seconds, 1)
+  ) return null
+  return {
+    stem_ref: value.stem_ref,
+    kind: value.kind,
+    label: value.label,
+    audio_asset_ref: value.audio_asset_ref,
+    waveform_asset_ref: value.waveform_asset_ref,
+    duration_seconds: value.duration_seconds,
+  }
+}
+
+export function parseStemSeparationSnapshot(value: unknown): StemSeparationSnapshot | null {
+  if (
+    !isRecord(value)
+    || !nonEmptyString(value.stem_separation_ref)
+    || !nonEmptyString(value.version_ref)
+    || !stemSeparationStatus(value.status)
+    || !integer(value.progress, 0, 100)
+    || !stemSeparationMode(value.mode)
+    || typeof value.include_midi !== "boolean"
+    || !nonEmptyString(value.source_audio_digest)
+    || !Array.isArray(value.stems)
+    || !nullableString(value.midi_asset_ref)
+    || !dateString(value.created_at)
+  ) return null
+  const stems = value.stems.map(parseMoriStem)
+  if (!stems.every(present)) return null
+  if (!validStemSeparationAssets(value.status, value.mode, value.include_midi, stems, value.midi_asset_ref)) return null
+  return {
+    stem_separation_ref: value.stem_separation_ref,
+    version_ref: value.version_ref,
+    status: value.status,
+    progress: value.progress,
+    mode: value.mode,
+    include_midi: value.include_midi,
+    source_audio_digest: value.source_audio_digest,
+    stems,
+    midi_asset_ref: value.midi_asset_ref,
+    created_at: value.created_at,
+  }
+}
+
+export function parseStemSeparationEventData(value: unknown): MoriStemSeparationEvent["data"] | null {
+  if (
+    !isRecord(value)
+    || !nonEmptyString(value.stem_separation_ref)
+    || !nonEmptyString(value.version_ref)
+    || !stemSeparationStatus(value.status)
+    || !integer(value.progress, 0, 100)
+    || !stringArray(value.stem_refs)
+    || value.stem_refs.length > 12
+  ) return null
+  return {
+    stem_separation_ref: value.stem_separation_ref,
+    version_ref: value.version_ref,
+    status: value.status,
+    progress: value.progress,
+    stem_refs: value.stem_refs,
+  }
+}
+
+function validStemSeparationAssets(
+  status: StemSeparationStatus,
+  mode: StemSeparationMode,
+  includeMidi: boolean,
+  stems: MoriStem[],
+  midiAssetRef: string | null,
+): boolean {
+  if (!includeMidi && midiAssetRef !== null) return false
+  if (status !== "succeeded") return stems.length === 0 && midiAssetRef === null
+  if (stems.length === 0 || stems.length > 12) return false
+  if (mode !== "vocals_instrumental") return true
+  return stems.length === 2
+    && stems.some((stem) => stem.kind === "vocals")
+    && stems.some((stem) => stem.kind === "instrumental")
 }
 
 export function parseMoriCandidate(value: unknown): MoriCandidate | null {

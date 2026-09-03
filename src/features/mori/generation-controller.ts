@@ -1,5 +1,5 @@
 import type { GenerationStatus } from "./domain"
-import { createGenerationRequest, type GenerationCreateInput, type GenerationReceipt, type LyricsRevisionInput, type MoriApi, type MoriGenerationDraft, type MoriProjectCreateInput, type SongPlanCreateInput, type StudioChangeGenerationInput } from "@/lib/mori-api"
+import { createGenerationRequest, type GenerationCreateInput, type GenerationReceipt, type LyricsRevisionInput, type MoriApi, type MoriGenerationDraft, type MoriProjectCreateInput, type SongPlanCreateInput, type StemSeparationInput, type StudioChangeGenerationInput } from "@/lib/mori-api"
 import type { MoriRef } from "./domain"
 
 export type GenerationControllerState = {
@@ -171,6 +171,56 @@ export const previewMoriApi: MoriApi = {
       },
       meta: {
         request_id: "preview-lyrics-revision-cancel-request",
+      },
+    }
+  },
+  async createStemSeparation(_versionRef: MoriRef, _input: StemSeparationInput, idempotencyKey: string) {
+    return {
+      data: {
+        stem_separation_ref: "stem_separation_preview_first_light",
+        status: "queued" as const,
+      },
+      meta: {
+        request_id: `preview-stem-separation-request-${idempotencyKey}`,
+      },
+    }
+  },
+  async getStemSeparation(stemSeparationRef: MoriRef) {
+    return {
+      data: {
+        stem_separation_ref: stemSeparationRef,
+        version_ref: "version_preview_first_light_a",
+        status: "succeeded" as const,
+        progress: 100,
+        mode: "auto_stems" as const,
+        include_midi: true,
+        source_audio_digest: "preview-stem-source-digest",
+        stems: [
+          { stem_ref: "stem_preview_vocals", kind: "vocals" as const, label: "Lead vocal", audio_asset_ref: "asset_preview_vocals", waveform_asset_ref: "waveform_preview_vocals", duration_seconds: 182 },
+          { stem_ref: "stem_preview_backing", kind: "backing_vocals" as const, label: "Backing vocals", audio_asset_ref: "asset_preview_backing", waveform_asset_ref: "waveform_preview_backing", duration_seconds: 182 },
+          { stem_ref: "stem_preview_drums", kind: "drums" as const, label: "Drums", audio_asset_ref: "asset_preview_drums", waveform_asset_ref: "waveform_preview_drums", duration_seconds: 182 },
+          { stem_ref: "stem_preview_bass", kind: "bass" as const, label: "Bass", audio_asset_ref: "asset_preview_bass", waveform_asset_ref: "waveform_preview_bass", duration_seconds: 182 },
+          { stem_ref: "stem_preview_other", kind: "other" as const, label: "Other", audio_asset_ref: "asset_preview_other", waveform_asset_ref: "waveform_preview_other", duration_seconds: 182 },
+        ],
+        midi_asset_ref: "asset_preview_midi",
+        created_at: "2026-09-03T12:00:00.000Z",
+      },
+      meta: {
+        request_id: "preview-stem-separation-status-request",
+      },
+    }
+  },
+  async getStemSeparationEvents() {
+    return []
+  },
+  async cancelStemSeparation(stemSeparationRef: MoriRef) {
+    return {
+      data: {
+        stem_separation_ref: stemSeparationRef,
+        status: "cancelled" as const,
+      },
+      meta: {
+        request_id: "preview-stem-separation-cancel-request",
       },
     }
   },

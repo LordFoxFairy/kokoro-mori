@@ -6,7 +6,7 @@ import { previewCandidates } from "./preview-data"
 import { StudioPageContent } from "./studio-page"
 
 describe("Mori studio page", () => {
-  function renderStudio(api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "listCandidates" | "createStudioChange" | "getGeneration" | "getGenerationEvents" | "cancelGeneration" | "createLyricsRevision" | "getLyricsRevision" | "getLyricsRevisionEvents" | "cancelLyricsRevision">>) {
+  function renderStudio(api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "listCandidates" | "createStudioChange" | "getGeneration" | "getGenerationEvents" | "cancelGeneration" | "createLyricsRevision" | "getLyricsRevision" | "getLyricsRevisionEvents" | "cancelLyricsRevision" | "createStemSeparation" | "getStemSeparation" | "getStemSeparationEvents" | "cancelStemSeparation">>) {
     return render(
       <MoriAppProvider>
         <StudioPageContent candidate={previewCandidates[0]} api={api} />
@@ -508,16 +508,231 @@ describe("Mori studio page", () => {
     localStorage.clear()
   })
 
-  it("provides explicit mute controls for the stem preview", () => {
+  it("turns the current version into a reviewable stem separation plan", () => {
     renderStudio()
 
     fireEvent.click(screen.getByRole("button", { name: "Stems" }))
     const stemsEditor = screen.getByRole("region", { name: "Stems editor" })
-    const muteLead = within(stemsEditor).getByRole("button", { name: "Mute Lead vocal" })
+    expect(within(stemsEditor).getByRole("button", { name: "Vocals + instrumental" })).toHaveAttribute("aria-pressed", "true")
+    expect(within(stemsEditor).queryByText("Lead vocal")).not.toBeInTheDocument()
 
+    fireEvent.click(within(stemsEditor).getByRole("button", { name: "Auto stems" }))
+    fireEvent.click(within(stemsEditor).getByRole("checkbox", { name: "Export MIDI transcription" }))
+    fireEvent.click(within(stemsEditor).getByRole("button", { name: "Review separation" }))
+
+    const plan = within(stemsEditor).getByRole("region", { name: "Stem separation plan" })
+    expect(within(plan).getByText("Auto stems")).toBeInTheDocument()
+    expect(within(plan).getByText("Up to 12 stems")).toBeInTheDocument()
+    expect(within(plan).getByText("MIDI included")).toBeInTheDocument()
+    expect(within(plan).getByText("Current version stays untouched.")).toBeInTheDocument()
+    expect(within(plan).getByRole("button", { name: "Separate detected stems" })).toBeInTheDocument()
+  })
+
+  it("submits a stem separation and exposes only returned assets as mix controls", async () => {
+    let submittedVersionRef = ""
+    let submittedInput: Parameters<MoriApi["createStemSeparation"]>[1] | null = null
+    renderStudio({
+      createStemSeparation: async (versionRef, input) => {
+        submittedVersionRef = versionRef
+        submittedInput = input
+        return {
+          data: { stem_separation_ref: "stem_separation_ui_1", status: "queued" },
+          meta: { request_id: "request_stem_ui_1" },
+        }
+      },
+      getStemSeparation: async () => ({
+        data: {
+          stem_separation_ref: "stem_separation_ui_1",
+          version_ref: "version_preview_first_light_a",
+          status: "succeeded",
+          progress: 100,
+          mode: "auto_stems",
+          include_midi: true,
+          source_audio_digest: "sha256:stem-source-ui-1",
+          stems: [
+            { stem_ref: "stem_ui_vocals", kind: "vocals", label: "Lead vocal", audio_asset_ref: "asset_ui_vocals", waveform_asset_ref: "waveform_ui_vocals", duration_seconds: 182 },
+            { stem_ref: "stem_ui_backing", kind: "backing_vocals", label: "Backing vocals", audio_asset_ref: "asset_ui_backing", waveform_asset_ref: "waveform_ui_backing", duration_seconds: 182 },
+            { stem_ref: "stem_ui_drums", kind: "drums", label: "Drums", audio_asset_ref: "asset_ui_drums", waveform_asset_ref: "waveform_ui_drums", duration_seconds: 182 },
+            { stem_ref: "stem_ui_bass", kind: "bass", label: "Bass", audio_asset_ref: "asset_ui_bass", waveform_asset_ref: "waveform_ui_bass", duration_seconds: 182 },
+            { stem_ref: "stem_ui_other", kind: "other", label: "Other", audio_asset_ref: "asset_ui_other", waveform_asset_ref: "waveform_ui_other", duration_seconds: 182 },
+          ],
+          midi_asset_ref: "asset_ui_midi",
+          created_at: "2026-09-03T12:00:00.000Z",
+        },
+        meta: { request_id: "request_stem_snapshot_ui_1" },
+      }),
+      getStemSeparationEvents: async () => [],
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: "Stems" }))
+    const stemsEditor = screen.getByRole("region", { name: "Stems editor" })
+    fireEvent.click(within(stemsEditor).getByRole("button", { name: "Auto stems" }))
+    fireEvent.click(within(stemsEditor).getByRole("checkbox", { name: "Export MIDI transcription" }))
+    fireEvent.click(within(stemsEditor).getByRole("button", { name: "Review separation" }))
+    fireEvent.click(within(stemsEditor).getByRole("button", { name: "Separate detected stems" }))
+
+    await waitFor(() => expect(submittedVersionRef).toBe("version_preview_first_light_a"))
+    expect(submittedInput).toEqual({ mode: "auto_stems", include_midi: true })
+    const stemTracks = await within(stemsEditor).findByRole("region", { name: "Stem tracks" })
+    expect(within(stemTracks).getAllByRole("article")).toHaveLength(5)
+    expect(within(stemTracks).getByText("MIDI transcription ready")).toBeInTheDocument()
+    expect(within(stemTracks).getByText("Mix controls are staged locally until playable stem audio is connected.")).toBeInTheDocument()
+
+    const muteLead = within(stemTracks).getByRole("button", { name: "Mute Lead vocal" })
     fireEvent.click(muteLead)
+    expect(within(stemTracks).getByRole("button", { name: "Unmute Lead vocal" })).toHaveAttribute("aria-pressed", "true")
+    fireEvent.click(within(stemTracks).getByRole("button", { name: "Solo Drums" }))
+    expect(within(stemTracks).getByRole("button", { name: "Unsolo Drums" })).toHaveAttribute("aria-pressed", "true")
+  })
 
-    expect(within(stemsEditor).getByRole("button", { name: "Unmute Lead vocal" })).toHaveAttribute("aria-pressed", "true")
+  it("keeps an active stem separation across Studio tools and lets the user cancel it", async () => {
+    let cancelledStemSeparationRef = ""
+    renderStudio({
+      createStemSeparation: async () => ({
+        data: { stem_separation_ref: "stem_separation_active_1", status: "queued" },
+        meta: { request_id: "request_stem_active_1" },
+      }),
+      getStemSeparation: async () => ({
+        data: {
+          stem_separation_ref: "stem_separation_active_1",
+          version_ref: "version_preview_first_light_a",
+          status: "separating",
+          progress: 47,
+          mode: "vocals_instrumental",
+          include_midi: false,
+          source_audio_digest: "sha256:stem-active-1",
+          stems: [],
+          midi_asset_ref: null,
+          created_at: "2026-09-03T12:00:00.000Z",
+        },
+        meta: { request_id: "request_stem_active_snapshot_1" },
+      }),
+      getStemSeparationEvents: async () => [],
+      cancelStemSeparation: async (stemSeparationRef) => {
+        cancelledStemSeparationRef = stemSeparationRef
+        return {
+          data: { stem_separation_ref: stemSeparationRef, status: "cancelled" },
+          meta: { request_id: "request_stem_active_cancel_1" },
+        }
+      },
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: "Stems" }))
+    let stemsEditor = screen.getByRole("region", { name: "Stems editor" })
+    fireEvent.click(within(stemsEditor).getByRole("button", { name: "Review separation" }))
+    fireEvent.click(within(stemsEditor).getByRole("button", { name: "Separate 2 stems" }))
+    await waitFor(() => expect(within(stemsEditor).getByRole("progressbar", { name: "Stem separation progress" })).toHaveAttribute("aria-valuenow", "47"))
+
+    fireEvent.click(screen.getByRole("button", { name: "Lyrics" }))
+    fireEvent.click(screen.getByRole("button", { name: "Stems" }))
+
+    stemsEditor = screen.getByRole("region", { name: "Stems editor" })
+    const plan = within(stemsEditor).getByRole("region", { name: "Stem separation plan" })
+    expect(within(plan).getByText("Vocals + instrumental")).toBeInTheDocument()
+    expect(within(plan).getByRole("progressbar", { name: "Stem separation progress" })).toHaveAttribute("aria-valuenow", "47")
+    fireEvent.click(within(plan).getByRole("button", { name: "Cancel separation" }))
+
+    await waitFor(() => expect(cancelledStemSeparationRef).toBe("stem_separation_active_1"))
+    expect(within(plan).getByText("Cancelled")).toBeInTheDocument()
+    expect(within(plan).getByRole("button", { name: "Retry separation" })).toBeInTheDocument()
+  })
+
+  it("ignores a stale stem event after cancellation", async () => {
+    const eventResolvers: Array<(events: Awaited<ReturnType<MoriApi["getStemSeparationEvents"]>>) => void> = []
+    renderStudio({
+      createStemSeparation: async () => ({
+        data: { stem_separation_ref: "stem_separation_stale_1", status: "queued" },
+        meta: { request_id: "request_stem_stale_1" },
+      }),
+      getStemSeparation: async () => ({
+        data: {
+          stem_separation_ref: "stem_separation_stale_1",
+          version_ref: "version_preview_first_light_a",
+          status: "separating",
+          progress: 41,
+          mode: "vocals_instrumental",
+          include_midi: false,
+          source_audio_digest: "sha256:stem-stale-1",
+          stems: [],
+          midi_asset_ref: null,
+          created_at: "2026-09-03T12:00:00.000Z",
+        },
+        meta: { request_id: "request_stem_stale_snapshot_1" },
+      }),
+      getStemSeparationEvents: async () => new Promise((resolve) => { eventResolvers.push(resolve) }),
+      cancelStemSeparation: async (stemSeparationRef) => ({
+        data: { stem_separation_ref: stemSeparationRef, status: "cancelled" },
+        meta: { request_id: "request_stem_stale_cancel_1" },
+      }),
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: "Stems" }))
+    const stemsEditor = screen.getByRole("region", { name: "Stems editor" })
+    fireEvent.click(within(stemsEditor).getByRole("button", { name: "Review separation" }))
+    fireEvent.click(within(stemsEditor).getByRole("button", { name: "Separate 2 stems" }))
+    await waitFor(() => expect(eventResolvers).toHaveLength(1))
+    fireEvent.click(within(stemsEditor).getByRole("button", { name: "Cancel separation" }))
+    await waitFor(() => expect(within(stemsEditor).getByText("Cancelled")).toBeInTheDocument())
+
+    const resolveEvents = eventResolvers[0]
+    if (resolveEvents === undefined) throw new Error("stem event resolver was not registered")
+    resolveEvents([{
+      id: "stem_separation_stale_1:7",
+      event: "stem_separation.separating",
+      data: {
+        stem_separation_ref: "stem_separation_stale_1",
+        version_ref: "version_preview_first_light_a",
+        status: "separating",
+        progress: 73,
+        stem_refs: [],
+      },
+    }])
+
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(within(stemsEditor).getByText("Cancelled")).toBeInTheDocument()
+    expect(within(stemsEditor).queryByText("Separating")).not.toBeInTheDocument()
+  })
+
+  it("clears stem results when the current version changes", async () => {
+    renderStudio({
+      createStemSeparation: async () => ({
+        data: { stem_separation_ref: "stem_separation_version_1", status: "queued" },
+        meta: { request_id: "request_stem_version_1" },
+      }),
+      getStemSeparation: async () => ({
+        data: {
+          stem_separation_ref: "stem_separation_version_1",
+          version_ref: "version_preview_first_light_a",
+          status: "succeeded",
+          progress: 100,
+          mode: "vocals_instrumental",
+          include_midi: false,
+          source_audio_digest: "sha256:stem-version-1",
+          stems: [
+            { stem_ref: "stem_version_vocals", kind: "vocals", label: "Version vocals", audio_asset_ref: "asset_version_vocals", waveform_asset_ref: "waveform_version_vocals", duration_seconds: 182 },
+            { stem_ref: "stem_version_music", kind: "instrumental", label: "Version instrumental", audio_asset_ref: "asset_version_music", waveform_asset_ref: "waveform_version_music", duration_seconds: 182 },
+          ],
+          midi_asset_ref: null,
+          created_at: "2026-09-03T12:00:00.000Z",
+        },
+        meta: { request_id: "request_stem_version_snapshot_1" },
+      }),
+      getStemSeparationEvents: async () => [],
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: "Stems" }))
+    let stemsEditor = screen.getByRole("region", { name: "Stems editor" })
+    fireEvent.click(within(stemsEditor).getByRole("button", { name: "Review separation" }))
+    fireEvent.click(within(stemsEditor).getByRole("button", { name: "Separate 2 stems" }))
+    expect(await within(stemsEditor).findByText("Version vocals")).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole("button", { name: "Arrangement" }))
+    fireEvent.click(screen.getByRole("button", { name: "Use First Light · Afterglow as current" }))
+    fireEvent.click(screen.getByRole("button", { name: "Stems" }))
+
+    stemsEditor = screen.getByRole("region", { name: "Stems editor" })
+    await waitFor(() => expect(within(stemsEditor).getByRole("region", { name: "Stem separation setup" })).toBeInTheDocument())
+    expect(within(stemsEditor).queryByText("Version vocals")).not.toBeInTheDocument()
   })
 
   it("uses the global player for studio preview and gives share feedback", () => {

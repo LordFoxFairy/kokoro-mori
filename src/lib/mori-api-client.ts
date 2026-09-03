@@ -8,6 +8,8 @@ import {
   type MoriGenerationEvent,
   type MoriApi,
   type MoriLyricsRevisionEvent,
+  type MoriStemSeparationEvent,
+  type StemSeparationInput,
   type StudioChangeGenerationInput,
 } from "./mori-api"
 import {
@@ -28,6 +30,10 @@ import {
   parseMoriProject,
   parseMoriProjectPage,
   parseMoriSongPlan,
+  parseStemSeparationCancelReceipt,
+  parseStemSeparationEventData,
+  parseStemSeparationReceipt,
+  parseStemSeparationSnapshot,
 } from "./mori-api-validation"
 
 export type MoriApiClientOptions = {
@@ -154,6 +160,48 @@ export function createMoriApiClient(options: MoriApiClientOptions = {}): MoriApi
       const payload = await readJson(response)
       return parseSuccessResponse(response, payload, parseLyricsRevisionCancelReceipt)
     },
+    async createStemSeparation(versionRef: MoriRef, input: StemSeparationInput, idempotencyKey: string) {
+      const response = await fetchImpl(
+        `${apiBasePath}/versions/${encodeURIComponent(versionRef)}/stem_separations`,
+        {
+          method: "POST",
+          headers: createMutationHeaders(idempotencyKey),
+          body: JSON.stringify(input),
+        },
+      )
+      const payload = await readJson(response)
+      return parseSuccessResponse(response, payload, parseStemSeparationReceipt)
+    },
+    async getStemSeparation(stemSeparationRef: MoriRef) {
+      const response = await fetchImpl(`${apiBasePath}/stem_separations/${encodeURIComponent(stemSeparationRef)}`)
+      const payload = await readJson(response)
+      return parseSuccessResponse(response, payload, parseStemSeparationSnapshot)
+    },
+    async getStemSeparationEvents(stemSeparationRef: MoriRef, lastEventId = null, signal) {
+      const headers: HeadersInit = { Accept: "text/event-stream" }
+      if (lastEventId !== null && lastEventId.trim() !== "") headers["Last-Event-ID"] = lastEventId
+      const response = await fetchImpl(`${apiBasePath}/stem_separations/${encodeURIComponent(stemSeparationRef)}/events`, { headers, signal })
+      if (!response.ok) {
+        const body = await response.text()
+        throwEventStreamError(response, body, "Mori stem separation event stream")
+      }
+      if (!(response.headers.get("content-type") || "").toLowerCase().startsWith("text/event-stream")) {
+        throw invalidEventStreamResponse("Mori stem separation event stream returned an invalid content type", response.status)
+      }
+      const events = await readFirstCompleteEventBatch(response, parseStemSeparationEvents)
+      if (events === null) {
+        throw invalidEventStreamResponse("Mori stem separation event stream returned an invalid response", response.status)
+      }
+      return events
+    },
+    async cancelStemSeparation(stemSeparationRef: MoriRef, idempotencyKey: string) {
+      const response = await fetchImpl(`${apiBasePath}/stem_separations/${encodeURIComponent(stemSeparationRef)}/cancel`, {
+        method: "POST",
+        headers: createMutationHeaders(idempotencyKey),
+      })
+      const payload = await readJson(response)
+      return parseSuccessResponse(response, payload, parseStemSeparationCancelReceipt)
+    },
     async getGeneration(generationRef: MoriRef) {
       const response = await fetchImpl(`${apiBasePath}/generations/${encodeURIComponent(generationRef)}`)
       const payload = await readJson(response)
@@ -273,6 +321,44 @@ function parseGenerationEvents(body: string): MoriGenerationEvent[] | null {
 
 function parseLyricsRevisionEvents(body: string): MoriLyricsRevisionEvent[] | null {
   return parseServerSentEvents(body, "lyrics_revision.", parseLyricsRevisionEventData)
+}
+
+function parseStemSeparationEvents(body: string): MoriStemSeparationEvent[] | null {
+  return parseServerSentEvents(body, "stem_separation.", parseStemSeparationEventData)
+}
+
+async function readFirstCompleteEventBatch<T>(
+  response: Response,
+  parser: (body: string) => T[] | null,
+): Promise<T[] | null> {
+  if (response.body === null) return parser(await response.text())
+
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ""
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      buffer += decoder.decode(value, { stream: !done })
+      const completeBatch = completeEventStreamBatch(buffer)
+      if (completeBatch !== null) {
+        const parsed = parser(completeBatch)
+        await reader.cancel()
+        return parsed
+      }
+      if (done) return parser(buffer)
+    }
+  } finally {
+    reader.releaseLock()
+  }
+}
+
+function completeEventStreamBatch(buffer: string): string | null {
+  const boundary = /(?:\r?\n){2}/gu
+  let match: RegExpExecArray | null
+  let end = -1
+  while ((match = boundary.exec(buffer)) !== null) end = match.index + match[0].length
+  return end < 0 ? null : buffer.slice(0, end)
 }
 
 function parseServerSentEvents<T>(body: string, eventPrefix: string, parser: (value: unknown) => T | null): Array<{ id: string; event: string; data: T }> | null {

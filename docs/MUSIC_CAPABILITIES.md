@@ -20,8 +20,9 @@ Idea / Reference
 - **Suno 值得吸收的部分**：Create 与 Studio 连续、时间线范围成为 AI 上下文、生成结果进入
   Take Lanes、版本自动保留、分轨与导出都围绕当前作品发生。参考
   [Suno Studio](https://help.suno.com/en/articles/7940161)、
-  [Advanced Stem Separation](https://help.suno.com/en/articles/6141313) 与
-  [Suno Artist Update](https://help.suno.com/en/articles/8105281)。
+  [Studio 2.0](https://help.suno.com/en/articles/13670529)、
+  [Take Lanes](https://help.suno.com/en/articles/13670913) 与
+  [Advanced Stem Separation](https://help.suno.com/en/articles/12702337)。
 - **Tad 值得吸收的部分**：把 Generate、Reference、Remix、Edit 作为清晰操作模型，同时提供
   Cover、Vocal Remover、MV 等能力。参考
   [Tad AI Music Generator](https://tad.ai/ai-music-generator)、
@@ -104,6 +105,29 @@ Commit       Apply to draft；应用后仍可 Undo，最终由 Save draft 持久
 Lyrics Revision seam：一次请求默认返回两个可切换 Suggestion，运行中展示 snapshot / SSE 进度并允许取消，
 失败时保留已复核方向供重试；BFF 未接通时明确显示离线状态，不在组件内伪造歌词结果。
 
+### Stems 的 AI 分离模型
+
+Stems 吸收 Tad Vocal Remover 的两层选择，但不要求用户重新上传当前歌曲，也不做成全局工具页：
+
+```text
+Source       当前不可变 Version
+Mode         Vocals + instrumental | Auto stems
+Option       可选 MIDI transcription
+Review       先确认输出数量、来源与结果去向
+Run          snapshot / SSE 进度、取消、失败重试
+Result       实际返回的 version-bound stem assets
+Mix          Mute / Solo 先保存当前工作区的本地选择，renderer 接入后再驱动真实试听
+```
+
+`Vocals + instrumental` 是 Tad 式快速二轨工作流；`Auto stems` 吸收 Suno Auto Split，按音频内容检测
+最多 12 个 vocals、drums、bass、guitar、keys、strings、wind、synth 等制作轨。两种模式都坚持
+Suno Studio 的连续上下文：分离发生在当前 Version，
+用户留在 Studio 内审阅结果，原版本保持不变。界面只展示 API 真正返回的资产，不用前端 fixture 冒充分离结果。
+
+Suno 的 Split from Mix 与 Advanced Split 对 Mori 下一层能力有价值，但不提前摆出空控件：待 owner 能力协商
+支持后，在同一个 Stems 工作面渐进增加 **Isolate one part**（目标音轨 + 其余混音）与 **Custom stems**
+（选择多个目标乐器），不新增全局导航，也不把供应商套餐或乐器枚举泄漏进浏览器契约。
+
 ## 4. Studio Change API 契约
 
 Studio Change 继续创建既有 **Generation** 资源，不再增加一套 Change Job 状态机：
@@ -180,6 +204,36 @@ instruction、constraints 与 output_count，刷新后不依赖临时表单恢�
 `snake_case` 且不携带 caller-supplied identity 或 provider 参数。机器事实源见
 [`contract/openapi/mori-lyrics-revision.v1.json`](../contract/openapi/mori-lyrics-revision.v1.json)。
 
+### Stem Separation API
+
+音轨分离从不可变 Version 创建独立的异步资源，不与生成 Candidate 或歌词 Suggestion 混用：
+
+```http
+POST /api/v1/mori/versions/{version_ref}/stem_separations  → 202
+GET  /api/v1/mori/stem_separations/{stem_separation_ref}
+GET  /api/v1/mori/stem_separations/{stem_separation_ref}/events
+POST /api/v1/mori/stem_separations/{stem_separation_ref}/cancel
+```
+
+```text
+StemSeparationInput
+  mode              vocals_instrumental | auto_stems
+  include_midi      boolean
+
+StemSeparationSnapshot
+  stem_separation_ref + version_ref
+  mode + include_midi
+  status + progress
+  source_audio_digest
+  stems[]           stem_ref + kind + label + audio/waveform asset refs + duration
+  midi_asset_ref    optional
+```
+
+Command 使用 `Idempotency-Key`；恢复使用 durable snapshot 与 `Last-Event-ID`；取消是幂等 command。
+公开契约不接受上传 URL、provider、tenant、subject 或 actor 字段，来源音频由 Version owner 解析。
+机器事实源见
+[`contract/openapi/mori-stem-separation.v1.json`](../contract/openapi/mori-stem-separation.v1.json)。
+
 ## 5. 打磨顺序
 
 ### P0 · 交互骨架（当前）
@@ -205,7 +259,11 @@ instruction、constraints 与 output_count，刷新后不依赖临时表单恢�
 - Lyrics 已完成按 Verse / Chorus / Whole lyrics 组织的 Rewrite、Continue、Find rhyme、Restructure
   界面闭环，并支持 Review、可编辑 Suggestion、Apply 与 Undo；Lyrics Revision contract、client、response parser、
   snapshot / SSE / cancel seam 已接入组件运行态，多候选保持独立且只应用用户选中的草稿。
-- Stem split、Add Vocal、Add Instrumental。
+- Stem split 已完成浏览器侧闭环：两种分离模式、可选 MIDI、Review、snapshot / SSE、取消、重试与实际资产；
+  Mute/Solo 作为本地 mix selection 已就位，待可播放 stem renderer 接入后再驱动真实试听。已固定
+  version-scoped OpenAPI、client、运行时 parser 与 contract tests。
+- 定向 Isolate one part 与 Custom stems 等 owner 能力协商稳定后再进入渐进式高级选项。
+- Add Vocal、Add Instrumental。
 - Voice、Persona、Style preset、Reference 进入 Library assets。
 
 ### P3 · 完成与发布

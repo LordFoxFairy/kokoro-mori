@@ -18,7 +18,7 @@ pnpm build
 
 - `pnpm lint`：通过，`--max-warnings=0`
 - `pnpm typecheck`：通过
-- `pnpm test`：通过，17 个测试文件、125 个测试
+- `pnpm test`：通过，18 个测试文件、138 个测试
 - `pnpm build`：通过，生成 `/`、`/create`、`/projects`、`/library`、`/settings`、Project Overview 和 Studio 路由
 
 ## 页面巡检
@@ -82,8 +82,13 @@ Restructure，并能选择 Verse、Chorus 或 Whole lyrics；用户先 Review di
 不会丢失进行中的方向和选区。Apply 前原稿保持不变，只应用当前选中的 Suggestion，Apply 后可 Undo，最后仍通过
 Save draft 明确持久化；BFF 离线时显示真实失败状态，不在组件内生成替代结果。该工作面已在 1280×720 下巡检
 初始、Review 与离线重试状态，窄画布不再把歌词挤成逐字换行，且无浏览器运行时错误；多 Suggestion 成功态由集成测试覆盖。
-Stems 已提供 Preview only 的逐轨 Mute/Solo
-控制，明确当前仍是音频渲染器接入前的交互层；
+Stems 已升级为当前 Version 内的非破坏式分离工作面：用户可选择快速的 Vocals + instrumental，或按内容检测
+最多 12 个制作轨的 Auto stems；可选 MIDI transcription，先 Review 来源、输出和结果去向，再提交异步任务。运行态通过 snapshot / SSE
+显示进度并支持取消、失败重试和切换工具后恢复；成功态只渲染 API 实际返回的 version-bound stem assets，逐轨
+Mute/Solo 当前只保存本地 mix selection，不修改资产或 Current Version；可播放 stem renderer 接入前不宣称改变
+实际音频，BFF 离线时显示真实失败状态，不伪造可播放结果。
+Stem Separation 的 OpenAPI、request builder、same-origin client、运行时 parser 与 contract tests 已固定
+`snake_case`、`Idempotency-Key`、`Last-Event-ID`、cancel 和 caller identity 边界；
 Lyrics Revision 的浏览器契约已固定为 version-scoped 异步资源：输入明确 direction、section / whole lyrics
 scope、完整 lyrics context、source text、constraints 与 1–4 个输出；snapshot 返回 source digest 和文本
 suggestions，支持 SSE `Last-Event-ID` 回放与幂等 cancel。OpenAPI、request builder、same-origin client、运行时

@@ -139,6 +139,61 @@ export type MoriLyricsRevisionEvent = {
   }
 }
 
+export type StemSeparationMode = "vocals_instrumental" | "auto_stems"
+
+export type StemKind = "vocals" | "backing_vocals" | "instrumental" | "drums" | "bass" | "guitar" | "keys" | "strings" | "wind" | "synth" | "percussion" | "other"
+
+export type StemSeparationStatus = "queued" | "separating" | "succeeded" | "failed" | "cancelled" | "expired"
+
+export type StemSeparationInput = {
+  mode: StemSeparationMode
+  include_midi: boolean
+}
+
+export type StemSeparationReceipt = {
+  stem_separation_ref: MoriRef
+  status: Extract<StemSeparationStatus, "queued" | "separating">
+}
+
+export type StemSeparationCancelReceipt = {
+  stem_separation_ref: MoriRef
+  status: StemSeparationStatus
+}
+
+export type MoriStem = {
+  stem_ref: MoriRef
+  kind: StemKind
+  label: string
+  audio_asset_ref: MoriRef
+  waveform_asset_ref: MoriRef
+  duration_seconds: number
+}
+
+export type StemSeparationSnapshot = {
+  stem_separation_ref: MoriRef
+  version_ref: MoriRef
+  status: StemSeparationStatus
+  progress: number
+  mode: StemSeparationMode
+  include_midi: boolean
+  source_audio_digest: string
+  stems: MoriStem[]
+  midi_asset_ref: MoriRef | null
+  created_at: string
+}
+
+export type MoriStemSeparationEvent = {
+  id: string
+  event: string
+  data: {
+    stem_separation_ref: MoriRef
+    version_ref: MoriRef
+    status: StemSeparationStatus
+    progress: number
+    stem_refs: MoriRef[]
+  }
+}
+
 export type SongPlanCreateInput = {
   prompt: string
   mood: string
@@ -281,6 +336,10 @@ export type MoriApi = {
   getLyricsRevision: (lyricsRevisionRef: MoriRef) => Promise<ApiSuccess<LyricsRevisionSnapshot>>
   getLyricsRevisionEvents: (lyricsRevisionRef: MoriRef, lastEventId?: string | null) => Promise<MoriLyricsRevisionEvent[]>
   cancelLyricsRevision: (lyricsRevisionRef: MoriRef, idempotencyKey: string) => Promise<ApiSuccess<LyricsRevisionCancelReceipt>>
+  createStemSeparation: (versionRef: MoriRef, input: StemSeparationInput, idempotencyKey: string) => Promise<ApiSuccess<StemSeparationReceipt>>
+  getStemSeparation: (stemSeparationRef: MoriRef) => Promise<ApiSuccess<StemSeparationSnapshot>>
+  getStemSeparationEvents: (stemSeparationRef: MoriRef, lastEventId?: string | null, signal?: AbortSignal) => Promise<MoriStemSeparationEvent[]>
+  cancelStemSeparation: (stemSeparationRef: MoriRef, idempotencyKey: string) => Promise<ApiSuccess<StemSeparationCancelReceipt>>
   getGeneration: (generationRef: MoriRef) => Promise<ApiSuccess<GenerationSnapshot>>
   getGenerationEvents: (generationRef: MoriRef, lastEventId?: string | null) => Promise<MoriGenerationEvent[]>
   listCandidates: (projectRef: MoriRef) => Promise<ApiSuccess<{ candidates: MoriCandidate[]; next_cursor: string | null }>>
@@ -325,6 +384,11 @@ export type MoriLyricsRevisionDraft = {
   lyricsContext: string
   constraints?: LyricsRevisionConstraint[]
   outputCount?: number
+}
+
+export type MoriStemSeparationDraft = {
+  mode: StemSeparationMode
+  includeMidi: boolean
 }
 
 export function createGenerationRequest(draft: MoriGenerationDraft): GenerationCreateInput {
@@ -454,6 +518,15 @@ export function createLyricsRevisionRequest(draft: MoriLyricsRevisionDraft): Lyr
   }
 }
 
+export function createStemSeparationRequest(draft: MoriStemSeparationDraft): StemSeparationInput {
+  if (!stemSeparationModes.includes(draft.mode)) throw new Error("stem_separation_mode_invalid")
+  if (typeof draft.includeMidi !== "boolean") throw new Error("stem_separation_include_midi_invalid")
+  return {
+    mode: draft.mode,
+    include_midi: draft.includeMidi,
+  }
+}
+
 export function createMutationHeaders(idempotencyKey: string): MoriMutationHeaders {
   const normalizedKey = idempotencyKey.trim()
   if (!normalizedKey) {
@@ -486,3 +559,4 @@ function uniqueValues<T extends string>(values: T[]): T[] {
 }
 
 const lyricsRevisionConstraints: readonly LyricsRevisionConstraint[] = ["meaning", "cadence", "rhyme_scheme", "section_length"]
+const stemSeparationModes: readonly StemSeparationMode[] = ["vocals_instrumental", "auto_stems"]

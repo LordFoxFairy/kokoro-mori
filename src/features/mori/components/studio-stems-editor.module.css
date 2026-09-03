@@ -1,0 +1,572 @@
+.stemsEditor {
+  container-type: inline-size;
+  overflow: hidden;
+  border: 1px solid var(--mori-border);
+  border-radius: 17px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(238, 168, 132, 0.11), transparent 33%),
+    linear-gradient(145deg, rgba(240, 237, 255, 0.42), rgba(255, 250, 244, 0.36));
+  box-shadow: var(--mori-shadow-sm);
+}
+
+.surfaceHeader,
+.setupIntro,
+.midiOption,
+.separationPlan header,
+.separationPlan footer,
+.separationPlan footer > div,
+.progressBlock > div,
+.resultsHeader,
+.stemTrack,
+.stemIdentity,
+.stemActions,
+.midiReady {
+  display: flex;
+  align-items: center;
+}
+
+.surfaceHeader {
+  min-height: 70px;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 15px 18px;
+  border-bottom: 1px solid rgba(109, 92, 231, 0.1);
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.surfaceHeader > div,
+.separationPlan header > div,
+.resultsHeader > div {
+  display: grid;
+  gap: 4px;
+}
+
+.surfaceHeader > div > span,
+.setupIntro > div > span,
+.separationPlan header > div > span,
+.resultsHeader > div > span {
+  color: var(--mori-faint);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.surfaceHeader h3 {
+  margin: 0;
+  font-family: var(--mori-font-display);
+  font-size: 24px;
+  font-weight: 400;
+  letter-spacing: -0.04em;
+}
+
+.setupBadge,
+.readyBadge,
+.separationPlan header > span {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.setupBadge {
+  color: #8e6d5d;
+  background: rgba(253, 234, 222, 0.8);
+}
+
+.readyBadge {
+  color: var(--mori-success);
+  background: rgba(231, 246, 239, 0.84);
+}
+
+.setupPanel {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  background: rgba(255, 255, 255, 0.66);
+}
+
+.setupIntro {
+  align-items: flex-start;
+  gap: 11px;
+}
+
+.setupIcon {
+  display: grid;
+  width: 35px;
+  height: 35px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 11px;
+  color: #fff;
+  background: linear-gradient(135deg, #725ee4, #a684e5 58%, #eda27d);
+  box-shadow: 0 7px 18px rgba(109, 92, 231, 0.18);
+}
+
+.setupIntro h4,
+.resultsHeader h4,
+.separationPlan h4 {
+  margin: 0;
+  font-size: 15px;
+  letter-spacing: -0.02em;
+}
+
+.setupIntro p {
+  max-width: 520px;
+  margin: 4px 0 0;
+  color: var(--mori-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.modeGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.modeGrid button {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: 9px;
+  min-height: 72px;
+  padding: 11px;
+  border: 1px solid rgba(109, 92, 231, 0.11);
+  border-radius: 11px;
+  color: var(--mori-muted);
+  text-align: left;
+  background: rgba(255, 255, 255, 0.74);
+}
+
+.modeGrid button > span {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  grid-row: 1 / span 2;
+  place-items: center;
+  border-radius: 9px;
+  color: var(--mori-primary);
+  background: var(--mori-primary-soft);
+}
+
+.modeGrid strong {
+  align-self: end;
+  color: var(--mori-foreground);
+  font-size: 12px;
+}
+
+.modeGrid small {
+  align-self: start;
+  margin-top: 2px;
+  color: var(--mori-muted);
+  font-size: 10px;
+}
+
+.modeGrid button:hover,
+.modeGrid button[aria-pressed="true"] {
+  border-color: rgba(109, 92, 231, 0.28);
+  background: linear-gradient(145deg, rgba(244, 241, 255, 0.94), rgba(255, 248, 242, 0.9));
+  box-shadow: 0 7px 18px rgba(62, 45, 86, 0.06);
+}
+
+.modeGrid button[aria-pressed="true"] {
+  box-shadow: inset 3px 0 0 var(--mori-primary), 0 7px 18px rgba(62, 45, 86, 0.06);
+}
+
+.midiOption {
+  position: relative;
+  gap: 9px;
+  min-height: 54px;
+  padding: 9px 11px;
+  border: 1px solid rgba(109, 92, 231, 0.1);
+  border-radius: 10px;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.64);
+}
+
+.midiOption input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.midiOption > span {
+  position: relative;
+  width: 27px;
+  height: 16px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: #d9d5dc;
+  transition: background 140ms ease;
+}
+
+.midiOption > span::after {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(62, 45, 86, 0.2);
+  content: "";
+  transition: transform 140ms ease;
+}
+
+.midiOption input:checked + span {
+  background: var(--mori-primary);
+}
+
+.midiOption input:checked + span::after {
+  transform: translateX(11px);
+}
+
+.midiOption > div {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 2px;
+}
+
+.midiOption strong {
+  font-size: 11px;
+}
+
+.midiOption small {
+  color: var(--mori-muted);
+  font-size: 10px;
+}
+
+.midiOption > svg {
+  color: var(--mori-primary);
+}
+
+.reviewButton,
+.separationPlan button,
+.resultsHeader button,
+.stemActions button {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 1px solid var(--mori-border);
+  border-radius: 8px;
+  color: var(--mori-muted);
+  font-size: 10px;
+  font-weight: 800;
+  background: #fff;
+}
+
+.reviewButton {
+  border-color: transparent;
+  color: #fff;
+  background: var(--mori-primary);
+}
+
+.reviewButton:hover,
+.separationPlan .primaryButton:hover:not(:disabled) {
+  background: var(--mori-primary-deep);
+}
+
+.separationPlan {
+  margin: 18px;
+  padding: 14px;
+  border: 1px solid rgba(109, 92, 231, 0.15);
+  border-left: 3px solid var(--mori-primary);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.separationPlan.planRunning {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(242, 239, 255, 0.84));
+}
+
+.separationPlan.planError {
+  border-left-color: #cf765f;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(255, 243, 238, 0.8));
+}
+
+.separationPlan.planStopped {
+  border-left-color: #b69c78;
+}
+
+.separationPlan header {
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.separationPlan header > span {
+  color: var(--mori-primary-deep);
+  background: rgba(235, 230, 255, 0.78);
+}
+
+.planFacts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.planFacts > span {
+  display: grid;
+  gap: 3px;
+  padding: 9px;
+  border-radius: 8px;
+  color: var(--mori-muted);
+  font-size: 11px;
+  background: rgba(245, 243, 249, 0.76);
+}
+
+.planFacts strong {
+  color: var(--mori-faint);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.progressBlock {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 9px;
+  border-radius: 8px;
+  background: rgba(240, 237, 251, 0.72);
+}
+
+.progressBlock > div {
+  justify-content: space-between;
+  color: var(--mori-muted);
+  font-size: 10px;
+}
+
+.progressBlock progress {
+  width: 100%;
+  height: 4px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 999px;
+  appearance: none;
+  background: rgba(109, 92, 231, 0.12);
+}
+
+.progressBlock progress::-webkit-progress-bar {
+  background: rgba(109, 92, 231, 0.12);
+}
+
+.progressBlock progress::-webkit-progress-value,
+.progressBlock progress::-moz-progress-bar {
+  border-radius: 999px;
+  background: linear-gradient(90deg, #735de6, #b188df 60%, #eaa27d);
+}
+
+.runMessage {
+  margin: 9px 0 0;
+  color: #8f6253;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.separationPlan footer {
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(109, 92, 231, 0.08);
+}
+
+.separationPlan footer > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--mori-success);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.separationPlan footer > div {
+  gap: 6px;
+}
+
+.separationPlan .primaryButton {
+  border-color: transparent;
+  color: #fff;
+  background: var(--mori-primary);
+}
+
+.separationPlan .cancelButton {
+  border-color: rgba(197, 112, 87, 0.2);
+  color: #a15f4b;
+  background: rgba(255, 247, 243, 0.88);
+}
+
+.results {
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.resultsHeader {
+  justify-content: space-between;
+  gap: 12px;
+  padding: 15px 18px 11px;
+}
+
+.resultsHeader button:hover,
+.stemActions button:hover {
+  border-color: var(--mori-border-strong);
+  color: var(--mori-foreground);
+}
+
+.stemTrackList {
+  display: grid;
+  gap: 7px;
+  padding: 0 18px 12px;
+}
+
+.stemTrack {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.7fr) minmax(120px, 1fr) auto auto;
+  gap: 12px;
+  min-height: 58px;
+  padding: 9px 10px;
+  border: 1px solid rgba(109, 92, 231, 0.1);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.86);
+  transition: opacity 140ms ease, background 140ms ease;
+}
+
+.stemTrackMuted {
+  opacity: 0.46;
+  background: rgba(245, 243, 247, 0.7);
+}
+
+.stemIdentity {
+  min-width: 0;
+  gap: 9px;
+}
+
+.stemIdentity > span {
+  color: var(--mori-primary);
+  font-family: var(--mori-font-mono);
+  font-size: 10px;
+}
+
+.stemIdentity > div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.stemIdentity strong,
+.stemIdentity small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stemIdentity strong {
+  font-size: 12px;
+}
+
+.stemIdentity small,
+.duration {
+  color: var(--mori-muted);
+  font-size: 10px;
+}
+
+.stemWave {
+  min-width: 0;
+}
+
+.duration {
+  font-variant-numeric: tabular-nums;
+}
+
+.stemActions {
+  gap: 5px;
+}
+
+.stemActions button {
+  min-width: 31px;
+  padding: 0 7px;
+}
+
+.stemActions .soloActive {
+  border-color: rgba(109, 92, 231, 0.24);
+  color: var(--mori-primary);
+  background: var(--mori-primary-soft);
+}
+
+.midiReady {
+  gap: 9px;
+  margin: 0 18px 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(109, 92, 231, 0.1);
+  border-radius: 10px;
+  color: var(--mori-primary);
+  background: rgba(242, 239, 255, 0.66);
+}
+
+.midiReady > div {
+  display: grid;
+  gap: 2px;
+}
+
+.midiReady strong {
+  color: var(--mori-foreground);
+  font-size: 11px;
+}
+
+.midiReady span,
+.resultNote {
+  color: var(--mori-muted);
+  font-size: 10px;
+}
+
+.resultNote {
+  margin: 0;
+  padding: 0 18px 15px;
+}
+
+.modeGrid button:focus-visible,
+.midiOption:has(input:focus-visible),
+.reviewButton:focus-visible,
+.separationPlan button:focus-visible,
+.results button:focus-visible {
+  outline: 2px solid rgba(109, 92, 231, 0.48);
+  outline-offset: 2px;
+}
+
+@container (max-width: 560px) {
+  .modeGrid,
+  .planFacts {
+    grid-template-columns: 1fr;
+  }
+
+  .stemTrack {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .stemWave {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .duration {
+    display: none;
+  }
+
+  .separationPlan footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .separationPlan footer > div {
+    justify-content: flex-end;
+  }
+}

@@ -1,0 +1,756 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Mori Stem Separation API",
+    "version": "0.1.0",
+    "description": "Version-scoped, non-destructive audio stem separation for Mori Studio."
+  },
+  "paths": {
+    "/api/v1/mori/versions/{version_ref}/stem_separations": {
+      "post": {
+        "operationId": "createStemSeparation",
+        "summary": "Separate a version into reusable stem assets",
+        "parameters": [
+          {
+            "name": "version_ref",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StemSeparationInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "The separation was accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiStemSeparationReceipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is malformed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The source version was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The idempotency key or source state conflicts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The source audio cannot be separated with this mode",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Separation capacity is temporarily exhausted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/mori/stem_separations/{stem_separation_ref}": {
+      "get": {
+        "operationId": "getStemSeparation",
+        "summary": "Read the durable stem separation snapshot",
+        "parameters": [
+          {
+            "name": "stem_separation_ref",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The latest separation snapshot",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiStemSeparationSnapshot"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The separation was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/mori/stem_separations/{stem_separation_ref}/events": {
+      "get": {
+        "operationId": "getStemSeparationEvents",
+        "summary": "Replay ordered stem separation events",
+        "parameters": [
+          {
+            "name": "stem_separation_ref",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "Last-Event-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A replayable server-sent event stream",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                },
+                "x-sse-event-prefix": "stem_separation.",
+                "x-sse-event-payload": {
+                  "$ref": "#/components/schemas/ApiStemSeparationEventPayload"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The separation was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/mori/stem_separations/{stem_separation_ref}/cancel": {
+      "post": {
+        "operationId": "cancelStemSeparation",
+        "summary": "Request cancellation of an active stem separation",
+        "parameters": [
+          {
+            "name": "stem_separation_ref",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Cancellation was accepted or replayed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiStemSeparationCancelReceipt"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The separation was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The separation is already terminal or the command conflicts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "StemSeparationInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "mode",
+          "include_midi"
+        ],
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "vocals_instrumental",
+              "auto_stems"
+            ]
+          },
+          "include_midi": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      },
+      "StemSeparationReceipt": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "stem_separation_ref",
+          "status"
+        ],
+        "properties": {
+          "stem_separation_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "separating"
+            ]
+          }
+        }
+      },
+      "StemSeparationCancelReceipt": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "stem_separation_ref",
+          "status"
+        ],
+        "properties": {
+          "stem_separation_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "$ref": "#/components/schemas/StemSeparationStatus"
+          }
+        }
+      },
+      "StemSeparationSnapshot": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "stem_separation_ref",
+          "version_ref",
+          "status",
+          "progress",
+          "mode",
+          "include_midi",
+          "source_audio_digest",
+          "stems",
+          "midi_asset_ref",
+          "created_at"
+        ],
+        "properties": {
+          "stem_separation_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "version_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "$ref": "#/components/schemas/StemSeparationStatus"
+          },
+          "progress": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "mode": {
+            "$ref": "#/components/schemas/StemSeparationMode"
+          },
+          "include_midi": {
+            "type": "boolean"
+          },
+          "source_audio_digest": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "stems": {
+            "type": "array",
+            "maxItems": 12,
+            "items": {
+              "$ref": "#/components/schemas/Stem"
+            }
+          },
+          "midi_asset_ref": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 1
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "succeeded"
+                }
+              },
+              "required": [
+                "status"
+              ]
+            },
+            "then": {
+              "properties": {
+                "stems": {
+                  "minItems": 1
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "not": {
+                    "const": "succeeded"
+                  }
+                }
+              },
+              "required": [
+                "status"
+              ]
+            },
+            "then": {
+              "properties": {
+                "stems": {
+                  "maxItems": 0
+                },
+                "midi_asset_ref": {
+                  "type": "null"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "mode": {
+                  "const": "vocals_instrumental"
+                },
+                "status": {
+                  "const": "succeeded"
+                }
+              },
+              "required": [
+                "mode",
+                "status"
+              ]
+            },
+            "then": {
+              "properties": {
+                "stems": {
+                  "minItems": 2,
+                  "maxItems": 2,
+                  "allOf": [
+                    {
+                      "contains": {
+                        "properties": {
+                          "kind": {
+                            "const": "vocals"
+                          }
+                        },
+                        "required": [
+                          "kind"
+                        ]
+                      }
+                    },
+                    {
+                      "contains": {
+                        "properties": {
+                          "kind": {
+                            "const": "instrumental"
+                          }
+                        },
+                        "required": [
+                          "kind"
+                        ]
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "include_midi": {
+                  "const": false
+                }
+              },
+              "required": [
+                "include_midi"
+              ]
+            },
+            "then": {
+              "properties": {
+                "midi_asset_ref": {
+                  "type": "null"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "Stem": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "stem_ref",
+          "kind",
+          "label",
+          "audio_asset_ref",
+          "waveform_asset_ref",
+          "duration_seconds"
+        ],
+        "properties": {
+          "stem_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "vocals",
+              "backing_vocals",
+              "instrumental",
+              "drums",
+              "bass",
+              "guitar",
+              "keys",
+              "strings",
+              "wind",
+              "synth",
+              "percussion",
+              "other"
+            ]
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "audio_asset_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "waveform_asset_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "duration_seconds": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "StemSeparationMode": {
+        "type": "string",
+        "enum": [
+          "vocals_instrumental",
+          "auto_stems"
+        ]
+      },
+      "StemSeparationStatus": {
+        "type": "string",
+        "enum": [
+          "queued",
+          "separating",
+          "succeeded",
+          "failed",
+          "cancelled",
+          "expired"
+        ]
+      },
+      "StemSeparationEventData": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "stem_separation_ref",
+          "version_ref",
+          "status",
+          "progress",
+          "stem_refs"
+        ],
+        "properties": {
+          "stem_separation_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "version_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "$ref": "#/components/schemas/StemSeparationStatus"
+          },
+          "progress": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "stem_refs": {
+            "type": "array",
+            "maxItems": 12,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      },
+      "ApiStemSeparationReceipt": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "data",
+          "meta"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/StemSeparationReceipt"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ApiMeta"
+          }
+        }
+      },
+      "ApiStemSeparationCancelReceipt": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "data",
+          "meta"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/StemSeparationCancelReceipt"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ApiMeta"
+          }
+        }
+      },
+      "ApiStemSeparationSnapshot": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "data",
+          "meta"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/StemSeparationSnapshot"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ApiMeta"
+          }
+        }
+      },
+      "ApiMeta": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "request_id"
+        ],
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "ApiErrorResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "error",
+          "meta"
+        ],
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ApiError"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ApiMeta"
+          }
+        }
+      },
+      "ApiError": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "code",
+          "message",
+          "retryable",
+          "details"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "retryable": {
+            "type": "boolean"
+          },
+          "details": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ApiErrorDetail"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "ApiErrorDetail": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "field",
+          "reason"
+        ],
+        "properties": {
+          "field": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "ApiStemSeparationEventPayload": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "data",
+          "meta"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/StemSeparationEventData"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ApiMeta"
+          }
+        }
+      }
+    }
+  }
+}
