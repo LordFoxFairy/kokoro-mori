@@ -98,6 +98,8 @@ describe("Mori application navigation", () => {
         </MoriAppProvider>,
       )
       await waitFor(() => expect(screen.getByRole("button", { name: "Expand sidebar" })).toBeInTheDocument())
+      expect(screen.queryByRole("link", { name: "Mori home" })).not.toBeInTheDocument()
+      expect(screen.getByRole("link", { name: "Library" })).toHaveAttribute("aria-current", "page")
     } finally {
       Object.defineProperty(window, "innerWidth", { configurable: true, value: originalWidth })
     }

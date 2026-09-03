@@ -40,8 +40,12 @@ export function MoriRail({ activeKey = "create", collapsed = false, onToggle }: 
   return (
     <nav className={`${styles.rail} ${collapsed ? styles.railCollapsed : ""}`} aria-label="Mori" data-rail-state={collapsed ? "collapsed" : "expanded"}>
       <div className={styles.brandRow}>
-        <div className={styles.brandMark} aria-hidden="true">M</div>
-        <span className={styles.brandName}>Mori</span>
+        {!collapsed ? (
+          <Link className={styles.brandIdentity} href="/" aria-label="Mori home">
+            <div className={styles.brandMark} aria-hidden="true">M</div>
+            <span className={styles.brandName}>Mori</span>
+          </Link>
+        ) : null}
         {onToggle ? <button className={styles.railToggle} type="button" onClick={onToggle} aria-expanded={!collapsed} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} title={collapsed ? "Expand sidebar" : "Collapse sidebar"}>{collapsed ? <PanelLeftOpen /> : <PanelLeftClose />}</button> : null}
       </div>
 
