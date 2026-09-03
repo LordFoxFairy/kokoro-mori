@@ -1,7 +1,7 @@
 # Mori Preview Acceptance
 
 > 记录日期：2026-09-03
-> 范围：Mori 全局壳体、页面 IA、fixture-only 生成体验、Library/Studio/Finish 交互与 API client seam
+> 范围：Mori 全局壳体、页面 IA、fixture-only 生成体验、Library/Studio/Transform/Finish 交互与 API client seam
 
 ## 验证命令
 
@@ -18,7 +18,7 @@ pnpm build
 
 - `pnpm lint`：通过，`--max-warnings=0`
 - `pnpm typecheck`：通过
-- `pnpm test`：通过，35 个测试文件、248 个测试
+- `pnpm test`：通过，37 个测试文件、265 个测试
 - `pnpm build`：通过，生成 `/`、`/create`、`/projects`、`/library`、`/settings`、`/help`、Project Overview 和 Studio 路由
 
 ## 页面巡检
@@ -87,9 +87,13 @@ Arrangement 现在提供与时间线连在一起的 Mori AI Changes：Add part�
 播放头所在段落；用户可拖动 Selection start / end 形成 Custom range，界面持续显示精确起止时间，
 Replace/Transform 会把它原样映射为毫秒级 `time_range`，调整范围后旧的 Review Plan 自动失效；
 Direction controls 默认收起，展开后可选择保留 Melody、Lyrics、Voice、Tempo、Structure，
-可请求 1 / 2 / 4 个 alternatives，Transform 可明确作用于 Selected section 或 Whole song；这些选择会同时进入
-Change Plan 与最终 API body；提交前先展示 Change Plan，主动作会按选择显示 Generate 1 / 2 / 4 takes，并持续声明
-Current version stays untouched；浏览器会把段落宽度换算为稳定毫秒 scope，提交后显示真实 Generation
+可请求 1 / 2 / 4 个 alternatives；选择 Transform 后先出现 Restyle / Cover 两个命名意图，而不是继续堆叠高级参数。
+Restyle 可作用于 Selected section 或 Whole song，保留用户选择的 anchors、references 与输出数量；Cover 固定使用
+当前 open Version 的 Whole song，不要求重新上传，并明确声明 “Audio cover, not release artwork.”。Vocal Cover 可选
+Voice profile，固定保护 Melody / Lyrics / Structure；Instrumental Cover 隐藏 Voice，并固定保护 Melody / Structure；
+两种 Cover 都清空 references、固定产生两条 Take。所有选择会同时进入 Change Plan 与最终 API body；提交前先展示
+可读计划，主动作按 Restyle 数量或 Cover 固定数量显示 Generate takes，并持续声明 Current version stays untouched；
+浏览器会把段落宽度换算为稳定毫秒 scope，提交后显示真实 Generation
 进度，允许取消或重试；切换 Arrangement、Lyrics、Stems 时仍保留运行中的 operation、instruction 与选区；
 成功返回的 Candidate 追加进入 Take Lanes，既不覆盖已有 Take，也不自动替换 Current Version；
 Studio Change 的浏览器契约已固定为 version-scoped generation：四种 operation 使用互斥 scope，
@@ -97,10 +101,15 @@ Studio Change 的浏览器契约已固定为 version-scoped generation：四种 
 并由同源 `POST /api/v1/mori/versions/{version_ref}/generations` 携带 `Idempotency-Key` 提交；
 machine-readable OpenAPI 与 contract tests 会阻止 camelCase、provider、tenant 或 subject 字段进入公开 Schema；
 Generation snapshot 通过 `generation_kind` 区分新歌与 Studio Change，Studio 分支保留
-`source_version_ref` 和 `operation`，Remaster 分支额外保留 `intent + source + variation_strength`，刷新后仍可恢复正确上下文；
+`source_version_ref` 和 `operation`；Restyle / Cover 分支必须精确回显已复核的 intent、scope、instruction、preserve、
+references 与 output count，Cover 还必须回显 mode 与 Voice，任一字段不一致都拒绝整批 Candidate；Remaster 分支额外
+保留 `intent + source + variation_strength`，刷新后仍可恢复正确上下文；
 `add_part` 在保持四种一层 operation 不变的前提下增加严格的 whole-version layer 分支：`part_kind` 明确为
 `vocals | instrumental`，Vocal layer 携带非空 `lyrics` 与可选 `voice_ref`，Instrumental layer 将两者固定为
 `null`；OpenAPI、request builder 与 contract tests 共同约束该 provider-neutral 语义；
+Transform 已在 1280×720 桌面视口巡检 intent 层级、prompt 主次、Review Plan 可读性、Take Lanes 与固定 Player 分层；
+在 390×844 移动视口巡检 Restyle / Cover 单栏、Vocal Voice 选择、Cover Review Plan、Player 上方动作可达性，滚动面
+`clientWidth` 与 `scrollWidth` 一致，无横向溢出或 Cover / artwork 歧义；
 Lyrics 已升级为双工作面：左侧保留可编辑 Draft，右侧 Mori lyric partner 提供 Rewrite、Continue、Find rhyme、
 Restructure，并能选择 Verse、Chorus 或 Whole lyrics；用户先 Review direction，再通过同源 Lyrics Revision API
 获得多个独立且可编辑的 Suggestion。运行态展示 snapshot / SSE 进度，支持取消、失败保留与重试；切换 Studio 工具

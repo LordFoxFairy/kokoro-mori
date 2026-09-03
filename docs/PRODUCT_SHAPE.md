@@ -130,7 +130,11 @@ Workspace nav    内容随项目上下文变化                     跨页面保
 - 已落地第一版：Studio 的 Mori AI Changes 把 Add part、Replace section、Extend、Transform 放在
   Arrangement 时间线上下文中；时间线播放头与全局 Player 双向使用同一位置状态，并明确标记当前段落。
   用户可选择结构段或拖动起止控制形成 Custom range，再输入指令并复核 Change Plan；移动范围会让旧 Plan
-  失效，最终结果进入 Take Lanes，当前版本不会被直接覆盖。
+  失效。Transform 进一步拆成 Restyle / Cover 两个可读意图：Restyle 可使用选区或整首，并保留用户选择的
+  anchors、references 与 1 / 2 / 4 个输出；Cover 固定使用 open Version 的整首音频，不要求重新上传，按 Vocal /
+  Instrumental 决定可选 Voice 与严格保护项，并固定输出两条 Take。界面与 Review Plan 都明确区分 audio Cover
+  和 Release artwork；服务返回的完整 typed snapshot 必须与复核计划逐字段一致。最终结果进入 Take Lanes，
+  当前版本不会被直接覆盖。
 - 已落地第一版：从项目详情、Studio 或项目上下文中的 Rail 进入 Create 时保留 `project_ref`，
   生成命令不再意外落到预览项目；可用时先读取项目 projection 展示项目名称，读取失败保留中性上下文。
 - 已落地第一版：Prompt 下方的 Creative sources 把 Audio、Voice、Inspiration 作为 Smart / Custom 共用的
@@ -139,8 +143,8 @@ Workspace nav    内容随项目上下文变化                     跨页面保
   Style。Library 的 All 视图已经将作品与素材分区，Sources 视图按 Audio / Voices / Inspiration 渐进筛选；
   `Use in Create` 会通过经校验的 provider-neutral source ref 恢复同一个创作上下文。当前素材为确定性 preview，
   正式资产引用与 projection 继续由 storage/music owner adapter 承接。
-- 后续：Song Plan 的服务端版本历史、正式音频上传、版本自动保存、音乐 Cover / Restyle，以及建立在真实时间选区
-  和多轨交付模型上的更多导出 scope；AI MV 与真正的 Publish command 保持为完成歌曲后的后置流程。
+- 后续：Song Plan 的服务端版本历史、正式音频上传、版本自动保存，以及建立在真实时间选区和多轨交付模型上的
+  更多导出 scope；AI MV 与真正的 Publish command 保持为完成歌曲后的后置流程。
 
 ## 五、明确不做的方向
 

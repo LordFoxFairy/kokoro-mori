@@ -89,7 +89,7 @@ Studio 只暴露四个稳定的一层意图，复杂参数进入下一层：
 | Add part | 在这里增加内容 | 插入点 / 邻近段落 | Instrument、Vocal、Harmony、Percussion、Texture |
 | Replace section | 重做这一段 | 时间范围 | Arrangement、Lyrics、Melody、Instrumentation |
 | Extend | 从这里继续 | 起始游标 | Continue、New outro、Loop variation |
-| Transform | 保留核心，改变表达 | 当前 Version 或范围 | Restyle/Cover、Remaster、Vocal character、Intensity |
+| Transform | 保留核心，改变表达 | 当前 Version 或范围 | Restyle、Cover；Finish 通过同一 transport 承接 Remaster |
 
 每次操作必须明确显示：
 
@@ -108,8 +108,38 @@ Commit       用户试听后显式 Use take
 `time_range`，Add/Extend 则使用其终点。自然语言指令、Change Plan 复核、非破坏式提示和 Generation 状态处于
 同一个工作面。Direction controls
 允许用户明确锁定 Melody、Lyrics、Voice、Tempo、Structure，并选择 1 / 2 / 4 个 alternatives；Transform
-还可在 Selected section 与 Whole song 之间切换。生成后可看到进度、取消或重试；成功 Candidate 直接追加到
-Take Lanes，但不会替换 Current Version。它不挤入全局 Rail，也不伪装成聊天记录。
+不再展示一组含义模糊的高级参数，而是先让用户选择 Restyle 或 Cover。生成后可看到进度、取消或重试；成功
+Candidate 直接追加到 Take Lanes，但不会替换 Current Version。它不挤入全局 Rail，也不伪装成聊天记录。
+
+### Transform / Restyle / Cover 的意图模型
+
+这层同时吸收 Suno 的 Version 连续性和 Tad 的命名能力分类：入口仍在当前 Version 的 Arrangement 中，但用户
+先看到明确任务名，再只填写该任务需要的内容。
+
+```text
+Restyle
+  Source       Open Version
+  Scope        Selected section | Whole song
+  Direction    Genre / texture / performance instruction
+  Protected    用户选择 Melody / Lyrics / Voice / Tempo / Structure
+  References   0–8 个已有素材引用
+  Result       1 / 2 / 4 个 Takes
+
+Cover
+  Source       Open Version，不重新上传
+  Scope        Whole song
+  Mode         Vocal | Instrumental
+  Voice        Vocal 可选；Instrumental 固定为空
+  Protected    Vocal = Melody + Lyrics + Structure
+               Instrumental = Melody + Structure
+  References   固定为空
+  Result       固定 2 个 Takes
+```
+
+Cover 卡片与 Review Plan 明确写出 **Audio cover, not release artwork**；Release artwork 仍只存在于 Finish / Release。
+两种意图都会先形成可读 Change Plan，任何 scope、instruction、anchors、references、output、mode 或 Voice 与
+返回 snapshot 不一致时，整批结果拒绝挂接。这样命名能力不会演变成 Tad 式全局工具堆，也不会破坏 Suno 式
+“从当前作品继续做”的连续感。
 
 ### Finish / Remaster 的 AI 完成模型
 
@@ -257,6 +287,22 @@ StudioChangeGenerationInput
     part_kind               vocals | instrumental
     lyrics                  vocals 必填；instrumental 为 null
     voice_ref               vocals 可选；instrumental 为 null
+  transform restyle
+    intent                  restyle
+    scope                   time_range | whole_version
+    instruction             必填
+    preserve                用户选择的稳定 anchors
+    reference_asset_refs[]  0–8
+    output_count            1 | 2 | 4
+  transform cover
+    intent                  cover
+    scope                   whole_version
+    cover_mode              vocal | instrumental
+    voice_ref               vocal 可选；instrumental 为 null
+    preserve                vocal 固定 melody + lyrics + structure
+                            instrumental 固定 melody + structure
+    reference_asset_refs[]  固定为空
+    output_count            fixed 2
   transform remaster
     intent                  remaster
     source                  version | mix_revision(mix_revision_ref)
@@ -273,7 +319,8 @@ StudioChangeGenerationInput
 机器可检查的事实源位于
 [`contract/openapi/mori-studio-change.v1.json`](../contract/openapi/mori-studio-change.v1.json)。
 Generation snapshot 使用 `generation_kind: new_song | studio_change` 做显式判别；Studio 分支必须携带
-`source_version_ref` 与 `operation`。这样刷新或断线恢复时，浏览器无需依赖内存态就能还原本次变更的来源和意图。
+`source_version_ref` 与 `operation`。Restyle / Cover 分支继续回显完整 reviewed context，Cover 额外回显 mode 与
+Voice；浏览器逐字段匹配后才接收 Candidate。这样刷新或断线恢复时，无需依赖内存态就能还原本次变更的来源和意图。
 契约不携带 Suno、Tad 或其他 provider 私有字段。执行边界继续遵守：
 
 - Command 使用 `Idempotency-Key` 和 request digest。
@@ -408,6 +455,9 @@ BFF 必须按受信会话校验该 asset 与用户可见 Mori 资源的关联，
   并把成功 Candidate 非破坏式追加到 Take Lanes。
 - Direction controls 已把 API 中的 `preserve`、`output_count` 与 Transform `whole_version` scope 变成用户可见、
   可复核的控制项；默认工作面仍保持收起，避免把 Studio 做成参数面板。
+- Transform 已拆成 Restyle / Cover 两个可读意图：Restyle 保留选区、anchors、references 与 1 / 2 / 4 Takes；
+  Cover 固定使用 open Version、Whole song、两条 Take，并按 Vocal / Instrumental 锁定 Voice 和保护项。两者都先
+  Review，并通过精确 snapshot 匹配后进入 Take Lanes。
 - 下一步只需由 BFF / music owner adapter 实现已固定契约；浏览器不引入 provider 字段。
 
 ### P2 · 深度编辑（进行中）
@@ -438,7 +488,9 @@ BFF 必须按受信会话校验该 asset 与用户可见 Mori 资源的关联，
 - 已完成浏览器侧第三刀：Finish 的 Release 页签保存 version-scoped draft，Private 默认、Visibility / Remix 权限独立，
   不提供 Publish command；Artwork 可沿用当前图，或通过固定 1:1、无文字、四候选的异步流程生成和选择。Artwork
   只进入 Release draft，不进入音频 Take Lanes；窗口关闭、页签切换与任务恢复保持上下文，切换 Version 会清理旧草稿。
-- 下一步：音乐 Cover / Restyle、选区/多轨渲染；等待真实时间选区与多轨 artifact contract 后再开放。
+- 已完成浏览器侧第四刀：Studio Transform 中的 Restyle / Cover 使用命名意图和严格 typed snapshot；Cover 与
+  Release artwork 完全分离，Vocal / Instrumental 模式只暴露必要控制，结果保持非破坏式。
+- 下一步：选区/多轨渲染；等待真实多轨 artifact contract 后再开放。
 - AI MV 作为完成歌曲的后置流程，不抢占创作主路径。
 
 ## 6. 体验门禁
