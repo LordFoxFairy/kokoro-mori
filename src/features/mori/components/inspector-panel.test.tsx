@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 import { previewCandidates, previewGeneration, previewSongPlan } from "../preview-data"
 import { InspectorPanel } from "./inspector-panel"
@@ -46,5 +46,44 @@ describe("Mori generation queue", () => {
     expect(screen.getByText("No playable directions yet")).toBeInTheDocument()
     fireEvent.click(screen.getByRole("button", { name: "Try again" }))
     expect(onRetry).toHaveBeenCalledOnce()
+  })
+
+  it("keeps keyboard focus inside the queue and restores the opener", async () => {
+    const opener = document.createElement("button")
+    opener.type = "button"
+    opener.textContent = "Open queue"
+    document.body.appendChild(opener)
+    opener.focus()
+
+    const { unmount } = render(
+      <InspectorPanel
+        generation={{ ...previewGeneration, status: "succeeded", progress: 100 }}
+        candidates={previewCandidates}
+        songPlan={previewSongPlan}
+        selectedCandidateRef={previewCandidates[0].candidateRef}
+        playing={false}
+        onSelect={vi.fn()}
+        onPromote={vi.fn()}
+        onPlay={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    )
+
+    const queue = screen.getByRole("region", { name: "Generation queue" })
+    await waitFor(() => expect(queue).toHaveFocus())
+    const close = screen.getByRole("button", { name: "Close generation queue" })
+    const lastControl = screen.getByRole("button", { name: "Set as current" })
+
+    close.focus()
+    fireEvent.keyDown(window, { key: "Tab", shiftKey: true })
+    expect(lastControl).toHaveFocus()
+
+    lastControl.focus()
+    fireEvent.keyDown(window, { key: "Tab" })
+    expect(close).toHaveFocus()
+
+    unmount()
+    expect(opener).toHaveFocus()
+    opener.remove()
   })
 })

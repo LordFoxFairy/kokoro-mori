@@ -31,7 +31,35 @@ export function InspectorPanel({ generation, candidates, songPlan, selectedCandi
   const panelRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
     panelRef.current?.focus()
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Tab") return
+
+      const panel = panelRef.current
+      if (panel === null) return
+      const focusable = getFocusableElements(panel)
+      const first = focusable[0]
+      const last = focusable.at(-1)
+      if (first === undefined || last === undefined) return
+      if (document.activeElement === panel) {
+        event.preventDefault()
+        const destination = event.shiftKey ? last : first
+        destination.focus()
+      } else if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown)
+      if (previousFocus?.isConnected) previousFocus.focus()
+    }
   }, [])
 
   return (
@@ -116,4 +144,15 @@ export function InspectorPanel({ generation, candidates, songPlan, selectedCandi
       </div>
     </aside>
   )
+}
+
+function getFocusableElements(container: HTMLElement): HTMLElement[] {
+  return Array.from(container.querySelectorAll<HTMLElement>([
+    "a[href]",
+    "button:not([disabled])",
+    "input:not([disabled])",
+    "select:not([disabled])",
+    "textarea:not([disabled])",
+    "[tabindex]:not([tabindex='-1'])",
+  ].join(",")))
 }
