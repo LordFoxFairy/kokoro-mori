@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, type FormEvent } from "react"
+import { useRef, useState, type FormEvent, type KeyboardEvent } from "react"
 import { AudioLines, Check, ChevronDown, Link2, Mic2, Plus, SlidersHorizontal, Sparkles, WandSparkles } from "lucide-react"
 import type { CreationMode, LyricsMode, SongPlan } from "../domain"
 import { t } from "../copy"
@@ -28,6 +28,8 @@ type CreateCanvasProps = {
 
 export function CreateCanvas({ projectRef, mode, onModeChange, onGenerate }: CreateCanvasProps) {
   const { preferences } = useMoriApp()
+  const smartTabRef = useRef<HTMLButtonElement>(null)
+  const customTabRef = useRef<HTMLButtonElement>(null)
   const [prompt, setPrompt] = useState("A warm, late-night track for the drive home, slowly opening into sunrise.")
   const [lyrics, setLyrics] = useState("")
   const [lyricsModeOverride, setLyricsModeOverride] = useState<LyricsMode | null>(null)
@@ -98,6 +100,16 @@ export function CreateCanvas({ projectRef, mode, onModeChange, onGenerate }: Cre
     onGenerate({ prompt, lyricsMode, lyrics: lyrics.trim() || undefined, style, referenceAssetRefs: referenceAdded ? ["asset_preview_reference"] : [], voice, durationSeconds, songPlan: planPreview ?? undefined })
   }
 
+  function navigateMode(event: KeyboardEvent<HTMLButtonElement>, currentMode: CreationMode) {
+    const nextMode = modeForKey(event.key, currentMode)
+    if (nextMode === null) return
+    event.preventDefault()
+    onModeChange(nextMode)
+    const nextTab = nextMode === "smart" ? smartTabRef.current : customTabRef.current
+    nextTab?.focus()
+    clearPlanPreview()
+  }
+
   return (
     <section aria-labelledby="mori-create-title">
       <div className={styles.eyebrow}><span className={styles.eyebrowDot} />Your creative space</div>
@@ -105,15 +117,15 @@ export function CreateCanvas({ projectRef, mode, onModeChange, onGenerate }: Cre
       <p className={styles.heroDescription}>{t("heroDescription")}</p>
 
       <div className={styles.modeTabs} role="tablist" aria-label="Creation mode">
-        <button className={styles.modeTab} type="button" role="tab" aria-selected={mode === "smart"} onClick={() => { onModeChange("smart"); clearPlanPreview() }}>
+        <button ref={smartTabRef} className={styles.modeTab} id="mori-mode-smart" type="button" role="tab" aria-selected={mode === "smart"} aria-controls="mori-create-panel" tabIndex={mode === "smart" ? 0 : -1} onKeyDown={(event) => navigateMode(event, "smart")} onClick={() => { onModeChange("smart"); clearPlanPreview() }}>
           <Sparkles size={13} /> {t("smartLabel")}
         </button>
-        <button className={styles.modeTab} type="button" role="tab" aria-selected={mode === "custom"} onClick={() => { onModeChange("custom"); clearPlanPreview() }}>
+        <button ref={customTabRef} className={styles.modeTab} id="mori-mode-custom" type="button" role="tab" aria-selected={mode === "custom"} aria-controls="mori-create-panel" tabIndex={mode === "custom" ? 0 : -1} onKeyDown={(event) => navigateMode(event, "custom")} onClick={() => { onModeChange("custom"); clearPlanPreview() }}>
           <SlidersHorizontal size={13} /> {t("customLabel")}
         </button>
       </div>
 
-      <form className={styles.composerCard} onSubmit={submit}>
+      <form className={styles.composerCard} id="mori-create-panel" role="tabpanel" aria-labelledby={mode === "smart" ? "mori-mode-smart" : "mori-mode-custom"} onSubmit={submit}>
         <textarea
           className={styles.promptArea}
           value={prompt}
@@ -272,6 +284,14 @@ export function CreateCanvas({ projectRef, mode, onModeChange, onGenerate }: Cre
       </div> : null}
     </section>
   )
+}
+
+function modeForKey(key: string, currentMode: CreationMode): CreationMode | null {
+  if (key === "Home") return "smart"
+  if (key === "End") return "custom"
+  if (key === "ArrowRight" || key === "ArrowDown") return currentMode === "smart" ? "custom" : "smart"
+  if (key === "ArrowLeft" || key === "ArrowUp") return currentMode === "smart" ? "custom" : "smart"
+  return null
 }
 
 function boundedTempo(value: string, fallback: number): number {

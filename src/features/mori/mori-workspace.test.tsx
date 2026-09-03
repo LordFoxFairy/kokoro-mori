@@ -87,6 +87,21 @@ describe("Mori workspace", () => {
     expect(screen.getByRole("button", { name: /reference audio/i })).toBeInTheDocument()
   })
 
+  it("supports keyboard navigation between creation modes", () => {
+    renderWorkspace()
+
+    const smart = screen.getByRole("tab", { name: /smart/i })
+    const custom = screen.getByRole("tab", { name: /custom/i })
+    smart.focus()
+    fireEvent.keyDown(smart, { key: "ArrowRight" })
+    expect(custom).toHaveAttribute("aria-selected", "true")
+    expect(custom).toHaveFocus()
+
+    fireEvent.keyDown(custom, { key: "Home" })
+    expect(smart).toHaveAttribute("aria-selected", "true")
+    expect(smart).toHaveFocus()
+  })
+
   it("reviews a Smart song plan before sending a generation command", async () => {
     const createSongPlan = vi.fn(async (_projectRef: string, input: Parameters<MoriApi["createSongPlan"]>[1], idempotencyKey: string) => ({
       data: {
