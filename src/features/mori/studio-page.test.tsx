@@ -90,6 +90,63 @@ describe("Mori studio page", () => {
     expect(within(updatedAiChanges).getByText("Selected section · Verse")).toBeInTheDocument()
   })
 
+  it("lets the user control Transform scope, preserved anchors, and alternative count", async () => {
+    let submittedInput: StudioChangeGenerationInput | null = null
+    renderStudio({
+      createStudioChange: async (_versionRef, input) => {
+        submittedInput = input
+        return { data: { generation_ref: "generation_transform_1", status: "queued" }, meta: { request_id: "request_transform_1" } }
+      },
+      getGeneration: async () => ({
+        data: {
+          generation_ref: "generation_transform_1",
+          generation_kind: "studio_change",
+          project_ref: "project_preview_first_light",
+          song_plan_ref: null,
+          mode: null,
+          source_version_ref: "version_preview_first_light_a",
+          operation: "transform",
+          status: "failed",
+          progress: 18,
+          candidate_refs: [],
+          created_at: "2026-09-03T12:00:00.000Z",
+        },
+        meta: { request_id: "request_transform_snapshot_1" },
+      }),
+      getGenerationEvents: async () => [],
+    })
+
+    const aiChanges = screen.getByRole("region", { name: "Mori AI changes" })
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Transform" }))
+    fireEvent.click(within(aiChanges).getByText("Direction controls"))
+
+    const anchors = within(aiChanges).getByRole("group", { name: "Keep stable" })
+    fireEvent.click(within(anchors).getByRole("button", { name: "Keep lyrics" }))
+    fireEvent.click(within(anchors).getByRole("button", { name: "Keep tempo" }))
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "4 takes" }))
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Whole song" }))
+
+    fireEvent.change(within(aiChanges).getByRole("textbox", { name: "Tell Mori what to change" }), {
+      target: { value: "Turn this into an acoustic live-room performance." },
+    })
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Review change" }))
+
+    const plan = within(aiChanges).getByRole("region", { name: "AI change plan" })
+    expect(within(plan).getByText("Whole song")).toBeInTheDocument()
+    expect(within(plan).getByText("Melody · Voice · Tempo")).toBeInTheDocument()
+    expect(within(plan).getByText("4 alternatives · Take lanes")).toBeInTheDocument()
+    fireEvent.click(within(plan).getByRole("button", { name: "Generate 4 takes" }))
+
+    await waitFor(() => expect(submittedInput).toEqual({
+      operation: "transform",
+      scope: { type: "whole_version" },
+      instruction: "Turn this into an acoustic live-room performance.",
+      preserve: ["melody", "vocal_identity", "tempo"],
+      reference_asset_refs: [],
+      output_count: 4,
+    }))
+  })
+
   it("renders a reviewed Studio change into new take lanes without replacing the current version", async () => {
     let submittedVersionRef = ""
     let submittedInput: StudioChangeGenerationInput | null = null

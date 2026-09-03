@@ -18,7 +18,7 @@ pnpm build
 
 - `pnpm lint`：通过，`--max-warnings=0`
 - `pnpm typecheck`：通过
-- `pnpm test`：通过，16 个测试文件、114 个测试
+- `pnpm test`：通过，16 个测试文件、115 个测试
 - `pnpm build`：通过，生成 `/`、`/create`、`/projects`、`/library`、`/settings`、Project Overview 和 Studio 路由
 
 ## 页面巡检
@@ -64,7 +64,9 @@ Arrangement/Lyrics/Stems 切换、Preview、Share 反馈和 Export queued → co
 action；Arrangement 已提供 Take Lanes，可试听、选择方向并明确 Use take 后切换当前版本；
 Arrangement 现在提供与时间线连在一起的 Mori AI Changes：Add part、Replace section、Extend、Transform
 共享同一套上下文式输入；Intro、Verse、Lift、Chorus、Outro 可直接选为 AI 操作上下文，操作范围和结果去向
-始终可见；提交前先展示 Change Plan，主动作明确为 Generate 2 takes，并持续声明
+始终可见；Direction controls 默认收起，展开后可选择保留 Melody、Lyrics、Voice、Tempo、Structure，
+可请求 1 / 2 / 4 个 alternatives，Transform 可明确作用于 Selected section 或 Whole song；这些选择会同时进入
+Change Plan 与最终 API body；提交前先展示 Change Plan，主动作会按选择显示 Generate 1 / 2 / 4 takes，并持续声明
 Current version stays untouched；浏览器会把段落宽度换算为稳定毫秒 scope，提交后显示真实 Generation
 进度，允许取消或重试；切换 Arrangement、Lyrics、Stems 时仍保留运行中的 operation、instruction 与选区；
 成功返回的 Candidate 追加进入 Take Lanes，既不覆盖已有 Take，也不自动替换 Current Version；

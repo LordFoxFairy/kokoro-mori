@@ -1,11 +1,20 @@
 "use client"
 
-import { ArrowRight, Check, Pencil, Plus, RotateCcw, Scissors, Sparkles, Square } from "lucide-react"
+import { ArrowRight, Check, Pencil, Plus, RotateCcw, Scissors, SlidersHorizontal, Sparkles, Square } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { useId, useState } from "react"
 import type { FormEvent } from "react"
 import type { GenerationStatus } from "../domain"
-import { buildStudioChangePlan, isActiveStudioChangeStatus, type StudioChangePlan, type StudioTimelineSection } from "../studio-change"
+import {
+  buildStudioChangePlan,
+  defaultStudioChangePreserve,
+  isActiveStudioChangeStatus,
+  studioChangeOutputCounts,
+  type StudioChangeOutputCount,
+  type StudioChangePlan,
+  type StudioTimelineSection,
+  type StudioTransformScope,
+} from "../studio-change"
 import type { StudioChangeOperation, StudioChangePreserve } from "@/lib/mori-api"
 import styles from "./studio-ai-composer.module.css"
 
@@ -59,15 +68,33 @@ const operations: readonly StudioAiOperationConfig[] = [
   },
 ]
 
+const preserveOptions: readonly { id: StudioChangePreserve; label: string }[] = [
+  { id: "melody", label: "Melody" },
+  { id: "lyrics", label: "Lyrics" },
+  { id: "vocal_identity", label: "Voice" },
+  { id: "tempo", label: "Tempo" },
+  { id: "structure", label: "Structure" },
+]
+
 export function StudioAiComposer({ selectedSection, run, onGenerate, onCancel, onReset }: StudioAiComposerProps) {
   const promptId = useId()
   const [operation, setOperation] = useState<StudioChangeOperation>(() => run.plan?.operation ?? "add_part")
   const [instruction, setInstruction] = useState(() => run.plan?.instruction ?? "")
+  const [preserve, setPreserve] = useState<StudioChangePreserve[]>(() => [...(run.plan?.preserve ?? defaultStudioChangePreserve)])
+  const [outputCount, setOutputCount] = useState<StudioChangeOutputCount>(() => run.plan?.outputCount ?? 2)
+  const [transformScope, setTransformScope] = useState<StudioTransformScope>(() => (
+    run.plan?.draft.operation === "transform" && run.plan.draft.scope.type === "whole_version"
+      ? "whole_version"
+      : "selected_section"
+  ))
   const [plan, setPlan] = useState<StudioChangePlan | null>(null)
   const activeOperation = getOperation(operation)
-  const activeScope = scopeLabel(operation, selectedSection.label)
+  const activeScope = scopeLabel(operation, selectedSection.label, transformScope)
   const busy = isActiveStudioChangeStatus(run.status)
-  const reviewedPlan = plan?.sectionId === selectedSection.id ? plan : null
+  const reviewedPlan = plan !== null && (
+    (plan.draft.operation === "transform" && plan.draft.scope.type === "whole_version")
+    || plan.sectionId === selectedSection.id
+  ) ? plan : null
   const visiblePlan = run.status === "idle" ? reviewedPlan : run.plan
 
   const clearFinishedRun = () => {
@@ -88,13 +115,40 @@ export function StudioAiComposer({ selectedSection, run, onGenerate, onCancel, o
     setPlan(null)
   }
 
+  const togglePreserve = (item: StudioChangePreserve) => {
+    if (busy) return
+    clearFinishedRun()
+    setPreserve((current) => current.includes(item)
+      ? current.filter((value) => value !== item)
+      : [...current, item])
+    setPlan(null)
+  }
+
+  const chooseOutputCount = (nextOutputCount: StudioChangeOutputCount) => {
+    if (busy) return
+    clearFinishedRun()
+    setOutputCount(nextOutputCount)
+    setPlan(null)
+  }
+
+  const chooseTransformScope = (nextScope: StudioTransformScope) => {
+    if (busy) return
+    clearFinishedRun()
+    setTransformScope(nextScope)
+    setPlan(null)
+  }
+
   const reviewChange = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const trimmedInstruction = instruction.trim()
     if (trimmedInstruction === "" || busy) return
     clearFinishedRun()
     setInstruction(trimmedInstruction)
-    setPlan(buildStudioChangePlan(operation, selectedSection, trimmedInstruction))
+    setPlan(buildStudioChangePlan(operation, selectedSection, trimmedInstruction, {
+      preserve,
+      outputCount,
+      transformScope,
+    }))
   }
 
   const editPlan = () => {
@@ -149,9 +203,60 @@ export function StudioAiComposer({ selectedSection, run, onGenerate, onCancel, o
         </button>
       </form>
 
+      <details className={styles.studioAiControls}>
+        <summary>
+          <span><SlidersHorizontal size={13} /> Direction controls</span>
+          <span>{preserve.length} anchors · {takeCountLabel(outputCount)}</span>
+        </summary>
+        <div className={styles.studioAiControlsBody}>
+          <div className={styles.studioAiControlGroup} role="group" aria-label="Keep stable">
+            <span className={styles.studioAiControlLabel}>Keep stable</span>
+            <div className={styles.studioAiChoices}>
+              {preserveOptions.map((item) => (
+                <button
+                  type="button"
+                  aria-label={`Keep ${item.label.toLowerCase()}`}
+                  aria-pressed={preserve.includes(item.id)}
+                  disabled={busy}
+                  key={item.id}
+                  onClick={() => togglePreserve(item.id)}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className={styles.studioAiControlGroup} role="group" aria-label="Alternatives">
+            <span className={styles.studioAiControlLabel}>Alternatives</span>
+            <div className={styles.studioAiChoices}>
+              {studioChangeOutputCounts.map((count) => (
+                <button
+                  type="button"
+                  aria-pressed={outputCount === count}
+                  disabled={busy}
+                  key={count}
+                  onClick={() => chooseOutputCount(count)}
+                >
+                  {takeCountLabel(count)}
+                </button>
+              ))}
+            </div>
+          </div>
+          {operation === "transform" ? (
+            <div className={styles.studioAiControlGroup} role="group" aria-label="Transform scope">
+              <span className={styles.studioAiControlLabel}>Apply to</span>
+              <div className={styles.studioAiChoices}>
+                <button type="button" aria-pressed={transformScope === "selected_section"} disabled={busy} onClick={() => chooseTransformScope("selected_section")}>Selected section</button>
+                <button type="button" aria-pressed={transformScope === "whole_version"} disabled={busy} onClick={() => chooseTransformScope("whole_version")}>Whole song</button>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </details>
+
       <div className={styles.studioAiContext} aria-label="Change context">
         <span><strong>Scope</strong>{activeScope}</span>
-        <span><strong>Output</strong>2 alternatives</span>
+        <span><strong>Output</strong>{alternativeCountLabel(outputCount)}</span>
         <span><strong>Destination</strong>Take lanes</span>
       </div>
 
@@ -165,7 +270,7 @@ export function StudioAiComposer({ selectedSection, run, onGenerate, onCancel, o
           <div className={styles.studioAiPlanFacts}>
             <span><strong>Scope</strong>{visiblePlan.scopeLabel}</span>
             <span><strong>Keep</strong>{preserveLabel(visiblePlan.preserve)}</span>
-            <span><strong>Result</strong>2 alternatives · Take lanes</span>
+            <span><strong>Result</strong>{alternativeCountLabel(visiblePlan.outputCount)} · Take lanes</span>
           </div>
           {busy ? <div className={styles.studioAiProgressRow}>
             <div
@@ -193,7 +298,7 @@ export function StudioAiComposer({ selectedSection, run, onGenerate, onCancel, o
                 ) : run.status === "failed" || run.status === "cancelled" || run.status === "expired" || (run.status === "succeeded" && run.resultCount === 0) ? (
                   <button className={styles.studioAiStage} type="button" onClick={() => onGenerate(visiblePlan)}><RotateCcw size={12} /> Retry change</button>
                 ) : (
-                  <button className={styles.studioAiStage} type="button" onClick={() => onGenerate(visiblePlan)}>Generate 2 takes <ArrowRight size={12} /></button>
+                  <button className={styles.studioAiStage} type="button" onClick={() => onGenerate(visiblePlan)}>Generate {takeCountLabel(visiblePlan.outputCount)} <ArrowRight size={12} /></button>
                 )}
               </>}
             </div>
@@ -208,10 +313,19 @@ function getOperation(operation: StudioChangeOperation): StudioAiOperationConfig
   return operations.find((item) => item.id === operation) ?? operations[0]
 }
 
-function scopeLabel(operation: StudioChangeOperation, sectionLabel: string): string {
+function scopeLabel(operation: StudioChangeOperation, sectionLabel: string, transformScope: StudioTransformScope): string {
   if (operation === "add_part") return `After selected ${sectionLabel}`
   if (operation === "extend") return `From selected ${sectionLabel}`
+  if (operation === "transform" && transformScope === "whole_version") return "Whole song"
   return `Selected section · ${sectionLabel}`
+}
+
+function takeCountLabel(count: StudioChangeOutputCount): string {
+  return `${count} ${count === 1 ? "take" : "takes"}`
+}
+
+function alternativeCountLabel(count: StudioChangeOutputCount): string {
+  return `${count} ${count === 1 ? "alternative" : "alternatives"}`
 }
 
 function preserveLabel(preserve: StudioChangePreserve[]): string {

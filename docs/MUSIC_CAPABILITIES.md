@@ -74,15 +74,16 @@ Source       当前 Version
 Scope        时间范围、插入点或整首
 Instruction  用户自然语言要求
 Constraints  保留旋律/歌词/声音等约束
-Output       默认 2 个 alternatives
+Output       用户选择 1 / 2 / 4 个 alternatives，默认 2 个
 Destination  Take Lanes
 Commit       用户试听后显式 Use take
 ```
 
 当前 Studio 已落地第一版 **Mori AI Changes**：可选择时间线段落，操作切换会沿用所选段落作为上下文；
-自然语言指令、Change Plan 复核、非破坏式提示和 Generation 状态处于同一个工作面。用户点击
-`Generate 2 takes` 后可看到进度、取消或重试；成功 Candidate 直接追加到 Take Lanes，但不会替换
-Current Version。它不挤入全局 Rail，也不伪装成聊天记录。
+自然语言指令、Change Plan 复核、非破坏式提示和 Generation 状态处于同一个工作面。Direction controls
+允许用户明确锁定 Melody、Lyrics、Voice、Tempo、Structure，并选择 1 / 2 / 4 个 alternatives；Transform
+还可在 Selected section 与 Whole song 之间切换。生成后可看到进度、取消或重试；成功 Candidate 直接追加到
+Take Lanes，但不会替换 Current Version。它不挤入全局 Rail，也不伪装成聊天记录。
 
 ## 4. Studio Change API 契约
 
@@ -139,6 +140,8 @@ Generation snapshot 使用 `generation_kind: new_song | studio_change` 做显式
 - 新歌与 Studio Change 共用 Generation lifecycle，并通过 discriminated snapshot 支持刷新恢复。
 - Studio 已接入这一浏览器 seam：基于时间线段落计算毫秒 scope，跟踪 snapshot / SSE replay，支持取消、重试，
   并把成功 Candidate 非破坏式追加到 Take Lanes。
+- Direction controls 已把 API 中的 `preserve`、`output_count` 与 Transform `whole_version` scope 变成用户可见、
+  可复核的控制项；默认工作面仍保持收起，避免把 Studio 做成参数面板。
 - 下一步只需由 BFF / music owner adapter 实现已固定契约；浏览器不引入 provider 字段。
 
 ### P2 · 深度编辑

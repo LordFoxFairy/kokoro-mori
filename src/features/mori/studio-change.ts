@@ -15,10 +15,21 @@ export type StudioChangePlan = {
   sectionId: string
   scopeLabel: string
   preserve: StudioChangePreserve[]
+  outputCount: StudioChangeOutputCount
   draft: MoriStudioChangeDraft
 }
 
 export const defaultStudioChangePreserve: StudioChangePreserve[] = ["melody", "lyrics", "vocal_identity"]
+export const studioChangeOutputCounts = [1, 2, 4] as const
+
+export type StudioChangeOutputCount = typeof studioChangeOutputCounts[number]
+export type StudioTransformScope = "selected_section" | "whole_version"
+
+export type StudioChangePlanOptions = {
+  preserve: StudioChangePreserve[]
+  outputCount: StudioChangeOutputCount
+  transformScope: StudioTransformScope
+}
 
 export function buildStudioTimelineSections(structure: string[], durationSeconds: number): StudioTimelineSection[] {
   if (structure.length === 0 || !Number.isFinite(durationSeconds) || durationSeconds <= 0) return []
@@ -48,9 +59,14 @@ export function buildStudioChangePlan(
   operation: StudioChangeOperation,
   section: StudioTimelineSection,
   instruction: string,
-  preserve = defaultStudioChangePreserve,
+  options: StudioChangePlanOptions = {
+    preserve: defaultStudioChangePreserve,
+    outputCount: 2,
+    transformScope: "selected_section",
+  },
 ): StudioChangePlan {
-  const common = { instruction, preserve, outputCount: 2 }
+  const preserve = [...options.preserve]
+  const common = { instruction, preserve, outputCount: options.outputCount }
   switch (operation) {
     case "add_part":
       return {
@@ -59,6 +75,7 @@ export function buildStudioChangePlan(
         sectionId: section.id,
         scopeLabel: `After selected ${section.label}`,
         preserve,
+        outputCount: options.outputCount,
         draft: { ...common, operation, scope: { type: "insertion_point", positionMs: section.endMs } },
       }
     case "replace_section":
@@ -68,6 +85,7 @@ export function buildStudioChangePlan(
         sectionId: section.id,
         scopeLabel: `Selected section · ${section.label}`,
         preserve,
+        outputCount: options.outputCount,
         draft: { ...common, operation, scope: { type: "time_range", startMs: section.startMs, endMs: section.endMs } },
       }
     case "extend":
@@ -77,15 +95,28 @@ export function buildStudioChangePlan(
         sectionId: section.id,
         scopeLabel: `From selected ${section.label}`,
         preserve,
+        outputCount: options.outputCount,
         draft: { ...common, operation, scope: { type: "from_position", positionMs: section.endMs } },
       }
     case "transform":
+      if (options.transformScope === "whole_version") {
+        return {
+          operation,
+          instruction,
+          sectionId: section.id,
+          scopeLabel: "Whole song",
+          preserve,
+          outputCount: options.outputCount,
+          draft: { ...common, operation, scope: { type: "whole_version" } },
+        }
+      }
       return {
         operation,
         instruction,
         sectionId: section.id,
         scopeLabel: `Selected section · ${section.label}`,
         preserve,
+        outputCount: options.outputCount,
         draft: { ...common, operation, scope: { type: "time_range", startMs: section.startMs, endMs: section.endMs } },
       }
   }
