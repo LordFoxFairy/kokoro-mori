@@ -37,6 +37,23 @@ describe("Mori application navigation", () => {
     expect(screen.getByRole("button", { name: "Unmute" })).toBeInTheDocument()
   })
 
+  it("supports a spacebar playback shortcut without hijacking text entry", () => {
+    render(
+      <MoriAppProvider>
+        <input aria-label="Search" />
+        <MoriCatalogShell activeKey="library" ariaLabel="Library">
+          <div>Library content</div>
+        </MoriCatalogShell>
+      </MoriAppProvider>,
+    )
+
+    fireEvent.keyDown(window, { code: "Space", key: " " })
+    expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument()
+
+    fireEvent.keyDown(screen.getByRole("textbox", { name: "Search" }), { code: "Space", key: " " })
+    expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument()
+  })
+
   it("presents the player as one global dock with an explicit control group", () => {
     render(
       <MoriAppProvider>
@@ -174,6 +191,25 @@ describe("Mori application navigation", () => {
       await waitFor(() => expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/settings?return_to=%2Fprojects%2Fproject_live_1%2Fstudio%2Fversion_live_1"))
     } finally {
       window.history.pushState({}, "", originalPath)
+    }
+  })
+
+  it("preserves project context when settings opens from Create", async () => {
+    const originalUrl = window.location.href
+    window.history.pushState({}, "", "/create?project_ref=project_live_1")
+
+    try {
+      render(
+        <MoriAppProvider>
+          <MoriCatalogShell activeKey="create" ariaLabel="Create">
+            <div>Create content</div>
+          </MoriCatalogShell>
+        </MoriAppProvider>,
+      )
+
+      await waitFor(() => expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/settings?return_to=%2Fcreate%3Fproject_ref%3Dproject_live_1"))
+    } finally {
+      window.history.pushState({}, "", originalUrl)
     }
   })
 

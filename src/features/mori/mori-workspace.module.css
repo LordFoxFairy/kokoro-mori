@@ -3283,7 +3283,7 @@
   min-height: 100dvh;
   height: 100dvh;
   overflow: hidden;
-  padding: 20px 16px 98px;
+  padding: 24px 18px 104px;
   border: 0;
   border-right: 1px solid var(--mori-border);
   border-radius: 0;
@@ -3298,19 +3298,19 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 40px;
+  min-height: 44px;
   padding: 0 4px 32px;
 }
 
 .brandMark {
   display: grid;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   place-items: center;
-  border-radius: 13px;
+  border-radius: 14px;
   color: #fff;
   font-family: var(--mori-font-display);
-  font-size: 23px;
+  font-size: 25px;
   line-height: 1;
   background: linear-gradient(145deg, #9a87f0, #f0a681 78%);
   box-shadow: 0 7px 18px rgba(109, 92, 231, 0.18);
@@ -3325,8 +3325,8 @@
 
 .railToggle {
   display: grid;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   flex: 0 0 auto;
   margin-left: auto;
   padding: 0;
@@ -3346,7 +3346,7 @@
 }
 
 .rail:not(.railCollapsed) .railToggle {
-  margin-right: -16px;
+  margin-right: -18px;
 }
 
 .railToggle svg {
@@ -3361,11 +3361,11 @@
   justify-content: center;
   gap: 8px;
   width: 100%;
-  min-height: 50px;
-  margin: 0 0 30px;
-  border-radius: 15px;
+  min-height: 52px;
+  margin: 0 0 32px;
+  border-radius: 16px;
   color: #fff;
-  font-size: 13px;
+  font-size: 14px;
   letter-spacing: -0.01em;
   text-decoration: none;
   background: linear-gradient(105deg, #6d5ce7, #9276e7 52%, #e7a17f);
@@ -3379,7 +3379,7 @@
 
 .navGroup {
   display: grid;
-  gap: 5px;
+  gap: 7px;
 }
 
 .navLabel {
@@ -3392,17 +3392,17 @@
 .navItem {
   display: flex;
   align-items: center;
-  gap: 11px;
-  min-height: 44px;
-  padding: 0 12px;
-  border-radius: 12px;
-  font-size: 13px;
+  gap: 12px;
+  min-height: 48px;
+  padding: 0 13px;
+  border-radius: 14px;
+  font-size: 14px;
   font-weight: 600;
 }
 
 .navItem svg {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   stroke-width: 1.8;
 }
 
@@ -3419,19 +3419,20 @@
 
 .railBottom {
   display: grid;
-  gap: 5px;
+  gap: 7px;
   margin-top: auto;
   padding-top: 24px;
+  border-top: 1px solid var(--mori-border);
 }
 
 .railFooterLink {
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-height: 38px;
-  padding: 0 12px;
-  border-radius: 10px;
-  font-size: 12px;
+  gap: 11px;
+  min-height: 42px;
+  padding: 0 13px;
+  border-radius: 12px;
+  font-size: 13px;
 }
 
 .railFooterLink:hover {
@@ -3457,7 +3458,7 @@
 
 .railCollapsed .brandRow {
   display: grid;
-  grid-template-columns: 40px 32px;
+  grid-template-columns: 44px 36px;
   justify-content: space-between;
   gap: 4px;
   padding-inline: 0;
@@ -3472,9 +3473,14 @@
 }
 
 .railCollapsed .newButton {
-  width: 50px;
-  margin-inline: auto;
+  width: 60px;
+  min-height: 60px;
+  margin: 0 auto 34px;
   padding-inline: 0;
+}
+
+.railCollapsed .navGroup {
+  gap: 9px;
 }
 
 .railCollapsed .navItem,
@@ -3483,8 +3489,21 @@
   padding-inline: 0;
 }
 
+.railCollapsed .navItem {
+  width: 76px;
+  min-height: 52px;
+  margin-inline: auto;
+}
+
+.railCollapsed .railFooterLink {
+  width: 76px;
+  min-height: 42px;
+  margin-inline: auto;
+}
+
 .railCollapsed .navItemActive {
   box-shadow: none;
+  background: linear-gradient(145deg, rgba(240, 237, 255, 0.96), rgba(253, 231, 218, 0.42));
 }
 
 .railCollapsed .railFooterLinkActive {
@@ -4169,13 +4188,13 @@
 
 @media (max-width: 700px) {
   .appShell {
-    grid-template-columns: 96px minmax(0, 1fr);
+    grid-template-columns: 120px minmax(0, 1fr);
   }
 
   .appShell .rail {
     grid-column: 1;
     position: relative;
-    width: 96px;
+    width: 120px;
     min-height: 100dvh;
     height: 100dvh;
     padding: 16px 12px 84px;

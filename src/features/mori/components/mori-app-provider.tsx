@@ -175,6 +175,19 @@ export function MoriAppProvider({ children }: { children: ReactNode }) {
     return () => window.clearInterval(timer)
   }, [playing])
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.code !== "Space" || playerCandidate === null) return
+      const target = event.target
+      if (target instanceof HTMLElement && (target.isContentEditable || ["BUTTON", "INPUT", "SELECT", "TEXTAREA"].includes(target.tagName))) return
+      event.preventDefault()
+      setPlaying((value) => !value)
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [playerCandidate])
+
   const value = useMemo<MoriAppContextValue>(() => ({
     railCollapsed,
     toggleRail,

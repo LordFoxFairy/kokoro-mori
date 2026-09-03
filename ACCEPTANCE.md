@@ -18,7 +18,7 @@ pnpm build
 
 - `pnpm lint`：通过，`--max-warnings=0`
 - `pnpm typecheck`：通过
-- `pnpm test`：通过，15 个测试文件、94 个测试
+- `pnpm test`：通过，15 个测试文件、96 个测试
 - `pnpm build`：通过，生成 `/`、`/create`、`/projects`、`/library`、`/settings`、Project Overview 和 Studio 路由
 
 ## 页面巡检
@@ -48,6 +48,7 @@ dock；桌面端提供歌曲、波形、进度和 transport，小屏幕收敛为
 Create 的 Queue 默认关闭，可通过 Queue 动作打开并通过 Close generation queue 关闭；
 移动端 390px 视口默认收起 Rail，内容仍保持可见。Player 桌面端采用左侧当前歌曲、中部
 transport + progress、右侧音量/队列的音乐播放器层级；移动端收敛为当前歌曲、播放和队列入口。
+播放支持在非输入控件上使用 Space 快捷键，输入歌词或表单时不会拦截空格；播放主按钮声明对应键盘快捷键。
 
 Library 已巡检 All、Versions、Lyrics、Exports 过滤器，以及版本 Play/Pause、项目和
 Studio 链接。Home 与 Project Overview 的候选歌曲均可直接接入 Global Player；Projects、
@@ -83,6 +84,7 @@ Settings 与 Help 在当前 utility 页面上会显示 active 状态，Create �
 `project_ref` 并优先读取项目名称，
 具体项目上下文会在 Project Overview、Create 和 Studio 中连续保留；从任意 Mori 工作区打开 Settings 后，关闭入口会回到来源路径；请求不存在的 Studio 版本时显示明确的 unavailable 状态，不回退到 First Light fixture。
 Settings 以浮动 dialog 呈现，打开后焦点进入窗口，Tab/Shift+Tab 在窗口内循环，Escape 使用同一关闭入口返回来源。
+返回入口会按来源显示为 Home、Create、Projects、Project 或 Studio，并保留 Create 中的 `project_ref` 查询上下文。
 Generation queue 作为带遮罩的 modal 上下文抽屉处理，打开后焦点进入队列，Tab/Shift+Tab 不会跑到遮罩后的工作区，关闭后恢复触发入口。
 当实时项目没有可播放版本或 Studio 版本失效时，Global Player 保留固定 dock 的空间，但展示
 Nothing playing 和下一步提示，播放、跳转、静音等依赖版本的控制会明确禁用。播放器的上一首/下一首

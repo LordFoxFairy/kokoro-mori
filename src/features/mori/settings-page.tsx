@@ -26,6 +26,7 @@ export function MoriSettingsPage({ returnTo = "/" }: MoriSettingsPageProps = {})
   const closeLinkRef = useRef<HTMLAnchorElement>(null)
   const settingsDialogRef = useRef<HTMLElement>(null)
   const { railCollapsed, setRailCollapsed, preferences, updatePreferences } = useMoriApp()
+  const returnLabel = settingsReturnLabel(returnTo)
 
   useEffect(() => {
     const timer = window.setTimeout(() => setPortalTarget(document.body), 0)
@@ -115,8 +116,8 @@ export function MoriSettingsPage({ returnTo = "/" }: MoriSettingsPageProps = {})
               <h1 className={styles.settingsWindowTitle} id="mori-settings-title">Settings</h1>
               <p>Shape the way Mori creates, plays, and presents your music.</p>
             </div>
-            <Link ref={closeLinkRef} className={styles.settingsClose} href={returnTo} aria-label="Back to studio">
-              <span>Back to studio</span>
+            <Link ref={closeLinkRef} className={styles.settingsClose} href={returnTo} aria-label={returnLabel}>
+              <span>{returnLabel}</span>
               <X size={17} strokeWidth={1.8} aria-hidden="true" />
             </Link>
           </header>
@@ -214,6 +215,15 @@ export function MoriSettingsPage({ returnTo = "/" }: MoriSettingsPageProps = {})
   )
 
   return portalTarget === null ? settingsWindow : createPortal(settingsWindow, portalTarget)
+}
+
+function settingsReturnLabel(returnTo: string): string {
+  if (returnTo.includes("/studio/")) return "Back to studio"
+  if (returnTo === "/projects") return "Back to projects"
+  if (returnTo.startsWith("/projects/")) return "Back to project"
+  if (returnTo.startsWith("/create")) return "Back to create"
+  if (returnTo === "/library") return "Back to library"
+  return "Back to home"
 }
 
 function getFocusableElements(container: HTMLElement): HTMLElement[] {

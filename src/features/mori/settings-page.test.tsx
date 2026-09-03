@@ -18,7 +18,7 @@ describe("Mori settings", () => {
     expect(screen.getByTestId("settings-overlay")).toBeInTheDocument()
     expect(screen.getByRole("dialog", { name: "Settings" })).toHaveAttribute("aria-modal", "true")
     expect(screen.getByRole("link", { name: "Close settings" })).toHaveAttribute("href", "/")
-    expect(screen.getByRole("link", { name: "Back to studio" })).toHaveAttribute("href", "/")
+    expect(screen.getByRole("link", { name: "Back to home" })).toHaveAttribute("href", "/")
     expect(screen.getByRole("heading", { name: "Settings" })).toBeInTheDocument()
     expect(screen.getByRole("heading", { name: "Appearance" })).toBeInTheDocument()
     expect(screen.getByText("Light gradient")).toBeInTheDocument()
@@ -35,7 +35,7 @@ describe("Mori settings", () => {
   it("moves focus into the window and keeps keyboard focus inside it", async () => {
     renderSettings()
 
-    await waitFor(() => expect(screen.getByRole("link", { name: "Back to studio" })).toHaveFocus())
+    await waitFor(() => expect(screen.getByRole("link", { name: "Back to home" })).toHaveFocus())
 
     const firstSection = screen.getByRole("button", { name: /appearance/i })
     const lastControl = screen.getByRole("button", { name: "Off" })
@@ -51,8 +51,8 @@ describe("Mori settings", () => {
   it("lets Escape use the same close affordance as the window", async () => {
     renderSettings()
 
-    await waitFor(() => expect(screen.getByRole("link", { name: "Back to studio" })).toHaveFocus())
-    const closeSettings = screen.getByRole("link", { name: "Back to studio" })
+    await waitFor(() => expect(screen.getByRole("link", { name: "Back to home" })).toHaveFocus())
+    const closeSettings = screen.getByRole("link", { name: "Back to home" })
     const closeSpy = vi.spyOn(closeSettings, "click").mockImplementation(() => {})
     fireEvent.keyDown(window, { key: "Escape" })
 

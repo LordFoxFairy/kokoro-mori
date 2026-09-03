@@ -25,11 +25,12 @@ export function MoriRail({ activeKey = "create", collapsed = false, onToggle }: 
   useEffect(() => {
     const timer = window.setTimeout(() => {
       const currentPath = window.location.pathname
+      const currentLocation = `${currentPath}${window.location.search}`
       const pathProjectRef = currentPath.match(/^\/projects\/([^/]+)/u)?.[1]
       const queryProjectRef = new URLSearchParams(window.location.search).get("project_ref")
       const projectRef = pathProjectRef ?? queryProjectRef ?? undefined
-      if (currentPath !== "/settings" && currentPath.startsWith("/")) {
-        setSettingsHref(`/settings?return_to=${encodeURIComponent(currentPath)}`)
+      if (currentPath !== "/settings" && currentLocation.startsWith("/")) {
+        setSettingsHref(`/settings?return_to=${encodeURIComponent(currentLocation)}`)
       }
       if (projectRef !== undefined) setCreateHref(`/create?project_ref=${encodeURIComponent(projectRef)}`)
     }, 0)
