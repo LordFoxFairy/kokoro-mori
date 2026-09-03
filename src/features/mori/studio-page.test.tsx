@@ -186,7 +186,7 @@ describe("Mori studio page", () => {
     expect(within(aiChanges).getByText("Selected range · 0:42–1:44")).toBeInTheDocument()
   })
 
-  it("lets the user control Transform scope, preserved anchors, and alternative count", async () => {
+  it("sends the reviewed scope, anchors, and alternative count as an explicit Restyle", async () => {
     let submittedInput: StudioChangeGenerationInput | null = null
     renderStudio({
       createStudioChange: async (_versionRef, input) => {
@@ -248,6 +248,197 @@ describe("Mori studio page", () => {
       reference_asset_refs: [],
       output_count: 4,
     }))
+  })
+
+  it("creates a typed Vocal Cover as two new Takes without replacing Current", async () => {
+    let submittedVersionRef = ""
+    let submittedInput: StudioChangeGenerationInput | null = null
+    renderStudio({
+      createStudioChange: async (versionRef, input) => {
+        submittedVersionRef = versionRef
+        submittedInput = input
+        return { data: { generation_ref: "generation_cover_ui_1", status: "queued" }, meta: { request_id: "request_cover_ui_1" } }
+      },
+      getGeneration: async () => ({
+        data: {
+          generation_ref: "generation_cover_ui_1",
+          generation_kind: "studio_change",
+          project_ref: "project_preview_first_light",
+          song_plan_ref: null,
+          mode: null,
+          source_version_ref: "version_preview_first_light_a",
+          operation: "transform",
+          intent: "cover",
+          scope: { type: "whole_version" },
+          cover_mode: "vocal",
+          voice_ref: "voice_preview_mira",
+          instruction: "Re-perform this as a close acoustic duet.",
+          preserve: ["melody", "lyrics", "structure"],
+          reference_asset_refs: [],
+          output_count: 2,
+          status: "succeeded",
+          progress: 100,
+          candidate_refs: ["candidate_cover_ui_1", "candidate_cover_ui_2"],
+          created_at: "2026-09-03T12:00:00.000Z",
+        },
+        meta: { request_id: "request_cover_snapshot_ui_1" },
+      }),
+      getGenerationEvents: async () => [],
+      listCandidates: async () => ({
+        data: {
+          candidates: [
+            {
+              candidate_ref: "candidate_cover_ui_1",
+              generation_ref: "generation_cover_ui_1",
+              version_ref: "version_cover_ui_1",
+              project_ref: "project_preview_first_light",
+              title: "First Light · Acoustic Cover",
+              duration_seconds: 184,
+              audio_asset_ref: "asset_cover_ui_1",
+              waveform_asset_ref: "waveform_cover_ui_1",
+              style_tags: ["acoustic duet", "Mira"],
+              created_at: "2026-09-03T12:01:00.000Z",
+            },
+            {
+              candidate_ref: "candidate_cover_ui_2",
+              generation_ref: "generation_cover_ui_1",
+              version_ref: "version_cover_ui_2",
+              project_ref: "project_preview_first_light",
+              title: "First Light · Room Cover",
+              duration_seconds: 183,
+              audio_asset_ref: "asset_cover_ui_2",
+              waveform_asset_ref: "waveform_cover_ui_2",
+              style_tags: ["close room", "Mira"],
+              created_at: "2026-09-03T12:01:01.000Z",
+            },
+          ],
+          next_cursor: null,
+        },
+        meta: { request_id: "request_cover_candidates_ui_1" },
+      }),
+    })
+
+    const aiChanges = screen.getByRole("region", { name: "Mori AI changes" })
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Transform" }))
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Cover" }))
+    fireEvent.change(within(aiChanges).getByRole("combobox", { name: "Voice profile" }), { target: { value: "voice_preview_mira" } })
+    fireEvent.change(within(aiChanges).getByRole("textbox", { name: "Tell Mori what to change" }), {
+      target: { value: "Re-perform this as a close acoustic duet." },
+    })
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Review change" }))
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Generate 2 takes" }))
+
+    await waitFor(() => expect(submittedVersionRef).toBe("version_preview_first_light_a"))
+    expect(submittedInput).toEqual({
+      operation: "transform",
+      intent: "cover",
+      scope: { type: "whole_version" },
+      cover_mode: "vocal",
+      voice_ref: "voice_preview_mira",
+      instruction: "Re-perform this as a close acoustic duet.",
+      preserve: ["melody", "lyrics", "structure"],
+      reference_asset_refs: [],
+      output_count: 2,
+    })
+
+    const takeLanes = screen.getByRole("region", { name: "Take lanes" })
+    expect(await within(takeLanes).findByRole("article", { name: "Take 3: First Light · Acoustic Cover" })).toBeInTheDocument()
+    expect(within(takeLanes).getByRole("article", { name: "Take 4: First Light · Room Cover" })).toBeInTheDocument()
+    expect(within(within(takeLanes).getByRole("article", { name: "Take 1: First Light" })).getByText("Current version")).toBeInTheDocument()
+  })
+
+  it("rejects a Restyle snapshot whose reviewed output context changed", async () => {
+    renderStudio({
+      createStudioChange: async () => ({
+        data: { generation_ref: "generation_restyle_wrong", status: "queued" },
+        meta: { request_id: "request_restyle_wrong" },
+      }),
+      getGeneration: async () => ({
+        data: {
+          generation_ref: "generation_restyle_wrong",
+          generation_kind: "studio_change",
+          project_ref: "project_preview_first_light",
+          song_plan_ref: null,
+          mode: null,
+          source_version_ref: "version_preview_first_light_a",
+          operation: "transform",
+          intent: "restyle",
+          scope: { type: "whole_version" },
+          instruction: "Turn this into an acoustic live-room performance.",
+          preserve: ["melody", "vocal_identity", "tempo"],
+          reference_asset_refs: [],
+          output_count: 2,
+          status: "succeeded",
+          progress: 100,
+          candidate_refs: [],
+          created_at: "2026-09-03T12:00:00.000Z",
+        },
+        meta: { request_id: "request_restyle_wrong_snapshot" },
+      }),
+      getGenerationEvents: async () => [],
+    })
+
+    const aiChanges = screen.getByRole("region", { name: "Mori AI changes" })
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Transform" }))
+    fireEvent.click(within(aiChanges).getByText("Direction controls"))
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Keep lyrics" }))
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Keep tempo" }))
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "4 takes" }))
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Whole song" }))
+    fireEvent.change(within(aiChanges).getByRole("textbox", { name: "Tell Mori what to change" }), {
+      target: { value: "Turn this into an acoustic live-room performance." },
+    })
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Review change" }))
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Generate 4 takes" }))
+
+    expect(await within(aiChanges).findByText("The returned Restyle did not match this scope or direction. Nothing was applied.")).toBeInTheDocument()
+    expect(within(screen.getByRole("region", { name: "Take lanes" })).queryByText(/wrong/u)).not.toBeInTheDocument()
+  })
+
+  it("rejects a Cover snapshot whose Voice differs from the reviewed plan", async () => {
+    renderStudio({
+      createStudioChange: async () => ({
+        data: { generation_ref: "generation_cover_wrong", status: "queued" },
+        meta: { request_id: "request_cover_wrong" },
+      }),
+      getGeneration: async () => ({
+        data: {
+          generation_ref: "generation_cover_wrong",
+          generation_kind: "studio_change",
+          project_ref: "project_preview_first_light",
+          song_plan_ref: null,
+          mode: null,
+          source_version_ref: "version_preview_first_light_a",
+          operation: "transform",
+          intent: "cover",
+          scope: { type: "whole_version" },
+          cover_mode: "vocal",
+          voice_ref: "voice_preview_rowan",
+          instruction: "Re-perform this as a close acoustic duet.",
+          preserve: ["melody", "lyrics", "structure"],
+          reference_asset_refs: [],
+          output_count: 2,
+          status: "succeeded",
+          progress: 100,
+          candidate_refs: [],
+          created_at: "2026-09-03T12:00:00.000Z",
+        },
+        meta: { request_id: "request_cover_wrong_snapshot" },
+      }),
+      getGenerationEvents: async () => [],
+    })
+
+    const aiChanges = screen.getByRole("region", { name: "Mori AI changes" })
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Transform" }))
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Cover" }))
+    fireEvent.change(within(aiChanges).getByRole("combobox", { name: "Voice profile" }), { target: { value: "voice_preview_mira" } })
+    fireEvent.change(within(aiChanges).getByRole("textbox", { name: "Tell Mori what to change" }), {
+      target: { value: "Re-perform this as a close acoustic duet." },
+    })
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Review change" }))
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Generate 2 takes" }))
+
+    expect(await within(aiChanges).findByText("The returned Cover did not match this mode or Voice. Nothing was applied.")).toBeInTheDocument()
   })
 
   it("renders a reviewed Studio change into new take lanes without replacing the current version", async () => {

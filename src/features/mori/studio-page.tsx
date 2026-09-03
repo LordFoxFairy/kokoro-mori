@@ -16,7 +16,11 @@ import {
   type MoriExportStatus,
   type MoriMixRevision,
   type StemSeparationSnapshot,
+  type StudioCoverGenerationInput,
+  type StudioCoverGenerationSnapshot,
   type StudioChangeGenerationSnapshot,
+  type StudioRestyleGenerationInput,
+  type StudioRestyleGenerationSnapshot,
 } from "@/lib/mori-api"
 import { createMoriApiClient, MoriApiRequestError } from "@/lib/mori-api-client"
 import type { Candidate } from "./domain"
@@ -270,9 +274,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api, stem
         if (disposed) return
         if (snapshot.data.generation_kind !== "studio_change") throw new Error("studio_change_snapshot_context_mismatch")
         if (!studioChangeSnapshotMatchesPlan(snapshot.data, trackedStudioChange)) {
-          throw new Error(isStudioRemasterPlan(trackedStudioChange.plan)
-            ? "studio_remaster_snapshot_context_mismatch"
-            : "studio_change_snapshot_context_mismatch")
+          throw new Error(studioChangeSnapshotMismatchCode(trackedStudioChange.plan))
         }
 
         let status = snapshot.data.status
@@ -1111,12 +1113,57 @@ function studioChangeSnapshotMatchesPlan(snapshot: StudioChangeGenerationSnapsho
     || snapshot.operation !== tracked.plan.operation
   ) return false
 
-  if (!isStudioRemasterPlan(tracked.plan)) return !isStudioRemasterSnapshot(snapshot)
-  if (!isStudioRemasterSnapshot(snapshot)) return false
-  if (snapshot.variation_strength !== tracked.plan.variationStrength) return false
-  if (snapshot.source.type !== tracked.plan.source.type) return false
-  return snapshot.source.type === "version"
-    || (tracked.plan.source.type === "mix_revision" && snapshot.source.mix_revision_ref === tracked.plan.source.mixRevisionRef)
+  if (isStudioRemasterPlan(tracked.plan)) {
+    if (!isStudioRemasterSnapshot(snapshot)) return false
+    if (snapshot.variation_strength !== tracked.plan.variationStrength) return false
+    if (snapshot.source.type !== tracked.plan.source.type) return false
+    return snapshot.source.type === "version"
+      || (tracked.plan.source.type === "mix_revision" && snapshot.source.mix_revision_ref === tracked.plan.source.mixRevisionRef)
+  }
+
+  if (tracked.plan.draft.operation !== "transform") return snapshot.operation !== "transform"
+  const expected = createStudioChangeRequest(tracked.plan.draft)
+  if (expected.operation !== "transform" || expected.intent === "remaster") return false
+
+  if (expected.intent === "restyle") {
+    return snapshot.intent === "restyle" && studioTransformContextMatches(snapshot, expected)
+  }
+  return snapshot.intent === "cover"
+    && studioTransformContextMatches(snapshot, expected)
+    && snapshot.cover_mode === expected.cover_mode
+    && snapshot.voice_ref === expected.voice_ref
+}
+
+function studioTransformContextMatches(
+  snapshot: StudioRestyleGenerationSnapshot | StudioCoverGenerationSnapshot,
+  expected: StudioRestyleGenerationInput | StudioCoverGenerationInput,
+): boolean {
+  return studioTransformScopesMatch(snapshot.scope, expected.scope)
+    && snapshot.instruction === expected.instruction
+    && orderedValuesMatch(snapshot.preserve, expected.preserve)
+    && orderedValuesMatch(snapshot.reference_asset_refs, expected.reference_asset_refs)
+    && snapshot.output_count === expected.output_count
+}
+
+function studioTransformScopesMatch(
+  left: StudioRestyleGenerationSnapshot["scope"],
+  right: StudioRestyleGenerationInput["scope"],
+): boolean {
+  if (left.type !== right.type) return false
+  return left.type === "whole_version"
+    || (right.type === "time_range" && left.start_ms === right.start_ms && left.end_ms === right.end_ms)
+}
+
+function orderedValuesMatch(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index])
+}
+
+function studioChangeSnapshotMismatchCode(plan: StudioChangePlan): string {
+  if (isStudioRemasterPlan(plan)) return "studio_remaster_snapshot_context_mismatch"
+  if (plan.draft.operation !== "transform") return "studio_change_snapshot_context_mismatch"
+  return plan.draft.intent === "cover"
+    ? "studio_cover_snapshot_context_mismatch"
+    : "studio_restyle_snapshot_context_mismatch"
 }
 
 function studioChangeFailureMessage(error: unknown): string {
@@ -1128,6 +1175,12 @@ function studioChangeFailureMessage(error: unknown): string {
   }
   if (error instanceof Error && error.message === "studio_remaster_snapshot_context_mismatch") {
     return "The returned Remaster did not match this source or strength. Nothing was applied."
+  }
+  if (error instanceof Error && error.message === "studio_restyle_snapshot_context_mismatch") {
+    return "The returned Restyle did not match this scope or direction. Nothing was applied."
+  }
+  if (error instanceof Error && error.message === "studio_cover_snapshot_context_mismatch") {
+    return "The returned Cover did not match this mode or Voice. Nothing was applied."
   }
   return "This change did not finish. Your request is preserved for retry."
 }
