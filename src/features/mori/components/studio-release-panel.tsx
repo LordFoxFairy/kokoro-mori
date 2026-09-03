@@ -97,11 +97,11 @@ export function StudioReleasePanel({
   }
 
   return (
-    <form className={styles.release} aria-labelledby={titleId} onSubmit={save}>
+    <form className={styles.release} data-version-ref={versionRef} aria-labelledby={titleId} onSubmit={save}>
       <div className={styles.body}>
         <div className={styles.intro}>
           <div><span>Release draft</span><h3 id={titleId}>Prepare the way this song leaves Studio.</h3></div>
-          <p>Artwork and release choices stay attached to <code>{versionRef}</code>. Nothing is published from this window.</p>
+          <p>Everything stays with this version. Nothing is published from this window.</p>
         </div>
 
         <div className={styles.grid}>
@@ -137,7 +137,7 @@ export function StudioReleasePanel({
 
             {artworkBusy ? (
               <div className={styles.runCard} aria-live="polite">
-                <div className={styles.runTitle}><span><LoaderCircle size={14} /></span><div><strong>Creating four concepts</strong><small>{artworkStatusLabel(artworkRun.status)}</small></div></div>
+                <div className={styles.runTitle}><span><LoaderCircle className={styles.spinner} size={14} /></span><div><strong>Creating four concepts</strong><small>{artworkStatusLabel(artworkRun.status)}</small></div></div>
                 <div className={styles.progress} role="progressbar" aria-label="Artwork progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={artworkRun.progress}><span style={{ width: `${artworkRun.progress}%` }} /></div>
                 <button className={styles.dangerButton} type="button" onClick={onCancelArtwork}><Square size={10} fill="currentColor" /> Cancel artwork</button>
               </div>
@@ -238,10 +238,10 @@ export function StudioReleasePanel({
           {saveState.status === "saved" && saveState.snapshot !== null ? <span role="status"><Check size={13} /> Draft revision {saveState.snapshot.revision} saved</span> : null}
           {saveState.status === "failed" ? <span role="alert">{saveState.message ?? "Release draft was not saved. Your choices are still here."}</span> : null}
           {saveState.status === "idle" ? <span>Saving this draft does not publish or change the current song.</span> : null}
-          {saveState.status === "saving" ? <span><LoaderCircle size={13} /> Saving draft…</span> : null}
+          {saveState.status === "saving" ? <span><LoaderCircle className={styles.spinner} size={13} /> Saving draft…</span> : null}
         </div>
         <button className={styles.saveButton} type="submit" disabled={draft.title.trim() === "" || saveState.status === "saving"}>
-          {saveState.status === "saving" ? <LoaderCircle size={14} /> : <Check size={14} />}
+          {saveState.status === "saving" ? <LoaderCircle className={styles.spinner} size={14} /> : <Check size={14} />}
           Save release draft
         </button>
       </footer>

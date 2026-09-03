@@ -30,6 +30,8 @@ describe("Studio Release panel", () => {
     expect(screen.getByRole("checkbox", { name: /Allow remixes/u })).not.toBeChecked()
     expect(screen.getByRole("button", { name: "Save release draft" })).toBeEnabled()
     expect(screen.queryByRole("button", { name: /^Publish/u })).not.toBeInTheDocument()
+    expect(screen.queryByText("version_1")).not.toBeInTheDocument()
+    expect(screen.getByText("Everything stays with this version. Nothing is published from this window.")).toBeInTheDocument()
 
     fireEvent.change(screen.getByRole("textbox", { name: "Release title" }), { target: { value: "Morning Lines" } })
     fireEvent.change(screen.getByRole("textbox", { name: "Release note" }), { target: { value: "A quiet ride toward morning." } })

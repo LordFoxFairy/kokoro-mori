@@ -19,7 +19,7 @@
 .cardHeader > div > span,
 .artworkPlan header span:first-child {
   color: var(--mori-primary);
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -27,7 +27,7 @@
 
 .intro h3 {
   margin: 4px 0 0;
-  font-size: 18px;
+  font-size: 20px;
   letter-spacing: -0.035em;
 }
 
@@ -35,14 +35,9 @@
   max-width: 330px;
   margin: 0;
   color: var(--mori-muted);
-  font-size: 9px;
+  font-size: 11px;
   line-height: 1.5;
   text-align: right;
-}
-
-.intro code {
-  font-family: var(--mori-font-mono);
-  font-size: 8px;
 }
 
 .grid {
@@ -72,7 +67,7 @@
 
 .cardHeader h4 {
   margin: 2px 0 0;
-  font-size: 14px;
+  font-size: 15px;
   letter-spacing: -0.02em;
 }
 
@@ -92,7 +87,7 @@
   border-radius: 999px;
   color: var(--mori-faint);
   background: rgba(121, 116, 128, 0.08);
-  font-size: 7px;
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -141,7 +136,7 @@
 .currentArtwork small {
   position: relative;
   z-index: 1;
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -168,14 +163,26 @@
   outline-offset: 2px;
 }
 
+.currentArtwork:focus-visible,
+.candidates button:focus-visible,
+.reviewButton:focus-visible,
+.secondaryAction:focus-visible,
+.saveButton:focus-visible,
+.dangerButton:focus-visible,
+.anotherButton:focus-visible,
+.textButton:focus-visible {
+  outline: 3px solid rgba(109, 92, 231, 0.2);
+  outline-offset: 2px;
+}
+
 .artworkCopy strong {
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .artworkCopy p {
   margin: 5px 0 0;
   color: var(--mori-muted);
-  font-size: 9px;
+  font-size: 11px;
   line-height: 1.45;
 }
 
@@ -198,13 +205,13 @@
 .visibility legend {
   padding: 0;
   color: #4c4654;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 800;
 }
 
 .field em {
   color: var(--mori-faint);
-  font-size: 7px;
+  font-size: 9px;
   font-style: normal;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -220,18 +227,18 @@
   color: var(--mori-foreground);
   background: rgba(252, 251, 251, 0.92);
   font: inherit;
-  font-size: 10px;
+  font-size: 12px;
   outline: 0;
 }
 
 .field input,
 .field select {
-  min-height: 37px;
+  min-height: 40px;
   padding: 0 11px;
 }
 
 .field textarea {
-  min-height: 72px;
+  min-height: 78px;
   resize: vertical;
   padding: 10px 11px 22px;
   line-height: 1.45;
@@ -249,7 +256,7 @@
   right: 8px;
   bottom: 6px;
   color: var(--mori-faint);
-  font-size: 7px;
+  font-size: 9px;
 }
 
 .artworkControls {
@@ -299,7 +306,8 @@
 .paletteChoice[data-palette="mint_haze"] > span { background: linear-gradient(135deg, #b8e1cf, #eff2cf 60%, #b9c7e7); }
 .paletteChoice[data-palette="monochrome"] > span { background: linear-gradient(135deg, #28262b, #8c898f 60%, #eceaec); }
 
-.paletteChoice:has(input:checked) > span {
+.paletteChoice:has(input:checked) > span,
+.paletteChoice:has(input:focus-visible) > span {
   outline: 2px solid var(--mori-primary);
   outline-offset: 2px;
 }
@@ -307,7 +315,7 @@
 .paletteChoice small {
   overflow: hidden;
   color: var(--mori-faint);
-  font-size: 6px;
+  font-size: 8px;
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -325,7 +333,7 @@
   gap: 6px;
   border-radius: 9px;
   font: inherit;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 800;
 }
 
@@ -369,7 +377,7 @@
 
 .artworkPlan header strong,
 .runCard strong {
-  font-size: 9px;
+  font-size: 11px;
 }
 
 .artworkPlan header > span {
@@ -377,7 +385,7 @@
   border-radius: 99px;
   color: #257057;
   background: rgba(83, 174, 134, 0.13);
-  font-size: 7px;
+  font-size: 9px;
   font-weight: 800;
 }
 
@@ -385,7 +393,7 @@
 .runCard p {
   margin: 0;
   color: var(--mori-muted);
-  font-size: 9px;
+  font-size: 11px;
   line-height: 1.45;
 }
 
@@ -400,7 +408,7 @@
   border-radius: 7px;
   color: var(--mori-muted);
   background: rgba(255, 255, 255, 0.64);
-  font-size: 7px;
+  font-size: 9px;
   font-weight: 700;
 }
 
@@ -434,9 +442,7 @@
   background: rgba(255, 255, 255, 0.72);
 }
 
-.runTitle > span svg,
-.saveMessage svg:last-child,
-.saveButton:disabled svg {
+.spinner {
   animation: spin 850ms linear infinite;
 }
 
@@ -447,7 +453,7 @@
 
 .runTitle small {
   color: var(--mori-muted);
-  font-size: 8px;
+  font-size: 10px;
 }
 
 .progress {
@@ -503,7 +509,7 @@
   border-radius: 99px;
   color: #fff;
   background: rgba(35, 31, 42, 0.62);
-  font-size: 6px;
+  font-size: 8px;
   font-weight: 800;
 }
 
@@ -535,12 +541,12 @@
 }
 
 .visibility label strong {
-  font-size: 8px;
+  font-size: 10px;
 }
 
 .visibility label small {
   color: var(--mori-faint);
-  font-size: 7px;
+  font-size: 9px;
   line-height: 1.25;
 }
 
@@ -553,10 +559,15 @@
   color: var(--mori-primary) !important;
 }
 
+.visibility label:has(input:focus-visible) {
+  outline: 3px solid rgba(109, 92, 231, 0.18);
+  outline-offset: 2px;
+}
+
 .visibility > p {
   margin: 7px 0 0;
   color: #7e684d;
-  font-size: 7px;
+  font-size: 9px;
   line-height: 1.4;
 }
 
@@ -588,12 +599,12 @@
 }
 
 .toggles strong {
-  font-size: 9px;
+  font-size: 11px;
 }
 
 .toggles small {
   color: var(--mori-muted);
-  font-size: 7px;
+  font-size: 9px;
 }
 
 .footer {
@@ -613,7 +624,7 @@
 
 .saveMessage {
   color: var(--mori-muted);
-  font-size: 8px;
+  font-size: 10px;
   line-height: 1.4;
 }
 
@@ -653,7 +664,5 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .runTitle > span svg,
-  .saveMessage svg:last-child,
-  .saveButton:disabled svg { animation: none; }
+  .spinner { animation: none; }
 }
