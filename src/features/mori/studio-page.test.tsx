@@ -6,7 +6,7 @@ import { previewCandidates } from "./preview-data"
 import { StudioPageContent } from "./studio-page"
 
 describe("Mori studio page", () => {
-  function renderStudio(api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "listCandidates" | "createStudioChange" | "getGeneration" | "getGenerationEvents" | "cancelGeneration">>) {
+  function renderStudio(api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "listCandidates" | "createStudioChange" | "getGeneration" | "getGenerationEvents" | "cancelGeneration" | "createLyricsRevision" | "getLyricsRevision" | "getLyricsRevisionEvents" | "cancelLyricsRevision">>) {
     return render(
       <MoriAppProvider>
         <StudioPageContent candidate={previewCandidates[0]} api={api} />
@@ -326,9 +326,39 @@ describe("Mori studio page", () => {
     expect(within(aiChanges).getByRole("button", { name: "Cancel change" })).toBeInTheDocument()
   })
 
-  it("stages and explicitly applies a section-aware Mori lyric suggestion", () => {
+  it("renders multiple section-aware lyric suggestions and applies only the selected draft", async () => {
     localStorage.clear()
-    renderStudio()
+    let submittedInput: Parameters<MoriApi["createLyricsRevision"]>[1] | null = null
+    renderStudio({
+      createLyricsRevision: async (_versionRef, input) => {
+        submittedInput = input
+        return {
+          data: { lyrics_revision_ref: "lyrics_revision_ui_1", status: "queued" },
+          meta: { request_id: "request_lyrics_ui_1" },
+        }
+      },
+      getLyricsRevision: async () => ({
+        data: {
+          lyrics_revision_ref: "lyrics_revision_ui_1",
+          version_ref: "version_preview_first_light_a",
+          status: "succeeded",
+          progress: 100,
+          direction: "rewrite",
+          scope: { type: "section", section_label: "Chorus", start_line: 2, end_line: 4 },
+          instruction: "Make the image more vivid while keeping the same cadence.",
+          constraints: ["meaning", "cadence"],
+          output_count: 2,
+          source_digest: "sha256:lyrics-ui-1",
+          suggestions: [
+            { suggestion_ref: "lyrics_suggestion_ui_1", text: "Every road becomes a rhythm.\nPulling open daylight into view." },
+            { suggestion_ref: "lyrics_suggestion_ui_2", text: "Every mile releases morning.\nCarrying the sunlight through." },
+          ],
+          created_at: "2026-09-03T12:00:00.000Z",
+        },
+        meta: { request_id: "request_lyrics_snapshot_ui_1" },
+      }),
+      getLyricsRevisionEvents: async () => [],
+    })
 
     fireEvent.click(screen.getByRole("button", { name: "Lyrics" }))
     const lyricsEditor = screen.getByRole("region", { name: "Lyrics editor" })
@@ -349,21 +379,100 @@ describe("Mori studio page", () => {
     expect(within(plan).getByText("Original draft stays untouched.")).toBeInTheDocument()
     expect(draft).toHaveValue(originalDraft)
 
-    fireEvent.click(within(plan).getByRole("button", { name: "Create suggestion" }))
-    const suggestion = within(lyricPartner).getByRole("region", { name: "Lyric suggestion" })
-    const suggestedLyrics = within(suggestion).getByRole("textbox", { name: "Suggested lyrics" })
-    expect(suggestedLyrics).not.toHaveValue("")
+    fireEvent.click(within(plan).getByRole("button", { name: "Create 2 suggestions" }))
+
+    await waitFor(() => expect(submittedInput).toEqual({
+      direction: "rewrite",
+      scope: {
+        type: "section",
+        section_label: "Chorus",
+        start_line: 2,
+        end_line: 4,
+        source_text: "and every road became a reason\nto carry the morning through",
+      },
+      instruction: "Make the image more vivid while keeping the same cadence.",
+      lyrics_context: originalDraft,
+      constraints: ["meaning", "cadence"],
+      output_count: 2,
+    }))
+
+    const suggestions = await within(lyricPartner).findByRole("region", { name: "Lyric suggestions" })
+    expect(within(suggestions).getByRole("button", { name: "Suggestion 1" })).toHaveAttribute("aria-pressed", "true")
+    fireEvent.click(within(suggestions).getByRole("button", { name: "Suggestion 2" }))
+    const suggestedLyrics = within(suggestions).getByRole("textbox", { name: "Suggested lyrics" })
+    expect(suggestedLyrics).toHaveValue("Every mile releases morning.\nCarrying the sunlight through.")
     expect(draft).toHaveValue(originalDraft)
 
     fireEvent.change(suggestedLyrics, {
       target: { value: "We hold the morning in our hands.\nAnd let the open daylight land." },
     })
-    fireEvent.click(within(suggestion).getByRole("button", { name: "Apply to draft" }))
+    fireEvent.click(within(suggestions).getByRole("button", { name: "Apply to draft" }))
 
     expect((draft as HTMLTextAreaElement).value).toContain("We hold the morning in our hands.")
     expect(within(lyricsEditor).getByText("Unsaved changes")).toBeInTheDocument()
     fireEvent.click(within(lyricsEditor).getByRole("button", { name: "Undo AI edit" }))
     expect(draft).toHaveValue(originalDraft)
+    localStorage.clear()
+  })
+
+  it("keeps an in-flight lyric revision across Studio tools and lets the user cancel it", async () => {
+    localStorage.clear()
+    let cancelledRevisionRef = ""
+    renderStudio({
+      createLyricsRevision: async () => ({
+        data: { lyrics_revision_ref: "lyrics_revision_active_1", status: "queued" },
+        meta: { request_id: "request_lyrics_active_1" },
+      }),
+      getLyricsRevision: async () => ({
+        data: {
+          lyrics_revision_ref: "lyrics_revision_active_1",
+          version_ref: "version_preview_first_light_a",
+          status: "generating",
+          progress: 54,
+          direction: "rewrite",
+          scope: { type: "section", section_label: "Chorus", start_line: 2, end_line: 4 },
+          instruction: "Bring the sunrise closer without changing the cadence.",
+          constraints: ["meaning", "cadence"],
+          output_count: 2,
+          source_digest: "sha256:lyrics-active-1",
+          suggestions: [],
+          created_at: "2026-09-03T12:00:00.000Z",
+        },
+        meta: { request_id: "request_lyrics_active_snapshot_1" },
+      }),
+      getLyricsRevisionEvents: async () => [],
+      cancelLyricsRevision: async (lyricsRevisionRef) => {
+        cancelledRevisionRef = lyricsRevisionRef
+        return {
+          data: { lyrics_revision_ref: lyricsRevisionRef, status: "cancelled" },
+          meta: { request_id: "request_lyrics_active_cancel_1" },
+        }
+      },
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: "Lyrics" }))
+    let lyricPartner = screen.getByRole("region", { name: "Mori lyric partner" })
+    fireEvent.click(within(lyricPartner).getByRole("button", { name: "Chorus" }))
+    fireEvent.change(within(lyricPartner).getByRole("textbox", { name: "Describe the lyric direction" }), {
+      target: { value: "Bring the sunrise closer without changing the cadence." },
+    })
+    fireEvent.click(within(lyricPartner).getByRole("button", { name: "Review direction" }))
+    fireEvent.click(within(lyricPartner).getByRole("button", { name: "Create 2 suggestions" }))
+    await waitFor(() => expect(within(lyricPartner).getByRole("progressbar", { name: "Lyrics revision progress" })).toHaveAttribute("aria-valuenow", "54"))
+
+    fireEvent.click(screen.getByRole("button", { name: "Arrangement" }))
+    fireEvent.click(screen.getByRole("button", { name: "Lyrics" }))
+
+    lyricPartner = screen.getByRole("region", { name: "Mori lyric partner" })
+    const plan = within(lyricPartner).getByRole("region", { name: "Lyric direction plan" })
+    expect(within(plan).getByText("Bring the sunrise closer without changing the cadence.")).toBeInTheDocument()
+    expect(within(plan).getByText("Chorus")).toBeInTheDocument()
+    expect(within(plan).getByRole("progressbar", { name: "Lyrics revision progress" })).toHaveAttribute("aria-valuenow", "54")
+    fireEvent.click(within(plan).getByRole("button", { name: "Cancel revision" }))
+
+    await waitFor(() => expect(cancelledRevisionRef).toBe("lyrics_revision_active_1"))
+    expect(within(plan).getByText("Cancelled")).toBeInTheDocument()
+    expect(within(plan).getByRole("button", { name: "Retry 2 suggestions" })).toBeInTheDocument()
     localStorage.clear()
   })
 

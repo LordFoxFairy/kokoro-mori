@@ -144,7 +144,7 @@ export const previewMoriApi: MoriApi = {
         status: "succeeded" as const,
         progress: 100,
         direction: "rewrite" as const,
-        scope: { type: "section" as const, section_ref: "section_preview_chorus_1" },
+        scope: { type: "section" as const, section_label: "Chorus", start_line: 2, end_line: 4 },
         instruction: "Make the image more vivid while keeping the cadence.",
         constraints: ["meaning" as const, "cadence" as const],
         output_count: 2,

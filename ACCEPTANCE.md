@@ -18,7 +18,7 @@ pnpm build
 
 - `pnpm lint`：通过，`--max-warnings=0`
 - `pnpm typecheck`：通过
-- `pnpm test`：通过，17 个测试文件、124 个测试
+- `pnpm test`：通过，17 个测试文件、125 个测试
 - `pnpm build`：通过，生成 `/`、`/create`、`/projects`、`/library`、`/settings`、Project Overview 和 Studio 路由
 
 ## 页面巡检
@@ -77,10 +77,12 @@ machine-readable OpenAPI 与 contract tests 会阻止 camelCase、provider、ten
 Generation snapshot 通过 `generation_kind` 区分新歌与 Studio Change，Studio 分支保留
 `source_version_ref` 和 `operation`，刷新后仍可恢复正确上下文；
 Lyrics 已升级为双工作面：左侧保留可编辑 Draft，右侧 Mori lyric partner 提供 Rewrite、Continue、Find rhyme、
-Restructure，并能选择 Verse、Chorus 或 Whole lyrics；用户先 Review direction，再得到独立且可编辑的 Suggestion，
-Apply 前原稿保持不变，Apply 后可 Undo，最后仍通过 Save draft 明确持久化。当前 Suggestion 是确定性 preview fixture，
-用于验证界面状态机，不伪装为已接通的线上歌词模型。该工作面已在 1280×720 下巡检初始、Review 与 Suggestion 状态，
-无浏览器运行时错误。Stems 已提供 Preview only 的逐轨 Mute/Solo
+Restructure，并能选择 Verse、Chorus 或 Whole lyrics；用户先 Review direction，再通过同源 Lyrics Revision API
+获得多个独立且可编辑的 Suggestion。运行态展示 snapshot / SSE 进度，支持取消、失败保留与重试；切换 Studio 工具
+不会丢失进行中的方向和选区。Apply 前原稿保持不变，只应用当前选中的 Suggestion，Apply 后可 Undo，最后仍通过
+Save draft 明确持久化；BFF 离线时显示真实失败状态，不在组件内生成替代结果。该工作面已在 1280×720 下巡检
+初始、Review 与离线重试状态，窄画布不再把歌词挤成逐字换行，且无浏览器运行时错误；多 Suggestion 成功态由集成测试覆盖。
+Stems 已提供 Preview only 的逐轨 Mute/Solo
 控制，明确当前仍是音频渲染器接入前的交互层；
 Lyrics Revision 的浏览器契约已固定为 version-scoped 异步资源：输入明确 direction、section / whole lyrics
 scope、完整 lyrics context、source text、constraints 与 1–4 个输出；snapshot 返回 source digest 和文本

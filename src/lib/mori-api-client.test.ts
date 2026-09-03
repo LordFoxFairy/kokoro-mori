@@ -212,7 +212,9 @@ describe("Mori same-origin API client", () => {
       direction: "rewrite",
       scope: {
         type: "section",
-        sectionRef: "section/chorus 1",
+        sectionLabel: "Chorus",
+        startLine: 1,
+        endLine: 3,
         sourceText: "  and every road became a reason\nto carry the morning through  ",
       },
       instruction: "  Make the image more vivid while keeping the cadence.  ",
@@ -232,7 +234,9 @@ describe("Mori same-origin API client", () => {
       direction: "rewrite",
       scope: {
         type: "section",
-        section_ref: "section/chorus 1",
+        section_label: "Chorus",
+        start_line: 1,
+        end_line: 3,
         source_text: "and every road became a reason\nto carry the morning through",
       },
       instruction: "Make the image more vivid while keeping the cadence.",
@@ -252,7 +256,7 @@ describe("Mori same-origin API client", () => {
           status: "succeeded",
           progress: 100,
           direction: "rewrite",
-          scope: { type: "section", section_ref: "section_chorus_1" },
+          scope: { type: "section", section_label: "Chorus", start_line: 1, end_line: 3 },
           instruction: "Make the image more vivid while keeping the cadence.",
           constraints: ["meaning", "cadence"],
           output_count: 2,
@@ -327,10 +331,10 @@ describe("Mori same-origin API client", () => {
   it("rejects malformed lyrics revision drafts before sending them", () => {
     expect(() => createLyricsRevisionRequest({
       direction: "rewrite",
-      scope: { type: "section", sectionRef: "", sourceText: "A line" },
+      scope: { type: "section", sectionLabel: "", startLine: 0, endLine: 1, sourceText: "A line" },
       instruction: "Rewrite this line",
       lyricsContext: "A line",
-    })).toThrow("lyrics_revision_section_ref_required")
+    })).toThrow("lyrics_revision_section_label_required")
 
     expect(() => createLyricsRevisionRequest({
       direction: "continue",

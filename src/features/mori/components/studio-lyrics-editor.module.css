@@ -1,4 +1,5 @@
 .lyricsEditor {
+  container-type: inline-size;
   overflow: hidden;
   border: 1px solid var(--mori-border);
   border-radius: 17px;
@@ -13,10 +14,13 @@
 .partnerHeader,
 .partnerIdentity,
 .scopeGroup,
+.directionPlan header,
 .directionPlan footer,
 .directionPlan footer > div,
+.revisionProgressRow > div,
 .suggestion header,
-.suggestion footer {
+.suggestion footer,
+.suggestionTabs {
   display: flex;
   align-items: center;
 }
@@ -38,7 +42,7 @@
 .lyricsHeader > div > span,
 .draftMeta,
 .partnerIdentity small,
-.directionPlan header > span,
+.directionPlan header > div > span,
 .suggestion header > div > span {
   color: var(--mori-faint);
   font-size: 8px;
@@ -358,14 +362,54 @@
   background: rgba(255, 255, 255, 0.84);
 }
 
+.directionPlan.planDraft {
+  border-left-color: var(--mori-primary);
+}
+
+.directionPlan.planRunning {
+  border-left-color: #8d73e8;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(242, 239, 255, 0.84));
+}
+
+.directionPlan.planReady {
+  border-left-color: var(--mori-success);
+}
+
+.directionPlan.planError {
+  border-left-color: #cf765f;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(255, 243, 238, 0.78));
+}
+
+.directionPlan.planStopped {
+  border-left-color: #b69c78;
+}
+
 .directionPlan header {
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.directionPlan header > div {
   display: grid;
   gap: 3px;
 }
 
-.directionPlan header > strong,
+.directionPlan header > div > strong,
 .suggestion header > div > strong {
   font-size: 10px;
+}
+
+.directionPlan header > span {
+  display: inline-flex;
+  min-height: 21px;
+  align-items: center;
+  padding: 0 7px;
+  border-radius: 999px;
+  color: var(--mori-primary-deep);
+  font-size: 7px;
+  font-weight: 800;
+  white-space: nowrap;
+  background: rgba(235, 230, 255, 0.78);
 }
 
 .directionPlan > p {
@@ -417,6 +461,75 @@
   line-height: 1.35;
 }
 
+.revisionProgressRow {
+  display: grid;
+  gap: 6px;
+  margin-top: 9px;
+  padding: 8px;
+  border-radius: 8px;
+  background: rgba(240, 237, 251, 0.72);
+}
+
+.revisionProgressRow > div {
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--mori-muted);
+  font-size: 8px;
+}
+
+.revisionProgressRow strong {
+  color: var(--mori-primary-deep);
+  font-size: 8px;
+}
+
+.revisionProgress {
+  width: 100%;
+  height: 4px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 999px;
+  appearance: none;
+  background: rgba(109, 92, 231, 0.12);
+}
+
+.revisionProgress::-webkit-progress-bar {
+  border-radius: 999px;
+  background: rgba(109, 92, 231, 0.12);
+}
+
+.revisionProgress::-webkit-progress-value {
+  border-radius: 999px;
+  background: linear-gradient(90deg, #735de6, #b188df 60%, #eaa27d);
+}
+
+.revisionProgress::-moz-progress-bar {
+  border-radius: 999px;
+  background: linear-gradient(90deg, #735de6, #b188df 60%, #eaa27d);
+}
+
+.runMessage,
+.sourceNote,
+.staleWarning {
+  margin: 8px 0 0;
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.runMessage {
+  color: #8f6253;
+}
+
+.sourceNote {
+  color: var(--mori-faint);
+}
+
+.staleWarning {
+  padding: 7px 8px;
+  border-radius: 7px;
+  color: #9b5f4d;
+  background: rgba(252, 232, 220, 0.7);
+}
+
 .directionPlan footer > div {
   justify-content: flex-end;
 }
@@ -426,6 +539,12 @@
   border-color: transparent;
   color: #fff;
   background: var(--mori-primary);
+}
+
+.directionPlan .cancelAction {
+  border-color: rgba(197, 112, 87, 0.2);
+  color: #a15f4b;
+  background: rgba(255, 247, 243, 0.88);
 }
 
 .directionPlan .primaryAction:hover:not(:disabled),
@@ -451,6 +570,27 @@
   font-weight: 800;
 }
 
+.suggestionTabs {
+  gap: 5px;
+  margin-top: 9px;
+}
+
+.suggestionTabs button {
+  min-height: 25px;
+  flex: 1;
+  padding-inline: 7px;
+  border-radius: 7px;
+  color: var(--mori-muted);
+  background: rgba(246, 244, 250, 0.86);
+}
+
+.suggestionTabs button[aria-pressed="true"] {
+  border-color: rgba(109, 92, 231, 0.24);
+  color: var(--mori-primary-deep);
+  background: rgba(238, 234, 255, 0.92);
+  box-shadow: inset 0 -2px 0 rgba(109, 92, 231, 0.5);
+}
+
 .suggestion textarea {
   min-height: 102px;
   margin-top: 9px;
@@ -471,6 +611,7 @@
 .directionForm textarea:focus-visible,
 .draftFooter button:focus-visible,
 .directionPlan button:focus-visible,
+.suggestionTabs button:focus-visible,
 .suggestion button:focus-visible,
 .suggestion textarea:focus-visible {
   outline: 2px solid rgba(109, 92, 231, 0.48);
@@ -478,6 +619,17 @@
 }
 
 @media (max-width: 760px) {
+  .lyricsWorkspace {
+    grid-template-columns: 1fr;
+  }
+
+  .lyricPartner {
+    border-top: 1px solid rgba(109, 92, 231, 0.1);
+    border-left: 0;
+  }
+}
+
+@container (max-width: 680px) {
   .lyricsWorkspace {
     grid-template-columns: 1fr;
   }

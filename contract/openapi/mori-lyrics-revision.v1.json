@@ -333,17 +333,29 @@
         "additionalProperties": false,
         "required": [
           "type",
-          "section_ref",
+          "section_label",
+          "start_line",
+          "end_line",
           "source_text"
         ],
         "properties": {
           "type": {
             "const": "section"
           },
-          "section_ref": {
+          "section_label": {
             "type": "string",
             "minLength": 1,
             "maxLength": 200
+          },
+          "start_line": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Zero-based inclusive line index within the normalized lyrics_context."
+          },
+          "end_line": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Zero-based exclusive line index within the normalized lyrics_context."
           },
           "source_text": {
             "type": "string",
@@ -518,16 +530,28 @@
         "additionalProperties": false,
         "required": [
           "type",
-          "section_ref"
+          "section_label",
+          "start_line",
+          "end_line"
         ],
         "properties": {
           "type": {
             "const": "section"
           },
-          "section_ref": {
+          "section_label": {
             "type": "string",
             "minLength": 1,
             "maxLength": 200
+          },
+          "start_line": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Zero-based inclusive line index within the normalized lyrics_context."
+          },
+          "end_line": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Zero-based exclusive line index within the normalized lyrics_context."
           }
         }
       },

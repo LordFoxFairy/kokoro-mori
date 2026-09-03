@@ -100,9 +100,9 @@ Commit       Apply to draft；应用后仍可 Undo，最终由 Save draft 持久
 ```
 
 这一交互吸收 Suno 的“选区修改 → 产生候选 → 用户确认”与 Tad 的“定向改词、保持声线/节奏连续性”，但
-保持 Mori 的非破坏式原则：原稿在 Apply 前不变，建议文本本身也可继续编辑。当前 Suggestion 使用确定性
-preview fixture 验证界面状态机；真实歌词模型调用尚未接线，但浏览器侧 API contract 已固定，不把 fixture
-描述成线上生成结果。
+保持 Mori 的非破坏式原则：原稿在 Apply 前不变，建议文本本身也可继续编辑。工作面已接入 version-scoped
+Lyrics Revision seam：一次请求默认返回两个可切换 Suggestion，运行中展示 snapshot / SSE 进度并允许取消，
+失败时保留已复核方向供重试；BFF 未接通时明确显示离线状态，不在组件内伪造歌词结果。
 
 ## 4. Studio Change API 契约
 
@@ -158,7 +158,8 @@ POST /api/v1/mori/lyrics_revisions/{lyrics_revision_ref}/cancel
 ```text
 LyricsRevisionInput
   direction        rewrite | continue | rhyme | restructure
-  scope            section(section_ref + source_text) | whole_lyrics(source_text)
+  scope            section(section_label + start_line + end_line + source_text) | whole_lyrics(source_text)
+                   line range 相对归一化 lyrics_context，0-based、左闭右开
   instruction
   lyrics_context   当前完整 Draft，包含 scope source_text
   constraints      meaning | cadence | rhyme_scheme | section_length
@@ -203,7 +204,7 @@ instruction、constraints 与 output_count，刷新后不依赖临时表单恢�
 - 可拖选时间范围、播放头与段落联动。
 - Lyrics 已完成按 Verse / Chorus / Whole lyrics 组织的 Rewrite、Continue、Find rhyme、Restructure
   界面闭环，并支持 Review、可编辑 Suggestion、Apply 与 Undo；Lyrics Revision contract、client、response parser、
-  snapshot / SSE / cancel seam 已固定，下一步接入组件运行态。
+  snapshot / SSE / cancel seam 已接入组件运行态，多候选保持独立且只应用用户选中的草稿。
 - Stem split、Add Vocal、Add Instrumental。
 - Voice、Persona、Style preset、Reference 进入 Library assets。
 

@@ -3,16 +3,17 @@
 import { ArrowLeft, AudioLines, AudioWaveform, Download, FileText, Play, Share2, Sparkles, Volume2, VolumeX } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
-import { createStudioChangeRequest, type MoriApi, type MoriCandidate, type MoriExportSnapshot } from "@/lib/mori-api"
+import { createLyricsRevisionRequest, createStudioChangeRequest, type LyricsRevisionSnapshot, type MoriApi, type MoriCandidate, type MoriExportSnapshot } from "@/lib/mori-api"
 import { createMoriApiClient, MoriApiRequestError } from "@/lib/mori-api-client"
 import type { Candidate } from "./domain"
 import { MoriStudioShell } from "./components/mori-studio-shell"
 import { StudioAiComposer, type StudioAiRunState } from "./components/studio-ai-composer"
-import { StudioLyricsEditor } from "./components/studio-lyrics-editor"
+import { StudioLyricsEditor, type StudioLyricsRunState } from "./components/studio-lyrics-editor"
 import { useMoriApp } from "./components/mori-app-provider"
 import { Waveform } from "./components/waveform"
 import { previewCandidates, previewProject, previewSongPlan } from "./preview-data"
 import { buildStudioTimelineSections, isActiveStudioChangeStatus, type StudioChangePlan } from "./studio-change"
+import { createStudioLyricsRevisionDraft, isActiveLyricsRevisionStatus, studioLyricsScopeLabel, type StudioLyricsPlan } from "./studio-lyrics"
 import styles from "./mori-workspace.module.css"
 
 type StudioTool = "arrangement" | "lyrics" | "stems"
@@ -21,7 +22,7 @@ type StudioPageContentProps = {
   candidate: Candidate
   projectRef?: string
   versionRef?: string
-  api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "listCandidates" | "createStudioChange" | "getGeneration" | "getGenerationEvents" | "cancelGeneration">>
+  api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "listCandidates" | "createStudioChange" | "getGeneration" | "getGenerationEvents" | "cancelGeneration" | "createLyricsRevision" | "getLyricsRevision" | "getLyricsRevisionEvents" | "cancelLyricsRevision">>
 }
 
 type TrackedStudioChange = {
@@ -30,11 +31,26 @@ type TrackedStudioChange = {
   operation: StudioChangePlan["operation"]
 }
 
+type TrackedLyricsRevision = {
+  lyricsRevisionRef: string
+  sourceVersionRef: string
+  plan: StudioLyricsPlan
+}
+
 const idleStudioChangeRun: StudioAiRunState = {
   status: "idle",
   progress: 0,
   resultCount: 0,
   plan: null,
+  message: null,
+}
+
+const idleLyricsRevisionRun: StudioLyricsRunState = {
+  status: "idle",
+  progress: 0,
+  plan: null,
+  suggestions: [],
+  sourceDigest: null,
   message: null,
 }
 
@@ -54,6 +70,8 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api }: St
   const [exportSnapshot, setExportSnapshot] = useState<MoriExportSnapshot | null>(null)
   const [studioChangeRun, setStudioChangeRun] = useState<StudioAiRunState>(idleStudioChangeRun)
   const [trackedStudioChange, setTrackedStudioChange] = useState<TrackedStudioChange | null>(null)
+  const [lyricsRevisionRun, setLyricsRevisionRun] = useState<StudioLyricsRunState>(idleLyricsRevisionRun)
+  const [trackedLyricsRevision, setTrackedLyricsRevision] = useState<TrackedLyricsRevision | null>(null)
 
   useEffect(() => {
     const requestedProjectRef = projectRef?.trim()
@@ -239,6 +257,163 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api }: St
     setStudioChangeRun(idleStudioChangeRun)
   }
 
+  const generateLyricsRevision = async (plan: StudioLyricsPlan) => {
+    if (activeCandidate === null || isActiveLyricsRevisionStatus(lyricsRevisionRun.status)) return
+    const sourceVersionRef = activeCandidate.versionRef
+    setTrackedLyricsRevision(null)
+    setLyricsRevisionRun({
+      status: "preparing",
+      progress: 4,
+      plan,
+      suggestions: [],
+      sourceDigest: null,
+      message: null,
+    })
+    try {
+      const response = await studioApi.createLyricsRevision(
+        sourceVersionRef,
+        createLyricsRevisionRequest(createStudioLyricsRevisionDraft(plan)),
+        `mori-lyrics-revision-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      )
+      setLyricsRevisionRun({
+        status: response.data.status,
+        progress: response.data.status === "queued" ? 0 : 12,
+        plan,
+        suggestions: [],
+        sourceDigest: null,
+        message: null,
+      })
+      setTrackedLyricsRevision({
+        lyricsRevisionRef: response.data.lyrics_revision_ref,
+        sourceVersionRef,
+        plan,
+      })
+    } catch (error) {
+      setLyricsRevisionRun({
+        status: "failed",
+        progress: 0,
+        plan,
+        suggestions: [],
+        sourceDigest: null,
+        message: lyricsRevisionFailureMessage(error),
+      })
+    }
+  }
+
+  useEffect(() => {
+    if (trackedLyricsRevision === null) return
+    let disposed = false
+    let timer: number | undefined
+    let lastEventId: string | null = null
+
+    const sync = async () => {
+      try {
+        const response = await studioApi.getLyricsRevision(trackedLyricsRevision.lyricsRevisionRef)
+        if (disposed) return
+        const snapshot = response.data
+        if (!lyricsRevisionSnapshotMatches(snapshot, trackedLyricsRevision)) {
+          throw new Error("lyrics_revision_snapshot_context_mismatch")
+        }
+
+        if (snapshot.status === "succeeded") {
+          setLyricsRevisionRun({
+            status: "succeeded",
+            progress: 100,
+            plan: trackedLyricsRevision.plan,
+            suggestions: snapshot.suggestions,
+            sourceDigest: snapshot.source_digest,
+            message: null,
+          })
+          setTrackedLyricsRevision(null)
+          return
+        }
+
+        if (snapshot.status === "failed" || snapshot.status === "cancelled" || snapshot.status === "expired") {
+          setLyricsRevisionRun({
+            status: snapshot.status,
+            progress: snapshot.progress,
+            plan: trackedLyricsRevision.plan,
+            suggestions: [],
+            sourceDigest: snapshot.source_digest,
+            message: lyricsRevisionTerminalMessage(snapshot.status),
+          })
+          setTrackedLyricsRevision(null)
+          return
+        }
+
+        let status = snapshot.status
+        let progress = snapshot.progress
+        try {
+          const events = await studioApi.getLyricsRevisionEvents(trackedLyricsRevision.lyricsRevisionRef, lastEventId)
+          const latest = events.at(-1)
+          if (
+            latest !== undefined
+            && latest.data.lyrics_revision_ref === trackedLyricsRevision.lyricsRevisionRef
+            && latest.data.version_ref === trackedLyricsRevision.sourceVersionRef
+            && (latest.data.status === "queued" || latest.data.status === "generating")
+          ) {
+            lastEventId = latest.id
+            status = latest.data.status
+            progress = latest.data.progress
+          }
+        } catch {
+          // The durable snapshot remains authoritative if event replay is unavailable.
+        }
+
+        setLyricsRevisionRun((current) => ({ ...current, status, progress, message: null }))
+        timer = window.setTimeout(() => { void sync() }, 800)
+      } catch (error) {
+        if (!disposed) {
+          setLyricsRevisionRun((current) => ({
+            ...current,
+            status: "failed",
+            message: lyricsRevisionFailureMessage(error),
+          }))
+          setTrackedLyricsRevision(null)
+        }
+      }
+    }
+
+    void sync()
+    return () => {
+      disposed = true
+      if (timer !== undefined) window.clearTimeout(timer)
+    }
+  }, [studioApi, trackedLyricsRevision])
+
+  const cancelLyricsRevision = async () => {
+    if (trackedLyricsRevision === null) return
+    const lyricsRevisionRef = trackedLyricsRevision.lyricsRevisionRef
+    setLyricsRevisionRun((current) => ({ ...current, message: "Stopping after the current writing step…" }))
+    try {
+      const response = await studioApi.cancelLyricsRevision(
+        lyricsRevisionRef,
+        `mori-lyrics-cancel-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      )
+      const status = response.data.status
+      const stopped = status === "failed" || status === "cancelled" || status === "expired"
+      if (stopped) setTrackedLyricsRevision(null)
+      setLyricsRevisionRun((current) => ({
+        ...current,
+        status: status === "succeeded" ? current.status : status,
+        progress: Math.min(current.progress, 99),
+        message: stopped
+          ? lyricsRevisionTerminalMessage(status)
+          : status === "succeeded"
+            ? "Revision finished while cancellation was requested. Loading suggestions…"
+            : null,
+      }))
+    } catch {
+      setLyricsRevisionRun((current) => ({ ...current, message: "Cancellation did not complete. This revision is still being tracked." }))
+    }
+  }
+
+  const resetLyricsRevision = () => {
+    if (isActiveLyricsRevisionStatus(lyricsRevisionRun.status)) return
+    setTrackedLyricsRevision(null)
+    setLyricsRevisionRun(idleLyricsRevisionRun)
+  }
+
   const preview = () => {
     if (activeCandidate === null) return
     if (playerCandidate?.versionRef === activeCandidate.versionRef) {
@@ -362,7 +537,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api }: St
         <section className={styles.studioCanvas} aria-label="Studio editor">
           <div className={styles.studioCanvasTop}><div><span className={styles.eyebrow}><span className={styles.eyebrowDot} />Editing with intention</span><h2>Shape the feeling.</h2></div><button className={styles.generateButton} type="button" onClick={preview}><Play size={14} fill="currentColor" /> {playerCandidate?.versionRef === activeCandidate.versionRef && playing ? "Pause" : "Preview"}</button></div>
           {activeTool === "arrangement" ? <ArrangementEditor candidate={activeCandidate} takes={studioCandidates} currentVersionRef={currentVersionRef} playerVersionRef={playerCandidate?.versionRef ?? ""} playing={playing} studioChangeRun={studioChangeRun} onGenerateStudioChange={(plan) => { void generateStudioChange(plan) }} onCancelStudioChange={() => { void cancelStudioChange() }} onResetStudioChange={resetStudioChange} onSelectTake={selectTake} onPreviewTake={previewTake} onPromoteTake={promoteTake} /> : null}
-          {activeTool === "lyrics" ? <StudioLyricsEditor key={activeCandidate.versionRef} versionRef={activeCandidate.versionRef} /> : null}
+          {activeTool === "lyrics" ? <StudioLyricsEditor key={activeCandidate.versionRef} versionRef={activeCandidate.versionRef} run={lyricsRevisionRun} onGenerate={(plan) => { void generateLyricsRevision(plan) }} onCancel={() => { void cancelLyricsRevision() }} onReset={resetLyricsRevision} /> : null}
           {activeTool === "stems" ? <StemsEditor /> : null}
         </section>
         <aside className={styles.versionRail} aria-label="Version history"><div className={styles.versionRailHeader}><div><span>Project history</span><h2>Versions</h2></div></div>{studioCandidates.map((item, index) => <Link className={`${styles.versionItem} ${item.versionRef === activeCandidate.versionRef ? styles.versionItemActive : ""}`} href={`/projects/${activeProjectRef}/studio/${item.versionRef}`} key={item.versionRef}><div className={`${styles.versionThumb} ${index === 1 ? styles.versionThumbAlt : ""}`}><Play size={12} fill="currentColor" /></div><div><strong>{item.title}</strong><span>{index === 0 ? "Current" : "Draft"} · {Math.floor(item.durationSeconds / 60)}:{String(item.durationSeconds % 60).padStart(2, "0")}</span></div></Link>)}</aside>
@@ -410,6 +585,44 @@ function studioChangeFailureMessage(error: unknown): string {
     return "The returned generation did not match this version. Nothing was applied."
   }
   return "This change did not finish. Your request is preserved for retry."
+}
+
+function lyricsRevisionSnapshotMatches(snapshot: LyricsRevisionSnapshot, tracked: TrackedLyricsRevision): boolean {
+  const { plan } = tracked
+  const expectedConstraints = new Set(plan.constraints)
+  if (
+    snapshot.lyrics_revision_ref !== tracked.lyricsRevisionRef
+    || snapshot.version_ref !== tracked.sourceVersionRef
+    || snapshot.direction !== plan.direction
+    || snapshot.instruction !== plan.instruction
+    || snapshot.output_count !== plan.outputCount
+    || snapshot.constraints.length !== plan.constraints.length
+    || snapshot.constraints.some((constraint) => !expectedConstraints.has(constraint))
+  ) return false
+
+  if (plan.scope === "whole_lyrics") return snapshot.scope.type === "whole_lyrics"
+  return snapshot.scope.type === "section"
+    && snapshot.scope.section_label === studioLyricsScopeLabel(plan.scope)
+    && snapshot.scope.start_line === plan.startLine
+    && snapshot.scope.end_line === plan.endLine
+}
+
+function lyricsRevisionFailureMessage(error: unknown): string {
+  if (error instanceof MoriApiRequestError && error.code === "mori_bff_unavailable") {
+    return "Mori is offline right now. Your reviewed lyric direction is ready to retry."
+  }
+  if (error instanceof Error && error.message === "lyrics_revision_snapshot_context_mismatch") {
+    return "The returned lyrics did not match this version or direction. Nothing was applied."
+  }
+  return "This lyric revision did not finish. Your direction is preserved for retry."
+}
+
+function lyricsRevisionTerminalMessage(status: "failed" | "cancelled" | "expired"): string {
+  switch (status) {
+    case "failed": return "Mori could not finish this revision. Your direction is ready to retry."
+    case "cancelled": return "Revision cancelled. Your direction is still here."
+    case "expired": return "This revision expired before completion. Your direction is ready to retry."
+  }
 }
 
 type ArrangementEditorProps = {

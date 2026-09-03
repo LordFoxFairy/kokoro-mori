@@ -40,6 +40,14 @@ describe("Mori lyrics revision OpenAPI contract", () => {
       "#/components/schemas/LyricsSectionScopeInput",
       "#/components/schemas/WholeLyricsScopeInput",
     ])
+    const sectionScope = recordValue(schemas.LyricsSectionScopeInput, "LyricsSectionScopeInput")
+    expect(arrayValue(sectionScope.required, "section scope required")).toEqual([
+      "type",
+      "section_label",
+      "start_line",
+      "end_line",
+      "source_text",
+    ])
   })
 
   it("publishes durable snapshot, replay, and cancellation resources", () => {

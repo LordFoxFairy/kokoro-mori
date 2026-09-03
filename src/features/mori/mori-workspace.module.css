@@ -4608,6 +4608,20 @@
   }
 }
 
+@media (min-width: 901px) and (max-width: 1360px) {
+  .studioLayout {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+
+  .versionRail {
+    display: none;
+  }
+
+  .studioCanvas {
+    padding-inline: clamp(28px, 4vw, 56px);
+  }
+}
+
 @media (min-width: 701px) and (max-width: 900px) {
   .appShell:not([data-rail-collapsed="true"]) .rail {
     padding-inline: 12px;

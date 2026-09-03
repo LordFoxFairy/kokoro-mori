@@ -27,9 +27,10 @@ Generation snapshot、SSE replay、cancel 和 Candidate 输出。这样 Create �
 内存中的表单状态，也能恢复正确的来源、操作与进度。
 
 Lyrics Revision 不混入音频 Generation：它输出可编辑的文本 Suggestion，而不是 Candidate/Take。
-`POST /api/v1/mori/versions/{version_ref}/lyrics_revisions` 接收当前完整 `lyrics_context`、显式 scope、
-source text、direction、constraint 与输出数量；snapshot 返回 `source_digest` 和 Suggestion refs，便于
-消费者在 Apply 前判断原 Draft 是否已经变化。浏览器不提交 tenant、subject、actor 或供应商字段。
+`POST /api/v1/mori/versions/{version_ref}/lyrics_revisions` 接收当前完整 `lyrics_context`、显式 section
+line range / whole-lyrics scope、source text、direction、constraints 与输出数量；snapshot 返回
+`source_digest` 和 Suggestion refs，便于消费者在 Apply 前判断原 Draft 是否已经变化。Section line range
+相对归一化后的 `lyrics_context` 使用从 0 开始、左闭右开的索引。浏览器不提交 tenant、subject、actor 或供应商字段。
 
 `src/lib/mori-api.ts` 和 `src/lib/mori-api-client.ts` 是当前浏览器消费者实现。契约变更顺序固定为：
 

@@ -234,8 +234,19 @@ export function parseMoriGenerationEvent(value: unknown): MoriGenerationEvent | 
 function parseLyricsRevisionSnapshotScope(value: unknown): LyricsRevisionSnapshotScope | null {
   if (!isRecord(value)) return null
   if (value.type === "whole_lyrics") return { type: "whole_lyrics" }
-  if (value.type === "section" && nonEmptyString(value.section_ref)) {
-    return { type: "section", section_ref: value.section_ref }
+  if (
+    value.type === "section"
+    && nonEmptyString(value.section_label)
+    && integer(value.start_line)
+    && integer(value.end_line, 1)
+    && value.end_line > value.start_line
+  ) {
+    return {
+      type: "section",
+      section_label: value.section_label,
+      start_line: value.start_line,
+      end_line: value.end_line,
+    }
   }
   return null
 }

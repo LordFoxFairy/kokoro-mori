@@ -79,7 +79,7 @@ export type LyricsRevisionDirection = "rewrite" | "continue" | "rhyme" | "restru
 export type LyricsRevisionConstraint = "meaning" | "cadence" | "rhyme_scheme" | "section_length"
 
 export type LyricsRevisionInputScope =
-  | { type: "section"; section_ref: MoriRef; source_text: string }
+  | { type: "section"; section_label: string; start_line: number; end_line: number; source_text: string }
   | { type: "whole_lyrics"; source_text: string }
 
 export type LyricsRevisionInput = {
@@ -104,7 +104,7 @@ export type LyricsRevisionCancelReceipt = {
 }
 
 export type LyricsRevisionSnapshotScope =
-  | { type: "section"; section_ref: MoriRef }
+  | { type: "section"; section_label: string; start_line: number; end_line: number }
   | { type: "whole_lyrics" }
 
 export type MoriLyricsSuggestion = {
@@ -319,7 +319,7 @@ export type MoriStudioChangeDraft = MoriStudioChangeCommonDraft & (
 export type MoriLyricsRevisionDraft = {
   direction: LyricsRevisionDirection
   scope:
-    | { type: "section"; sectionRef: MoriRef; sourceText: string }
+    | { type: "section"; sectionLabel: string; startLine: number; endLine: number; sourceText: string }
     | { type: "whole_lyrics"; sourceText: string }
   instruction: string
   lyricsContext: string
@@ -428,12 +428,30 @@ export function createLyricsRevisionRequest(draft: MoriLyricsRevisionDraft): Lyr
     output_count: outputCount,
   }
   if (draft.scope.type === "whole_lyrics") {
+    if (sourceText !== lyricsContext) throw new Error("lyrics_revision_source_outside_context")
     return { ...common, scope: { type: "whole_lyrics", source_text: sourceText } }
   }
 
-  const sectionRef = draft.scope.sectionRef.trim()
-  if (sectionRef === "") throw new Error("lyrics_revision_section_ref_required")
-  return { ...common, scope: { type: "section", section_ref: sectionRef, source_text: sourceText } }
+  const sectionLabel = draft.scope.sectionLabel.trim()
+  if (sectionLabel === "") throw new Error("lyrics_revision_section_label_required")
+  const { startLine, endLine } = draft.scope
+  const contextLines = lyricsContext.split("\n")
+  if (!Number.isSafeInteger(startLine) || !Number.isSafeInteger(endLine) || startLine < 0 || endLine <= startLine || endLine > contextLines.length) {
+    throw new Error("lyrics_revision_line_range_invalid")
+  }
+  if (contextLines.slice(startLine, endLine).join("\n").trim() !== sourceText) {
+    throw new Error("lyrics_revision_source_outside_context")
+  }
+  return {
+    ...common,
+    scope: {
+      type: "section",
+      section_label: sectionLabel,
+      start_line: startLine,
+      end_line: endLine,
+      source_text: sourceText,
+    },
+  }
 }
 
 export function createMutationHeaders(idempotencyKey: string): MoriMutationHeaders {

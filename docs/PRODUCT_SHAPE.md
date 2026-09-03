@@ -101,8 +101,8 @@ Workspace nav    内容随项目上下文变化                     跨页面保
 - 已有：Project-first 导航、Contextual Queue、全局 Player、Candidate → Version → Studio。
 - 已有：Smart/Custom、浅色渐变视觉、浮窗式设置分组与 compact Rail。
 - 已落地第一版：Song Plan 从提示说明升级为可编辑、可确认的中间状态，并在确认后通过契约持久化再创建生成任务。
-- 已落地第一版：Studio Take Lanes 支持试听、选择和明确提交当前版本；Lyrics 支持本地草稿保存，
-  Stems 支持 Preview only 的逐轨 Mute/Solo 交互。
+- 已落地第一版：Studio Take Lanes 支持试听、选择和明确提交当前版本；Lyrics 支持本地草稿保存、分段 AI Revision、
+  多 Suggestion 对比以及 Apply / Undo，Stems 支持 Preview only 的逐轨 Mute/Solo 交互。
 - 已落地第一版：Studio 的 Mori AI Changes 把 Add part、Replace section、Extend、Transform 放在
   Arrangement 时间线上下文中；用户可先选择段落，再输入指令并复核 Change Plan，最后进入 Stage，
   当前版本不会被直接覆盖。
