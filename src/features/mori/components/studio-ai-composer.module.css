@@ -149,7 +149,7 @@
 .studioAiIntent {
   display: grid;
   min-width: 0;
-  min-height: 62px;
+  min-height: 66px;
   grid-template-columns: 31px minmax(0, 1fr);
   align-items: center;
   gap: 9px;
@@ -205,13 +205,13 @@
 }
 
 .studioAiIntent strong {
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: -0.01em;
 }
 
 .studioAiIntent small {
   color: var(--mori-faint);
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 600;
   line-height: 1.35;
 }
@@ -242,12 +242,12 @@
 }
 
 .studioAiCoverSetup > header strong {
-  font-size: 9px;
+  font-size: 10px;
 }
 
 .studioAiCoverSetup > header > span {
   color: var(--mori-faint);
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -279,7 +279,7 @@
   border: 0;
   border-radius: 7px;
   color: var(--mori-muted);
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 750;
   background: transparent;
 }
@@ -327,7 +327,7 @@
   outline: 0;
   color: var(--mori-foreground);
   font: inherit;
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 700;
   background: rgba(255, 255, 255, 0.88);
 }
@@ -343,7 +343,7 @@
   gap: 5px;
   margin: 8px 0 0;
   color: var(--mori-success);
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 700;
 }
 
@@ -627,7 +627,7 @@
 
 .studioAiPlanFacts {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(94px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 7px;
 }
 
