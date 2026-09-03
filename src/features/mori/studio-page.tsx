@@ -10,10 +10,11 @@ import { MoriStudioShell } from "./components/mori-studio-shell"
 import { StudioAiComposer, type StudioAiRunState } from "./components/studio-ai-composer"
 import { StudioLyricsEditor, type StudioLyricsRunState } from "./components/studio-lyrics-editor"
 import { StudioStemsEditor, type StudioStemSeparationRunState } from "./components/studio-stems-editor"
+import { StudioTimeline } from "./components/studio-timeline"
 import { useMoriApp } from "./components/mori-app-provider"
 import { Waveform } from "./components/waveform"
 import { previewCandidates, previewProject, previewSongPlan } from "./preview-data"
-import { buildStudioTimelineSections, isActiveStudioChangeStatus, type StudioChangePlan } from "./studio-change"
+import { buildStudioTimelineSections, isActiveStudioChangeStatus, type StudioChangePlan, type StudioTimelineSection } from "./studio-change"
 import { createStudioLyricsRevisionDraft, isActiveLyricsRevisionStatus, studioLyricsScopeLabel, type StudioLyricsPlan } from "./studio-lyrics"
 import { createStudioStemSeparationDraft, isActiveStemSeparationStatus, type StudioStemSeparationPlan } from "./studio-stems"
 import styles from "./mori-workspace.module.css"
@@ -74,7 +75,7 @@ const idleStemSeparationRun: StudioStemSeparationRunState = {
 }
 
 export function StudioPageContent({ candidate, projectRef, versionRef, api }: StudioPageContentProps) {
-  const { playerCandidate, playing, selectPlayerCandidate, setPlaying } = useMoriApp()
+  const { playerCandidate, playing, positionSeconds, seekPlayer, selectPlayerCandidate, setPlaying } = useMoriApp()
   const defaultApi = useMemo(() => createMoriApiClient(), [])
   const studioApi = useMemo(() => ({ ...defaultApi, ...(api ?? {}) }), [api, defaultApi])
   const initialCandidate = resolveInitialCandidate(candidate, projectRef, versionRef)
@@ -686,6 +687,14 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api }: St
     setPlaying(true)
   }
 
+  const seekTimeline = (take: Candidate, nextPositionSeconds: number) => {
+    if (playerCandidate?.versionRef === take.versionRef) {
+      seekPlayer(nextPositionSeconds)
+      return
+    }
+    selectPlayerCandidate(take, nextPositionSeconds)
+  }
+
   const promoteTake = (take: Candidate) => {
     setCurrentVersionRef(take.versionRef)
     setActiveCandidate(take)
@@ -785,7 +794,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api }: St
         </aside>
         <section className={styles.studioCanvas} aria-label="Studio editor">
           <div className={styles.studioCanvasTop}><div><span className={styles.eyebrow}><span className={styles.eyebrowDot} />Editing with intention</span><h2>Shape the feeling.</h2></div><button className={styles.generateButton} type="button" onClick={preview}><Play size={14} fill="currentColor" /> {playerCandidate?.versionRef === activeCandidate.versionRef && playing ? "Pause" : "Preview"}</button></div>
-          {activeTool === "arrangement" ? <ArrangementEditor candidate={activeCandidate} takes={studioCandidates} currentVersionRef={currentVersionRef} playerVersionRef={playerCandidate?.versionRef ?? ""} playing={playing} studioChangeRun={studioChangeRun} onGenerateStudioChange={(plan) => { void generateStudioChange(plan) }} onCancelStudioChange={() => { void cancelStudioChange() }} onResetStudioChange={resetStudioChange} onSelectTake={selectTake} onPreviewTake={previewTake} onPromoteTake={promoteTake} /> : null}
+          {activeTool === "arrangement" ? <ArrangementEditor candidate={activeCandidate} takes={studioCandidates} currentVersionRef={currentVersionRef} playerVersionRef={playerCandidate?.versionRef ?? ""} positionSeconds={playerCandidate?.versionRef === activeCandidate.versionRef ? positionSeconds : 0} playing={playerCandidate?.versionRef === activeCandidate.versionRef && playing} studioChangeRun={studioChangeRun} onSeekTimeline={(nextPositionSeconds) => seekTimeline(activeCandidate, nextPositionSeconds)} onGenerateStudioChange={(plan) => { void generateStudioChange(plan) }} onCancelStudioChange={() => { void cancelStudioChange() }} onResetStudioChange={resetStudioChange} onSelectTake={selectTake} onPreviewTake={previewTake} onPromoteTake={promoteTake} /> : null}
           {activeTool === "lyrics" ? <StudioLyricsEditor key={activeCandidate.versionRef} versionRef={activeCandidate.versionRef} run={lyricsRevisionRun} onGenerate={(plan) => { void generateLyricsRevision(plan) }} onCancel={() => { void cancelLyricsRevision() }} onReset={resetLyricsRevision} /> : null}
           {activeTool === "stems" ? <StudioStemsEditor key={activeVersionRef ?? "no-version"} run={stemSeparationRun} onSeparate={(plan) => { void generateStemSeparation(plan) }} onCancel={() => { void cancelStemSeparation() }} onReset={resetStemSeparation} /> : null}
         </section>
@@ -904,8 +913,10 @@ type ArrangementEditorProps = {
   takes: Candidate[]
   currentVersionRef: string
   playerVersionRef: string
+  positionSeconds: number
   playing: boolean
   studioChangeRun: StudioAiRunState
+  onSeekTimeline: (positionSeconds: number) => void
   onGenerateStudioChange: (plan: StudioChangePlan) => void
   onCancelStudioChange: () => void
   onResetStudioChange: () => void
@@ -914,27 +925,30 @@ type ArrangementEditorProps = {
   onPromoteTake: (take: Candidate) => void
 }
 
-function ArrangementEditor({ candidate, takes, currentVersionRef, playerVersionRef, playing, studioChangeRun, onGenerateStudioChange, onCancelStudioChange, onResetStudioChange, onSelectTake, onPreviewTake, onPromoteTake }: ArrangementEditorProps) {
+function ArrangementEditor({ candidate, takes, currentVersionRef, playerVersionRef, positionSeconds, playing, studioChangeRun, onSeekTimeline, onGenerateStudioChange, onCancelStudioChange, onResetStudioChange, onSelectTake, onPreviewTake, onPromoteTake }: ArrangementEditorProps) {
   const timelineSections = useMemo(() => buildStudioTimelineSections(previewSongPlan.structure, candidate.durationSeconds), [candidate.durationSeconds])
-  const restoredSectionIndex = studioChangeRun.plan === null ? -1 : timelineSections.findIndex((item) => item.id === studioChangeRun.plan?.sectionId)
-  const defaultSectionIndex = restoredSectionIndex >= 0
-    ? restoredSectionIndex
-    : Math.max(0, timelineSections.findIndex((item) => item.label.toLowerCase() === "chorus"))
-  const [selectedSectionIndex, setSelectedSectionIndex] = useState(defaultSectionIndex)
-  const selectedSection = timelineSections[selectedSectionIndex] ?? timelineSections[0]
+  const defaultSection = studioChangeRun.plan?.selection
+    ?? timelineSections.find((item) => item.label.toLowerCase() === "chorus")
+    ?? timelineSections[0]
+  const [selectionState, setSelectionState] = useState<{ versionRef: string; selection: StudioTimelineSection | undefined }>(() => ({
+    versionRef: candidate.versionRef,
+    selection: defaultSection,
+  }))
+  const selection = selectionState.versionRef === candidate.versionRef ? selectionState.selection : defaultSection
   const changeActive = isActiveStudioChangeStatus(studioChangeRun.status)
 
-  if (selectedSection === undefined) return null
+  if (selection === undefined) return null
+
+  const selectTimelineRange = (nextSelection: StudioTimelineSection) => {
+    if (changeActive) return
+    onResetStudioChange()
+    setSelectionState({ versionRef: candidate.versionRef, selection: nextSelection })
+  }
 
   return (
     <section aria-label="Arrangement editor">
-      <div className={styles.timelineCard}>
-        <div className={styles.timelineHeader}><span>Arrangement</span><span>0:36 / {Math.floor(candidate.durationSeconds / 60)}:{String(candidate.durationSeconds % 60).padStart(2, "0")}</span></div>
-        <div className={styles.timelineRuler}><span>0:00</span><span>0:45</span><span>1:30</span><span>2:15</span><span>3:00</span></div>
-        <div className={styles.timelineWave}><Waveform seed={candidate.waveformSeed} progress={0.2} /></div>
-        <div className={styles.timelineSegments}>{timelineSections.map((item, index) => <button className={`${styles.timelineSegment} ${index === selectedSectionIndex ? styles.timelineSegmentAccent : ""}`} type="button" aria-pressed={index === selectedSectionIndex} aria-label={`Select ${item.label} section`} disabled={changeActive} key={item.id} onClick={() => { onResetStudioChange(); setSelectedSectionIndex(index) }} style={{ flex: item.weight }}>{item.label}</button>)}</div>
-      </div>
-      <StudioAiComposer selectedSection={selectedSection} run={studioChangeRun} onGenerate={onGenerateStudioChange} onCancel={onCancelStudioChange} onReset={onResetStudioChange} />
+      <StudioTimeline candidate={candidate} sections={timelineSections} selection={selection} positionSeconds={positionSeconds} playing={playing} disabled={changeActive} onSeek={onSeekTimeline} onSelect={selectTimelineRange} />
+      <StudioAiComposer selectedSection={selection} run={studioChangeRun} onGenerate={onGenerateStudioChange} onCancel={onCancelStudioChange} onReset={onResetStudioChange} />
       <section className={styles.takeLanes} id="mori-take-lanes" aria-label="Take lanes">
         <div className={styles.takeLanesHeader}>
           <div><span>Compare before committing</span><h3>Take lanes</h3></div>

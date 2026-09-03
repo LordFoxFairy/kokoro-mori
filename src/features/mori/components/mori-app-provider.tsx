@@ -39,7 +39,7 @@ type MoriAppContextValue = {
   toggleMuted: () => void
   setPlaying: (playing: boolean) => void
   seekPlayer: (positionSeconds: number) => void
-  selectPlayerCandidate: (candidate: Candidate) => void
+  selectPlayerCandidate: (candidate: Candidate, positionSeconds?: number) => void
   replacePlayerCandidates: (candidates: Candidate[]) => void
   previousPlayerCandidate: () => void
   nextPlayerCandidate: () => void
@@ -116,9 +116,9 @@ export function MoriAppProvider({ children }: { children: ReactNode }) {
     }
   }, [preferences, preferencesLoaded])
 
-  const selectPlayerCandidate = useCallback((candidate: Candidate) => {
+  const selectPlayerCandidate = useCallback((candidate: Candidate, initialPositionSeconds = 0) => {
     setPlayerCandidate(candidate)
-    setPositionSeconds(0)
+    setPositionSeconds(Math.max(0, Math.min(candidate.durationSeconds, Math.round(initialPositionSeconds))))
     setPlayerCandidates((items) => items.some((item) => item.candidateRef === candidate.candidateRef) ? items : [...items, candidate])
   }, [])
 

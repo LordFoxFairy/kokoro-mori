@@ -13,6 +13,7 @@ export type StudioChangePlan = {
   operation: StudioChangeOperation
   instruction: string
   sectionId: string
+  selection: StudioTimelineSection
   scopeLabel: string
   preserve: StudioChangePreserve[]
   outputCount: StudioChangeOutputCount
@@ -30,6 +31,8 @@ export type StudioChangePlanOptions = {
   outputCount: StudioChangeOutputCount
   transformScope: StudioTransformScope
 }
+
+export const minimumStudioTimelineSelectionMs = 1_000
 
 export function buildStudioTimelineSections(structure: string[], durationSeconds: number): StudioTimelineSection[] {
   if (structure.length === 0 || !Number.isFinite(durationSeconds) || durationSeconds <= 0) return []
@@ -55,6 +58,60 @@ export function buildStudioTimelineSections(structure: string[], durationSeconds
   })
 }
 
+export function createStudioTimelineRange(startMs: number, endMs: number, durationMs: number): StudioTimelineSection {
+  const safeDurationMs = Math.max(minimumStudioTimelineSelectionMs, Math.round(durationMs))
+  const normalizedStartMs = Math.max(0, Math.min(safeDurationMs - minimumStudioTimelineSelectionMs, Math.round(startMs)))
+  const normalizedEndMs = Math.max(
+    normalizedStartMs + minimumStudioTimelineSelectionMs,
+    Math.min(safeDurationMs, Math.round(endMs)),
+  )
+  return {
+    id: "custom-range",
+    label: "Custom range",
+    startMs: normalizedStartMs,
+    endMs: normalizedEndMs,
+    weight: (normalizedEndMs - normalizedStartMs) / safeDurationMs,
+  }
+}
+
+export function findStudioTimelineSection(sections: StudioTimelineSection[], positionMs: number): StudioTimelineSection | null {
+  if (sections.length === 0) return null
+  const normalizedPosition = Math.max(0, Math.round(positionMs))
+  return sections.find((section, index) => (
+    normalizedPosition >= section.startMs
+    && (normalizedPosition < section.endMs || index === sections.length - 1)
+  )) ?? sections[0] ?? null
+}
+
+export function buildStudioTimelineTicks(durationSeconds: number, count = 5): number[] {
+  if (!Number.isFinite(durationSeconds) || durationSeconds <= 0 || count < 2) return []
+  const durationMs = Math.round(durationSeconds * 1_000)
+  return Array.from({ length: count }, (_, index) => Math.round((durationMs * index) / (count - 1)))
+}
+
+export function formatStudioTimelineTime(milliseconds: number): string {
+  const totalSeconds = Math.max(0, Math.round(milliseconds / 1_000))
+  return `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, "0")}`
+}
+
+export function studioChangeScopeLabel(
+  operation: StudioChangeOperation,
+  selection: StudioTimelineSection,
+  transformScope: StudioTransformScope,
+): string {
+  if (operation === "transform" && transformScope === "whole_version") return "Whole song"
+  if (selection.id !== "custom-range") {
+    if (operation === "add_part") return `After selected ${selection.label}`
+    if (operation === "extend") return `From selected ${selection.label}`
+    return `Selected section · ${selection.label}`
+  }
+
+  const range = `${formatStudioTimelineTime(selection.startMs)}–${formatStudioTimelineTime(selection.endMs)}`
+  if (operation === "add_part") return `After selected range · ${range}`
+  if (operation === "extend") return `From selected range · ${formatStudioTimelineTime(selection.endMs)}`
+  return `Selected range · ${range}`
+}
+
 export function buildStudioChangePlan(
   operation: StudioChangeOperation,
   section: StudioTimelineSection,
@@ -67,56 +124,44 @@ export function buildStudioChangePlan(
 ): StudioChangePlan {
   const preserve = [...options.preserve]
   const common = { instruction, preserve, outputCount: options.outputCount }
+  const planContext = {
+    instruction,
+    sectionId: section.id,
+    selection: { ...section },
+    scopeLabel: studioChangeScopeLabel(operation, section, options.transformScope),
+    preserve,
+    outputCount: options.outputCount,
+  }
   switch (operation) {
     case "add_part":
       return {
+        ...planContext,
         operation,
-        instruction,
-        sectionId: section.id,
-        scopeLabel: `After selected ${section.label}`,
-        preserve,
-        outputCount: options.outputCount,
         draft: { ...common, operation, scope: { type: "insertion_point", positionMs: section.endMs } },
       }
     case "replace_section":
       return {
+        ...planContext,
         operation,
-        instruction,
-        sectionId: section.id,
-        scopeLabel: `Selected section · ${section.label}`,
-        preserve,
-        outputCount: options.outputCount,
         draft: { ...common, operation, scope: { type: "time_range", startMs: section.startMs, endMs: section.endMs } },
       }
     case "extend":
       return {
+        ...planContext,
         operation,
-        instruction,
-        sectionId: section.id,
-        scopeLabel: `From selected ${section.label}`,
-        preserve,
-        outputCount: options.outputCount,
         draft: { ...common, operation, scope: { type: "from_position", positionMs: section.endMs } },
       }
     case "transform":
       if (options.transformScope === "whole_version") {
         return {
+          ...planContext,
           operation,
-          instruction,
-          sectionId: section.id,
-          scopeLabel: "Whole song",
-          preserve,
-          outputCount: options.outputCount,
           draft: { ...common, operation, scope: { type: "whole_version" } },
         }
       }
       return {
+        ...planContext,
         operation,
-        instruction,
-        sectionId: section.id,
-        scopeLabel: `Selected section · ${section.label}`,
-        preserve,
-        outputCount: options.outputCount,
         draft: { ...common, operation, scope: { type: "time_range", startMs: section.startMs, endMs: section.endMs } },
       }
   }

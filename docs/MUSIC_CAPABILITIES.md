@@ -80,8 +80,10 @@ Destination  Take Lanes
 Commit       用户试听后显式 Use take
 ```
 
-当前 Studio 已落地第一版 **Mori AI Changes**：可选择时间线段落，操作切换会沿用所选段落作为上下文；
-自然语言指令、Change Plan 复核、非破坏式提示和 Generation 状态处于同一个工作面。Direction controls
+当前 Studio 已落地第一版 **Mori AI Changes**：时间线播放头与全局 Player 使用同一位置状态，并实时标记所在段落；
+用户既可选择结构段，也可拖动起止控制形成精确的 Custom range，范围会直接成为 Replace/Transform 的毫秒级
+`time_range`，Add/Extend 则使用其终点。自然语言指令、Change Plan 复核、非破坏式提示和 Generation 状态处于
+同一个工作面。Direction controls
 允许用户明确锁定 Melody、Lyrics、Voice、Tempo、Structure，并选择 1 / 2 / 4 个 alternatives；Transform
 还可在 Selected section 与 Whole song 之间切换。生成后可看到进度、取消或重试；成功 Candidate 直接追加到
 Take Lanes，但不会替换 Current Version。它不挤入全局 Rail，也不伪装成聊天记录。
@@ -255,7 +257,8 @@ Command 使用 `Idempotency-Key`；恢复使用 durable snapshot 与 `Last-Event
 
 ### P2 · 深度编辑（进行中）
 
-- 可拖选时间范围、播放头与段落联动。
+- 已完成可拖选时间范围、动态时间标尺、全局播放头与段落联动；Custom range 直接复用既有
+  provider-neutral `time_range` 契约，调整范围后会使旧的 Review Plan 失效，避免错用过期选区。
 - Lyrics 已完成按 Verse / Chorus / Whole lyrics 组织的 Rewrite、Continue、Find rhyme、Restructure
   界面闭环，并支持 Review、可编辑 Suggestion、Apply 与 Undo；Lyrics Revision contract、client、response parser、
   snapshot / SSE / cancel seam 已接入组件运行态，多候选保持独立且只应用用户选中的草稿。

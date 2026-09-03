@@ -90,6 +90,92 @@ describe("Mori studio page", () => {
     expect(within(updatedAiChanges).getByText("Selected section · Verse")).toBeInTheDocument()
   })
 
+  it("links the Studio playhead to the global player and current timeline section", () => {
+    renderStudio()
+
+    const timeline = within(screen.getByRole("region", { name: "Arrangement editor" })).getByRole("region", { name: "Version timeline" })
+    const playhead = within(timeline).getByRole("slider", { name: "Timeline playhead" })
+    fireEvent.change(playhead, { target: { value: "72" } })
+
+    expect(playhead).toHaveValue("72")
+    expect(within(screen.getByRole("region", { name: "Global player" })).getByRole("slider", { name: "Seek through current version" })).toHaveValue("72")
+    expect(within(timeline).getByText("Playhead · Lift")).toBeInTheDocument()
+    expect(within(timeline).getByText("1:12 / 3:02")).toBeInTheDocument()
+    expect(within(timeline).getByRole("button", { name: "Select Lift section" })).toHaveAttribute("data-playhead", "true")
+  })
+
+  it("turns a dragged custom timeline range into the Studio change scope", async () => {
+    let submittedInput: StudioChangeGenerationInput | null = null
+    renderStudio({
+      createStudioChange: async (_versionRef, input) => {
+        submittedInput = input
+        return { data: { generation_ref: "generation_custom_range", status: "queued" }, meta: { request_id: "request_custom_range" } }
+      },
+      getGeneration: async () => ({
+        data: {
+          generation_ref: "generation_custom_range",
+          generation_kind: "studio_change",
+          project_ref: "project_preview_first_light",
+          song_plan_ref: null,
+          mode: null,
+          source_version_ref: "version_preview_first_light_a",
+          operation: "replace_section",
+          status: "failed",
+          progress: 12,
+          candidate_refs: [],
+          created_at: "2026-09-03T12:00:00.000Z",
+        },
+        meta: { request_id: "request_custom_range_snapshot" },
+      }),
+      getGenerationEvents: async () => [],
+    })
+
+    const arrangement = screen.getByRole("region", { name: "Arrangement editor" })
+    const timeline = within(arrangement).getByRole("region", { name: "Version timeline" })
+    fireEvent.change(within(timeline).getByRole("slider", { name: "Selection start" }), { target: { value: "42" } })
+    fireEvent.change(within(timeline).getByRole("slider", { name: "Selection end" }), { target: { value: "96" } })
+
+    expect(within(timeline).getByText("Custom range")).toBeInTheDocument()
+    expect(within(timeline).getByText("0:42–1:36")).toBeInTheDocument()
+
+    const aiChanges = within(arrangement).getByRole("region", { name: "Mori AI changes" })
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Replace section" }))
+    expect(within(aiChanges).getByText("Selected range · 0:42–1:36")).toBeInTheDocument()
+    fireEvent.change(within(aiChanges).getByRole("textbox", { name: "Tell Mori what to change" }), {
+      target: { value: "Let this passage breathe, then rebuild the lift." },
+    })
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Review change" }))
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Generate 2 takes" }))
+
+    await waitFor(() => expect(submittedInput).toMatchObject({
+      operation: "replace_section",
+      scope: { type: "time_range", start_ms: 42_000, end_ms: 96_000 },
+    }))
+  })
+
+  it("invalidates a reviewed change when its custom timeline range moves", () => {
+    renderStudio()
+
+    const arrangement = screen.getByRole("region", { name: "Arrangement editor" })
+    const timeline = within(arrangement).getByRole("region", { name: "Version timeline" })
+    fireEvent.change(within(timeline).getByRole("slider", { name: "Selection start" }), { target: { value: "42" } })
+    fireEvent.change(within(timeline).getByRole("slider", { name: "Selection end" }), { target: { value: "96" } })
+
+    const aiChanges = within(arrangement).getByRole("region", { name: "Mori AI changes" })
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Replace section" }))
+    fireEvent.change(within(aiChanges).getByRole("textbox", { name: "Tell Mori what to change" }), {
+      target: { value: "Open the harmony around this passage." },
+    })
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Review change" }))
+    expect(within(aiChanges).getByRole("region", { name: "AI change plan" })).toBeInTheDocument()
+
+    fireEvent.change(within(timeline).getByRole("slider", { name: "Selection end" }), { target: { value: "104" } })
+
+    expect(within(aiChanges).queryByRole("region", { name: "AI change plan" })).not.toBeInTheDocument()
+    expect(within(aiChanges).getByRole("textbox", { name: "Tell Mori what to change" })).toHaveValue("Open the harmony around this passage.")
+    expect(within(aiChanges).getByText("Selected range · 0:42–1:44")).toBeInTheDocument()
+  })
+
   it("lets the user control Transform scope, preserved anchors, and alternative count", async () => {
     let submittedInput: StudioChangeGenerationInput | null = null
     renderStudio({

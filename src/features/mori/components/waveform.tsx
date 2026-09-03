@@ -3,18 +3,19 @@ import styles from "../mori-workspace.module.css"
 type WaveformProps = {
   seed: number
   compact?: boolean
+  stretch?: boolean
   progress?: number
 }
 
-export function Waveform({ seed, compact = false, progress = 1 }: WaveformProps) {
-  const bars = Array.from({ length: compact ? 25 : 39 }, (_, index) => {
+export function Waveform({ seed, compact = false, stretch = false, progress = 1 }: WaveformProps) {
+  const bars = Array.from({ length: stretch ? 96 : compact ? 25 : 39 }, (_, index) => {
     const rhythm = Math.abs(Math.sin((index + 1) * (seed * 0.37)))
     const contour = Math.abs(Math.cos((index + seed) * 0.21))
     return Math.max(18, Math.round((rhythm * 0.62 + contour * 0.38) * 100))
   })
 
   return (
-    <div className={`${styles.waveform} ${compact ? styles.waveformCompact : ""}`} aria-hidden="true">
+    <div className={`${styles.waveform} ${compact ? styles.waveformCompact : ""} ${stretch ? styles.waveformStretch : ""}`} aria-hidden="true">
       {bars.map((height, index) => (
         <span
           className={styles.waveBar}

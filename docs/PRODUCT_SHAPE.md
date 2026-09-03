@@ -105,8 +105,9 @@ Workspace nav    内容随项目上下文变化                     跨页面保
   多 Suggestion 对比以及 Apply / Undo；Stems 支持基于当前 Version 的二轨/最多十二轨自动分离计划、可选 MIDI、
   异步恢复/取消/重试，以及对真实返回资产的逐轨 Mute/Solo 本地 mix selection；可播放 stem renderer 尚待接入。
 - 已落地第一版：Studio 的 Mori AI Changes 把 Add part、Replace section、Extend、Transform 放在
-  Arrangement 时间线上下文中；用户可先选择段落，再输入指令并复核 Change Plan，最后进入 Stage，
-  当前版本不会被直接覆盖。
+  Arrangement 时间线上下文中；时间线播放头与全局 Player 双向使用同一位置状态，并明确标记当前段落。
+  用户可选择结构段或拖动起止控制形成 Custom range，再输入指令并复核 Change Plan；移动范围会让旧 Plan
+  失效，最终结果进入 Take Lanes，当前版本不会被直接覆盖。
 - 已落地第一版：从项目详情、Studio 或项目上下文中的 Rail 进入 Create 时保留 `project_ref`，
   生成命令不再意外落到预览项目；可用时先读取项目 projection 展示项目名称，读取失败保留中性上下文。
 - 已落地第一版：Reference audio 使用真实文件选择与前端格式/大小校验，选择结果在 Smart 与 Custom

@@ -9,6 +9,7 @@ import {
   buildStudioChangePlan,
   defaultStudioChangePreserve,
   isActiveStudioChangeStatus,
+  studioChangeScopeLabel,
   studioChangeOutputCounts,
   type StudioChangeOutputCount,
   type StudioChangePlan,
@@ -89,11 +90,15 @@ export function StudioAiComposer({ selectedSection, run, onGenerate, onCancel, o
   ))
   const [plan, setPlan] = useState<StudioChangePlan | null>(null)
   const activeOperation = getOperation(operation)
-  const activeScope = scopeLabel(operation, selectedSection.label, transformScope)
+  const activeScope = studioChangeScopeLabel(operation, selectedSection, transformScope)
   const busy = isActiveStudioChangeStatus(run.status)
   const reviewedPlan = plan !== null && (
     (plan.draft.operation === "transform" && plan.draft.scope.type === "whole_version")
-    || plan.sectionId === selectedSection.id
+    || (
+      plan.sectionId === selectedSection.id
+      && plan.selection.startMs === selectedSection.startMs
+      && plan.selection.endMs === selectedSection.endMs
+    )
   ) ? plan : null
   const visiblePlan = run.status === "idle" ? reviewedPlan : run.plan
 
@@ -246,7 +251,7 @@ export function StudioAiComposer({ selectedSection, run, onGenerate, onCancel, o
             <div className={styles.studioAiControlGroup} role="group" aria-label="Transform scope">
               <span className={styles.studioAiControlLabel}>Apply to</span>
               <div className={styles.studioAiChoices}>
-                <button type="button" aria-pressed={transformScope === "selected_section"} disabled={busy} onClick={() => chooseTransformScope("selected_section")}>Selected section</button>
+                <button type="button" aria-pressed={transformScope === "selected_section"} disabled={busy} onClick={() => chooseTransformScope("selected_section")}>{selectedSection.id === "custom-range" ? "Selected range" : "Selected section"}</button>
                 <button type="button" aria-pressed={transformScope === "whole_version"} disabled={busy} onClick={() => chooseTransformScope("whole_version")}>Whole song</button>
               </div>
             </div>
@@ -311,13 +316,6 @@ export function StudioAiComposer({ selectedSection, run, onGenerate, onCancel, o
 
 function getOperation(operation: StudioChangeOperation): StudioAiOperationConfig {
   return operations.find((item) => item.id === operation) ?? operations[0]
-}
-
-function scopeLabel(operation: StudioChangeOperation, sectionLabel: string, transformScope: StudioTransformScope): string {
-  if (operation === "add_part") return `After selected ${sectionLabel}`
-  if (operation === "extend") return `From selected ${sectionLabel}`
-  if (operation === "transform" && transformScope === "whole_version") return "Whole song"
-  return `Selected section · ${sectionLabel}`
 }
 
 function takeCountLabel(count: StudioChangeOutputCount): string {

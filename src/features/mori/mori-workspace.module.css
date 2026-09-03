@@ -1040,6 +1040,10 @@
   max-width: 4px;
 }
 
+.waveformStretch {
+  justify-content: space-between;
+}
+
 .candidateActions {
   display: flex;
   align-items: center;
@@ -2694,7 +2698,6 @@
   letter-spacing: -0.06em;
 }
 
-.timelineCard,
 .lyricsCard {
   border: 1px solid var(--mori-border);
   border-radius: 16px;
@@ -2702,93 +2705,12 @@
   box-shadow: var(--mori-shadow-sm);
 }
 
-.timelineCard {
-  padding: 18px;
-}
-
-.timelineHeader,
 .lyricsHeader,
 .versionRailHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-}
-
-.timelineHeader {
-  color: var(--mori-foreground);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.timelineHeader span:last-child {
-  color: var(--mori-muted);
-  font-size: 10px;
-  font-variant-numeric: tabular-nums;
-}
-
-.timelineRuler {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 25px;
-  color: var(--mori-faint);
-  font-size: 9px;
-  font-variant-numeric: tabular-nums;
-}
-
-.timelineWave {
-  margin: 7px 0 14px;
-  padding: 14px 0;
-  border-top: 1px solid #f1efec;
-  border-bottom: 1px solid #f1efec;
-}
-
-.timelineSegments {
-  display: flex;
-  gap: 4px;
-  min-height: 35px;
-}
-
-.timelineSegment {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 0;
-  border: 0;
-  border-radius: 7px;
-  color: #7b7488;
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 9px;
-  font-weight: 700;
-  background: var(--mori-primary-soft);
-  transition: color var(--mori-motion-fast) ease, background var(--mori-motion-fast) ease, box-shadow var(--mori-motion-fast) ease;
-}
-
-.timelineSegment:hover {
-  color: var(--mori-primary);
-  background: #e9e4ff;
-}
-
-.timelineSegment:disabled {
-  cursor: progress;
-  opacity: 0.64;
-}
-
-.timelineSegment:disabled:hover {
-  color: #7b7488;
-  background: var(--mori-primary-soft);
-}
-
-.timelineSegment:focus-visible {
-  outline: 3px solid rgba(109, 92, 231, 0.17);
-  outline-offset: 2px;
-}
-
-.timelineSegmentAccent {
-  color: #9d6d59;
-  background: #fce9dd;
-  box-shadow: inset 0 0 0 1px rgba(219, 143, 105, 0.15);
 }
 
 .takeLanes {
@@ -3235,10 +3157,6 @@
   .studioCanvasTop {
     align-items: flex-start;
     flex-direction: column;
-  }
-
-  .timelineSegments {
-    min-height: 27px;
   }
 
   .takeLane {

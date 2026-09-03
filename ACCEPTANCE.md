@@ -18,7 +18,7 @@ pnpm build
 
 - `pnpm lint`：通过，`--max-warnings=0`
 - `pnpm typecheck`：通过
-- `pnpm test`：通过，18 个测试文件、138 个测试
+- `pnpm test`：通过，18 个测试文件、141 个测试
 - `pnpm build`：通过，生成 `/`、`/create`、`/projects`、`/library`、`/settings`、Project Overview 和 Studio 路由
 
 ## 页面巡检
@@ -64,7 +64,10 @@ Arrangement/Lyrics/Stems 切换、Preview、Share 反馈和 Export queued → co
 action；Arrangement 已提供 Take Lanes，可试听、选择方向并明确 Use take 后切换当前版本；
 Arrangement 现在提供与时间线连在一起的 Mori AI Changes：Add part、Replace section、Extend、Transform
 共享同一套上下文式输入；Intro、Verse、Lift、Chorus、Outro 可直接选为 AI 操作上下文，操作范围和结果去向
-始终可见；Direction controls 默认收起，展开后可选择保留 Melody、Lyrics、Voice、Tempo、Structure，
+始终可见；时间标尺按当前 Version 时长生成，时间线播放头与 Global Player 的 seek 状态同步，并实时标记
+播放头所在段落；用户可拖动 Selection start / end 形成 Custom range，界面持续显示精确起止时间，
+Replace/Transform 会把它原样映射为毫秒级 `time_range`，调整范围后旧的 Review Plan 自动失效；
+Direction controls 默认收起，展开后可选择保留 Melody、Lyrics、Voice、Tempo、Structure，
 可请求 1 / 2 / 4 个 alternatives，Transform 可明确作用于 Selected section 或 Whole song；这些选择会同时进入
 Change Plan 与最终 API body；提交前先展示 Change Plan，主动作会按选择显示 Generate 1 / 2 / 4 takes，并持续声明
 Current version stays untouched；浏览器会把段落宽度换算为稳定毫秒 scope，提交后显示真实 Generation
