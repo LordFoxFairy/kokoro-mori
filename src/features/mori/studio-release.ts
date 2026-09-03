@@ -10,6 +10,8 @@ import type {
   ReleaseVisibility,
 } from "@/lib/mori-api"
 
+export type StudioFinishView = "remaster" | "release"
+
 export type StudioArtworkPlan = {
   prompt: string
   style: ArtworkStyle

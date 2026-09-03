@@ -84,12 +84,12 @@
 - Consumes: `createArtworkGeneration`, `getArtworkGeneration`, `getArtworkGenerationEvents`, `cancelArtworkGeneration`, `getReleaseDraft`, and `putReleaseDraft` from `MoriApi`.
 - Produces: Version-bound controlled release form state, tracked artwork lifecycle, strict snapshot acceptance, generated artwork selection, optimistic release save, stale-response rejection, and Finish activity feedback.
 
-- [ ] **Step 1: Write a failing happy-path integration test** that opens Finish → Release, edits metadata, reviews and starts the exact square/no-text/four-output artwork request, accepts a matching successful snapshot, selects a returned image, and sends the exact release draft with `expected_revision: null`.
-- [ ] **Step 2: Write failing resilience tests** for close/reopen preservation, artwork cancel/retry, wrong Version or changed plan snapshot rejection, release response mismatch rejection, and Version switch cleanup; assert Current Version and audio Take lanes remain unchanged.
-- [ ] **Step 3: Run RED** with `pnpm test -- src/features/mori/studio-page.test.tsx` and confirm failures describe the missing integration.
-- [ ] **Step 4: Implement page-owned state and lifecycle** with command epochs for stale creation responses, durable snapshot polling plus SSE replay, cancellation, exact context checks, optional release draft hydration, optimistic save revision, and clear offline/retry copy.
-- [ ] **Step 5: Run GREEN** with the Studio page tests, then run `pnpm test -- src/features/mori/components/studio-finish-dialog.test.tsx src/features/mori/components/studio-release-panel.test.tsx src/features/mori/studio-page.test.tsx`.
-- [ ] **Step 6: Commit** with `git add src/features/mori && git commit -m "feat: connect studio release workflow"`.
+- [x] **Step 1: Write a failing happy-path integration test** that opens Finish → Release, edits metadata, reviews and starts the exact square/no-text/four-output artwork request, accepts a matching successful snapshot, selects a returned image, and sends the exact release draft with `expected_revision: null`.
+- [x] **Step 2: Write failing resilience tests** for close/reopen preservation, artwork cancel/retry, wrong Version or changed plan snapshot rejection, release response mismatch rejection, and Version switch cleanup; assert Current Version and audio Take lanes remain unchanged.
+- [x] **Step 3: Run RED** with `pnpm test -- src/features/mori/studio-page.test.tsx` and confirm failures describe the missing integration.
+- [x] **Step 4: Implement page-owned state and lifecycle** with command epochs for stale creation responses, durable snapshot polling plus SSE replay, cancellation, exact context checks, optional release draft hydration, optimistic save revision, and clear offline/retry copy.
+- [x] **Step 5: Run GREEN** with the Studio page tests, then run `pnpm test -- src/features/mori/components/studio-finish-dialog.test.tsx src/features/mori/components/studio-release-panel.test.tsx src/features/mori/studio-page.test.tsx`.
+- [x] **Step 6: Commit** with `git add src/features/mori && git commit -m "feat: connect studio release workflow"`.
 
 ### Task 4: Document, visually inspect, and verify
 

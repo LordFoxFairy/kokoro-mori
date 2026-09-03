@@ -3,7 +3,21 @@
 import { ArrowLeft, AudioLines, AudioWaveform, Download, FileText, Play, Share2, Sparkles } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useId, useMemo, useRef, useState } from "react"
-import { createLyricsRevisionRequest, createStemSeparationRequest, createStudioChangeRequest, type LyricsRevisionSnapshot, type MixRevisionInput, type MoriApi, type MoriCandidate, type MoriExportInput, type MoriExportSnapshot, type MoriExportStatus, type MoriMixRevision, type StemSeparationSnapshot, type StudioChangeGenerationSnapshot } from "@/lib/mori-api"
+import {
+  createLyricsRevisionRequest,
+  createStemSeparationRequest,
+  createStudioChangeRequest,
+  type LyricsRevisionSnapshot,
+  type MixRevisionInput,
+  type MoriApi,
+  type MoriCandidate,
+  type MoriExportInput,
+  type MoriExportSnapshot,
+  type MoriExportStatus,
+  type MoriMixRevision,
+  type StemSeparationSnapshot,
+  type StudioChangeGenerationSnapshot,
+} from "@/lib/mori-api"
 import { createMoriApiClient, MoriApiRequestError } from "@/lib/mori-api-client"
 import type { Candidate } from "./domain"
 import { MoriStudioShell } from "./components/mori-studio-shell"
@@ -21,6 +35,7 @@ import { createStudioLyricsRevisionDraft, isActiveLyricsRevisionStatus, studioLy
 import { isStudioRemasterPlan, isStudioRemasterSnapshot } from "./studio-remaster"
 import { createStudioStemSeparationDraft, isActiveStemSeparationStatus, stemSeparationSnapshotMatchesPlan, type StudioStemSeparationPlan } from "./studio-stems"
 import { createHtmlStemPlaybackController, type StemPlaybackFactory } from "./stem-playback"
+import { useStudioReleaseWorkflow } from "./use-studio-release-workflow"
 import styles from "./mori-workspace.module.css"
 
 type StudioTool = "arrangement" | "lyrics" | "stems"
@@ -29,7 +44,7 @@ type StudioPageContentProps = {
   candidate: Candidate
   projectRef?: string
   versionRef?: string
-  api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "listCandidates" | "createStudioChange" | "getGeneration" | "getGenerationEvents" | "cancelGeneration" | "createLyricsRevision" | "getLyricsRevision" | "getLyricsRevisionEvents" | "cancelLyricsRevision" | "createStemSeparation" | "getStemSeparation" | "getStemSeparationEvents" | "cancelStemSeparation" | "createMixRevision">>
+  api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "listCandidates" | "createStudioChange" | "getGeneration" | "getGenerationEvents" | "cancelGeneration" | "createLyricsRevision" | "getLyricsRevision" | "getLyricsRevisionEvents" | "cancelLyricsRevision" | "createStemSeparation" | "getStemSeparation" | "getStemSeparationEvents" | "cancelStemSeparation" | "createArtworkGeneration" | "getArtworkGeneration" | "getArtworkGenerationEvents" | "cancelArtworkGeneration" | "getReleaseDraft" | "putReleaseDraft" | "createMixRevision">>
   stemPlaybackFactory?: StemPlaybackFactory
 }
 
@@ -124,6 +139,11 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api, stem
   const [stemSeparationRun, setStemSeparationRun] = useState<StudioStemSeparationRunState>(idleStemSeparationRun)
   const [trackedStemSeparation, setTrackedStemSeparation] = useState<TrackedStemSeparation | null>(null)
   const activeVersionRef = activeCandidate?.versionRef ?? null
+  const releaseWorkflow = useStudioReleaseWorkflow({
+    versionRef: activeVersionRef,
+    versionTitle: activeCandidate?.title ?? "",
+    api: studioApi,
+  })
   const activeVersionRefRef = useRef(activeVersionRef)
   const activeProjectRefRef = useRef(activeProjectRef)
   const exportCommandEpochRef = useRef(0)
@@ -904,7 +924,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api, stem
   const activeProjectTitle = projectTitle ?? (activeProjectRef === previewProject.projectRef ? previewProject.title : "Project")
   const remasterRun = isStudioRemasterPlan(studioChangeRun.plan)
   const remasterActive = remasterRun && isActiveStudioChangeStatus(studioChangeRun.status)
-  const finishDisabled = !remasterRun && isActiveStudioChangeStatus(studioChangeRun.status)
+  const finishActive = remasterActive || releaseWorkflow.active
 
   return (
     <MoriStudioShell candidate={activeCandidate} playerCandidates={studioCandidates}>
@@ -919,13 +939,12 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api, stem
               aria-label="Finish"
               aria-describedby={finishStatusDescriptionId}
               data-finish-status={studioChangeRun.status}
-              disabled={finishDisabled}
               onClick={() => setFinishDialogOpen(true)}
             >
               <Sparkles size={14} /> Finish
-              {remasterActive ? <span className={styles.studioActionActivity} aria-hidden="true" /> : null}
+              {finishActive ? <span className={styles.studioActionActivity} aria-hidden="true" /> : null}
             </button>
-            <span className={styles.srOnly} id={finishStatusDescriptionId} aria-live="polite">{finishStatusDescription(studioChangeRun, finishDisabled)}</span>
+            <span className={styles.srOnly} id={finishStatusDescriptionId} aria-live="polite">{finishStatusDescription(studioChangeRun, releaseWorkflow.activityDescription)}</span>
             <button className={styles.ghostButton} type="button" aria-label="Export" aria-describedby={exportStatusDescriptionId} data-export-status={exportFeedback} onClick={() => setExportDialogOpen(true)}><Download size={14} /> Export{exportFeedback === "queued" || exportFeedback === "processing" ? <span className={styles.exportActivity} aria-hidden="true" /> : null}</button>
             <span className={styles.srOnly} id={exportStatusDescriptionId} aria-live="polite">{exportStatusDescription(exportFeedback)}</span>
           </> : null}
@@ -973,6 +992,21 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api, stem
         durationSeconds={activeCandidate.durationSeconds}
         latestMixRevision={latestMixRevision}
         run={studioChangeRun}
+        view={releaseWorkflow.finishView}
+        onViewChange={releaseWorkflow.setFinishView}
+        release={{
+          versionRef: activeCandidate.versionRef,
+          draft: releaseWorkflow.releaseDraft,
+          artworkDraft: releaseWorkflow.artworkDraft,
+          artworkRun: releaseWorkflow.artworkRun,
+          saveState: releaseWorkflow.releaseSave,
+          onDraftChange: releaseWorkflow.updateReleaseDraft,
+          onArtworkDraftChange: releaseWorkflow.updateArtworkDraft,
+          onGenerateArtwork: (plan) => { void releaseWorkflow.generateArtwork(plan) },
+          onCancelArtwork: () => { void releaseWorkflow.cancelArtwork() },
+          onResetArtwork: releaseWorkflow.resetArtwork,
+          onSave: (draft) => { void releaseWorkflow.saveReleaseDraft(draft) },
+        }}
         onClose={() => setFinishDialogOpen(false)}
         onReset={resetStudioChange}
         onSubmit={(plan) => { void generateStudioChange(plan) }}
@@ -1051,8 +1085,11 @@ function exportStatusDescription(status: "idle" | MoriExportStatus): string {
   }
 }
 
-function finishStatusDescription(run: StudioAiRunState, disabled: boolean): string {
-  if (disabled) return "Finish is available after the active Studio change completes"
+function finishStatusDescription(run: StudioAiRunState, releaseActivityDescription: string | null): string {
+  if (releaseActivityDescription !== null) return releaseActivityDescription
+  if (!isStudioRemasterPlan(run.plan) && isActiveStudioChangeStatus(run.status)) {
+    return "Release remains available while the active Studio change completes"
+  }
   if (!isStudioRemasterPlan(run.plan)) return "Review a non-destructive Remaster"
   switch (run.status) {
     case "idle": return "Review a non-destructive Remaster"

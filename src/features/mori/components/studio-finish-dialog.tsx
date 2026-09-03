@@ -6,11 +6,10 @@ import { createPortal } from "react-dom"
 import type { MoriMixRevision, MoriStudioRemasterSource, StudioRemasterStrength } from "@/lib/mori-api"
 import { buildStudioRemasterPlan, isStudioRemasterPlan, type StudioRemasterPlan } from "../studio-remaster"
 import { isActiveStudioChangeStatus } from "../studio-change"
+import type { StudioFinishView } from "../studio-release"
 import type { StudioAiRunState } from "./studio-ai-composer"
 import { StudioReleasePanel, type StudioReleasePanelProps } from "./studio-release-panel"
 import styles from "./studio-finish-dialog.module.css"
-
-export type StudioFinishView = "remaster" | "release"
 
 type StudioFinishDialogProps = {
   versionRef: string

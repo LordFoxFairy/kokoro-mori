@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
-import type { MoriApi, MoriExportInput, StudioChangeGenerationInput } from "@/lib/mori-api"
+import type { ArtworkGenerationInput, MoriApi, MoriExportInput, ReleaseDraftInput, StudioChangeGenerationInput } from "@/lib/mori-api"
 import { MoriAppProvider } from "./components/mori-app-provider"
 import { previewCandidates } from "./preview-data"
 import type { StemPlaybackFactory } from "./stem-playback"
@@ -16,7 +16,7 @@ const createTestStemPlaybackController: StemPlaybackFactory = () => ({
 })
 
 describe("Mori studio page", () => {
-  function renderStudio(api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "listCandidates" | "createStudioChange" | "getGeneration" | "getGenerationEvents" | "cancelGeneration" | "createLyricsRevision" | "getLyricsRevision" | "getLyricsRevisionEvents" | "cancelLyricsRevision" | "createStemSeparation" | "getStemSeparation" | "getStemSeparationEvents" | "cancelStemSeparation" | "createMixRevision">>) {
+  function renderStudio(api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "listCandidates" | "createStudioChange" | "getGeneration" | "getGenerationEvents" | "cancelGeneration" | "createLyricsRevision" | "getLyricsRevision" | "getLyricsRevisionEvents" | "cancelLyricsRevision" | "createStemSeparation" | "getStemSeparation" | "getStemSeparationEvents" | "cancelStemSeparation" | "createArtworkGeneration" | "getArtworkGeneration" | "getArtworkGenerationEvents" | "cancelArtworkGeneration" | "getReleaseDraft" | "putReleaseDraft" | "createMixRevision">>) {
     return render(
       <MoriAppProvider>
         <StudioPageContent candidate={previewCandidates[0]} api={api} stemPlaybackFactory={createTestStemPlaybackController} />
@@ -1267,6 +1267,345 @@ describe("Mori studio page", () => {
 
     expect(await within(dialog).findByRole("alert")).toHaveTextContent("The returned Remaster did not match this source or strength. Nothing was applied.")
     expect(within(dialog).getByRole("button", { name: "Retry remaster" })).toBeInTheDocument()
+  })
+
+  it("creates artwork and saves a Version-bound release draft without changing audio Takes", async () => {
+    let submittedArtworkVersion = ""
+    let submittedArtworkInput: ArtworkGenerationInput | null = null
+    let submittedReleaseVersion = ""
+    let submittedReleaseInput: ReleaseDraftInput | null = null
+    renderStudio({
+      getReleaseDraft: async () => { throw new Error("release_draft_not_found") },
+      createArtworkGeneration: async (versionRef, input) => {
+        submittedArtworkVersion = versionRef
+        submittedArtworkInput = input
+        return { data: { artwork_generation_ref: "artwork_generation_release_1", status: "queued" }, meta: { request_id: "request_artwork_release_1" } }
+      },
+      getArtworkGeneration: async () => ({
+        data: {
+          artwork_generation_ref: "artwork_generation_release_1",
+          version_ref: "version_preview_first_light_a",
+          status: "succeeded",
+          progress: 100,
+          prompt: "Sunrise through a train window",
+          style: "editorial",
+          palette: "violet_night",
+          aspect_ratio: "1:1",
+          text_policy: "no_text",
+          output_count: 4,
+          candidates: Array.from({ length: 4 }, (_, index) => ({
+            artwork_candidate_ref: `artwork_candidate_release_${index + 1}`,
+            image_asset_ref: `asset_artwork_release_${index + 1}`,
+            thumbnail_asset_ref: `asset_artwork_release_thumb_${index + 1}`,
+            alt_text: `Release artwork concept ${index + 1}`,
+          })),
+          created_at: "2026-09-03T12:00:00.000Z",
+        },
+        meta: { request_id: "request_artwork_release_snapshot_1" },
+      }),
+      getArtworkGenerationEvents: async () => [],
+      putReleaseDraft: async (versionRef, input) => {
+        submittedReleaseVersion = versionRef
+        submittedReleaseInput = input
+        return {
+          data: {
+            release_draft_ref: "release_draft_1",
+            version_ref: versionRef,
+            revision: 1,
+            state: "draft",
+            title: input.title,
+            description: input.description,
+            visibility: input.visibility,
+            allow_remix: input.allow_remix,
+            explicit_content: input.explicit_content,
+            artwork: input.artwork,
+            updated_at: "2026-09-03T12:01:00.000Z",
+          },
+          meta: { request_id: "request_release_save_1" },
+        }
+      },
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: "Finish" }))
+    const dialog = screen.getByRole("dialog", { name: "Finish First Light" })
+    fireEvent.click(within(dialog).getByRole("tab", { name: "Release" }))
+    fireEvent.change(within(dialog).getByRole("textbox", { name: "Release title" }), { target: { value: "First Light — Dawn Edition" } })
+    fireEvent.change(within(dialog).getByRole("textbox", { name: "Release note" }), { target: { value: "A quiet ride toward morning." } })
+    fireEvent.click(within(dialog).getByRole("radio", { name: /Public/u }))
+    fireEvent.click(within(dialog).getByRole("checkbox", { name: /Allow remixes/u }))
+    fireEvent.click(within(dialog).getByRole("checkbox", { name: /Contains explicit content/u }))
+    fireEvent.change(within(dialog).getByRole("textbox", { name: "Artwork brief" }), { target: { value: "Sunrise through a train window" } })
+    fireEvent.change(within(dialog).getByRole("combobox", { name: "Artwork style" }), { target: { value: "editorial" } })
+    fireEvent.click(within(dialog).getByRole("radio", { name: "Violet night" }))
+    fireEvent.click(within(dialog).getByRole("button", { name: "Review artwork" }))
+    fireEvent.click(within(dialog).getByRole("button", { name: "Create 4 concepts" }))
+
+    await waitFor(() => expect(submittedArtworkInput).toEqual({
+      prompt: "Sunrise through a train window",
+      style: "editorial",
+      palette: "violet_night",
+      aspect_ratio: "1:1",
+      text_policy: "no_text",
+      output_count: 4,
+    }))
+    expect(submittedArtworkVersion).toBe("version_preview_first_light_a")
+    fireEvent.click(await within(dialog).findByRole("radio", { name: "Use artwork concept 2" }))
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save release draft" }))
+
+    await waitFor(() => expect(submittedReleaseInput).toEqual({
+      title: "First Light — Dawn Edition",
+      description: "A quiet ride toward morning.",
+      visibility: "public",
+      allow_remix: true,
+      explicit_content: true,
+      artwork: { type: "artwork_candidate", artwork_candidate_ref: "artwork_candidate_release_2" },
+      expected_revision: null,
+    }))
+    expect(submittedReleaseVersion).toBe("version_preview_first_light_a")
+    expect(await within(dialog).findByRole("status")).toHaveTextContent("Draft revision 1 saved")
+    const takeLanes = screen.getByRole("region", { name: "Take lanes" })
+    expect(within(takeLanes).getAllByRole("article")).toHaveLength(2)
+    expect(within(within(takeLanes).getByRole("article", { name: "Take 1: First Light" })).getByText("Current version")).toBeInTheDocument()
+  })
+
+  it("preserves an active artwork run across Finish close and supports cancel then retry", async () => {
+    const createArtworkGeneration = vi.fn(async () => ({
+      data: { artwork_generation_ref: "artwork_generation_active", status: "queued" as const },
+      meta: { request_id: "request_artwork_active" },
+    }))
+    const cancelArtworkGeneration = vi.fn(async () => ({
+      data: { artwork_generation_ref: "artwork_generation_active", status: "cancelled" as const },
+      meta: { request_id: "request_artwork_cancel" },
+    }))
+    const view = renderStudio({
+      getReleaseDraft: async () => { throw new Error("release_draft_not_found") },
+      createArtworkGeneration,
+      getArtworkGeneration: async () => ({
+        data: {
+          artwork_generation_ref: "artwork_generation_active",
+          version_ref: "version_preview_first_light_a",
+          status: "generating" as const,
+          progress: 52,
+          prompt: "Warm dawn reflected in rain",
+          style: "abstract" as const,
+          palette: "warm_dawn" as const,
+          aspect_ratio: "1:1" as const,
+          text_policy: "no_text" as const,
+          output_count: 4 as const,
+          candidates: [],
+          created_at: "2026-09-03T12:00:00.000Z",
+        },
+        meta: { request_id: "request_artwork_active_snapshot" },
+      }),
+      getArtworkGenerationEvents: async () => [],
+      cancelArtworkGeneration,
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: "Finish" }))
+    let dialog = screen.getByRole("dialog", { name: "Finish First Light" })
+    fireEvent.click(within(dialog).getByRole("tab", { name: "Release" }))
+    fireEvent.change(within(dialog).getByRole("textbox", { name: "Release note" }), { target: { value: "Keep this note while rendering." } })
+    fireEvent.change(within(dialog).getByRole("textbox", { name: "Artwork brief" }), { target: { value: "Warm dawn reflected in rain" } })
+    fireEvent.click(within(dialog).getByRole("button", { name: "Review artwork" }))
+    fireEvent.click(within(dialog).getByRole("button", { name: "Create 4 concepts" }))
+    await waitFor(() => expect(within(dialog).getByRole("progressbar", { name: "Artwork progress" })).toHaveAttribute("aria-valuenow", "52"))
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Close Finish" }))
+    fireEvent.click(screen.getByRole("button", { name: "Finish" }))
+    dialog = screen.getByRole("dialog", { name: "Finish First Light" })
+    expect(within(dialog).getByRole("tab", { name: "Release" })).toHaveAttribute("aria-selected", "true")
+    expect(within(dialog).getByRole("textbox", { name: "Release note" })).toHaveValue("Keep this note while rendering.")
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel artwork" }))
+    await waitFor(() => expect(cancelArtworkGeneration).toHaveBeenCalledWith("artwork_generation_active", expect.any(String)))
+    fireEvent.click(await within(dialog).findByRole("button", { name: "Retry artwork" }))
+    await waitFor(() => expect(createArtworkGeneration).toHaveBeenCalledTimes(2))
+    view.unmount()
+  })
+
+  it("rejects artwork snapshots from another Version or visual plan", async () => {
+    renderStudio({
+      getReleaseDraft: async () => { throw new Error("release_draft_not_found") },
+      createArtworkGeneration: async () => ({ data: { artwork_generation_ref: "artwork_generation_wrong", status: "queued" }, meta: { request_id: "request_artwork_wrong" } }),
+      getArtworkGeneration: async () => ({
+        data: {
+          artwork_generation_ref: "artwork_generation_wrong",
+          version_ref: "version_preview_first_light_b",
+          status: "succeeded",
+          progress: 100,
+          prompt: "Quiet violet horizon",
+          style: "abstract",
+          palette: "mint_haze",
+          aspect_ratio: "1:1",
+          text_policy: "no_text",
+          output_count: 4,
+          candidates: [],
+          created_at: "2026-09-03T12:00:00.000Z",
+        },
+        meta: { request_id: "request_artwork_wrong_snapshot" },
+      }),
+      getArtworkGenerationEvents: async () => [],
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: "Finish" }))
+    const dialog = screen.getByRole("dialog", { name: "Finish First Light" })
+    fireEvent.click(within(dialog).getByRole("tab", { name: "Release" }))
+    fireEvent.change(within(dialog).getByRole("textbox", { name: "Artwork brief" }), { target: { value: "Quiet violet horizon" } })
+    fireEvent.click(within(dialog).getByRole("button", { name: "Review artwork" }))
+    fireEvent.click(within(dialog).getByRole("button", { name: "Create 4 concepts" }))
+
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("The returned artwork did not match this Version or visual plan. Nothing was attached.")
+    expect(within(dialog).queryByRole("radiogroup", { name: "Generated artwork concepts" })).not.toBeInTheDocument()
+    expect(within(screen.getByRole("region", { name: "Take lanes" })).getAllByRole("article")).toHaveLength(2)
+  })
+
+  it("rejects a mismatched release save while preserving the user's choices", async () => {
+    renderStudio({
+      getReleaseDraft: async () => { throw new Error("release_draft_not_found") },
+      putReleaseDraft: async (_versionRef, input) => ({
+        data: {
+          release_draft_ref: "release_draft_wrong",
+          version_ref: "version_preview_first_light_b",
+          revision: 1,
+          state: "draft",
+          title: input.title,
+          description: input.description,
+          visibility: input.visibility,
+          allow_remix: input.allow_remix,
+          explicit_content: input.explicit_content,
+          artwork: input.artwork,
+          updated_at: "2026-09-03T12:01:00.000Z",
+        },
+        meta: { request_id: "request_release_wrong" },
+      }),
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: "Finish" }))
+    const dialog = screen.getByRole("dialog", { name: "Finish First Light" })
+    fireEvent.click(within(dialog).getByRole("tab", { name: "Release" }))
+    fireEvent.change(within(dialog).getByRole("textbox", { name: "Release title" }), { target: { value: "First Light — Private Mix" } })
+    fireEvent.click(within(dialog).getByRole("radio", { name: /Link only/u }))
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save release draft" }))
+
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("The saved draft did not match this Version or your latest choices. Your choices are still here.")
+    expect(within(dialog).getByRole("textbox", { name: "Release title" })).toHaveValue("First Light — Private Mix")
+    expect(within(dialog).getByRole("radio", { name: /Link only/u })).toBeChecked()
+  })
+
+  it("hydrates an existing release draft and saves against its current revision", async () => {
+    let submittedInput: ReleaseDraftInput | null = null
+    renderStudio({
+      getReleaseDraft: async (versionRef) => ({
+        data: {
+          release_draft_ref: "release_draft_existing",
+          version_ref: versionRef,
+          revision: 4,
+          state: "draft",
+          title: "First Light — Existing Draft",
+          description: "Existing release note.",
+          visibility: "link_only",
+          allow_remix: false,
+          explicit_content: false,
+          artwork: { type: "current" },
+          updated_at: "2026-09-03T11:00:00.000Z",
+        },
+        meta: { request_id: "request_release_existing" },
+      }),
+      putReleaseDraft: async (versionRef, input) => {
+        submittedInput = input
+        return {
+          data: {
+            release_draft_ref: "release_draft_existing",
+            version_ref: versionRef,
+            revision: 5,
+            state: "draft",
+            title: input.title,
+            description: input.description,
+            visibility: input.visibility,
+            allow_remix: input.allow_remix,
+            explicit_content: input.explicit_content,
+            artwork: input.artwork,
+            updated_at: "2026-09-03T12:00:00.000Z",
+          },
+          meta: { request_id: "request_release_existing_save" },
+        }
+      },
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: "Finish" }))
+    const dialog = screen.getByRole("dialog", { name: "Finish First Light" })
+    fireEvent.click(within(dialog).getByRole("tab", { name: "Release" }))
+    await waitFor(() => expect(within(dialog).getByRole("textbox", { name: "Release title" })).toHaveValue("First Light — Existing Draft"))
+    fireEvent.change(within(dialog).getByRole("textbox", { name: "Release note" }), { target: { value: "Updated release note." } })
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save release draft" }))
+
+    await waitFor(() => expect(submittedInput).toMatchObject({
+      title: "First Light — Existing Draft",
+      description: "Updated release note.",
+      visibility: "link_only",
+      expected_revision: 4,
+    }))
+    expect(await within(dialog).findByRole("status")).toHaveTextContent("Draft revision 5 saved")
+  })
+
+  it("clears Version-bound Release state when the open Take changes", async () => {
+    renderStudio({ getReleaseDraft: async () => { throw new Error("release_draft_not_found") } })
+
+    fireEvent.click(screen.getByRole("button", { name: "Finish" }))
+    let dialog = screen.getByRole("dialog", { name: "Finish First Light" })
+    fireEvent.click(within(dialog).getByRole("tab", { name: "Release" }))
+    fireEvent.change(within(dialog).getByRole("textbox", { name: "Release title" }), { target: { value: "Temporary title" } })
+    fireEvent.click(within(dialog).getByRole("radio", { name: /Public/u }))
+    fireEvent.change(within(dialog).getByRole("textbox", { name: "Artwork brief" }), { target: { value: "Temporary visual brief" } })
+    fireEvent.click(within(dialog).getByRole("button", { name: "Close Finish" }))
+
+    fireEvent.click(screen.getByRole("button", { name: "Select First Light · Afterglow take" }))
+    await waitFor(() => expect(screen.getByRole("button", { name: "Select First Light · Afterglow take" })).toHaveAttribute("aria-pressed", "true"))
+    fireEvent.click(screen.getByRole("button", { name: "Finish" }))
+    dialog = screen.getByRole("dialog", { name: "Finish First Light · Afterglow" })
+    fireEvent.click(within(dialog).getByRole("tab", { name: "Release" }))
+
+    expect(within(dialog).getByRole("textbox", { name: "Release title" })).toHaveValue("First Light · Afterglow")
+    expect(within(dialog).getByRole("radio", { name: /Private/u })).toBeChecked()
+    expect(within(dialog).getByRole("textbox", { name: "Artwork brief" })).toHaveValue("")
+  })
+
+  it("ignores an artwork receipt that returns after an A to B to A Version switch", async () => {
+    let releaseCreate: () => void = () => undefined
+    const createGate = new Promise<void>((resolve) => { releaseCreate = resolve })
+    const createArtworkGeneration = vi.fn(async () => {
+      await createGate
+      return {
+        data: { artwork_generation_ref: "artwork_generation_stale_aba", status: "queued" as const },
+        meta: { request_id: "request_artwork_stale_aba" },
+      }
+    })
+    renderStudio({
+      getReleaseDraft: async () => { throw new Error("release_draft_not_found") },
+      createArtworkGeneration,
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: "Finish" }))
+    let dialog = screen.getByRole("dialog", { name: "Finish First Light" })
+    fireEvent.click(within(dialog).getByRole("tab", { name: "Release" }))
+    fireEvent.change(within(dialog).getByRole("textbox", { name: "Artwork brief" }), { target: { value: "This request must become stale" } })
+    fireEvent.click(within(dialog).getByRole("button", { name: "Review artwork" }))
+    fireEvent.click(within(dialog).getByRole("button", { name: "Create 4 concepts" }))
+    await waitFor(() => expect(createArtworkGeneration).toHaveBeenCalledOnce())
+    fireEvent.click(within(dialog).getByRole("button", { name: "Close Finish" }))
+
+    fireEvent.click(screen.getByRole("button", { name: "Select First Light · Afterglow take" }))
+    await waitFor(() => expect(screen.getByRole("button", { name: "Select First Light · Afterglow take" })).toHaveAttribute("aria-pressed", "true"))
+    fireEvent.click(screen.getByRole("button", { name: "Select First Light take" }))
+    await waitFor(() => expect(screen.getByRole("button", { name: "Select First Light take" })).toHaveAttribute("aria-pressed", "true"))
+    releaseCreate()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    fireEvent.click(screen.getByRole("button", { name: "Finish" }))
+    dialog = screen.getByRole("dialog", { name: "Finish First Light" })
+    fireEvent.click(within(dialog).getByRole("tab", { name: "Release" }))
+    expect(within(dialog).getByRole("textbox", { name: "Artwork brief" })).toHaveValue("")
+    expect(within(dialog).queryByRole("progressbar", { name: "Artwork progress" })).not.toBeInTheDocument()
+    expect(within(dialog).queryByRole("radiogroup", { name: "Generated artwork concepts" })).not.toBeInTheDocument()
   })
 
   it("reviews an explicit full-song export before queuing it", async () => {
