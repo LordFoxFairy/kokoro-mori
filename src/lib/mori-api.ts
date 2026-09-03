@@ -414,6 +414,20 @@ export type MoriProjectCreateInput = {
   description: string
 }
 
+export type CurrentVersionInput = {
+  candidate_ref: MoriRef
+  version_ref: MoriRef
+  expected_current_version_ref: MoriRef | null
+}
+
+export type MoriCurrentVersionSelection = {
+  project_ref: MoriRef
+  current_version_ref: MoriRef
+  source_candidate_ref: MoriRef
+  previous_version_ref: MoriRef | null
+  selected_at: string
+}
+
 export type MoriSongPlan = SongPlanCreateInput & {
   song_plan_ref: MoriRef
   project_ref: MoriRef
@@ -576,6 +590,7 @@ export type MoriApi = {
   listProjects: (options?: MoriProjectListOptions) => Promise<ApiSuccess<MoriProjectPage>>
   createProject: (input: MoriProjectCreateInput, idempotencyKey: string) => Promise<ApiSuccess<MoriProject>>
   getProject: (projectRef: MoriRef) => Promise<ApiSuccess<MoriProject>>
+  putCurrentVersion: (projectRef: MoriRef, input: CurrentVersionInput, idempotencyKey: string) => Promise<ApiSuccess<MoriCurrentVersionSelection>>
   createSongPlan: (projectRef: MoriRef, input: SongPlanCreateInput, idempotencyKey: string) => Promise<ApiSuccess<MoriSongPlan>>
   createGeneration: (projectRef: MoriRef, input: GenerationCreateInput, idempotencyKey: string) => Promise<ApiSuccess<GenerationReceipt>>
   createStudioChange: (versionRef: MoriRef, input: StudioChangeGenerationInput, idempotencyKey: string) => Promise<ApiSuccess<GenerationReceipt>>

@@ -1,0 +1,145 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Mori Current Version API",
+    "version": "0.1.0",
+    "description": "Compare-and-set selection of one Project Version as Current after a user commits a Take."
+  },
+  "paths": {
+    "/api/v1/mori/projects/{project_ref}/current_version": {
+      "put": {
+        "operationId": "putCurrentVersion",
+        "summary": "Commit one Candidate Version as the Project Current Version",
+        "parameters": [
+          {
+            "name": "project_ref",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "minLength": 1 }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string", "minLength": 1, "maxLength": 200 }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CurrentVersionInput" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The Current Version was selected or the original idempotent result was replayed",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiCurrentVersionSelection" } } }
+          },
+          "400": {
+            "description": "The request is malformed",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiErrorResponse" } } }
+          },
+          "404": {
+            "description": "The Project, Candidate, or Version was not found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiErrorResponse" } } }
+          },
+          "409": {
+            "description": "The expected Current Version or idempotency key conflicts with current state",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiErrorResponse" } } }
+          },
+          "422": {
+            "description": "The Candidate and Version relationship is not valid for this Project",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiErrorResponse" } } }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CurrentVersionInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["candidate_ref", "version_ref", "expected_current_version_ref"],
+        "properties": {
+          "candidate_ref": { "type": "string", "minLength": 1 },
+          "version_ref": { "type": "string", "minLength": 1 },
+          "expected_current_version_ref": {
+            "oneOf": [
+              { "type": "null" },
+              { "type": "string", "minLength": 1 }
+            ]
+          }
+        }
+      },
+      "CurrentVersionSelection": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["project_ref", "current_version_ref", "source_candidate_ref", "previous_version_ref", "selected_at"],
+        "properties": {
+          "project_ref": { "type": "string", "minLength": 1 },
+          "current_version_ref": { "type": "string", "minLength": 1 },
+          "source_candidate_ref": { "type": "string", "minLength": 1 },
+          "previous_version_ref": {
+            "oneOf": [
+              { "type": "null" },
+              { "type": "string", "minLength": 1 }
+            ]
+          },
+          "selected_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ApiCurrentVersionSelection": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["data", "meta"],
+        "properties": {
+          "data": { "$ref": "#/components/schemas/CurrentVersionSelection" },
+          "meta": { "$ref": "#/components/schemas/ApiMeta" }
+        }
+      },
+      "ApiMeta": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["request_id"],
+        "properties": { "request_id": { "type": "string", "minLength": 1 } }
+      },
+      "ApiErrorDetail": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["field", "reason"],
+        "properties": {
+          "field": { "type": ["string", "null"] },
+          "reason": { "type": "string", "minLength": 1 }
+        }
+      },
+      "ApiError": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "message", "retryable", "details"],
+        "properties": {
+          "code": { "type": "string", "minLength": 1 },
+          "message": { "type": "string", "minLength": 1 },
+          "retryable": { "type": "boolean" },
+          "details": {
+            "oneOf": [
+              { "type": "null" },
+              { "type": "array", "items": { "$ref": "#/components/schemas/ApiErrorDetail" } }
+            ]
+          }
+        }
+      },
+      "ApiErrorResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["error", "meta"],
+        "properties": {
+          "error": { "$ref": "#/components/schemas/ApiError" },
+          "meta": { "$ref": "#/components/schemas/ApiMeta" }
+        }
+      }
+    }
+  }
+}

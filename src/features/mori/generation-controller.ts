@@ -1,5 +1,5 @@
 import type { GenerationStatus } from "./domain"
-import { createGenerationRequest, type ArtworkGenerationInput, type GenerationCreateInput, type GenerationReceipt, type LyricsRevisionInput, type MixRevisionInput, type MoriApi, type MoriExportInput, type MoriGenerationDraft, type MoriProjectCreateInput, type MoriReleaseDraft, type ReleaseDraftInput, type SongPlanCreateInput, type StemSeparationInput, type StudioChangeGenerationInput } from "@/lib/mori-api"
+import { createGenerationRequest, type ArtworkGenerationInput, type CurrentVersionInput, type GenerationCreateInput, type GenerationReceipt, type LyricsRevisionInput, type MixRevisionInput, type MoriApi, type MoriExportInput, type MoriGenerationDraft, type MoriProjectCreateInput, type MoriReleaseDraft, type ReleaseDraftInput, type SongPlanCreateInput, type StemSeparationInput, type StudioChangeGenerationInput } from "@/lib/mori-api"
 import type { MoriRef } from "./domain"
 
 export type GenerationControllerState = {
@@ -91,6 +91,20 @@ export const previewMoriApi: MoriApi = {
       },
       meta: {
         request_id: "preview-project-request",
+      },
+    }
+  },
+  async putCurrentVersion(projectRef: MoriRef, input: CurrentVersionInput, idempotencyKey: string) {
+    return {
+      data: {
+        project_ref: projectRef,
+        current_version_ref: input.version_ref,
+        source_candidate_ref: input.candidate_ref,
+        previous_version_ref: input.expected_current_version_ref,
+        selected_at: "2026-09-03T19:55:00.000Z",
+      },
+      meta: {
+        request_id: `preview-current-version-request-${idempotencyKey}`,
       },
     }
   },

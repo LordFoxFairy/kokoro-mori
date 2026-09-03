@@ -4,6 +4,7 @@ import {
   type ApiError,
   type ApiSuccess,
   type ArtworkGenerationInput,
+  type CurrentVersionInput,
   type GenerationCreateInput,
   type LyricsRevisionInput,
   type MoriGenerationEvent,
@@ -32,6 +33,7 @@ import {
   parseLyricsRevisionReceipt,
   parseLyricsRevisionSnapshot,
   parseMoriCandidatePage,
+  parseMoriCurrentVersionSelection,
   parseMoriExportReceipt,
   parseMoriExportSnapshot,
   parseMoriLibraryPage,
@@ -93,6 +95,15 @@ export function createMoriApiClient(options: MoriApiClientOptions = {}): MoriApi
       const response = await fetchImpl(`${apiBasePath}/projects/${encodeURIComponent(projectRef)}`)
       const payload = await readJson(response)
       return parseSuccessResponse(response, payload, parseMoriProject)
+    },
+    async putCurrentVersion(projectRef: MoriRef, input: CurrentVersionInput, idempotencyKey: string) {
+      const response = await fetchImpl(`${apiBasePath}/projects/${encodeURIComponent(projectRef)}/current_version`, {
+        method: "PUT",
+        headers: createMutationHeaders(idempotencyKey),
+        body: JSON.stringify(input),
+      })
+      const payload = await readJson(response)
+      return parseSuccessResponse(response, payload, parseMoriCurrentVersionSelection)
     },
     async createSongPlan(projectRef, input, idempotencyKey) {
       const response = await fetchImpl(

@@ -30,6 +30,7 @@ import type {
   MoriCandidate,
   MoriArtworkCandidate,
   MoriArtworkGenerationEvent,
+  MoriCurrentVersionSelection,
   MoriExportReceipt,
   MoriExportScope,
   MoriExportSnapshot,
@@ -293,6 +294,24 @@ export function parseMoriProject(value: unknown): MoriProject | null {
     current_version_ref: value.current_version_ref,
     candidate_count: value.candidate_count,
     last_activity_at: value.last_activity_at,
+  }
+}
+
+export function parseMoriCurrentVersionSelection(value: unknown): MoriCurrentVersionSelection | null {
+  if (
+    !isRecord(value)
+    || !nonEmptyString(value.project_ref)
+    || !nonEmptyString(value.current_version_ref)
+    || !nonEmptyString(value.source_candidate_ref)
+    || !nullableString(value.previous_version_ref)
+    || !dateString(value.selected_at)
+  ) return null
+  return {
+    project_ref: value.project_ref,
+    current_version_ref: value.current_version_ref,
+    source_candidate_ref: value.source_candidate_ref,
+    previous_version_ref: value.previous_version_ref,
+    selected_at: value.selected_at,
   }
 }
 

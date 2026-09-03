@@ -3,6 +3,70 @@ import { createExportRequest, createGenerationRequest, createLyricsRevisionReque
 import { createMoriApiClient } from "./mori-api-client"
 
 describe("Mori same-origin API client", () => {
+  it("commits a Take as Current with exact CAS context and idempotency", async () => {
+    let capturedUrl = ""
+    let capturedInit: RequestInit | undefined
+    const api = createMoriApiClient({
+      fetchImpl: async (input, init) => {
+        capturedUrl = String(input)
+        capturedInit = init
+        return jsonResponse({
+          data: {
+            project_ref: "project_1",
+            current_version_ref: "version_2",
+            source_candidate_ref: "candidate_2",
+            previous_version_ref: "version_1",
+            selected_at: "2026-09-03T19:55:00.000Z",
+          },
+          meta: { request_id: "request_current_version_1" },
+        })
+      },
+    })
+    const input = {
+      candidate_ref: "candidate_2",
+      version_ref: "version_2",
+      expected_current_version_ref: "version_1",
+    }
+
+    const response = await api.putCurrentVersion("project_1", input, "idem-current-version-1")
+
+    expect(capturedUrl).toBe("/api/v1/mori/projects/project_1/current_version")
+    expect(capturedInit?.method).toBe("PUT")
+    expect(capturedInit?.headers).toEqual({
+      "Content-Type": "application/json",
+      "Idempotency-Key": "idem-current-version-1",
+    })
+    expect(JSON.parse(String(capturedInit?.body))).toEqual(input)
+    expect(response.data).toEqual({
+      project_ref: "project_1",
+      current_version_ref: "version_2",
+      source_candidate_ref: "candidate_2",
+      previous_version_ref: "version_1",
+      selected_at: "2026-09-03T19:55:00.000Z",
+    })
+  })
+
+  it("rejects malformed Current Version confirmations", async () => {
+    const api = createMoriApiClient({
+      fetchImpl: async () => jsonResponse({
+        data: {
+          project_ref: "project_1",
+          current_version_ref: "version_2",
+          source_candidate_ref: "candidate_2",
+          previous_version_ref: 42,
+          selected_at: "not-a-date",
+        },
+        meta: { request_id: "request_current_version_invalid" },
+      }),
+    })
+
+    await expect(api.putCurrentVersion("project_1", {
+      candidate_ref: "candidate_2",
+      version_ref: "version_2",
+      expected_current_version_ref: "version_1",
+    }, "idem-current-version-invalid")).rejects.toMatchObject({ code: "invalid_api_response" })
+  })
+
   it("creates a project with an idempotent public command", async () => {
     let capturedUrl = ""
     let capturedInit: RequestInit | undefined
