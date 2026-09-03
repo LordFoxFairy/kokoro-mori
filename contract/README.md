@@ -23,9 +23,9 @@ music owner、BFF 或其他 Kokoro 子仓的内部模型。
 - [`tests/mori-stem-separation.contract.test.ts`](./tests/mori-stem-separation.contract.test.ts)：检查来源 Version、
   provider-neutral 分离模式、幂等命令、返回资产、恢复资源与受信身份边界。
 - [`openapi/mori-media-access.v1.json`](./openapi/mori-media-access.v1.json)：浏览器使用 opaque
-  `asset_ref` 进行同源音频播放与显式下载的 byte-range 读取边界，不暴露对象存储位置或供应商 URL。
+  `asset_ref` 进行同源音频播放、图片读取与显式下载；音频支持 byte-range，边界不暴露对象存储位置或供应商 URL。
 - [`tests/mori-media-access.contract.test.ts`](./tests/mori-media-access.contract.test.ts)：检查 `Range` / `If-Range`、
-  `200` / `206`、inline / attachment、授权错误与 provider-neutral 边界。
+  音频和图片的 `200`、仅音频允许的 `206`、inline / attachment、授权错误与 provider-neutral 边界。
 - [`openapi/mori-mix-revision.v1.json`](./openapi/mori-mix-revision.v1.json)：把一次完成的 Stem Separation
   上的逐轨 Gain / Mute 保存成 version-scoped、不可变的 Mix Revision；Solo 明确只属于试听态。
 - [`tests/mori-mix-revision.contract.test.ts`](./tests/mori-mix-revision.contract.test.ts)：检查 `201` 创建、读取资源、
@@ -34,6 +34,14 @@ music owner、BFF 或其他 Kokoro 子仓的内部模型。
   创建异步全曲渲染；请求显式携带 source、scope 与 MP3/WAV format，snapshot 回显完整渲染上下文。
 - [`tests/mori-export.contract.test.ts`](./tests/mori-export.contract.test.ts)：检查 `202` 创建、幂等 Header、
   Version / Mix Revision 来源分支、仅已实现的 full-song scope、异步读取与 provider-neutral 边界。
+- [`openapi/mori-artwork-generation.v1.json`](./openapi/mori-artwork-generation.v1.json)：从路径 Version
+  创建异步 Release artwork；固定方形、无文字和四个候选，并提供 snapshot、SSE replay 与 cancel。
+- [`tests/mori-artwork-generation.contract.test.ts`](./tests/mori-artwork-generation.contract.test.ts)：检查四种 style、
+  四种 palette、固定输出约束、Version 回显、图片 asset refs、幂等命令和受信身份边界。
+- [`openapi/mori-release-draft.v1.json`](./openapi/mori-release-draft.v1.json)：读取或保存 version-scoped Release
+  draft；标题、说明、可见性、Remix 权限、Explicit content 与 Artwork 均为显式字段，并使用 revision 做乐观并发。
+- [`tests/mori-release-draft.contract.test.ts`](./tests/mori-release-draft.contract.test.ts)：检查 `GET` / `PUT`、
+  `expected_revision`、draft-only 状态、独立可见性与 Remix 权限，以及 provider-neutral 边界。
 
 Studio Change 不建立第二套异步任务状态机。它通过
 `POST /api/v1/mori/versions/{version_ref}/generations` 创建既有 Generation 资源，并继续复用
@@ -79,9 +87,20 @@ Stem mixer 只读取 snapshot 返回的 `audio_asset_ref`，通过同源媒体�
 scope 与 format，浏览器连同 Project 上下文阻止错误轮询结果被挂到当前 Studio；只有 succeeded snapshot 携带 download URL。
 创建响应不确定时消费者必须复用原 `Idempotency-Key`；状态读取的瞬时失败不得创建第二个 render task。
 
+Artwork Generation 是 Release 的视觉身份流程，不是音乐 Cover / Restyle，也不复用音频 Generation 或 Take Lanes。
+`POST /api/v1/mori/versions/{version_ref}/artwork_generations` 固定 `aspect_ratio: 1:1`、`text_policy: no_text`
+与 `output_count: 4`，并显式携带 prompt、style 和 palette。消费者必须先 Review 再创建，使用 durable snapshot、
+SSE replay、cancel 与同一幂等键重试；只有 Version 和完整计划均匹配的成功 snapshot 才能提供可选图片。
+
+`GET|PUT /api/v1/mori/versions/{version_ref}/release_draft` 只管理草稿，不包含 Publish command。新草稿默认由
+界面选择 `private`，`visibility`、`allow_remix` 与 `explicit_content` 各自独立；Artwork 可以继续使用当前图片，
+也可以引用已生成的 `artwork_candidate_ref`。更新必须携带 `expected_revision`，返回的 Version、revision 和完整
+draft 必须与请求上下文一致，防止旧窗口或错误资源覆盖当前选择。
+
 `GET /api/v1/mori/assets/{asset_ref}/content` 是浏览器媒体读取 seam，不是第二份 Asset 事实源。BFF 必须从
 受信会话与资源关联完成授权，再向 Storage owner 解析对象字节；浏览器不能提交 tenant/subject，也不能得到
-bucket、对象 key 或供应商签名 URL。播放默认使用 `inline` 并允许单一 byte range；明确下载使用
+bucket、对象 key 或供应商签名 URL。音频播放默认使用 `inline` 并允许单一 byte range；Release 图片使用完整
+`image/*` 的 `200` 响应；明确下载使用
 `disposition=attachment`。Next 同源代理透传 `Range`、`If-Range`、`206` 与内容范围响应头。
 
 `src/lib/mori-api.ts` 和 `src/lib/mori-api-client.ts` 是当前浏览器消费者实现。契约变更顺序固定为：

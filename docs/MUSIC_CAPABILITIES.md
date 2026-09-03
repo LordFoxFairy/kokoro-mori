@@ -14,7 +14,7 @@ Idea / Reference
   -> 非破坏式 AI Change
   -> Take Lanes 对比
   -> Current Version
-  -> Mix / Export / Publish
+  -> Mix / Export / Release draft / Publish
 ```
 
 - **Suno 值得吸收的部分**：Create 与 Studio 连续、时间线范围成为 AI 上下文、生成结果进入
@@ -40,7 +40,7 @@ Idea / Reference
 | 编曲 | Version / Timeline range | Studio · Arrangement | Add part、Replace section、Extend、Transform | Take Lanes |
 | 歌词 | Lyrics draft / Section | Studio · Lyrics | 续写、改写、押韵、结构调整、按段落应用 | Lyrics revision |
 | 声音 | Stem / Mix | Studio · Stems | Separate、Add vocal、Add instrumental、Remove FX、Mute/Solo | Stem takes / Mix revision |
-| 完成 | Export / Release | Studio / Project | Remaster、全曲/选区/多轨导出、封面；MV 后置 | Export / Publish artifact |
+| 完成 | Export / Release | Studio / Project | Remaster、全曲导出、Release artwork 与 draft；MV 后置 | Export / Release draft |
 | 复用 | Asset | Library | Reference、Voice、Persona、Style preset | 可跨项目复用资产 |
 
 ### 全局 Rail 保持克制
@@ -49,10 +49,10 @@ Idea / Reference
 不直接增加成永久导航项：
 
 - Remix / Edit / Extend 属于当前 Version，在 Studio 中出现。
-- Cover / Restyle 属于 Transform 的具体模式。
+- 音乐 Cover / Restyle 属于 Transform 的具体模式；Release artwork 只负责视觉身份。
 - Vocal Remover / Stem Split 属于 Stems。
 - Voice / Persona / Reference 属于 Library 中的可复用资产。
-- MV 属于 Finish / Publish，等歌曲完成后再出现。
+- MV 属于 Finish / Release，等歌曲完成后再出现。
 - TTS 只有在形成明确的音乐创作 Job 时才进入，例如 spoken vocal 或 guide voice；不做孤立工具页。
 
 这样既保留 Tad 的能力广度，又避免用户先理解一堆工具名才能开始创作。
@@ -130,6 +130,29 @@ Commit       对比后显式 Use take；源与 Current 均不改变
 但 Mori 把来源、约束和结果去向全部结构化。运行中关闭 Finish 不会取消任务，重新打开可恢复进度；snapshot 的
 source 或 strength 与 Review Plan 不一致时不会挂接任何 Candidate。保存过 Mix 时默认选择最新 Mix Revision，
 否则默认当前 Version，避免用户刚完成的 Gain / Mute 调整在精修时悄悄丢失。
+
+### Finish / Release 的完成信息模型
+
+Release 与 Remaster 共用 Studio 的 Finish 入口，但它保存的是当前 Version 的发布意图，不执行发布：
+
+```text
+Identity     Title + Description + Artwork
+Visibility   Private（默认） | Link only | Public
+Permissions  Allow remixes（与 Visibility 独立）
+Disclosure   Explicit content
+Persistence  Save release draft + expected revision
+Publish      当前没有命令
+```
+
+Artwork 是视觉身份，不等于 Tad 所称的音乐 Cover。用户可以沿用当前图片，或输入 brief，选择
+Abstract / Editorial / Illustrated / Photographic 与 Warm dawn / Violet night / Mint haze / Monochrome，先 Review
+固定的 **1:1、no text、4 concepts** 计划，再启动独立的异步 Artwork Generation。任务支持 snapshot、SSE、取消、
+失败重试和关闭窗口后的恢复；只有 Version、prompt、style、palette 与固定约束完整匹配的成功结果才可选择。
+图片候选通过 opaque image asset ref 展示，选中后写入 Release draft，从不进入音频 Take Lanes。
+
+这使 Mori 同时保留 Suno 的作品连续性和 Tad 清晰的意图标签：用户始终知道自己是在“精修音频”“准备发布信息”
+还是“做音乐 Cover / Restyle”。Private 是安全且可预测的默认值；Link only / Public 不会自动开启 Remix，
+Allow remixes 也不会改变可见性。保存草稿不会发布、分享或替换 Current Version。
 
 ### Lyrics 的 AI 协作模型
 
@@ -412,7 +435,10 @@ BFF 必须按受信会话校验该 asset 与用户可见 Mori 资源的关联，
 - 已完成浏览器侧第二刀：Studio 顶部 Finish 提供 Version / 最新 Mix Revision 来源与 Subtle / Balanced / Bold
   Remaster strength；先 Review 再复用 typed `transform + intent: remaster` Generation，snapshot 严格回显来源与强度，
   结果固定为两个非破坏式 Takes。关闭窗口不丢运行态，也不自动替换 Current。
-- 下一步：Cover artwork 与发布信息；选区/多轨渲染等待真实时间选区与多轨 artifact contract 后再开放。
+- 已完成浏览器侧第三刀：Finish 的 Release 页签保存 version-scoped draft，Private 默认、Visibility / Remix 权限独立，
+  不提供 Publish command；Artwork 可沿用当前图，或通过固定 1:1、无文字、四候选的异步流程生成和选择。Artwork
+  只进入 Release draft，不进入音频 Take Lanes；窗口关闭、页签切换与任务恢复保持上下文，切换 Version 会清理旧草稿。
+- 下一步：音乐 Cover / Restyle、选区/多轨渲染；等待真实时间选区与多轨 artifact contract 后再开放。
 - AI MV 作为完成歌曲的后置流程，不抢占创作主路径。
 
 ## 6. 体验门禁

@@ -100,9 +100,9 @@
 - Modify: `docs/PRODUCT_SHAPE.md`
 - Modify: `docs/superpowers/plans/2026-09-03-studio-release-kit.md`
 
-- [ ] **Step 1: Document the product distinction** between Suno-style production continuity, Tad-style clear AI intent names, Mori artwork versus musical Cover/Restyle, separate remix permission, private-by-default visibility, and the deliberate absence of a publish command.
-- [ ] **Step 2: Run the complete automated gate** with `git diff --check && pnpm lint && pnpm typecheck && pnpm test && pnpm build`.
-- [ ] **Step 3: Inspect desktop at 1280×720** and verify Finish opens above the global Player, tabs do not shift the shell, the Release split has a clear reading order, every control is reachable, and no content is clipped.
-- [ ] **Step 4: Inspect mobile at 390×844** and verify one-column stacking, horizontal-fit, sticky actions above the Player, keyboard focus order, scroll reachability, and no loss of Remaster/Release state when switching tabs.
-- [ ] **Step 5: Mark this plan complete, update acceptance evidence with current test counts, restore generated `next-env.d.ts`, remove browser artifacts, stop local servers, and confirm `git status --short` contains only intended source/document changes.
-- [ ] **Step 6: Commit** with `git add ACCEPTANCE.md contract/README.md docs && git commit -m "docs: record studio release workflow"`.
+- [x] **Step 1: Document the product distinction** between Suno-style production continuity, Tad-style clear AI intent names, Mori artwork versus musical Cover/Restyle, separate remix permission, private-by-default visibility, and the deliberate absence of a publish command.
+- [x] **Step 2: Run the complete automated gate** with `git diff --check && pnpm lint && pnpm typecheck && pnpm test && pnpm build`.
+- [x] **Step 3: Inspect desktop at 1280×720** and verify Finish opens above the global Player, tabs do not shift the shell, the Release split has a clear reading order, every control is reachable, and no content is clipped.
+- [x] **Step 4: Inspect mobile at 390×844** and verify one-column stacking, horizontal-fit, sticky actions above the Player, keyboard focus order, scroll reachability, and no loss of Remaster/Release state when switching tabs.
+- [x] **Step 5: Mark this plan complete, update acceptance evidence with current test counts, restore generated `next-env.d.ts`, remove browser artifacts, stop local servers, and confirm `git status --short` contains only intended source/document changes.
+- [x] **Step 6: Commit** with `git add ACCEPTANCE.md contract/README.md docs && git commit -m "docs: record studio release workflow"`.

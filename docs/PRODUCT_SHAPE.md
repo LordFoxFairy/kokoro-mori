@@ -30,6 +30,8 @@ Mori 的落地：
 - 当前先落地 Take Lanes：生成的方向可试听、对比，再明确提交为当前版本；Lyrics 草稿和 Stems
   分离也沿用这条闭环；成功 Stems 通过受信同源媒体投影进入同步 audition mixer，真实音频字节继续由
   BFF 与 Storage owner 承接。
+- Finish 仍绑定当前 Version：Remaster 的音频结果回到 Take Lanes，Release 的视觉与元数据只进入 draft，
+  两条路径都不会绕过用户确认或偷偷发布。
 
 ### 2. Figma First Draft：AI 先给可编辑的第一稿
 
@@ -59,8 +61,9 @@ Mori 的落地：
 
 [Tad AI Music Generator](https://tad.ai/ai-music-generator) 用 Generate、Reference、Remix、Edit
 区分用户意图，并继续提供 Cover、Vocal Remover 和 MV 等独立能力。Mori 吸收它清晰的操作分类，
-但不把这些能力全部提升为全局工具页：Reference 留在 Create/Library，Remix、Edit、Extend、Cover
-回到当前 Version 的 Studio 上下文，Vocal Remover 回到 Stems，MV 放在 Finish/Publish。
+但不把这些能力全部提升为全局工具页：Reference 留在 Create/Library，Remix、Edit、Extend、音乐 Cover / Restyle
+回到当前 Version 的 Studio 上下文，Vocal Remover 回到 Stems，MV 放在 Finish/Release。Release artwork 只负责视觉身份，
+不会与音乐 Cover 共用名称、任务状态或结果去向。
 
 完整能力归属、操作语义与打磨顺序见 [`MUSIC_CAPABILITIES.md`](./MUSIC_CAPABILITIES.md)。
 
@@ -115,6 +118,11 @@ Workspace nav    内容随项目上下文变化                     跨页面保
   Version 或最新保存的 Mix Revision 开始，选择 Subtle / Balanced / Bold，Review 整首范围、保护约束与两条 Take
   去向后再运行。任务可在窗口关闭后继续并恢复；snapshot 来源或强度不匹配时拒绝挂接，成功结果只进入 Take Lanes，
   用户显式 Use take 前不改变 Current。
+- 已落地第一版：Finish 的 Release 页签把 Title、Description、Visibility、Remix permission、Explicit content 与
+  Artwork 保存为当前 Version 的 draft。默认 Private，可见性与允许 Remix 分开；唯一主动作是 Save release draft，
+  当前没有 Publish command。Artwork 可沿用当前图，或先 Review 固定 1:1、无文字、四候选的异步计划，再从成功结果中
+  选择一张图片。Artwork snapshot 必须完整匹配 Version 与计划，图片只进入 draft，不进入音频 Take Lanes；关闭窗口后
+  草稿与任务仍可恢复，切换 Version 时清理旧上下文。
 - 已落地第一版：Stems 已形成 Voice & stems 上下文工作面，在 Separate mix 旁提供 Add vocals 与 Add instrumental。
   Vocal layer 将必填 Lyrics、可选 Voice profile 和 Vocal direction 分开；Instrumental layer 只要求编曲方向。
   两者都先显示 whole-song Layer Plan，复用 version-scoped `add_part` Generation lifecycle，并把结果送入现有
@@ -131,8 +139,8 @@ Workspace nav    内容随项目上下文变化                     跨页面保
   Style。Library 的 All 视图已经将作品与素材分区，Sources 视图按 Audio / Voices / Inspiration 渐进筛选；
   `Use in Create` 会通过经校验的 provider-neutral source ref 恢复同一个创作上下文。当前素材为确定性 preview，
   正式资产引用与 projection 继续由 storage/music owner adapter 承接。
-- 后续：Song Plan 的服务端版本历史、正式音频上传、版本自动保存、Cover artwork / 发布信息，以及建立在真实时间选区
-  和多轨交付模型上的更多导出 scope；AI MV 保持为完成歌曲后的后置流程。
+- 后续：Song Plan 的服务端版本历史、正式音频上传、版本自动保存、音乐 Cover / Restyle，以及建立在真实时间选区
+  和多轨交付模型上的更多导出 scope；AI MV 与真正的 Publish command 保持为完成歌曲后的后置流程。
 
 ## 五、明确不做的方向
 

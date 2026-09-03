@@ -1,7 +1,7 @@
 # Mori Preview Acceptance
 
 > 记录日期：2026-09-03
-> 范围：Mori 第一轮全局壳体、页面 IA、fixture-only 生成体验、Library/Studio 交互与 API client seam
+> 范围：Mori 全局壳体、页面 IA、fixture-only 生成体验、Library/Studio/Finish 交互与 API client seam
 
 ## 验证命令
 
@@ -18,15 +18,15 @@ pnpm build
 
 - `pnpm lint`：通过，`--max-warnings=0`
 - `pnpm typecheck`：通过
-- `pnpm test`：通过，21 个测试文件、171 个测试
-- `pnpm build`：通过，生成 `/`、`/create`、`/projects`、`/library`、`/settings`、Project Overview 和 Studio 路由
+- `pnpm test`：通过，35 个测试文件、248 个测试
+- `pnpm build`：通过，生成 `/`、`/create`、`/projects`、`/library`、`/settings`、`/help`、Project Overview 和 Studio 路由
 
 ## 页面巡检
 
 本地启动：
 
 ```bash
-pnpm dev --hostname 127.0.0.1 --port 3001
+pnpm dev --hostname 127.0.0.1 --port 3004
 ```
 
 已巡检以下页面：
@@ -72,6 +72,14 @@ Studio 顶部现在提供上下文化的 Finish，而不是新增全局 AI 工�
 Remaster snapshot 必须回显完全一致的 `intent`、source 与 `variation_strength`，否则整单拒收；成功结果只追加到 Take Lanes，
 不会覆盖源 Version、Mix Revision 或 Current Version；390px 视口下 Studio 收敛为真正单栏，顶栏三个动作与三项工具均完整可达，
 页面无横向溢出，Finish 使用可滚动工作表并将 Review / Execute footer 固定在可见区域；
+Finish 的 Release 页签把发布准备保留在当前 Version：标题、说明、Private / Link only / Public、允许 Remix、Explicit content
+和 Artwork 均可保存为 draft，默认 Private，且可见性与 Remix 权限互不推导。窗口只有 `Save release draft`，不存在 Publish
+命令，也不会改变 Current Version。Artwork 可继续使用当前图片，或先 Review 再创建固定 1:1、无文字、四个候选的异步任务；
+style 与 palette 都是 provider-neutral 枚举，创建、snapshot、SSE、取消、失败重试和候选挂接均核对当前 Version 与完整计划。
+选中的图片只进入 Release draft，图片资产通过同源 media seam 读取，不进入音频 Take Lanes；音乐 Cover / Restyle 仍属于
+Studio Transform。关闭并重新打开 Finish、切换 Remaster / Release 都保留草稿和运行态，切换 Version 则清除旧上下文。
+Release 已在 1280×720 桌面视口验证固定 Finish 标题/页签、内部滚动、底部保存动作与 Global Player 分层；在 390×844
+移动视口验证单栏堆叠、无横向溢出、底部字段可达、保存动作位于 Player 上方，并验证 Rail 展开/收起不移动工作区语义。
 Arrangement 已提供 Take Lanes，可试听、选择方向并明确 Use take 后切换当前版本；
 Arrangement 现在提供与时间线连在一起的 Mori AI Changes：Add part、Replace section、Extend、Transform
 共享同一套上下文式输入；Intro、Verse、Lift、Chorus、Outro 可直接选为 AI 操作上下文，操作范围和结果去向
@@ -169,6 +177,7 @@ Nothing playing 和下一步提示，播放、跳转、静音等依赖版本的�
   provider-neutral projection，BFF 不可用时回退到确定性 fixture。
 - 不执行真实音乐生成，不消耗 Suno、Tad 或其他供应商额度。
 - 浏览器不直连供应商；真实接线必须通过同源 `/api/v1/*` BFF。
+- Release 当前只保存 version-scoped draft，不执行公开发布；Private 是默认值，分享可见性与允许 Remix 是独立选择。
 - API 请求遵守 `snake_case`、`{data, meta}` / `{error, meta}`、`meta.request_id`、
   `Idempotency-Key` 和 SSE `Last-Event-ID` 规则。
 
