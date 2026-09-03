@@ -1,5 +1,13 @@
 import type { GenerationStatus } from "./domain"
-import type { MoriStudioChangeDraft, StudioChangeOperation, StudioChangePreserve } from "@/lib/mori-api"
+import {
+  studioInstrumentalCoverProtectedAnchors,
+  studioVocalCoverProtectedAnchors,
+  type MoriStudioChangeDraft,
+  type StudioChangeOperation,
+  type StudioChangePreserve,
+  type StudioCoverMode,
+  type StudioTransformIntent,
+} from "@/lib/mori-api"
 
 export type StudioTimelineSection = {
   id: string
@@ -30,6 +38,9 @@ export type StudioChangePlanOptions = {
   preserve: StudioChangePreserve[]
   outputCount: StudioChangeOutputCount
   transformScope: StudioTransformScope
+  transformIntent: StudioTransformIntent
+  coverMode: StudioCoverMode
+  coverVoiceRef: string | null
 }
 
 export const minimumStudioTimelineSelectionMs = 1_000
@@ -98,7 +109,9 @@ export function studioChangeScopeLabel(
   operation: StudioChangeOperation,
   selection: StudioTimelineSection,
   transformScope: StudioTransformScope,
+  transformIntent: StudioTransformIntent = "restyle",
 ): string {
+  if (operation === "transform" && transformIntent === "cover") return "Whole song · open Version"
   if (operation === "transform" && transformScope === "whole_version") return "Whole song"
   if (selection.id !== "custom-range") {
     if (operation === "add_part") return `After selected ${selection.label}`
@@ -120,6 +133,9 @@ export function buildStudioChangePlan(
     preserve: defaultStudioChangePreserve,
     outputCount: 2,
     transformScope: "selected_section",
+    transformIntent: "restyle",
+    coverMode: "vocal",
+    coverVoiceRef: null,
   },
 ): StudioChangePlan {
   const preserve = [...options.preserve]
@@ -128,7 +144,7 @@ export function buildStudioChangePlan(
     instruction,
     sectionId: section.id,
     selection: { ...section },
-    scopeLabel: studioChangeScopeLabel(operation, section, options.transformScope),
+    scopeLabel: studioChangeScopeLabel(operation, section, options.transformScope, options.transformIntent),
     preserve,
     outputCount: options.outputCount,
   }
@@ -152,6 +168,32 @@ export function buildStudioChangePlan(
         draft: { ...common, operation, scope: { type: "from_position", positionMs: section.endMs } },
       }
     case "transform":
+      if (options.transformIntent === "cover") {
+        const coverPreserve = options.coverMode === "vocal"
+          ? [...studioVocalCoverProtectedAnchors]
+          : [...studioInstrumentalCoverProtectedAnchors]
+        const voice = options.coverMode === "vocal" && options.coverVoiceRef !== null
+          ? { voiceRef: options.coverVoiceRef }
+          : {}
+        return {
+          ...planContext,
+          operation,
+          scopeLabel: "Whole song · open Version",
+          preserve: coverPreserve,
+          outputCount: 2,
+          draft: {
+            operation,
+            intent: "cover",
+            scope: { type: "whole_version" },
+            coverMode: options.coverMode,
+            ...voice,
+            instruction,
+            preserve: coverPreserve,
+            referenceAssetRefs: [],
+            outputCount: 2,
+          },
+        }
+      }
       if (options.transformScope === "whole_version") {
         return {
           ...planContext,

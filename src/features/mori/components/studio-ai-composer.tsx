@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowRight, Check, Pencil, Plus, RotateCcw, Scissors, SlidersHorizontal, Sparkles, Square } from "lucide-react"
+import { ArrowRight, AudioLines, Check, Mic2, Pencil, Plus, RotateCcw, Scissors, SlidersHorizontal, Sparkles, Square } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { useId, useState } from "react"
 import type { FormEvent } from "react"
@@ -16,7 +16,15 @@ import {
   type StudioTimelineSection,
   type StudioTransformScope,
 } from "../studio-change"
-import type { StudioChangeOperation, StudioChangePreserve } from "@/lib/mori-api"
+import { previewVoiceProfiles } from "../creative-assets"
+import {
+  studioInstrumentalCoverProtectedAnchors,
+  studioVocalCoverProtectedAnchors,
+  type StudioChangeOperation,
+  type StudioChangePreserve,
+  type StudioCoverMode,
+  type StudioTransformIntent,
+} from "@/lib/mori-api"
 import styles from "./studio-ai-composer.module.css"
 
 type StudioAiOperationConfig = {
@@ -77,20 +85,48 @@ const preserveOptions: readonly { id: StudioChangePreserve; label: string }[] = 
   { id: "structure", label: "Structure" },
 ]
 
+const transformIntents: readonly {
+  id: StudioTransformIntent
+  label: string
+  description: string
+  Icon: LucideIcon
+}[] = [
+  {
+    id: "restyle",
+    label: "Restyle",
+    description: "Change genre, texture, or performance while choosing what stays.",
+    Icon: Sparkles,
+  },
+  {
+    id: "cover",
+    label: "Cover",
+    description: "Create a new performance of the open song as two protected takes.",
+    Icon: AudioLines,
+  },
+]
+
 export function StudioAiComposer({ selectedSection, run, onGenerate, onCancel, onReset }: StudioAiComposerProps) {
   const promptId = useId()
   const [operation, setOperation] = useState<StudioChangeOperation>(() => run.plan?.operation ?? "add_part")
   const [instruction, setInstruction] = useState(() => run.plan?.instruction ?? "")
   const [preserve, setPreserve] = useState<StudioChangePreserve[]>(() => [...(run.plan?.preserve ?? defaultStudioChangePreserve)])
   const [outputCount, setOutputCount] = useState<StudioChangeOutputCount>(() => run.plan?.outputCount ?? 2)
+  const [transformIntent, setTransformIntent] = useState<StudioTransformIntent>(() => transformIntentFromPlan(run.plan))
   const [transformScope, setTransformScope] = useState<StudioTransformScope>(() => (
     run.plan?.draft.operation === "transform" && run.plan.draft.scope.type === "whole_version"
       ? "whole_version"
       : "selected_section"
   ))
+  const [coverMode, setCoverMode] = useState<StudioCoverMode>(() => coverModeFromPlan(run.plan))
+  const [coverVoiceRef, setCoverVoiceRef] = useState<string>(() => coverVoiceFromPlan(run.plan))
   const [plan, setPlan] = useState<StudioChangePlan | null>(null)
   const activeOperation = getOperation(operation)
-  const activeScope = studioChangeScopeLabel(operation, selectedSection, transformScope)
+  const isCover = operation === "transform" && transformIntent === "cover"
+  const activePreserve = isCover
+    ? coverMode === "vocal" ? [...studioVocalCoverProtectedAnchors] : [...studioInstrumentalCoverProtectedAnchors]
+    : preserve
+  const activeOutputCount: StudioChangeOutputCount = isCover ? 2 : outputCount
+  const activeScope = studioChangeScopeLabel(operation, selectedSection, transformScope, transformIntent)
   const busy = isActiveStudioChangeStatus(run.status)
   const reviewedPlan = plan !== null && (
     (plan.draft.operation === "transform" && plan.draft.scope.type === "whole_version")
@@ -143,6 +179,27 @@ export function StudioAiComposer({ selectedSection, run, onGenerate, onCancel, o
     setPlan(null)
   }
 
+  const chooseTransformIntent = (nextIntent: StudioTransformIntent) => {
+    if (busy) return
+    clearFinishedRun()
+    setTransformIntent(nextIntent)
+    setPlan(null)
+  }
+
+  const chooseCoverMode = (nextMode: StudioCoverMode) => {
+    if (busy) return
+    clearFinishedRun()
+    setCoverMode(nextMode)
+    setPlan(null)
+  }
+
+  const chooseCoverVoice = (nextVoiceRef: string) => {
+    if (busy) return
+    clearFinishedRun()
+    setCoverVoiceRef(nextVoiceRef)
+    setPlan(null)
+  }
+
   const reviewChange = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const trimmedInstruction = instruction.trim()
@@ -153,6 +210,9 @@ export function StudioAiComposer({ selectedSection, run, onGenerate, onCancel, o
       preserve,
       outputCount,
       transformScope,
+      transformIntent,
+      coverMode,
+      coverVoiceRef: coverVoiceRef === "" ? null : coverVoiceRef,
     }))
   }
 
@@ -163,7 +223,12 @@ export function StudioAiComposer({ selectedSection, run, onGenerate, onCancel, o
     window.requestAnimationFrame(() => document.getElementById(promptId)?.focus())
   }
 
-  const plannedOperation = visiblePlan === null ? null : getOperation(visiblePlan.operation)
+  const plannedOperation = visiblePlan === null ? null : studioChangePlanLabel(visiblePlan)
+  const visibleCoverDraft = visiblePlan !== null
+    && visiblePlan.draft.operation === "transform"
+    && visiblePlan.draft.intent === "cover"
+    ? visiblePlan.draft
+    : null
   const status = runStatus(run)
 
   return (
@@ -192,6 +257,50 @@ export function StudioAiComposer({ selectedSection, run, onGenerate, onCancel, o
         ))}
       </div>
 
+      {operation === "transform" ? (
+        <div className={styles.studioAiIntents} role="group" aria-label="Transform intent">
+          {transformIntents.map(({ id, label, description, Icon }) => (
+            <button
+              className={styles.studioAiIntent}
+              type="button"
+              aria-label={label}
+              aria-pressed={transformIntent === id}
+              disabled={busy}
+              key={id}
+              onClick={() => chooseTransformIntent(id)}
+            >
+              <span className={styles.studioAiIntentIcon} aria-hidden="true"><Icon size={15} /></span>
+              <span><strong>{label}</strong><small>{description}</small></span>
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      {isCover ? (
+        <section className={styles.studioAiCoverSetup} aria-label="Cover setup">
+          <header>
+            <div><AudioLines size={14} /><strong>Audio cover, not release artwork.</strong></div>
+            <span>Uses the open Version · no re-upload</span>
+          </header>
+          <div className={styles.studioAiCoverControls}>
+            <div className={styles.studioAiCoverMode} role="group" aria-label="Cover mode">
+              <button type="button" aria-label="Vocal cover" aria-pressed={coverMode === "vocal"} disabled={busy} onClick={() => chooseCoverMode("vocal")}><Mic2 size={13} /> Vocal</button>
+              <button type="button" aria-label="Instrumental cover" aria-pressed={coverMode === "instrumental"} disabled={busy} onClick={() => chooseCoverMode("instrumental")}><AudioLines size={13} /> Instrumental</button>
+            </div>
+            {coverMode === "vocal" ? (
+              <label className={styles.studioAiVoiceField}>
+                <span>Voice profile <small>Optional</small></span>
+                <select aria-label="Voice profile" value={coverVoiceRef} disabled={busy} onChange={(event) => chooseCoverVoice(event.target.value)}>
+                  <option value="">Natural reinterpretation</option>
+                  {previewVoiceProfiles.map((voice) => <option value={voice.ref} key={voice.ref}>{voice.name} · {voice.description}</option>)}
+                </select>
+              </label>
+            ) : null}
+          </div>
+          <p><Check size={12} /> {preserveLabel(activePreserve)} stay fixed</p>
+        </section>
+      ) : null}
+
       <form className={styles.studioAiForm} onSubmit={reviewChange}>
         <label className={styles.srOnly} htmlFor={promptId}>Tell Mori what to change</label>
         <textarea
@@ -200,7 +309,7 @@ export function StudioAiComposer({ selectedSection, run, onGenerate, onCancel, o
           value={instruction}
           rows={2}
           disabled={busy}
-          placeholder={activeOperation.placeholder}
+          placeholder={isCover ? coverPromptPlaceholder(coverMode) : activeOperation.placeholder}
           onChange={(event) => updateInstruction(event.target.value)}
         />
         <button className={styles.studioAiReview} type="submit" disabled={instruction.trim() === "" || busy}>
@@ -208,7 +317,7 @@ export function StudioAiComposer({ selectedSection, run, onGenerate, onCancel, o
         </button>
       </form>
 
-      <details className={styles.studioAiControls}>
+      {!isCover ? <details className={styles.studioAiControls}>
         <summary>
           <span><SlidersHorizontal size={13} /> Direction controls</span>
           <span>{preserve.length} anchors · {takeCountLabel(outputCount)}</span>
@@ -257,23 +366,25 @@ export function StudioAiComposer({ selectedSection, run, onGenerate, onCancel, o
             </div>
           ) : null}
         </div>
-      </details>
+      </details> : null}
 
       <div className={styles.studioAiContext} aria-label="Change context">
         <span><strong>Scope</strong>{activeScope}</span>
-        <span><strong>Output</strong>{alternativeCountLabel(outputCount)}</span>
+        <span><strong>Output</strong>{alternativeCountLabel(activeOutputCount)}</span>
         <span><strong>Destination</strong>Take lanes</span>
       </div>
 
       {visiblePlan !== null && plannedOperation !== null ? (
         <section className={styles.studioAiPlan} aria-label="AI change plan" aria-live="polite" aria-busy={busy}>
           <header className={styles.studioAiPlanHeader}>
-            <div><span>Change plan</span><strong>{plannedOperation.label}</strong></div>
+            <div><span>Change plan</span><strong>{plannedOperation}</strong></div>
             <span className={status.className}>{status.label}</span>
           </header>
           <p className={styles.studioAiPlanInstruction}>{visiblePlan.instruction}</p>
           <div className={styles.studioAiPlanFacts}>
             <span><strong>Scope</strong>{visiblePlan.scopeLabel}</span>
+            {visibleCoverDraft !== null ? <span><strong>Mode</strong>{coverModeLabel(visibleCoverDraft.coverMode)}</span> : null}
+            {visibleCoverDraft?.coverMode === "vocal" ? <span><strong>Voice</strong>{coverVoiceLabel(visibleCoverDraft.voiceRef)}</span> : null}
             <span><strong>Keep</strong>{preserveLabel(visiblePlan.preserve)}</span>
             <span><strong>Result</strong>{alternativeCountLabel(visiblePlan.outputCount)} · Take lanes</span>
           </div>
@@ -316,6 +427,48 @@ export function StudioAiComposer({ selectedSection, run, onGenerate, onCancel, o
 
 function getOperation(operation: StudioChangeOperation): StudioAiOperationConfig {
   return operations.find((item) => item.id === operation) ?? operations[0]
+}
+
+function transformIntentFromPlan(plan: StudioChangePlan | null): StudioTransformIntent {
+  if (plan?.draft.operation !== "transform") return "restyle"
+  return plan.draft.intent === "cover" ? "cover" : "restyle"
+}
+
+function coverModeFromPlan(plan: StudioChangePlan | null): StudioCoverMode {
+  return plan?.draft.operation === "transform" && plan.draft.intent === "cover"
+    ? plan.draft.coverMode
+    : "vocal"
+}
+
+function coverVoiceFromPlan(plan: StudioChangePlan | null): string {
+  return plan?.draft.operation === "transform" && plan.draft.intent === "cover"
+    ? plan.draft.voiceRef ?? ""
+    : ""
+}
+
+function studioChangePlanLabel(plan: StudioChangePlan): string {
+  if (plan.draft.operation !== "transform") return getOperation(plan.operation).label
+  switch (plan.draft.intent) {
+    case "restyle": return "Restyle"
+    case "cover": return "Cover"
+    case "remaster": return "Remaster"
+  }
+}
+
+function coverPromptPlaceholder(mode: StudioCoverMode): string {
+  return mode === "vocal"
+    ? "Describe the voice, arrangement, and performance for this cover…"
+    : "Describe the instrumental arrangement for this cover…"
+}
+
+function coverModeLabel(mode: StudioCoverMode): string {
+  return mode === "vocal" ? "Vocal" : "Instrumental"
+}
+
+function coverVoiceLabel(voiceRef: string | undefined): string {
+  if (voiceRef === undefined) return "Natural reinterpretation"
+  const voice = previewVoiceProfiles.find((profile) => profile.ref === voiceRef)
+  return voice === undefined ? "Selected Voice profile" : `${voice.name} · ${voice.description}`
 }
 
 function takeCountLabel(count: StudioChangeOutputCount): string {
