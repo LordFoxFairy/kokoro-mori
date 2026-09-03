@@ -18,7 +18,7 @@ pnpm build
 
 - `pnpm lint`：通过，`--max-warnings=0`
 - `pnpm typecheck`：通过
-- `pnpm test`：通过，16 个测试文件、116 个测试
+- `pnpm test`：通过，17 个测试文件、124 个测试
 - `pnpm build`：通过，生成 `/`、`/create`、`/projects`、`/library`、`/settings`、Project Overview 和 Studio 路由
 
 ## 页面巡检
@@ -82,6 +82,10 @@ Apply 前原稿保持不变，Apply 后可 Undo，最后仍通过 Save draft 明
 用于验证界面状态机，不伪装为已接通的线上歌词模型。该工作面已在 1280×720 下巡检初始、Review 与 Suggestion 状态，
 无浏览器运行时错误。Stems 已提供 Preview only 的逐轨 Mute/Solo
 控制，明确当前仍是音频渲染器接入前的交互层；
+Lyrics Revision 的浏览器契约已固定为 version-scoped 异步资源：输入明确 direction、section / whole lyrics
+scope、完整 lyrics context、source text、constraints 与 1–4 个输出；snapshot 返回 source digest 和文本
+suggestions，支持 SSE `Last-Event-ID` 回放与幂等 cancel。OpenAPI、request builder、same-origin client、运行时
+response parser 和 contract tests 会阻止 camelCase、provider 以及 caller-supplied tenant/subject/actor 字段进入边界；
 Create 的 Smart 模式会先展示可编辑 Song Plan 摘要，用户确认后才持久化 Song Plan 并创建
 generation；未实现的 More/Edit 死按钮已移除，避免给用户错误预期。Library 对空的版本投影
 提供明确空状态，不再因为过滤器没有对应内容而渲染异常；项目列表从独立的 project projection

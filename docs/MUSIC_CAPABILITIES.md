@@ -101,7 +101,8 @@ Commit       Apply to draft；应用后仍可 Undo，最终由 Save draft 持久
 
 这一交互吸收 Suno 的“选区修改 → 产生候选 → 用户确认”与 Tad 的“定向改词、保持声线/节奏连续性”，但
 保持 Mori 的非破坏式原则：原稿在 Apply 前不变，建议文本本身也可继续编辑。当前 Suggestion 使用确定性
-preview fixture 验证界面状态机；真实歌词模型调用及其 API contract 是下一步，不把 fixture 描述成线上生成结果。
+preview fixture 验证界面状态机；真实歌词模型调用尚未接线，但浏览器侧 API contract 已固定，不把 fixture
+描述成线上生成结果。
 
 ## 4. Studio Change API 契约
 
@@ -143,6 +144,41 @@ Generation snapshot 使用 `generation_kind: new_song | studio_change` 做显式
 - 输出只创建 Candidate/Take，不原地修改 Current Version。
 - `Use take` 是独立、可审计、带并发版本条件的提交动作。
 
+### Lyrics Revision API
+
+歌词建议输出文本，不输出音频 Candidate，因此不把它伪装成 Studio Generation。浏览器侧单独固定以下异步资源：
+
+```http
+POST /api/v1/mori/versions/{version_ref}/lyrics_revisions  → 202
+GET  /api/v1/mori/lyrics_revisions/{lyrics_revision_ref}
+GET  /api/v1/mori/lyrics_revisions/{lyrics_revision_ref}/events
+POST /api/v1/mori/lyrics_revisions/{lyrics_revision_ref}/cancel
+```
+
+```text
+LyricsRevisionInput
+  direction        rewrite | continue | rhyme | restructure
+  scope            section(section_ref + source_text) | whole_lyrics(source_text)
+  instruction
+  lyrics_context   当前完整 Draft，包含 scope source_text
+  constraints      meaning | cadence | rhyme_scheme | section_length
+  output_count     1–4，默认 2
+
+LyricsRevisionSnapshot
+  version_ref + direction + scope
+  instruction + constraints + output_count
+  status + progress
+  source_digest
+  suggestions[]    suggestion_ref + text
+```
+
+`source_digest` 是服务端生成的 opaque concurrency token，将结果绑定到提交时的 Draft；后续 commit
+需把它作为预期版本交回 owner，若原稿已经变化，Apply 必须要求用户重新确认，不能静默覆盖。Snapshot 同时回显
+instruction、constraints 与 output_count，刷新后不依赖临时表单恢复意图。Command 使用 `Idempotency-Key`，
+恢复使用 durable snapshot + `Last-Event-ID`，公开字段保持
+`snake_case` 且不携带 caller-supplied identity 或 provider 参数。机器事实源见
+[`contract/openapi/mori-lyrics-revision.v1.json`](../contract/openapi/mori-lyrics-revision.v1.json)。
+
 ## 5. 打磨顺序
 
 ### P0 · 交互骨架（当前）
@@ -166,7 +202,8 @@ Generation snapshot 使用 `generation_kind: new_song | studio_change` 做显式
 
 - 可拖选时间范围、播放头与段落联动。
 - Lyrics 已完成按 Verse / Chorus / Whole lyrics 组织的 Rewrite、Continue、Find rhyme、Restructure
-  界面闭环，并支持 Review、可编辑 Suggestion、Apply 与 Undo；下一步固定真实 Lyrics Revision contract。
+  界面闭环，并支持 Review、可编辑 Suggestion、Apply 与 Undo；Lyrics Revision contract、client、response parser、
+  snapshot / SSE / cancel seam 已固定，下一步接入组件运行态。
 - Stem split、Add Vocal、Add Instrumental。
 - Voice、Persona、Style preset、Reference 进入 Library assets。
 

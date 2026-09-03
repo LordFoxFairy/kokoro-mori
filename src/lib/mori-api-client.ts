@@ -4,8 +4,10 @@ import {
   type ApiError,
   type ApiSuccess,
   type GenerationCreateInput,
+  type LyricsRevisionInput,
   type MoriGenerationEvent,
   type MoriApi,
+  type MoriLyricsRevisionEvent,
   type StudioChangeGenerationInput,
 } from "./mori-api"
 import {
@@ -15,6 +17,10 @@ import {
   parseGenerationEventData,
   parseGenerationReceipt,
   parseGenerationSnapshot,
+  parseLyricsRevisionCancelReceipt,
+  parseLyricsRevisionEventData,
+  parseLyricsRevisionReceipt,
+  parseLyricsRevisionSnapshot,
   parseMoriCandidatePage,
   parseMoriExportReceipt,
   parseMoriExportSnapshot,
@@ -107,6 +113,46 @@ export function createMoriApiClient(options: MoriApiClientOptions = {}): MoriApi
       )
       const payload = await readJson(response)
       return parseSuccessResponse(response, payload, parseGenerationReceipt)
+    },
+    async createLyricsRevision(versionRef: MoriRef, input: LyricsRevisionInput, idempotencyKey: string) {
+      const response = await fetchImpl(
+        `${apiBasePath}/versions/${encodeURIComponent(versionRef)}/lyrics_revisions`,
+        {
+          method: "POST",
+          headers: createMutationHeaders(idempotencyKey),
+          body: JSON.stringify(input),
+        },
+      )
+      const payload = await readJson(response)
+      return parseSuccessResponse(response, payload, parseLyricsRevisionReceipt)
+    },
+    async getLyricsRevision(lyricsRevisionRef: MoriRef) {
+      const response = await fetchImpl(`${apiBasePath}/lyrics_revisions/${encodeURIComponent(lyricsRevisionRef)}`)
+      const payload = await readJson(response)
+      return parseSuccessResponse(response, payload, parseLyricsRevisionSnapshot)
+    },
+    async getLyricsRevisionEvents(lyricsRevisionRef: MoriRef, lastEventId = null) {
+      const headers: HeadersInit = { Accept: "text/event-stream" }
+      if (lastEventId !== null && lastEventId.trim() !== "") headers["Last-Event-ID"] = lastEventId
+      const response = await fetchImpl(`${apiBasePath}/lyrics_revisions/${encodeURIComponent(lyricsRevisionRef)}/events`, { headers })
+      const body = await response.text()
+      if (!response.ok) throwEventStreamError(response, body, "Mori lyrics revision event stream")
+      if (!(response.headers.get("content-type") || "").toLowerCase().startsWith("text/event-stream")) {
+        throw invalidEventStreamResponse("Mori lyrics revision event stream returned an invalid content type", response.status)
+      }
+      const events = parseLyricsRevisionEvents(body)
+      if (events === null) {
+        throw invalidEventStreamResponse("Mori lyrics revision event stream returned an invalid response", response.status)
+      }
+      return events
+    },
+    async cancelLyricsRevision(lyricsRevisionRef: MoriRef, idempotencyKey: string) {
+      const response = await fetchImpl(`${apiBasePath}/lyrics_revisions/${encodeURIComponent(lyricsRevisionRef)}/cancel`, {
+        method: "POST",
+        headers: createMutationHeaders(idempotencyKey),
+      })
+      const payload = await readJson(response)
+      return parseSuccessResponse(response, payload, parseLyricsRevisionCancelReceipt)
     },
     async getGeneration(generationRef: MoriRef) {
       const response = await fetchImpl(`${apiBasePath}/generations/${encodeURIComponent(generationRef)}`)
@@ -222,7 +268,15 @@ function parseJson(value: string): unknown {
 }
 
 function parseGenerationEvents(body: string): MoriGenerationEvent[] | null {
-  const events: MoriGenerationEvent[] = []
+  return parseServerSentEvents(body, "generation.", parseGenerationEventData)
+}
+
+function parseLyricsRevisionEvents(body: string): MoriLyricsRevisionEvent[] | null {
+  return parseServerSentEvents(body, "lyrics_revision.", parseLyricsRevisionEventData)
+}
+
+function parseServerSentEvents<T>(body: string, eventPrefix: string, parser: (value: unknown) => T | null): Array<{ id: string; event: string; data: T }> | null {
+  const events: Array<{ id: string; event: string; data: T }> = []
   for (const frame of body.split(/\r?\n\r?\n/u)) {
     if (frame.trim() === "" || frame.split(/\r?\n/u).every((line) => line.startsWith(":"))) continue
     let id: string | null = null
@@ -233,8 +287,8 @@ function parseGenerationEvents(body: string): MoriGenerationEvent[] | null {
       else if (line.startsWith("event:")) event = line.slice(6).trim()
       else if (line.startsWith("data:")) dataLines.push(line.slice(5).trimStart())
     }
-    if (id === null || id === "" || event === null || event === "" || dataLines.length === 0) return null
-    const envelope = parseApiSuccess(parseJson(dataLines.join("\n")), parseGenerationEventData)
+    if (id === null || id === "" || event === null || !event.startsWith(eventPrefix) || dataLines.length === 0) return null
+    const envelope = parseApiSuccess(parseJson(dataLines.join("\n")), parser)
     if (envelope === null) return null
     events.push({
       id,
@@ -243,4 +297,19 @@ function parseGenerationEvents(body: string): MoriGenerationEvent[] | null {
     })
   }
   return events
+}
+
+function throwEventStreamError(response: Response, body: string, label: string): never {
+  const payload = parseJson(body)
+  const apiError = parseApiError(payload)
+  if (apiError !== null) throw new MoriApiRequestError(apiError.error, apiError.meta.request_id, response.status)
+  throw invalidEventStreamResponse(`${label} returned an invalid response`, response.status)
+}
+
+function invalidEventStreamResponse(message: string, status: number): MoriApiRequestError {
+  return new MoriApiRequestError(
+    { code: "invalid_api_response", message, retryable: status >= 500, details: null },
+    null,
+    status,
+  )
 }

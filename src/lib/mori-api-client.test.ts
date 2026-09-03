@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { createGenerationRequest, createStudioChangeRequest } from "./mori-api"
+import { createGenerationRequest, createLyricsRevisionRequest, createStudioChangeRequest } from "./mori-api"
 import { createMoriApiClient } from "./mori-api-client"
 
 describe("Mori same-origin API client", () => {
@@ -192,6 +192,152 @@ describe("Mori same-origin API client", () => {
       mode: null,
       song_plan_ref: null,
     })
+  })
+
+  it("posts a reviewed section-aware lyrics revision", async () => {
+    let capturedUrl = ""
+    let capturedInit: RequestInit | undefined
+    const api = createMoriApiClient({
+      fetchImpl: async (input, init) => {
+        capturedUrl = String(input)
+        capturedInit = init
+        return new Response(JSON.stringify({
+          data: { lyrics_revision_ref: "lyrics_revision_1", status: "queued" },
+          meta: { request_id: "request_lyrics_revision_1" },
+        }), { status: 202, headers: { "Content-Type": "application/json" } })
+      },
+    })
+
+    const request = createLyricsRevisionRequest({
+      direction: "rewrite",
+      scope: {
+        type: "section",
+        sectionRef: "section/chorus 1",
+        sourceText: "  and every road became a reason\nto carry the morning through  ",
+      },
+      instruction: "  Make the image more vivid while keeping the cadence.  ",
+      lyricsContext: "  We were headlights in the quiet\nand every road became a reason\nto carry the morning through  ",
+      constraints: ["meaning", "cadence", "meaning"],
+      outputCount: 2,
+    })
+    const response = await api.createLyricsRevision("version/lyrics 1", request, "idem-lyrics-1")
+
+    expect(capturedUrl).toBe("/api/v1/mori/versions/version%2Flyrics%201/lyrics_revisions")
+    expect(capturedInit?.method).toBe("POST")
+    expect(capturedInit?.headers).toEqual({
+      "Content-Type": "application/json",
+      "Idempotency-Key": "idem-lyrics-1",
+    })
+    expect(JSON.parse(String(capturedInit?.body))).toEqual({
+      direction: "rewrite",
+      scope: {
+        type: "section",
+        section_ref: "section/chorus 1",
+        source_text: "and every road became a reason\nto carry the morning through",
+      },
+      instruction: "Make the image more vivid while keeping the cadence.",
+      lyrics_context: "We were headlights in the quiet\nand every road became a reason\nto carry the morning through",
+      constraints: ["meaning", "cadence"],
+      output_count: 2,
+    })
+    expect(response.data).toEqual({ lyrics_revision_ref: "lyrics_revision_1", status: "queued" })
+  })
+
+  it("reads a refresh-safe lyrics revision snapshot", async () => {
+    const api = createMoriApiClient({
+      fetchImpl: async () => new Response(JSON.stringify({
+        data: {
+          lyrics_revision_ref: "lyrics_revision_1",
+          version_ref: "version_1",
+          status: "succeeded",
+          progress: 100,
+          direction: "rewrite",
+          scope: { type: "section", section_ref: "section_chorus_1" },
+          instruction: "Make the image more vivid while keeping the cadence.",
+          constraints: ["meaning", "cadence"],
+          output_count: 2,
+          source_digest: "sha256:lyrics-source-1",
+          suggestions: [
+            { suggestion_ref: "lyrics_suggestion_1", text: "Every road becomes a rhythm." },
+            { suggestion_ref: "lyrics_suggestion_2", text: "Every mile opens into morning." },
+          ],
+          created_at: "2026-09-03T12:00:00.000Z",
+        },
+        meta: { request_id: "request_lyrics_snapshot_1" },
+      }), { status: 200, headers: { "Content-Type": "application/json" } }),
+    })
+
+    const response = await api.getLyricsRevision("lyrics_revision_1")
+
+    expect(response.data).toMatchObject({
+      status: "succeeded",
+      direction: "rewrite",
+      instruction: "Make the image more vivid while keeping the cadence.",
+      constraints: ["meaning", "cadence"],
+      output_count: 2,
+      source_digest: "sha256:lyrics-source-1",
+      suggestions: [
+        { suggestion_ref: "lyrics_suggestion_1", text: "Every road becomes a rhythm." },
+        { suggestion_ref: "lyrics_suggestion_2", text: "Every mile opens into morning." },
+      ],
+    })
+  })
+
+  it("replays and cancels a lyrics revision through stable resource paths", async () => {
+    const calls: Array<{ url: string; method: string | undefined; headers: HeadersInit | undefined }> = []
+    const api = createMoriApiClient({
+      fetchImpl: async (input, init) => {
+        const url = String(input)
+        calls.push({ url, method: init?.method, headers: init?.headers })
+        if (url.endsWith("/events")) {
+          return new Response([
+            "id: lyrics_revision_1:3",
+            "event: lyrics_revision.generating",
+            'data: {"data":{"lyrics_revision_ref":"lyrics_revision_1","version_ref":"version_1","status":"generating","progress":64,"suggestion_refs":[]},"meta":{"request_id":"request_lyrics_event_1"}}',
+            "",
+            "",
+          ].join("\n"), { status: 200, headers: { "Content-Type": "text/event-stream" } })
+        }
+        return new Response(JSON.stringify({
+          data: { lyrics_revision_ref: "lyrics_revision_1", status: "cancelled" },
+          meta: { request_id: "request_lyrics_cancel_1" },
+        }), { status: 202, headers: { "Content-Type": "application/json" } })
+      },
+    })
+
+    const events = await api.getLyricsRevisionEvents("lyrics_revision_1", "lyrics_revision_1:2")
+    const cancelled = await api.cancelLyricsRevision("lyrics_revision_1", "idem-lyrics-cancel-1")
+
+    expect(calls).toEqual([
+      {
+        url: "/api/v1/mori/lyrics_revisions/lyrics_revision_1/events",
+        method: undefined,
+        headers: { Accept: "text/event-stream", "Last-Event-ID": "lyrics_revision_1:2" },
+      },
+      {
+        url: "/api/v1/mori/lyrics_revisions/lyrics_revision_1/cancel",
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": "idem-lyrics-cancel-1" },
+      },
+    ])
+    expect(events[0]?.data).toMatchObject({ status: "generating", progress: 64 })
+    expect(cancelled.data.status).toBe("cancelled")
+  })
+
+  it("rejects malformed lyrics revision drafts before sending them", () => {
+    expect(() => createLyricsRevisionRequest({
+      direction: "rewrite",
+      scope: { type: "section", sectionRef: "", sourceText: "A line" },
+      instruction: "Rewrite this line",
+      lyricsContext: "A line",
+    })).toThrow("lyrics_revision_section_ref_required")
+
+    expect(() => createLyricsRevisionRequest({
+      direction: "continue",
+      scope: { type: "whole_lyrics", sourceText: "A line" },
+      instruction: "   ",
+      lyricsContext: "A line",
+    })).toThrow("lyrics_revision_instruction_required")
   })
 
   it("rejects an invalid studio change before it reaches the API", () => {

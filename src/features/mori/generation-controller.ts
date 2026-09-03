@@ -1,5 +1,5 @@
 import type { GenerationStatus } from "./domain"
-import { createGenerationRequest, type GenerationCreateInput, type GenerationReceipt, type MoriApi, type MoriGenerationDraft, type MoriProjectCreateInput, type SongPlanCreateInput, type StudioChangeGenerationInput } from "@/lib/mori-api"
+import { createGenerationRequest, type GenerationCreateInput, type GenerationReceipt, type LyricsRevisionInput, type MoriApi, type MoriGenerationDraft, type MoriProjectCreateInput, type SongPlanCreateInput, type StudioChangeGenerationInput } from "@/lib/mori-api"
 import type { MoriRef } from "./domain"
 
 export type GenerationControllerState = {
@@ -122,6 +122,55 @@ export const previewMoriApi: MoriApi = {
       },
       meta: {
         request_id: `preview-change-request-${idempotencyKey}`,
+      },
+    }
+  },
+  async createLyricsRevision(_versionRef: MoriRef, _input: LyricsRevisionInput, idempotencyKey: string) {
+    return {
+      data: {
+        lyrics_revision_ref: "lyrics_revision_preview_first_light",
+        status: "queued" as const,
+      },
+      meta: {
+        request_id: `preview-lyrics-revision-request-${idempotencyKey}`,
+      },
+    }
+  },
+  async getLyricsRevision(lyricsRevisionRef: MoriRef) {
+    return {
+      data: {
+        lyrics_revision_ref: lyricsRevisionRef,
+        version_ref: "version_preview_first_light_a",
+        status: "succeeded" as const,
+        progress: 100,
+        direction: "rewrite" as const,
+        scope: { type: "section" as const, section_ref: "section_preview_chorus_1" },
+        instruction: "Make the image more vivid while keeping the cadence.",
+        constraints: ["meaning" as const, "cadence" as const],
+        output_count: 2,
+        source_digest: "preview-lyrics-source-digest",
+        suggestions: [
+          { suggestion_ref: "lyrics_suggestion_preview_1", text: "Every road becomes a rhythm\npulling open daylight into view" },
+          { suggestion_ref: "lyrics_suggestion_preview_2", text: "Every mile opens into morning\nand carries all the daylight through" },
+        ],
+        created_at: "2026-09-03T12:00:00.000Z",
+      },
+      meta: {
+        request_id: "preview-lyrics-revision-status-request",
+      },
+    }
+  },
+  async getLyricsRevisionEvents() {
+    return []
+  },
+  async cancelLyricsRevision(lyricsRevisionRef: MoriRef) {
+    return {
+      data: {
+        lyrics_revision_ref: lyricsRevisionRef,
+        status: "cancelled" as const,
+      },
+      meta: {
+        request_id: "preview-lyrics-revision-cancel-request",
       },
     }
   },

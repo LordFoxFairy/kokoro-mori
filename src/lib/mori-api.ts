@@ -74,6 +74,71 @@ export type StudioChangeGenerationInput = StudioChangeGenerationCommonInput & (
   | { operation: "transform"; scope: StudioChangeRangeScope | StudioChangeWholeVersionScope }
 )
 
+export type LyricsRevisionDirection = "rewrite" | "continue" | "rhyme" | "restructure"
+
+export type LyricsRevisionConstraint = "meaning" | "cadence" | "rhyme_scheme" | "section_length"
+
+export type LyricsRevisionInputScope =
+  | { type: "section"; section_ref: MoriRef; source_text: string }
+  | { type: "whole_lyrics"; source_text: string }
+
+export type LyricsRevisionInput = {
+  direction: LyricsRevisionDirection
+  scope: LyricsRevisionInputScope
+  instruction: string
+  lyrics_context: string
+  constraints: LyricsRevisionConstraint[]
+  output_count: number
+}
+
+export type LyricsRevisionStatus = "queued" | "generating" | "succeeded" | "failed" | "cancelled" | "expired"
+
+export type LyricsRevisionReceipt = {
+  lyrics_revision_ref: MoriRef
+  status: Extract<LyricsRevisionStatus, "queued" | "generating">
+}
+
+export type LyricsRevisionCancelReceipt = {
+  lyrics_revision_ref: MoriRef
+  status: LyricsRevisionStatus
+}
+
+export type LyricsRevisionSnapshotScope =
+  | { type: "section"; section_ref: MoriRef }
+  | { type: "whole_lyrics" }
+
+export type MoriLyricsSuggestion = {
+  suggestion_ref: MoriRef
+  text: string
+}
+
+export type LyricsRevisionSnapshot = {
+  lyrics_revision_ref: MoriRef
+  version_ref: MoriRef
+  status: LyricsRevisionStatus
+  progress: number
+  direction: LyricsRevisionDirection
+  scope: LyricsRevisionSnapshotScope
+  instruction: string
+  constraints: LyricsRevisionConstraint[]
+  output_count: number
+  source_digest: string
+  suggestions: MoriLyricsSuggestion[]
+  created_at: string
+}
+
+export type MoriLyricsRevisionEvent = {
+  id: string
+  event: string
+  data: {
+    lyrics_revision_ref: MoriRef
+    version_ref: MoriRef
+    status: LyricsRevisionStatus
+    progress: number
+    suggestion_refs: MoriRef[]
+  }
+}
+
 export type SongPlanCreateInput = {
   prompt: string
   mood: string
@@ -212,6 +277,10 @@ export type MoriApi = {
   createSongPlan: (projectRef: MoriRef, input: SongPlanCreateInput, idempotencyKey: string) => Promise<ApiSuccess<MoriSongPlan>>
   createGeneration: (projectRef: MoriRef, input: GenerationCreateInput, idempotencyKey: string) => Promise<ApiSuccess<GenerationReceipt>>
   createStudioChange: (versionRef: MoriRef, input: StudioChangeGenerationInput, idempotencyKey: string) => Promise<ApiSuccess<GenerationReceipt>>
+  createLyricsRevision: (versionRef: MoriRef, input: LyricsRevisionInput, idempotencyKey: string) => Promise<ApiSuccess<LyricsRevisionReceipt>>
+  getLyricsRevision: (lyricsRevisionRef: MoriRef) => Promise<ApiSuccess<LyricsRevisionSnapshot>>
+  getLyricsRevisionEvents: (lyricsRevisionRef: MoriRef, lastEventId?: string | null) => Promise<MoriLyricsRevisionEvent[]>
+  cancelLyricsRevision: (lyricsRevisionRef: MoriRef, idempotencyKey: string) => Promise<ApiSuccess<LyricsRevisionCancelReceipt>>
   getGeneration: (generationRef: MoriRef) => Promise<ApiSuccess<GenerationSnapshot>>
   getGenerationEvents: (generationRef: MoriRef, lastEventId?: string | null) => Promise<MoriGenerationEvent[]>
   listCandidates: (projectRef: MoriRef) => Promise<ApiSuccess<{ candidates: MoriCandidate[]; next_cursor: string | null }>>
@@ -246,6 +315,17 @@ export type MoriStudioChangeDraft = MoriStudioChangeCommonDraft & (
   | { operation: "extend"; scope: { type: "from_position"; positionMs: number } }
   | { operation: "transform"; scope: { type: "time_range"; startMs: number; endMs: number } | { type: "whole_version" } }
 )
+
+export type MoriLyricsRevisionDraft = {
+  direction: LyricsRevisionDirection
+  scope:
+    | { type: "section"; sectionRef: MoriRef; sourceText: string }
+    | { type: "whole_lyrics"; sourceText: string }
+  instruction: string
+  lyricsContext: string
+  constraints?: LyricsRevisionConstraint[]
+  outputCount?: number
+}
 
 export function createGenerationRequest(draft: MoriGenerationDraft): GenerationCreateInput {
   return {
@@ -316,6 +396,46 @@ export function createStudioChangeRequest(draft: MoriStudioChangeDraft): StudioC
   }
 }
 
+export function createLyricsRevisionRequest(draft: MoriLyricsRevisionDraft): LyricsRevisionInput {
+  const instruction = draft.instruction.trim()
+  if (instruction === "") throw new Error("lyrics_revision_instruction_required")
+  if (instruction.length > 2_000) throw new Error("lyrics_revision_instruction_too_long")
+
+  const lyricsContext = draft.lyricsContext.trim()
+  if (lyricsContext === "") throw new Error("lyrics_revision_context_required")
+  if (lyricsContext.length > 20_000) throw new Error("lyrics_revision_context_too_long")
+
+  const sourceText = draft.scope.sourceText.trim()
+  if (sourceText === "") throw new Error("lyrics_revision_source_text_required")
+  if (sourceText.length > 10_000) throw new Error("lyrics_revision_source_text_too_long")
+  if (!lyricsContext.includes(sourceText)) throw new Error("lyrics_revision_source_outside_context")
+
+  const constraints = uniqueValues(draft.constraints ?? ["meaning", "cadence"])
+  if (constraints.length > lyricsRevisionConstraints.length || constraints.some((value) => !lyricsRevisionConstraints.includes(value))) {
+    throw new Error("lyrics_revision_constraints_invalid")
+  }
+
+  const outputCount = draft.outputCount ?? 2
+  if (!Number.isSafeInteger(outputCount) || outputCount < 1 || outputCount > 4) {
+    throw new Error("lyrics_revision_output_count_invalid")
+  }
+
+  const common = {
+    direction: draft.direction,
+    instruction,
+    lyrics_context: lyricsContext,
+    constraints,
+    output_count: outputCount,
+  }
+  if (draft.scope.type === "whole_lyrics") {
+    return { ...common, scope: { type: "whole_lyrics", source_text: sourceText } }
+  }
+
+  const sectionRef = draft.scope.sectionRef.trim()
+  if (sectionRef === "") throw new Error("lyrics_revision_section_ref_required")
+  return { ...common, scope: { type: "section", section_ref: sectionRef, source_text: sourceText } }
+}
+
 export function createMutationHeaders(idempotencyKey: string): MoriMutationHeaders {
   const normalizedKey = idempotencyKey.trim()
   if (!normalizedKey) {
@@ -346,3 +466,5 @@ function uniqueNonEmpty(values: string[]): string[] {
 function uniqueValues<T extends string>(values: T[]): T[] {
   return values.filter((value, index) => values.indexOf(value) === index)
 }
+
+const lyricsRevisionConstraints: readonly LyricsRevisionConstraint[] = ["meaning", "cadence", "rhyme_scheme", "section_length"]

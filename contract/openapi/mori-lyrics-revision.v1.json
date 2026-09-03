@@ -1,0 +1,748 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Mori Lyrics Revision API",
+    "version": "0.1.0",
+    "description": "Version-scoped, non-destructive AI lyric suggestions for Mori Studio."
+  },
+  "paths": {
+    "/api/v1/mori/versions/{version_ref}/lyrics_revisions": {
+      "post": {
+        "operationId": "createLyricsRevision",
+        "summary": "Create lyric suggestions from a reviewed direction",
+        "parameters": [
+          {
+            "name": "version_ref",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LyricsRevisionInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "The lyrics revision was accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiLyricsRevisionReceipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is malformed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The source version was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The idempotency key or source state conflicts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The source text or scope cannot be revised",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Revision capacity is temporarily exhausted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/mori/lyrics_revisions/{lyrics_revision_ref}": {
+      "get": {
+        "operationId": "getLyricsRevision",
+        "summary": "Read the durable lyrics revision snapshot",
+        "parameters": [
+          {
+            "name": "lyrics_revision_ref",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The latest revision snapshot",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiLyricsRevisionSnapshot"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The revision was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/mori/lyrics_revisions/{lyrics_revision_ref}/events": {
+      "get": {
+        "operationId": "getLyricsRevisionEvents",
+        "summary": "Replay ordered lyrics revision events",
+        "parameters": [
+          {
+            "name": "lyrics_revision_ref",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "Last-Event-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A replayable server-sent event stream",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The revision was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/mori/lyrics_revisions/{lyrics_revision_ref}/cancel": {
+      "post": {
+        "operationId": "cancelLyricsRevision",
+        "summary": "Request cancellation of an active lyrics revision",
+        "parameters": [
+          {
+            "name": "lyrics_revision_ref",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Cancellation was accepted or replayed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiLyricsRevisionCancelReceipt"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The revision was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The revision is already terminal or the command conflicts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "LyricsRevisionInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "direction",
+          "scope",
+          "instruction",
+          "lyrics_context",
+          "constraints",
+          "output_count"
+        ],
+        "properties": {
+          "direction": {
+            "type": "string",
+            "enum": [
+              "rewrite",
+              "continue",
+              "rhyme",
+              "restructure"
+            ]
+          },
+          "scope": {
+            "$ref": "#/components/schemas/LyricsRevisionInputScope"
+          },
+          "instruction": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "lyrics_context": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20000
+          },
+          "constraints": {
+            "type": "array",
+            "uniqueItems": true,
+            "maxItems": 4,
+            "items": {
+              "type": "string",
+              "enum": [
+                "meaning",
+                "cadence",
+                "rhyme_scheme",
+                "section_length"
+              ]
+            }
+          },
+          "output_count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4,
+            "default": 2
+          }
+        }
+      },
+      "LyricsRevisionInputScope": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/LyricsSectionScopeInput"
+          },
+          {
+            "$ref": "#/components/schemas/WholeLyricsScopeInput"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "section": "#/components/schemas/LyricsSectionScopeInput",
+            "whole_lyrics": "#/components/schemas/WholeLyricsScopeInput"
+          }
+        }
+      },
+      "LyricsSectionScopeInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "section_ref",
+          "source_text"
+        ],
+        "properties": {
+          "type": {
+            "const": "section"
+          },
+          "section_ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "source_text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 10000
+          }
+        }
+      },
+      "WholeLyricsScopeInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "source_text"
+        ],
+        "properties": {
+          "type": {
+            "const": "whole_lyrics"
+          },
+          "source_text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20000
+          }
+        }
+      },
+      "LyricsRevisionReceipt": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "lyrics_revision_ref",
+          "status"
+        ],
+        "properties": {
+          "lyrics_revision_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "generating"
+            ]
+          }
+        }
+      },
+      "LyricsRevisionCancelReceipt": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "lyrics_revision_ref",
+          "status"
+        ],
+        "properties": {
+          "lyrics_revision_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "$ref": "#/components/schemas/LyricsRevisionStatus"
+          }
+        }
+      },
+      "LyricsRevisionSnapshot": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "lyrics_revision_ref",
+          "version_ref",
+          "status",
+          "progress",
+          "direction",
+          "scope",
+          "instruction",
+          "constraints",
+          "output_count",
+          "source_digest",
+          "suggestions",
+          "created_at"
+        ],
+        "properties": {
+          "lyrics_revision_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "version_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "$ref": "#/components/schemas/LyricsRevisionStatus"
+          },
+          "progress": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "rewrite",
+              "continue",
+              "rhyme",
+              "restructure"
+            ]
+          },
+          "scope": {
+            "$ref": "#/components/schemas/LyricsRevisionSnapshotScope"
+          },
+          "instruction": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "constraints": {
+            "type": "array",
+            "uniqueItems": true,
+            "maxItems": 4,
+            "items": {
+              "type": "string",
+              "enum": [
+                "meaning",
+                "cadence",
+                "rhyme_scheme",
+                "section_length"
+              ]
+            }
+          },
+          "output_count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4
+          },
+          "source_digest": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "suggestions": {
+            "type": "array",
+            "maxItems": 4,
+            "items": {
+              "$ref": "#/components/schemas/LyricsSuggestion"
+            }
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "LyricsRevisionSnapshotScope": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/LyricsSectionScopeSnapshot"
+          },
+          {
+            "$ref": "#/components/schemas/WholeLyricsScopeSnapshot"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "section": "#/components/schemas/LyricsSectionScopeSnapshot",
+            "whole_lyrics": "#/components/schemas/WholeLyricsScopeSnapshot"
+          }
+        }
+      },
+      "LyricsSectionScopeSnapshot": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "section_ref"
+        ],
+        "properties": {
+          "type": {
+            "const": "section"
+          },
+          "section_ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        }
+      },
+      "WholeLyricsScopeSnapshot": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "const": "whole_lyrics"
+          }
+        }
+      },
+      "LyricsSuggestion": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "suggestion_ref",
+          "text"
+        ],
+        "properties": {
+          "suggestion_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20000
+          }
+        }
+      },
+      "LyricsRevisionStatus": {
+        "type": "string",
+        "enum": [
+          "queued",
+          "generating",
+          "succeeded",
+          "failed",
+          "cancelled",
+          "expired"
+        ]
+      },
+      "LyricsRevisionEventData": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "lyrics_revision_ref",
+          "version_ref",
+          "status",
+          "progress",
+          "suggestion_refs"
+        ],
+        "properties": {
+          "lyrics_revision_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "version_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "$ref": "#/components/schemas/LyricsRevisionStatus"
+          },
+          "progress": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "suggestion_refs": {
+            "type": "array",
+            "maxItems": 4,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      },
+      "ApiLyricsRevisionReceipt": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "data",
+          "meta"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/LyricsRevisionReceipt"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ApiMeta"
+          }
+        }
+      },
+      "ApiLyricsRevisionCancelReceipt": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "data",
+          "meta"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/LyricsRevisionCancelReceipt"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ApiMeta"
+          }
+        }
+      },
+      "ApiLyricsRevisionSnapshot": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "data",
+          "meta"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/LyricsRevisionSnapshot"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ApiMeta"
+          }
+        }
+      },
+      "ApiMeta": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "request_id"
+        ],
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "ApiErrorResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "error",
+          "meta"
+        ],
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ApiError"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ApiMeta"
+          }
+        }
+      },
+      "ApiError": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "code",
+          "message",
+          "retryable",
+          "details"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "retryable": {
+            "type": "boolean"
+          },
+          "details": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ApiErrorDetail"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "ApiErrorDetail": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "field",
+          "reason"
+        ],
+        "properties": {
+          "field": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  }
+}

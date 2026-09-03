@@ -4,11 +4,20 @@ import type {
   GenerationCancelReceipt,
   GenerationReceipt,
   GenerationSnapshot,
+  LyricsRevisionCancelReceipt,
+  LyricsRevisionConstraint,
+  LyricsRevisionDirection,
+  LyricsRevisionReceipt,
+  LyricsRevisionSnapshot,
+  LyricsRevisionSnapshotScope,
+  LyricsRevisionStatus,
   MoriCandidate,
   MoriExportReceipt,
   MoriExportSnapshot,
   MoriGenerationEvent,
   MoriLibraryItem,
+  MoriLyricsRevisionEvent,
+  MoriLyricsSuggestion,
   MoriProject,
   MoriProjectPage,
   MoriSongPlan,
@@ -63,6 +72,18 @@ function generationStatus(value: unknown): value is GenerationStatus {
 
 function studioChangeOperation(value: unknown): value is StudioChangeOperation {
   return value === "add_part" || value === "replace_section" || value === "extend" || value === "transform"
+}
+
+function lyricsRevisionDirection(value: unknown): value is LyricsRevisionDirection {
+  return value === "rewrite" || value === "continue" || value === "rhyme" || value === "restructure"
+}
+
+function lyricsRevisionStatus(value: unknown): value is LyricsRevisionStatus {
+  return value === "queued" || value === "generating" || value === "succeeded" || value === "failed" || value === "cancelled" || value === "expired"
+}
+
+function lyricsRevisionConstraint(value: unknown): value is LyricsRevisionConstraint {
+  return value === "meaning" || value === "cadence" || value === "rhyme_scheme" || value === "section_length"
 }
 
 function requestMeta(value: unknown): { request_id: string } | null {
@@ -148,6 +169,16 @@ export function parseGenerationCancelReceipt(value: unknown): GenerationCancelRe
   return { generation_ref: value.generation_ref, status: value.status }
 }
 
+export function parseLyricsRevisionReceipt(value: unknown): LyricsRevisionReceipt | null {
+  if (!isRecord(value) || !nonEmptyString(value.lyrics_revision_ref) || (value.status !== "queued" && value.status !== "generating")) return null
+  return { lyrics_revision_ref: value.lyrics_revision_ref, status: value.status }
+}
+
+export function parseLyricsRevisionCancelReceipt(value: unknown): LyricsRevisionCancelReceipt | null {
+  if (!isRecord(value) || !nonEmptyString(value.lyrics_revision_ref) || !lyricsRevisionStatus(value.status)) return null
+  return { lyrics_revision_ref: value.lyrics_revision_ref, status: value.status }
+}
+
 export function parseGenerationSnapshot(value: unknown): GenerationSnapshot | null {
   if (!isRecord(value) || !nonEmptyString(value.generation_ref) || !nonEmptyString(value.project_ref) || !generationStatus(value.status) || !integer(value.progress, 0, 100) || !stringArray(value.candidate_refs) || !dateString(value.created_at)) return null
   const common = {
@@ -198,6 +229,73 @@ export function parseMoriGenerationEvent(value: unknown): MoriGenerationEvent | 
   if (!isRecord(value) || !nonEmptyString(value.id) || !nonEmptyString(value.event) || !value.event.startsWith("generation.") || !isRecord(value.data)) return null
   const data = parseGenerationEventData(value.data)
   return data === null ? null : { id: value.id, event: value.event, data }
+}
+
+function parseLyricsRevisionSnapshotScope(value: unknown): LyricsRevisionSnapshotScope | null {
+  if (!isRecord(value)) return null
+  if (value.type === "whole_lyrics") return { type: "whole_lyrics" }
+  if (value.type === "section" && nonEmptyString(value.section_ref)) {
+    return { type: "section", section_ref: value.section_ref }
+  }
+  return null
+}
+
+export function parseMoriLyricsSuggestion(value: unknown): MoriLyricsSuggestion | null {
+  if (!isRecord(value) || !nonEmptyString(value.suggestion_ref) || !nonEmptyString(value.text)) return null
+  return { suggestion_ref: value.suggestion_ref, text: value.text }
+}
+
+export function parseLyricsRevisionSnapshot(value: unknown): LyricsRevisionSnapshot | null {
+  if (
+    !isRecord(value)
+    || !nonEmptyString(value.lyrics_revision_ref)
+    || !nonEmptyString(value.version_ref)
+    || !lyricsRevisionStatus(value.status)
+    || !integer(value.progress, 0, 100)
+    || !lyricsRevisionDirection(value.direction)
+    || !nonEmptyString(value.instruction)
+    || !Array.isArray(value.constraints)
+    || !value.constraints.every(lyricsRevisionConstraint)
+    || !integer(value.output_count, 1, 4)
+    || !nonEmptyString(value.source_digest)
+    || !Array.isArray(value.suggestions)
+    || !dateString(value.created_at)
+  ) return null
+  const scope = parseLyricsRevisionSnapshotScope(value.scope)
+  const suggestions = value.suggestions.map(parseMoriLyricsSuggestion)
+  if (scope === null || !suggestions.every(present)) return null
+  return {
+    lyrics_revision_ref: value.lyrics_revision_ref,
+    version_ref: value.version_ref,
+    status: value.status,
+    progress: value.progress,
+    direction: value.direction,
+    scope,
+    instruction: value.instruction,
+    constraints: value.constraints,
+    output_count: value.output_count,
+    source_digest: value.source_digest,
+    suggestions,
+    created_at: value.created_at,
+  }
+}
+
+export function parseLyricsRevisionEventData(value: unknown): MoriLyricsRevisionEvent["data"] | null {
+  if (
+    !isRecord(value)
+    || !nonEmptyString(value.lyrics_revision_ref)
+    || !nonEmptyString(value.version_ref)
+    || !lyricsRevisionStatus(value.status)
+    || !integer(value.progress, 0, 100)
+    || !stringArray(value.suggestion_refs)
+  ) return null
+  return {
+    lyrics_revision_ref: value.lyrics_revision_ref,
+    version_ref: value.version_ref,
+    status: value.status,
+    progress: value.progress,
+    suggestion_refs: value.suggestion_refs,
+  }
 }
 
 export function parseMoriCandidate(value: unknown): MoriCandidate | null {
