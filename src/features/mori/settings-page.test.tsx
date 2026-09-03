@@ -37,15 +37,16 @@ describe("Mori settings", () => {
 
     await waitFor(() => expect(screen.getByRole("link", { name: "Back to home" })).toHaveFocus())
 
-    const firstSection = screen.getByRole("button", { name: /appearance/i })
+    const settingsSearch = screen.getByRole("textbox", { name: "Search settings" })
     const lastControl = screen.getByRole("button", { name: "Off" })
-    firstSection.focus()
+    settingsSearch.focus()
     fireEvent.keyDown(window, { key: "Tab", shiftKey: true })
     expect(lastControl).toHaveFocus()
 
     lastControl.focus()
     fireEvent.keyDown(window, { key: "Tab" })
-    expect(firstSection).toHaveFocus()
+    expect(settingsSearch).toHaveFocus()
+
   })
 
   it("lets Escape use the same close affordance as the window", async () => {

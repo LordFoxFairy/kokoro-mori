@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Check, Headphones, Keyboard, Palette, Sparkles, UserRound, X } from "lucide-react"
+import { Check, Headphones, Palette, Search, Sparkles, UserRound, X } from "lucide-react"
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import { createPortal } from "react-dom"
 import { useMoriApp } from "./components/mori-app-provider"
@@ -22,11 +22,13 @@ const sections: Array<{ key: SettingsSection; label: string; description: string
 
 export function MoriSettingsPage({ returnTo = "/" }: MoriSettingsPageProps = {}) {
   const [section, setSection] = useState<SettingsSection>("appearance")
+  const [navQuery, setNavQuery] = useState("")
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null)
   const closeLinkRef = useRef<HTMLAnchorElement>(null)
   const settingsDialogRef = useRef<HTMLElement>(null)
   const { railCollapsed, setRailCollapsed, preferences, updatePreferences } = useMoriApp()
   const returnLabel = settingsReturnLabel(returnTo)
+  const visibleSections = sections.filter(({ label }) => label.toLocaleLowerCase().includes(navQuery.trim().toLocaleLowerCase()))
 
   useEffect(() => {
     const timer = window.setTimeout(() => setPortalTarget(document.body), 0)
@@ -89,9 +91,18 @@ export function MoriSettingsPage({ returnTo = "/" }: MoriSettingsPageProps = {})
               <span>Music workspace</span>
             </div>
           </div>
+          <label className={styles.settingsSearch}>
+            <Search size={15} aria-hidden="true" />
+            <input
+              value={navQuery}
+              aria-label="Search settings"
+              placeholder="Search settings"
+              onChange={(event) => setNavQuery(event.target.value)}
+            />
+          </label>
           <div className={styles.settingsNavSection}>
             <span className={styles.settingsNavLabel}>Preferences</span>
-          {sections.map(({ key, label, description, icon: Icon }) => (
+          {visibleSections.map(({ key, label, icon: Icon }) => (
             <button
               className={styles.settingsNavItem}
               type="button"
@@ -101,23 +112,21 @@ export function MoriSettingsPage({ returnTo = "/" }: MoriSettingsPageProps = {})
               onClick={() => setSection(key)}
             >
               <Icon size={16} strokeWidth={1.8} aria-hidden="true" />
-              <span><strong>{label}</strong><small>{description}</small></span>
+              <span>{label}</span>
             </button>
           ))}
           </div>
           <div className={styles.settingsNavDivider} />
-          <div className={styles.settingsNavNote}><Keyboard size={14} aria-hidden="true" /><span>Shortcuts stay in the editor so the studio stays focused.</span></div>
+          <div className={styles.settingsNavNote}>Mori music workspace</div>
         </nav>
 
         <div className={styles.settingsWindowContent}>
           <header className={styles.settingsWindowHeader}>
             <div className={styles.settingsWindowHeaderCopy}>
-              <div className={styles.eyebrow}><span className={styles.eyebrowDot} />Workspace controls</div>
               <h1 className={styles.settingsWindowTitle} id="mori-settings-title">Settings</h1>
-              <p>Shape the way Mori creates, plays, and presents your music.</p>
+              <p>Manage the workspace without leaving your project.</p>
             </div>
             <Link ref={closeLinkRef} className={styles.settingsClose} href={returnTo} aria-label={returnLabel}>
-              <span>{returnLabel}</span>
               <X size={17} strokeWidth={1.8} aria-hidden="true" />
             </Link>
           </header>

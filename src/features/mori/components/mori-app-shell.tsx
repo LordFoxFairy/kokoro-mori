@@ -33,7 +33,7 @@ export function MoriAppShell({ activeKey, ariaLabel, children, onQueueOpen, show
     }
   }, [railCollapsed, toggleRail])
 
-  const shellStyle = { "--mori-rail-width": railCollapsed ? "120px" : "248px" } as CSSProperties
+  const shellStyle = { "--mori-rail-width": railCollapsed ? "92px" : "248px" } as CSSProperties
   const className = `${styles.appShell} ${styles.appShellWithPlayer}`
 
   return (

@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, CircleHelp, FolderKanban, House, Library, Plus, Settings2, Sparkles } from "lucide-react"
+import { CircleHelp, FolderKanban, House, Library, PanelLeftClose, PanelLeftOpen, Plus, Settings2, Sparkles } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import styles from "../mori-workspace.module.css"
@@ -42,7 +42,7 @@ export function MoriRail({ activeKey = "create", collapsed = false, onToggle }: 
       <div className={styles.brandRow}>
         <div className={styles.brandMark} aria-hidden="true">M</div>
         <span className={styles.brandName}>Mori</span>
-        {onToggle ? <button className={styles.railToggle} type="button" onClick={onToggle} aria-expanded={!collapsed} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} title={collapsed ? "Expand sidebar" : "Collapse sidebar"}>{collapsed ? <ChevronRight /> : <ChevronLeft />}</button> : null}
+        {onToggle ? <button className={styles.railToggle} type="button" onClick={onToggle} aria-expanded={!collapsed} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} title={collapsed ? "Expand sidebar" : "Collapse sidebar"}>{collapsed ? <PanelLeftOpen /> : <PanelLeftClose />}</button> : null}
       </div>
 
       <Link className={styles.newButton} href={createHref} aria-label="New creation" title={collapsed ? "New creation" : undefined}>
