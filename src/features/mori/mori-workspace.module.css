@@ -3011,6 +3011,10 @@
 }
 
 @media (max-width: 900px) {
+  .catalogContent {
+    padding: 36px 24px 54px;
+  }
+
   .projectOverviewHeader {
     grid-template-columns: 130px minmax(0, 1fr);
     gap: 18px;
@@ -3032,11 +3036,24 @@
   .versionRail {
     display: none;
   }
+
+  .settingsPage {
+    padding: 18px;
+  }
+
+  .settingsWindow {
+    grid-template-columns: 200px minmax(0, 1fr);
+  }
+
+  .settingsWindowHeader,
+  .settingsMain {
+    padding-inline: 28px;
+  }
 }
 
 @media (max-width: 620px) {
   .catalogContent {
-    padding-inline: 16px;
+    padding: 28px 16px 42px;
   }
 
   .projectOverviewHeader {
@@ -3066,12 +3083,12 @@
     min-height: 50px;
   }
 
-  .studioHeaderActions .ghostButton {
+  .studioPage .studioHeaderActions .ghostButton {
     padding-inline: 7px;
     font-size: 0;
   }
 
-  .studioHeaderActions .ghostButton svg {
+  .studioPage .studioHeaderActions .ghostButton svg {
     width: 15px;
     height: 15px;
   }
@@ -3201,31 +3218,6 @@
   .stemNote {
     margin-inline: 16px;
     line-height: 1.45;
-  }
-}
-
-@media (max-width: 900px) {
-  .catalogContent {
-    padding: 36px 24px 54px;
-  }
-
-  .settingsPage {
-    padding: 18px;
-  }
-
-  .settingsWindow {
-    grid-template-columns: 200px minmax(0, 1fr);
-  }
-
-  .settingsWindowHeader,
-  .settingsMain {
-    padding-inline: 28px;
-  }
-}
-
-@media (max-width: 620px) {
-  .catalogContent {
-    padding: 28px 16px 42px;
   }
 
   .catalogIntro {
@@ -4505,22 +4497,6 @@
 
   .settingRowControl {
     justify-content: flex-start;
-  }
-}
-
-@media (max-width: 620px) {
-  .catalogContent {
-    padding-inline: 16px;
-  }
-
-  .studioPage .studioHeaderActions .ghostButton {
-    padding-inline: 7px;
-    font-size: 0;
-  }
-
-  .studioPage .studioHeaderActions .ghostButton svg {
-    width: 15px;
-    height: 15px;
   }
 }
 
