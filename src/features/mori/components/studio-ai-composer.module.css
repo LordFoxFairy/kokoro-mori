@@ -124,6 +124,11 @@
   background: rgba(255, 255, 255, 0.62);
 }
 
+.studioAiOperation:disabled {
+  cursor: progress;
+  opacity: 0.58;
+}
+
 .studioAiOperation[aria-pressed="true"] {
   color: var(--mori-primary);
   background: #fff;
@@ -171,7 +176,8 @@
 }
 
 .studioAiReview,
-.studioAiPlanFooter button {
+.studioAiPlanFooter button,
+.studioAiPlanFooter a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -181,6 +187,8 @@
   border-radius: 9px;
   font-size: 9px;
   font-weight: 800;
+  line-height: 1;
+  text-decoration: none;
   white-space: nowrap;
 }
 
@@ -243,7 +251,10 @@
 }
 
 .studioAiPlanDraft,
-.studioAiPlanReady {
+.studioAiPlanReady,
+.studioAiPlanRunning,
+.studioAiPlanError,
+.studioAiPlanStopped {
   padding: 5px 7px;
   border-radius: 999px;
   font-size: 8px;
@@ -261,6 +272,21 @@
   background: rgba(231, 246, 239, 0.88);
 }
 
+.studioAiPlanRunning {
+  color: var(--mori-primary-deep);
+  background: rgba(235, 231, 255, 0.92);
+}
+
+.studioAiPlanError {
+  color: #ad4d4d;
+  background: rgba(255, 235, 235, 0.92);
+}
+
+.studioAiPlanStopped {
+  color: var(--mori-muted);
+  background: rgba(239, 237, 242, 0.92);
+}
+
 .studioAiPlanInstruction {
   margin: 11px 0;
   color: #514b59;
@@ -270,7 +296,7 @@
 
 .studioAiPlanFacts {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 7px;
 }
 
@@ -291,6 +317,44 @@
   text-transform: uppercase;
 }
 
+.studioAiProgressRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  margin-top: 11px;
+}
+
+.studioAiProgress {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(109, 92, 231, 0.12);
+}
+
+.studioAiProgress > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--mori-primary), #ad84dd 68%, #e4a080);
+  transition: width var(--mori-motion-medium) ease;
+}
+
+.studioAiProgressRow > span {
+  min-width: 28px;
+  color: var(--mori-muted);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.studioAiMessage {
+  margin: 9px 0 0;
+  color: var(--mori-muted);
+  font-size: 9px;
+  line-height: 1.45;
+}
+
 .studioAiPlanFooter {
   margin-top: 11px;
   padding-top: 10px;
@@ -308,15 +372,25 @@
   gap: 6px;
 }
 
-.studioAiPlanFooter button {
+.studioAiPlanFooter button,
+.studioAiPlanFooter a {
   border: 1px solid var(--mori-border);
   color: var(--mori-muted);
   background: #fff;
 }
 
-.studioAiPlanFooter button:hover {
+.studioAiPlanFooter button:hover,
+.studioAiPlanFooter a:hover {
   border-color: var(--mori-border-strong);
   color: var(--mori-foreground);
+}
+
+.studioAiPlanFooter button:focus-visible,
+.studioAiPlanFooter a:focus-visible,
+.studioAiOperation:focus-visible,
+.studioAiReview:focus-visible {
+  outline: 2px solid rgba(109, 92, 231, 0.48);
+  outline-offset: 2px;
 }
 
 .studioAiPlanFooter .studioAiStage {
@@ -329,6 +403,24 @@
   border-color: transparent;
   color: #fff;
   background: var(--mori-primary-deep);
+}
+
+.studioAiPlanFooter .studioAiCancel {
+  border-color: rgba(183, 75, 75, 0.2);
+  color: #a54a4a;
+  background: rgba(255, 247, 247, 0.95);
+}
+
+.studioAiPlanFooter .studioAiCancel:hover {
+  border-color: rgba(183, 75, 75, 0.34);
+  color: #923b3b;
+  background: #fff2f2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .studioAiProgress > span {
+    transition: none;
+  }
 }
 
 @media (max-width: 620px) {

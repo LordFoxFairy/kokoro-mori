@@ -18,7 +18,7 @@ pnpm build
 
 - `pnpm lint`：通过，`--max-warnings=0`
 - `pnpm typecheck`：通过
-- `pnpm test`：通过，16 个测试文件、110 个测试
+- `pnpm test`：通过，16 个测试文件、114 个测试
 - `pnpm build`：通过，生成 `/`、`/create`、`/projects`、`/library`、`/settings`、Project Overview 和 Studio 路由
 
 ## 页面巡检
@@ -64,8 +64,10 @@ Arrangement/Lyrics/Stems 切换、Preview、Share 反馈和 Export queued → co
 action；Arrangement 已提供 Take Lanes，可试听、选择方向并明确 Use take 后切换当前版本；
 Arrangement 现在提供与时间线连在一起的 Mori AI Changes：Add part、Replace section、Extend、Transform
 共享同一套上下文式输入；Intro、Verse、Lift、Chorus、Outro 可直接选为 AI 操作上下文，操作范围和结果去向
-始终可见；提交前先展示 Change Plan，Stage 后明确反馈
-Ready for rendering，并持续声明 Current version stays untouched；
+始终可见；提交前先展示 Change Plan，主动作明确为 Generate 2 takes，并持续声明
+Current version stays untouched；浏览器会把段落宽度换算为稳定毫秒 scope，提交后显示真实 Generation
+进度，允许取消或重试；切换 Arrangement、Lyrics、Stems 时仍保留运行中的 operation、instruction 与选区；
+成功返回的 Candidate 追加进入 Take Lanes，既不覆盖已有 Take，也不自动替换 Current Version；
 Studio Change 的浏览器契约已固定为 version-scoped generation：四种 operation 使用互斥 scope，
 请求通过 `createStudioChangeRequest()` 归一为 `snake_case`，限制 1–4 个输出和最多 8 个参考资产，
 并由同源 `POST /api/v1/mori/versions/{version_ref}/generations` 携带 `Idempotency-Key` 提交；

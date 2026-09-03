@@ -2976,6 +2976,16 @@
   background: #e9e4ff;
 }
 
+.timelineSegment:disabled {
+  cursor: progress;
+  opacity: 0.64;
+}
+
+.timelineSegment:disabled:hover {
+  color: #7b7488;
+  background: var(--mori-primary-soft);
+}
+
 .timelineSegment:focus-visible {
   outline: 3px solid rgba(109, 92, 231, 0.17);
   outline-offset: 2px;

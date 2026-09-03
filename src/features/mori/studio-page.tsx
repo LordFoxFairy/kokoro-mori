@@ -3,14 +3,15 @@
 import { ArrowLeft, AudioLines, AudioWaveform, Check, Download, FileText, Play, Save, Share2, Sparkles, Volume2, VolumeX } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
-import type { MoriApi, MoriCandidate, MoriExportSnapshot } from "@/lib/mori-api"
-import { createMoriApiClient } from "@/lib/mori-api-client"
+import { createStudioChangeRequest, type MoriApi, type MoriCandidate, type MoriExportSnapshot } from "@/lib/mori-api"
+import { createMoriApiClient, MoriApiRequestError } from "@/lib/mori-api-client"
 import type { Candidate } from "./domain"
 import { MoriStudioShell } from "./components/mori-studio-shell"
-import { StudioAiComposer } from "./components/studio-ai-composer"
+import { StudioAiComposer, type StudioAiRunState } from "./components/studio-ai-composer"
 import { useMoriApp } from "./components/mori-app-provider"
 import { Waveform } from "./components/waveform"
 import { previewCandidates, previewProject, previewSongPlan } from "./preview-data"
+import { buildStudioTimelineSections, isActiveStudioChangeStatus, type StudioChangePlan } from "./studio-change"
 import styles from "./mori-workspace.module.css"
 
 type StudioTool = "arrangement" | "lyrics" | "stems"
@@ -19,13 +20,27 @@ type StudioPageContentProps = {
   candidate: Candidate
   projectRef?: string
   versionRef?: string
-  api?: Pick<MoriApi, "createExport"> & Partial<Pick<MoriApi, "getExport" | "getProject" | "listCandidates">>
+  api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "listCandidates" | "createStudioChange" | "getGeneration" | "getGenerationEvents" | "cancelGeneration">>
+}
+
+type TrackedStudioChange = {
+  generationRef: string
+  sourceVersionRef: string
+  operation: StudioChangePlan["operation"]
+}
+
+const idleStudioChangeRun: StudioAiRunState = {
+  status: "idle",
+  progress: 0,
+  resultCount: 0,
+  plan: null,
+  message: null,
 }
 
 export function StudioPageContent({ candidate, projectRef, versionRef, api }: StudioPageContentProps) {
   const { playerCandidate, playing, selectPlayerCandidate, setPlaying } = useMoriApp()
   const defaultApi = useMemo(() => createMoriApiClient(), [])
-  const studioApi = api ?? defaultApi
+  const studioApi = useMemo(() => ({ ...defaultApi, ...(api ?? {}) }), [api, defaultApi])
   const initialCandidate = resolveInitialCandidate(candidate, projectRef, versionRef)
   const [activeCandidate, setActiveCandidate] = useState<Candidate | null>(() => initialCandidate)
   const [studioCandidates, setStudioCandidates] = useState(() => initialCandidate === null ? [] : [initialCandidate, ...previewCandidates.filter((item) => item.versionRef !== initialCandidate.versionRef)])
@@ -36,6 +51,8 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api }: St
   const [exportFeedback, setExportFeedback] = useState<"idle" | "queued" | "processing" | "succeeded" | "failed">("idle")
   const [exportRef, setExportRef] = useState<string | null>(null)
   const [exportSnapshot, setExportSnapshot] = useState<MoriExportSnapshot | null>(null)
+  const [studioChangeRun, setStudioChangeRun] = useState<StudioAiRunState>(idleStudioChangeRun)
+  const [trackedStudioChange, setTrackedStudioChange] = useState<TrackedStudioChange | null>(null)
 
   useEffect(() => {
     const requestedProjectRef = projectRef?.trim()
@@ -78,6 +95,148 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api }: St
       disposed = true
     }
   }, [initialCandidate, projectRef, studioApi, versionRef])
+
+  const generateStudioChange = async (plan: StudioChangePlan) => {
+    if (activeCandidate === null || isActiveStudioChangeStatus(studioChangeRun.status)) return
+    const sourceVersionRef = activeCandidate.versionRef
+    setTrackedStudioChange(null)
+    setStudioChangeRun({ status: "preparing", progress: 4, resultCount: 0, plan, message: null })
+    try {
+      const response = await studioApi.createStudioChange(
+        sourceVersionRef,
+        createStudioChangeRequest(plan.draft),
+        `mori-studio-change-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      )
+      setStudioChangeRun({
+        status: response.data.status,
+        progress: response.data.status === "queued" ? 0 : 12,
+        resultCount: 0,
+        plan,
+        message: null,
+      })
+      setTrackedStudioChange({
+        generationRef: response.data.generation_ref,
+        sourceVersionRef,
+        operation: plan.operation,
+      })
+    } catch (error) {
+      setStudioChangeRun({
+        status: "failed",
+        progress: 0,
+        resultCount: 0,
+        plan,
+        message: studioChangeFailureMessage(error),
+      })
+    }
+  }
+
+  useEffect(() => {
+    if (trackedStudioChange === null) return
+    let disposed = false
+    let timer: number | undefined
+    let lastEventId: string | null = null
+
+    const sync = async () => {
+      try {
+        const snapshot = await studioApi.getGeneration(trackedStudioChange.generationRef)
+        if (disposed) return
+        if (
+          snapshot.data.generation_kind !== "studio_change"
+          || snapshot.data.source_version_ref !== trackedStudioChange.sourceVersionRef
+          || snapshot.data.operation !== trackedStudioChange.operation
+        ) {
+          throw new Error("studio_change_snapshot_context_mismatch")
+        }
+
+        let status = snapshot.data.status
+        let progress = snapshot.data.progress
+        let candidateRefs = snapshot.data.candidate_refs
+
+        if (studioApi.getGenerationEvents !== undefined) {
+          try {
+            const events = await studioApi.getGenerationEvents(trackedStudioChange.generationRef, lastEventId)
+            const latest = events.at(-1)
+            if (latest !== undefined) {
+              lastEventId = latest.id
+              status = latest.data.status
+              progress = latest.data.progress
+              candidateRefs = latest.data.candidate_refs
+            }
+          } catch {
+            // Durable snapshot polling remains the recovery path when event replay is unavailable.
+          }
+        }
+
+        setStudioChangeRun((current) => ({ ...current, status, progress, message: null }))
+
+        if (status === "succeeded") {
+          const candidateResponse = await studioApi.listCandidates(snapshot.data.project_ref)
+          if (disposed) return
+          const generatedCandidates = candidateResponse.data.candidates
+            .filter((item) => candidateRefs.includes(item.candidate_ref))
+            .map((item, index) => toDomainCandidate(item, index + 47))
+          setStudioCandidates((current) => mergeStudioCandidates(current, generatedCandidates))
+          setStudioChangeRun((current) => ({
+            ...current,
+            status: "succeeded",
+            progress: 100,
+            resultCount: generatedCandidates.length,
+            message: generatedCandidates.length === 0 ? "Rendering finished, but no playable takes were returned." : null,
+          }))
+          setTrackedStudioChange(null)
+          return
+        }
+
+        if (status === "failed" || status === "cancelled" || status === "expired") {
+          setTrackedStudioChange(null)
+          return
+        }
+        timer = window.setTimeout(() => { void sync() }, 900)
+      } catch (error) {
+        if (!disposed) {
+          setStudioChangeRun((current) => ({
+            ...current,
+            status: "failed",
+            message: studioChangeFailureMessage(error),
+          }))
+          setTrackedStudioChange(null)
+        }
+      }
+    }
+
+    void sync()
+    return () => {
+      disposed = true
+      if (timer !== undefined) window.clearTimeout(timer)
+    }
+  }, [studioApi, trackedStudioChange])
+
+  const cancelStudioChange = async () => {
+    if (trackedStudioChange === null) return
+    const generationRef = trackedStudioChange.generationRef
+    setStudioChangeRun((current) => ({ ...current, message: "Stopping after the current render step…" }))
+    try {
+      const response = await studioApi.cancelGeneration(
+        generationRef,
+        `mori-studio-cancel-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      )
+      setTrackedStudioChange(null)
+      setStudioChangeRun((current) => ({
+        ...current,
+        status: response.data.status,
+        progress: Math.min(current.progress, 99),
+        message: null,
+      }))
+    } catch {
+      setStudioChangeRun((current) => ({ ...current, message: "Cancellation did not complete. Rendering is still being tracked." }))
+    }
+  }
+
+  const resetStudioChange = () => {
+    if (isActiveStudioChangeStatus(studioChangeRun.status)) return
+    setTrackedStudioChange(null)
+    setStudioChangeRun(idleStudioChangeRun)
+  }
 
   const preview = () => {
     if (activeCandidate === null) return
@@ -201,7 +360,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api }: St
         </aside>
         <section className={styles.studioCanvas} aria-label="Studio editor">
           <div className={styles.studioCanvasTop}><div><span className={styles.eyebrow}><span className={styles.eyebrowDot} />Editing with intention</span><h2>Shape the feeling.</h2></div><button className={styles.generateButton} type="button" onClick={preview}><Play size={14} fill="currentColor" /> {playerCandidate?.versionRef === activeCandidate.versionRef && playing ? "Pause" : "Preview"}</button></div>
-          {activeTool === "arrangement" ? <ArrangementEditor candidate={activeCandidate} takes={studioCandidates} currentVersionRef={currentVersionRef} playerVersionRef={playerCandidate?.versionRef ?? ""} playing={playing} onSelectTake={selectTake} onPreviewTake={previewTake} onPromoteTake={promoteTake} /> : null}
+          {activeTool === "arrangement" ? <ArrangementEditor candidate={activeCandidate} takes={studioCandidates} currentVersionRef={currentVersionRef} playerVersionRef={playerCandidate?.versionRef ?? ""} playing={playing} studioChangeRun={studioChangeRun} onGenerateStudioChange={(plan) => { void generateStudioChange(plan) }} onCancelStudioChange={() => { void cancelStudioChange() }} onResetStudioChange={resetStudioChange} onSelectTake={selectTake} onPreviewTake={previewTake} onPromoteTake={promoteTake} /> : null}
           {activeTool === "lyrics" ? <LyricsEditor key={activeCandidate.versionRef} versionRef={activeCandidate.versionRef} /> : null}
           {activeTool === "stems" ? <StemsEditor /> : null}
         </section>
@@ -234,19 +393,50 @@ function toDomainCandidate(candidate: MoriCandidate, index: number): Candidate {
   }
 }
 
+function mergeStudioCandidates(current: Candidate[], generated: Candidate[]): Candidate[] {
+  const generatedRefs = new Set(generated.map((candidate) => candidate.candidateRef))
+  return [
+    ...current.filter((candidate) => !generatedRefs.has(candidate.candidateRef)),
+    ...generated,
+  ]
+}
+
+function studioChangeFailureMessage(error: unknown): string {
+  if (error instanceof MoriApiRequestError && error.code === "mori_bff_unavailable") {
+    return "Mori is offline right now. Your reviewed change is ready to retry."
+  }
+  if (error instanceof Error && error.message === "studio_change_snapshot_context_mismatch") {
+    return "The returned generation did not match this version. Nothing was applied."
+  }
+  return "This change did not finish. Your request is preserved for retry."
+}
+
 type ArrangementEditorProps = {
   candidate: Candidate
   takes: Candidate[]
   currentVersionRef: string
   playerVersionRef: string
   playing: boolean
+  studioChangeRun: StudioAiRunState
+  onGenerateStudioChange: (plan: StudioChangePlan) => void
+  onCancelStudioChange: () => void
+  onResetStudioChange: () => void
   onSelectTake: (take: Candidate) => void
   onPreviewTake: (take: Candidate) => void
   onPromoteTake: (take: Candidate) => void
 }
 
-function ArrangementEditor({ candidate, takes, currentVersionRef, playerVersionRef, playing, onSelectTake, onPreviewTake, onPromoteTake }: ArrangementEditorProps) {
-  const [selectedSection, setSelectedSection] = useState("Chorus")
+function ArrangementEditor({ candidate, takes, currentVersionRef, playerVersionRef, playing, studioChangeRun, onGenerateStudioChange, onCancelStudioChange, onResetStudioChange, onSelectTake, onPreviewTake, onPromoteTake }: ArrangementEditorProps) {
+  const timelineSections = useMemo(() => buildStudioTimelineSections(previewSongPlan.structure, candidate.durationSeconds), [candidate.durationSeconds])
+  const restoredSectionIndex = studioChangeRun.plan === null ? -1 : timelineSections.findIndex((item) => item.id === studioChangeRun.plan?.sectionId)
+  const defaultSectionIndex = restoredSectionIndex >= 0
+    ? restoredSectionIndex
+    : Math.max(0, timelineSections.findIndex((item) => item.label.toLowerCase() === "chorus"))
+  const [selectedSectionIndex, setSelectedSectionIndex] = useState(defaultSectionIndex)
+  const selectedSection = timelineSections[selectedSectionIndex] ?? timelineSections[0]
+  const changeActive = isActiveStudioChangeStatus(studioChangeRun.status)
+
+  if (selectedSection === undefined) return null
 
   return (
     <section aria-label="Arrangement editor">
@@ -254,10 +444,10 @@ function ArrangementEditor({ candidate, takes, currentVersionRef, playerVersionR
         <div className={styles.timelineHeader}><span>Arrangement</span><span>0:36 / {Math.floor(candidate.durationSeconds / 60)}:{String(candidate.durationSeconds % 60).padStart(2, "0")}</span></div>
         <div className={styles.timelineRuler}><span>0:00</span><span>0:45</span><span>1:30</span><span>2:15</span><span>3:00</span></div>
         <div className={styles.timelineWave}><Waveform seed={candidate.waveformSeed} progress={0.2} /></div>
-        <div className={styles.timelineSegments}>{previewSongPlan.structure.map((item, index) => <button className={`${styles.timelineSegment} ${item === selectedSection ? styles.timelineSegmentAccent : ""}`} type="button" aria-pressed={item === selectedSection} aria-label={`Select ${item} section`} key={item} onClick={() => setSelectedSection(item)} style={{ flex: index === 0 || index === 4 ? 0.75 : index === 3 ? 1.3 : 1 }}>{item}</button>)}</div>
+        <div className={styles.timelineSegments}>{timelineSections.map((item, index) => <button className={`${styles.timelineSegment} ${index === selectedSectionIndex ? styles.timelineSegmentAccent : ""}`} type="button" aria-pressed={index === selectedSectionIndex} aria-label={`Select ${item.label} section`} disabled={changeActive} key={item.id} onClick={() => { onResetStudioChange(); setSelectedSectionIndex(index) }} style={{ flex: item.weight }}>{item.label}</button>)}</div>
       </div>
-      <StudioAiComposer key={selectedSection} selectedSection={selectedSection} />
-      <section className={styles.takeLanes} aria-label="Take lanes">
+      <StudioAiComposer selectedSection={selectedSection} run={studioChangeRun} onGenerate={onGenerateStudioChange} onCancel={onCancelStudioChange} onReset={onResetStudioChange} />
+      <section className={styles.takeLanes} id="mori-take-lanes" aria-label="Take lanes">
         <div className={styles.takeLanesHeader}>
           <div><span>Compare before committing</span><h3>Take lanes</h3></div>
           <span>{takes.length} {takes.length === 1 ? "take" : "takes"}</span>

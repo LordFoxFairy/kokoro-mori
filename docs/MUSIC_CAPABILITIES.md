@@ -80,8 +80,9 @@ Commit       用户试听后显式 Use take
 ```
 
 当前 Studio 已落地第一版 **Mori AI Changes**：可选择时间线段落，操作切换会沿用所选段落作为上下文；
-自然语言指令、Change Plan 复核、非破坏式提示和 Stage 状态处于同一个工作面。它不挤入全局 Rail，
-也不伪装成聊天记录。
+自然语言指令、Change Plan 复核、非破坏式提示和 Generation 状态处于同一个工作面。用户点击
+`Generate 2 takes` 后可看到进度、取消或重试；成功 Candidate 直接追加到 Take Lanes，但不会替换
+Current Version。它不挤入全局 Rail，也不伪装成聊天记录。
 
 ## 4. Studio Change API 契约
 
@@ -136,7 +137,9 @@ Generation snapshot 使用 `generation_kind: new_song | studio_change` 做显式
 - 已固定四种 operation、scope 和 preserve 语义。
 - 已增加 machine-readable OpenAPI、浏览器 request builder、同源 client、运行时 response parser 和 contract tests。
 - 新歌与 Studio Change 共用 Generation lifecycle，并通过 discriminated snapshot 支持刷新恢复。
-- 下一步将 Stage 接到 BFF / owner adapter，继续复用 Generation snapshot、cancel 和 SSE replay。
+- Studio 已接入这一浏览器 seam：基于时间线段落计算毫秒 scope，跟踪 snapshot / SSE replay，支持取消、重试，
+  并把成功 Candidate 非破坏式追加到 Take Lanes。
+- 下一步只需由 BFF / music owner adapter 实现已固定契约；浏览器不引入 provider 字段。
 
 ### P2 · 深度编辑
 

@@ -1,14 +1,12 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
+import type { MoriApi, StudioChangeGenerationInput } from "@/lib/mori-api"
 import { MoriAppProvider } from "./components/mori-app-provider"
 import { previewCandidates } from "./preview-data"
 import { StudioPageContent } from "./studio-page"
 
 describe("Mori studio page", () => {
-  function renderStudio(api?: {
-    createExport: (versionRef: string, format: "mp3" | "wav", idempotencyKey: string) => Promise<{ data: { export_ref: string; status: "queued" | "processing" }; meta: { request_id: string } }>
-    getExport?: (exportRef: string) => Promise<{ data: { export_ref: string; project_ref: string; version_ref: string; format: "mp3" | "wav"; status: "queued" | "processing" | "succeeded" | "failed"; download_url: string | null; created_at: string }; meta: { request_id: string } }>
-  }) {
+  function renderStudio(api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "listCandidates" | "createStudioChange" | "getGeneration" | "getGenerationEvents" | "cancelGeneration">>) {
     return render(
       <MoriAppProvider>
         <StudioPageContent candidate={previewCandidates[0]} api={api} />
@@ -70,8 +68,205 @@ describe("Mori studio page", () => {
     expect(within(changePlan).getByText("2 alternatives · Take lanes")).toBeInTheDocument()
     expect(within(changePlan).getByText("Current version stays untouched.")).toBeInTheDocument()
 
-    fireEvent.click(within(changePlan).getByRole("button", { name: "Stage change" }))
-    expect(within(changePlan).getByText("Ready for rendering")).toBeInTheDocument()
+    expect(within(changePlan).getByRole("button", { name: "Generate 2 takes" })).toBeInTheDocument()
+    expect(within(changePlan).getByText("Review before rendering")).toBeInTheDocument()
+  })
+
+  it("keeps the user's instruction while changing timeline context before review", () => {
+    renderStudio()
+
+    const arrangement = screen.getByRole("region", { name: "Arrangement editor" })
+    const aiChanges = within(arrangement).getByRole("region", { name: "Mori AI changes" })
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Replace section" }))
+    fireEvent.change(within(aiChanges).getByRole("textbox", { name: "Tell Mori what to change" }), {
+      target: { value: "Make this section breathe before the lift." },
+    })
+
+    fireEvent.click(within(arrangement).getByRole("button", { name: "Select Verse section" }))
+
+    const updatedAiChanges = within(arrangement).getByRole("region", { name: "Mori AI changes" })
+    expect(within(updatedAiChanges).getByRole("button", { name: "Replace section" })).toHaveAttribute("aria-pressed", "true")
+    expect(within(updatedAiChanges).getByRole("textbox", { name: "Tell Mori what to change" })).toHaveValue("Make this section breathe before the lift.")
+    expect(within(updatedAiChanges).getByText("Selected section · Verse")).toBeInTheDocument()
+  })
+
+  it("renders a reviewed Studio change into new take lanes without replacing the current version", async () => {
+    let submittedVersionRef = ""
+    let submittedInput: StudioChangeGenerationInput | null = null
+    renderStudio({
+      createStudioChange: async (versionRef, input) => {
+        submittedVersionRef = versionRef
+        submittedInput = input
+        return { data: { generation_ref: "generation_change_1", status: "queued" }, meta: { request_id: "request_change_1" } }
+      },
+      getGeneration: async () => ({
+        data: {
+          generation_ref: "generation_change_1",
+          generation_kind: "studio_change",
+          project_ref: "project_preview_first_light",
+          song_plan_ref: null,
+          mode: null,
+          source_version_ref: "version_preview_first_light_a",
+          operation: "replace_section",
+          status: "succeeded",
+          progress: 100,
+          candidate_refs: ["candidate_change_1", "candidate_change_2"],
+          created_at: "2026-09-03T12:00:00.000Z",
+        },
+        meta: { request_id: "request_change_snapshot_1" },
+      }),
+      getGenerationEvents: async () => [],
+      listCandidates: async () => ({
+        data: {
+          candidates: [
+            {
+              candidate_ref: "candidate_change_1",
+              generation_ref: "generation_change_1",
+              version_ref: "version_change_1",
+              project_ref: "project_preview_first_light",
+              title: "First Light · Wider Chorus",
+              duration_seconds: 184,
+              audio_asset_ref: "asset_change_1",
+              waveform_asset_ref: "waveform_change_1",
+              style_tags: ["wide chorus", "warm vocal"],
+              created_at: "2026-09-03T12:01:00.000Z",
+            },
+            {
+              candidate_ref: "candidate_change_2",
+              generation_ref: "generation_change_1",
+              version_ref: "version_change_2",
+              project_ref: "project_preview_first_light",
+              title: "First Light · Open Chorus",
+              duration_seconds: 183,
+              audio_asset_ref: "asset_change_2",
+              waveform_asset_ref: "waveform_change_2",
+              style_tags: ["open chorus", "layered harmony"],
+              created_at: "2026-09-03T12:01:01.000Z",
+            },
+          ],
+          next_cursor: null,
+        },
+        meta: { request_id: "request_change_candidates_1" },
+      }),
+    })
+
+    const arrangement = screen.getByRole("region", { name: "Arrangement editor" })
+    fireEvent.click(within(arrangement).getByRole("button", { name: "Select Verse section" }))
+    const aiChanges = within(arrangement).getByRole("region", { name: "Mori AI changes" })
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Replace section" }))
+    fireEvent.change(within(aiChanges).getByRole("textbox", { name: "Tell Mori what to change" }), {
+      target: { value: "Keep the words and open up the chorus." },
+    })
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Review change" }))
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Generate 2 takes" }))
+
+    await waitFor(() => expect(submittedVersionRef).toBe("version_preview_first_light_a"))
+    expect(submittedInput).toMatchObject({
+      operation: "replace_section",
+      scope: { type: "time_range", start_ms: 28_438, end_ms: 66_354 },
+      instruction: "Keep the words and open up the chorus.",
+      preserve: ["melody", "lyrics", "vocal_identity"],
+      output_count: 2,
+    })
+
+    const takeLanes = screen.getByRole("region", { name: "Take lanes" })
+    expect(await within(takeLanes).findByRole("article", { name: "Take 3: First Light · Wider Chorus" })).toBeInTheDocument()
+    expect(within(takeLanes).getByRole("article", { name: "Take 4: First Light · Open Chorus" })).toBeInTheDocument()
+    expect(within(within(takeLanes).getByRole("article", { name: "Take 1: First Light" })).getByText("Current version")).toBeInTheDocument()
+    expect(within(aiChanges).getByText("2 new takes ready below")).toBeInTheDocument()
+  })
+
+  it("lets the user cancel an active Studio change and retry the reviewed plan", async () => {
+    let cancelledGenerationRef = ""
+    renderStudio({
+      createStudioChange: async () => ({
+        data: { generation_ref: "generation_change_active", status: "queued" },
+        meta: { request_id: "request_change_active" },
+      }),
+      getGeneration: async () => ({
+        data: {
+          generation_ref: "generation_change_active",
+          generation_kind: "studio_change",
+          project_ref: "project_preview_first_light",
+          song_plan_ref: null,
+          mode: null,
+          source_version_ref: "version_preview_first_light_a",
+          operation: "add_part",
+          status: "generating",
+          progress: 42,
+          candidate_refs: [],
+          created_at: "2026-09-03T12:00:00.000Z",
+        },
+        meta: { request_id: "request_change_active_snapshot" },
+      }),
+      getGenerationEvents: async () => [],
+      cancelGeneration: async (generationRef) => {
+        cancelledGenerationRef = generationRef
+        return { data: { generation_ref: generationRef, status: "cancelled" }, meta: { request_id: "request_change_cancel" } }
+      },
+    })
+
+    const aiChanges = screen.getByRole("region", { name: "Mori AI changes" })
+    fireEvent.change(within(aiChanges).getByRole("textbox", { name: "Tell Mori what to change" }), {
+      target: { value: "Add a short guitar answer." },
+    })
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Review change" }))
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Generate 2 takes" }))
+
+    const cancel = await within(aiChanges).findByRole("button", { name: "Cancel change" })
+    await waitFor(() => expect(within(aiChanges).getByRole("progressbar", { name: "Studio change progress" })).toHaveAttribute("aria-valuenow", "42"))
+    fireEvent.click(cancel)
+
+    await waitFor(() => expect(cancelledGenerationRef).toBe("generation_change_active"))
+    expect(within(aiChanges).getByText("Change cancelled")).toBeInTheDocument()
+    expect(within(aiChanges).getByRole("button", { name: "Retry change" })).toBeInTheDocument()
+  })
+
+  it("keeps an in-flight change context when moving between Studio tools", async () => {
+    renderStudio({
+      createStudioChange: async () => ({
+        data: { generation_ref: "generation_change_context", status: "queued" },
+        meta: { request_id: "request_change_context" },
+      }),
+      getGeneration: async () => ({
+        data: {
+          generation_ref: "generation_change_context",
+          generation_kind: "studio_change",
+          project_ref: "project_preview_first_light",
+          song_plan_ref: null,
+          mode: null,
+          source_version_ref: "version_preview_first_light_a",
+          operation: "replace_section",
+          status: "generating",
+          progress: 42,
+          candidate_refs: [],
+          created_at: "2026-09-03T12:00:00.000Z",
+        },
+        meta: { request_id: "request_change_context_snapshot" },
+      }),
+      getGenerationEvents: async () => [],
+    })
+
+    let arrangement = screen.getByRole("region", { name: "Arrangement editor" })
+    fireEvent.click(within(arrangement).getByRole("button", { name: "Select Verse section" }))
+    let aiChanges = within(arrangement).getByRole("region", { name: "Mori AI changes" })
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Replace section" }))
+    fireEvent.change(within(aiChanges).getByRole("textbox", { name: "Tell Mori what to change" }), {
+      target: { value: "Give this verse more space." },
+    })
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Review change" }))
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Generate 2 takes" }))
+    await waitFor(() => expect(within(aiChanges).getByRole("progressbar", { name: "Studio change progress" })).toHaveAttribute("aria-valuenow", "42"))
+
+    fireEvent.click(screen.getByRole("button", { name: "Lyrics" }))
+    fireEvent.click(screen.getByRole("button", { name: "Arrangement" }))
+
+    arrangement = screen.getByRole("region", { name: "Arrangement editor" })
+    aiChanges = within(arrangement).getByRole("region", { name: "Mori AI changes" })
+    expect(within(arrangement).getByRole("button", { name: "Select Verse section" })).toHaveAttribute("aria-pressed", "true")
+    expect(within(aiChanges).getByRole("button", { name: "Replace section" })).toHaveAttribute("aria-pressed", "true")
+    expect(within(aiChanges).getByRole("textbox", { name: "Tell Mori what to change" })).toHaveValue("Give this verse more space.")
+    expect(within(aiChanges).getByRole("button", { name: "Cancel change" })).toBeInTheDocument()
   })
 
   it("keeps lyrics editable with an explicit local save state", () => {
