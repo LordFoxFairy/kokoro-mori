@@ -1021,109 +1021,6 @@
   font-size: 11px;
 }
 
-.player {
-  grid-column: 2 / 4;
-  display: grid;
-  grid-template-columns: minmax(180px, 0.8fr) minmax(240px, 1.2fr) auto;
-  align-items: center;
-  gap: 20px;
-  min-width: 0;
-  padding: 11px 18px;
-  border-radius: 17px;
-}
-
-.playerTrack {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  min-width: 0;
-}
-
-.playerArtwork {
-  width: 40px;
-  height: 40px;
-  flex: 0 0 auto;
-  border-radius: 11px;
-  background: linear-gradient(145deg, #c3b2fa, #f5b795);
-}
-
-.playerInfo {
-  min-width: 0;
-}
-
-.playerInfo strong {
-  display: block;
-  overflow: hidden;
-  font-size: 11px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.playerInfo span {
-  display: block;
-  margin-top: 3px;
-  color: var(--mori-muted);
-  font-size: 10px;
-}
-
-.playerWave {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-
-.time {
-  color: var(--mori-muted);
-  font-size: 10px;
-  font-variant-numeric: tabular-nums;
-}
-
-.playerControls {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.playerButton {
-  display: grid;
-  width: 29px;
-  height: 29px;
-  padding: 0;
-  place-items: center;
-  border: 0;
-  border-radius: 50%;
-  color: var(--mori-muted);
-  background: transparent;
-}
-
-.playerButton:hover {
-  color: var(--mori-foreground);
-  background: var(--mori-primary-soft);
-}
-
-.playerButtonPrimary {
-  width: 36px;
-  height: 36px;
-  color: #fff;
-  background: var(--mori-primary);
-}
-
-.playerButtonPrimary:hover {
-  color: #fff;
-  background: var(--mori-primary-deep);
-}
-
-.playerButton svg {
-  width: 15px;
-  height: 15px;
-}
-
-.playerButtonPrimary svg {
-  width: 16px;
-  height: 16px;
-}
-
 .catalogContent {
   width: min(1000px, 100%);
   margin: 0 auto;
@@ -2171,14 +2068,6 @@
   white-space: nowrap;
 }
 
-.studioApp {
-  min-height: 100vh;
-  padding: 14px;
-  background:
-    radial-gradient(circle at 78% -10%, rgba(237, 233, 254, 0.72), transparent 30rem),
-    var(--mori-background);
-}
-
 .studioHeader {
   display: flex;
   align-items: center;
@@ -3008,10 +2897,6 @@
     display: none;
   }
 
-  .studioApp {
-    padding: 8px;
-  }
-
   .studioHeader {
     min-height: 50px;
   }
@@ -3508,6 +3393,13 @@
   backdrop-filter: blur(22px);
 }
 
+.playerTrack {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 11px;
+}
+
 .player::before {
   position: absolute;
   top: 0;
@@ -3614,6 +3506,7 @@
 .playerArtwork {
   width: 52px;
   height: 52px;
+  flex: 0 0 auto;
   border-radius: 14px;
 }
 
@@ -3625,8 +3518,29 @@
   background: linear-gradient(145deg, #faf9fc, #fff8f1);
 }
 
+.playerInfo {
+  min-width: 0;
+}
+
 .playerInfo strong {
+  display: block;
+  overflow: hidden;
   font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.playerInfo span {
+  display: block;
+  margin-top: 3px;
+  color: var(--mori-muted);
+  font-size: 10px;
+}
+
+.time {
+  color: var(--mori-muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
 }
 
 .playerEmptyProgress {
@@ -3637,18 +3551,49 @@
 }
 
 .playerControls {
+  display: flex;
+  align-items: center;
   justify-content: center;
   gap: 8px;
 }
 
 .playerButton {
+  display: grid;
   width: 32px;
   height: 32px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  color: var(--mori-muted);
+  background: transparent;
+}
+
+.playerButton:hover {
+  color: var(--mori-foreground);
+  background: var(--mori-primary-soft);
 }
 
 .playerButtonPrimary {
   width: 44px;
   height: 44px;
+  color: #fff;
+  background: var(--mori-primary);
+}
+
+.playerButtonPrimary:hover {
+  color: #fff;
+  background: var(--mori-primary-deep);
+}
+
+.playerButton svg {
+  width: 15px;
+  height: 15px;
+}
+
+.playerButtonPrimary svg {
+  width: 16px;
+  height: 16px;
 }
 
 .playerButton:disabled {
@@ -3747,6 +3692,7 @@
   border: 0;
   border-left: 1px solid var(--mori-border);
   border-radius: 0;
+  background: #fff;
   box-shadow: -18px 0 45px rgba(62, 45, 86, 0.12);
   pointer-events: auto;
 }

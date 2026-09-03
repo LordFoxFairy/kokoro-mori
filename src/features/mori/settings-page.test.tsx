@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 import { MoriAppProvider, useMoriApp } from "./components/mori-app-provider"
 import { MoriSettingsPage } from "./settings-page"
@@ -32,9 +32,26 @@ describe("Mori settings", () => {
     expect(document.body.style.overflow).toBe("hidden")
   })
 
-  it("lets Escape use the same close affordance as the window", () => {
+  it("moves focus into the window and keeps keyboard focus inside it", async () => {
     renderSettings()
 
+    await waitFor(() => expect(screen.getByRole("link", { name: "Back to studio" })).toHaveFocus())
+
+    const firstSection = screen.getByRole("button", { name: /appearance/i })
+    const lastControl = screen.getByRole("button", { name: "Off" })
+    firstSection.focus()
+    fireEvent.keyDown(window, { key: "Tab", shiftKey: true })
+    expect(lastControl).toHaveFocus()
+
+    lastControl.focus()
+    fireEvent.keyDown(window, { key: "Tab" })
+    expect(firstSection).toHaveFocus()
+  })
+
+  it("lets Escape use the same close affordance as the window", async () => {
+    renderSettings()
+
+    await waitFor(() => expect(screen.getByRole("link", { name: "Back to studio" })).toHaveFocus())
     const closeSettings = screen.getByRole("link", { name: "Back to studio" })
     const closeSpy = vi.spyOn(closeSettings, "click").mockImplementation(() => {})
     fireEvent.keyDown(window, { key: "Escape" })

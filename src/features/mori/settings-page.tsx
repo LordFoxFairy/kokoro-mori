@@ -24,6 +24,7 @@ export function MoriSettingsPage({ returnTo = "/" }: MoriSettingsPageProps = {})
   const [section, setSection] = useState<SettingsSection>("appearance")
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null)
   const closeLinkRef = useRef<HTMLAnchorElement>(null)
+  const settingsDialogRef = useRef<HTMLElement>(null)
   const { railCollapsed, setRailCollapsed, preferences, updatePreferences } = useMoriApp()
 
   useEffect(() => {
@@ -40,20 +41,45 @@ export function MoriSettingsPage({ returnTo = "/" }: MoriSettingsPageProps = {})
   }, [])
 
   useEffect(() => {
+    if (portalTarget === null) return
+
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const focusTimer = window.setTimeout(() => closeLinkRef.current?.focus(), 0)
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return
-      event.preventDefault()
-      closeLinkRef.current?.click()
+      if (event.key === "Escape") {
+        event.preventDefault()
+        closeLinkRef.current?.click()
+        return
+      }
+      if (event.key !== "Tab") return
+
+      const dialog = settingsDialogRef.current
+      if (dialog === null) return
+      const focusable = getFocusableElements(dialog)
+      const first = focusable[0]
+      const last = focusable.at(-1)
+      if (first === undefined || last === undefined) return
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
     }
 
     window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [])
+    return () => {
+      window.clearTimeout(focusTimer)
+      window.removeEventListener("keydown", handleKeyDown)
+      if (previousFocus?.isConnected) previousFocus.focus()
+    }
+  }, [portalTarget])
 
   const settingsWindow = (
     <div className={styles.settingsPage} data-testid="settings-overlay">
       <Link className={styles.settingsBackdrop} href={returnTo} aria-label="Close settings" />
-      <section className={styles.settingsWindow} role="dialog" aria-modal="true" aria-labelledby="mori-settings-title">
+      <section ref={settingsDialogRef} className={styles.settingsWindow} role="dialog" aria-modal="true" aria-labelledby="mori-settings-title">
         <nav className={styles.settingsNav} aria-label="Settings sections">
           <div className={styles.settingsNavBrand}>
             <div className={styles.settingsNavBrandMark} aria-hidden="true">M</div>
@@ -188,6 +214,17 @@ export function MoriSettingsPage({ returnTo = "/" }: MoriSettingsPageProps = {})
   )
 
   return portalTarget === null ? settingsWindow : createPortal(settingsWindow, portalTarget)
+}
+
+function getFocusableElements(container: HTMLElement): HTMLElement[] {
+  return Array.from(container.querySelectorAll<HTMLElement>([
+    "a[href]",
+    "button:not([disabled])",
+    "input:not([disabled])",
+    "select:not([disabled])",
+    "textarea:not([disabled])",
+    "[tabindex]:not([tabindex='-1'])",
+  ].join(",")))
 }
 
 function SettingsPanel({ icon: Icon, title, description, children }: { icon: typeof Palette; title: string; description: string; children: ReactNode }) {
