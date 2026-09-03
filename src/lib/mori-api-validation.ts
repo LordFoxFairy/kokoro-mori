@@ -1,4 +1,4 @@
-import { stemSeparationModes, stemTargetKinds } from "./mori-api"
+import { stemSeparationModes, stemTargetKinds, studioRemasterStrengths } from "./mori-api"
 import type {
   ApiError,
   ApiSuccess,
@@ -36,6 +36,8 @@ import type {
   StemSeparationStatus,
   StemTargetKind,
   StudioChangeOperation,
+  StudioRemasterSource,
+  StudioRemasterStrength,
 } from "./mori-api"
 import type { GenerationStatus } from "@/features/mori/domain"
 
@@ -86,6 +88,19 @@ function generationStatus(value: unknown): value is GenerationStatus {
 
 function studioChangeOperation(value: unknown): value is StudioChangeOperation {
   return value === "add_part" || value === "replace_section" || value === "extend" || value === "transform"
+}
+
+function studioRemasterStrength(value: unknown): value is StudioRemasterStrength {
+  return typeof value === "string" && studioRemasterStrengths.some((strength) => strength === value)
+}
+
+function studioRemasterSource(value: unknown): StudioRemasterSource | null {
+  if (!isRecord(value)) return null
+  if (value.type === "version") return { type: "version" }
+  if (value.type === "mix_revision" && nonEmptyString(value.mix_revision_ref)) {
+    return { type: "mix_revision", mix_revision_ref: value.mix_revision_ref }
+  }
+  return null
 }
 
 function lyricsRevisionDirection(value: unknown): value is LyricsRevisionDirection {
@@ -260,6 +275,27 @@ export function parseGenerationSnapshot(value: unknown): GenerationSnapshot | nu
   }
   if (value.generation_kind === "studio_change") {
     if (value.song_plan_ref !== null || value.mode !== null || !nonEmptyString(value.source_version_ref) || !studioChangeOperation(value.operation)) return null
+    const hasRemasterMetadata = "intent" in value || "source" in value || "variation_strength" in value
+    if (hasRemasterMetadata) {
+      const source = studioRemasterSource(value.source)
+      if (
+        value.operation !== "transform"
+        || value.intent !== "remaster"
+        || source === null
+        || !studioRemasterStrength(value.variation_strength)
+      ) return null
+      return {
+        ...common,
+        generation_kind: "studio_change",
+        song_plan_ref: null,
+        mode: null,
+        source_version_ref: value.source_version_ref,
+        operation: "transform",
+        intent: "remaster",
+        source,
+        variation_strength: value.variation_strength,
+      }
+    }
     return {
       ...common,
       generation_kind: "studio_change",

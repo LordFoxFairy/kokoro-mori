@@ -42,6 +42,22 @@ export type StudioLayerKind = "vocals" | "instrumental"
 
 export type StudioChangePreserve = "melody" | "lyrics" | "vocal_identity" | "tempo" | "structure"
 
+export const studioRemasterStrengths = ["subtle", "balanced", "bold"] as const
+
+export type StudioRemasterStrength = typeof studioRemasterStrengths[number]
+
+export const studioRemasterProtectedAnchors: readonly StudioChangePreserve[] = [
+  "melody",
+  "lyrics",
+  "vocal_identity",
+  "tempo",
+  "structure",
+]
+
+export type StudioRemasterSource =
+  | { type: "version" }
+  | { type: "mix_revision"; mix_revision_ref: MoriRef }
+
 export type StudioChangeInsertionScope = {
   type: "insertion_point"
   position_ms: number
@@ -69,6 +85,14 @@ type StudioChangeGenerationCommonInput = {
   output_count: number
 }
 
+export type StudioRemasterGenerationInput = StudioChangeGenerationCommonInput & {
+  operation: "transform"
+  scope: StudioChangeWholeVersionScope
+  intent: "remaster"
+  source: StudioRemasterSource
+  variation_strength: StudioRemasterStrength
+}
+
 export type StudioChangeGenerationInput = StudioChangeGenerationCommonInput & (
   | { operation: "add_part"; scope: StudioChangeInsertionScope }
   | {
@@ -80,7 +104,14 @@ export type StudioChangeGenerationInput = StudioChangeGenerationCommonInput & (
     }
   | { operation: "replace_section"; scope: StudioChangeRangeScope }
   | { operation: "extend"; scope: StudioChangeFromScope }
-  | { operation: "transform"; scope: StudioChangeRangeScope | StudioChangeWholeVersionScope }
+  | {
+      operation: "transform"
+      scope: StudioChangeRangeScope | StudioChangeWholeVersionScope
+      intent?: never
+      source?: never
+      variation_strength?: never
+    }
+  | StudioRemasterGenerationInput
 )
 
 export type LyricsRevisionDirection = "rewrite" | "continue" | "rhyme" | "restructure"
@@ -313,13 +344,29 @@ export type NewSongGenerationSnapshot = GenerationSnapshotBase & {
   operation: null
 }
 
-export type StudioChangeGenerationSnapshot = GenerationSnapshotBase & {
+export type StandardStudioChangeGenerationSnapshot = GenerationSnapshotBase & {
   generation_kind: "studio_change"
   song_plan_ref: null
   mode: null
   source_version_ref: MoriRef
   operation: StudioChangeOperation
+  intent?: never
+  source?: never
+  variation_strength?: never
 }
+
+export type StudioRemasterGenerationSnapshot = GenerationSnapshotBase & {
+  generation_kind: "studio_change"
+  song_plan_ref: null
+  mode: null
+  source_version_ref: MoriRef
+  operation: "transform"
+  intent: "remaster"
+  source: StudioRemasterSource
+  variation_strength: StudioRemasterStrength
+}
+
+export type StudioChangeGenerationSnapshot = StandardStudioChangeGenerationSnapshot | StudioRemasterGenerationSnapshot
 
 export type GenerationSnapshot = NewSongGenerationSnapshot | StudioChangeGenerationSnapshot
 
@@ -433,6 +480,18 @@ type MoriStudioChangeCommonDraft = {
   outputCount?: number
 }
 
+export type MoriStudioRemasterSource =
+  | { type: "version" }
+  | { type: "mix_revision"; mixRevisionRef: MoriRef }
+
+export type MoriStudioRemasterDraft = MoriStudioChangeCommonDraft & {
+  operation: "transform"
+  scope: { type: "whole_version" }
+  intent: "remaster"
+  source: MoriStudioRemasterSource
+  variationStrength: StudioRemasterStrength
+}
+
 export type MoriStudioLayerDraft = MoriStudioChangeCommonDraft & {
   operation: "add_part"
   scope: { type: "whole_version" }
@@ -446,7 +505,14 @@ export type MoriStudioChangeDraft = MoriStudioChangeCommonDraft & (
   | MoriStudioLayerDraft
   | { operation: "replace_section"; scope: { type: "time_range"; startMs: number; endMs: number } }
   | { operation: "extend"; scope: { type: "from_position"; positionMs: number } }
-  | { operation: "transform"; scope: { type: "time_range"; startMs: number; endMs: number } | { type: "whole_version" } }
+  | {
+      operation: "transform"
+      scope: { type: "time_range"; startMs: number; endMs: number } | { type: "whole_version" }
+      intent?: never
+      source?: never
+      variationStrength?: never
+    }
+  | MoriStudioRemasterDraft
 )
 
 export type MoriLyricsRevisionDraft = {
@@ -554,6 +620,23 @@ export function createStudioChangeRequest(draft: MoriStudioChangeDraft): StudioC
         scope: { type: "from_position", position_ms: draft.scope.positionMs },
       }
     case "transform":
+      if (draft.intent === "remaster") {
+        if (draft.scope.type !== "whole_version") throw new Error("studio_remaster_scope_invalid")
+        if (!studioRemasterStrengths.includes(draft.variationStrength)) throw new Error("studio_remaster_strength_invalid")
+        if (outputCount !== 2) throw new Error("studio_remaster_output_count_invalid")
+        if (!sameValues(common.preserve, studioRemasterProtectedAnchors)) throw new Error("studio_remaster_preserve_invalid")
+        const source: StudioRemasterSource = draft.source.type === "version"
+          ? { type: "version" }
+          : { type: "mix_revision", mix_revision_ref: requiredRef(draft.source.mixRevisionRef, "studio_remaster_mix_revision_required") }
+        return {
+          ...common,
+          operation: "transform",
+          scope: { type: "whole_version" },
+          intent: "remaster",
+          source,
+          variation_strength: draft.variationStrength,
+        }
+      }
       if (draft.scope.type === "whole_version") {
         return { ...common, operation: "transform", scope: { type: "whole_version" } }
       }
@@ -564,6 +647,16 @@ export function createStudioChangeRequest(draft: MoriStudioChangeDraft): StudioC
         scope: { type: "time_range", start_ms: draft.scope.startMs, end_ms: draft.scope.endMs },
       }
   }
+}
+
+function requiredRef(value: string, errorCode: string): string {
+  const ref = value.trim()
+  if (ref === "") throw new Error(errorCode)
+  return ref
+}
+
+function sameValues<T>(left: T[], right: readonly T[]): boolean {
+  return left.length === right.length && right.every((value) => left.includes(value))
 }
 
 export function createLyricsRevisionRequest(draft: MoriLyricsRevisionDraft): LyricsRevisionInput {

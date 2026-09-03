@@ -207,6 +207,29 @@ describe("Mori same-origin API client", () => {
     })
   })
 
+  it("builds a typed mix-aware Remaster command", () => {
+    expect(createStudioChangeRequest({
+      operation: "transform",
+      scope: { type: "whole_version" },
+      intent: "remaster",
+      source: { type: "mix_revision", mixRevisionRef: "  mix_revision_7  " },
+      variationStrength: "bold",
+      instruction: "  Push clarity and impact while preserving the song.  ",
+      preserve: ["melody", "lyrics", "vocal_identity", "tempo", "structure"],
+      outputCount: 2,
+    })).toEqual({
+      operation: "transform",
+      scope: { type: "whole_version" },
+      intent: "remaster",
+      source: { type: "mix_revision", mix_revision_ref: "mix_revision_7" },
+      variation_strength: "bold",
+      instruction: "Push clarity and impact while preserving the song.",
+      preserve: ["melody", "lyrics", "vocal_identity", "tempo", "structure"],
+      reference_asset_refs: [],
+      output_count: 2,
+    })
+  })
+
   it("requires lyrics for a whole-version vocal layer", () => {
     expect(() => createStudioChangeRequest({
       operation: "add_part",
@@ -246,6 +269,66 @@ describe("Mori same-origin API client", () => {
       mode: null,
       song_plan_ref: null,
     })
+  })
+
+  it("reads the exact Remaster source and strength from a durable generation snapshot", async () => {
+    const api = createMoriApiClient({
+      fetchImpl: async () => new Response(JSON.stringify({
+        data: {
+          generation_ref: "generation_remaster_1",
+          generation_kind: "studio_change",
+          project_ref: "project_1",
+          song_plan_ref: null,
+          mode: null,
+          source_version_ref: "version_1",
+          operation: "transform",
+          intent: "remaster",
+          source: { type: "mix_revision", mix_revision_ref: "mix_revision_7" },
+          variation_strength: "bold",
+          status: "generating",
+          progress: 46,
+          candidate_refs: [],
+          created_at: "2026-09-03T12:00:00.000Z",
+        },
+        meta: { request_id: "request_remaster_snapshot_1" },
+      }), { status: 200, headers: { "Content-Type": "application/json" } }),
+    })
+
+    const response = await api.getGeneration("generation_remaster_1")
+
+    expect(response.data).toMatchObject({
+      generation_kind: "studio_change",
+      source_version_ref: "version_1",
+      operation: "transform",
+      intent: "remaster",
+      source: { type: "mix_revision", mix_revision_ref: "mix_revision_7" },
+      variation_strength: "bold",
+    })
+  })
+
+  it("rejects partial Remaster metadata instead of treating it as a generic transform", async () => {
+    const api = createMoriApiClient({
+      fetchImpl: async () => new Response(JSON.stringify({
+        data: {
+          generation_ref: "generation_remaster_invalid",
+          generation_kind: "studio_change",
+          project_ref: "project_1",
+          song_plan_ref: null,
+          mode: null,
+          source_version_ref: "version_1",
+          operation: "transform",
+          intent: "remaster",
+          source: { type: "version" },
+          status: "generating",
+          progress: 46,
+          candidate_refs: [],
+          created_at: "2026-09-03T12:00:00.000Z",
+        },
+        meta: { request_id: "request_remaster_snapshot_invalid" },
+      }), { status: 200, headers: { "Content-Type": "application/json" } }),
+    })
+
+    await expect(api.getGeneration("generation_remaster_invalid")).rejects.toMatchObject({ code: "invalid_api_response" })
   })
 
   it("posts a reviewed section-aware lyrics revision", async () => {

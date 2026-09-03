@@ -237,43 +237,14 @@
         }
       },
       "TransformGenerationInput": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "operation",
-          "scope",
-          "instruction",
-          "preserve",
-          "reference_asset_refs",
-          "output_count"
-        ],
-        "properties": {
-          "operation": {
-            "const": "transform"
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/StandardTransformGenerationInput"
           },
-          "scope": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/TimeRangeScope"
-              },
-              {
-                "$ref": "#/components/schemas/WholeVersionScope"
-              }
-            ]
-          },
-          "instruction": {
-            "$ref": "#/components/schemas/Instruction"
-          },
-          "preserve": {
-            "$ref": "#/components/schemas/PreserveList"
-          },
-          "reference_asset_refs": {
-            "$ref": "#/components/schemas/ReferenceAssetRefs"
-          },
-          "output_count": {
-            "$ref": "#/components/schemas/OutputCount"
+          {
+            "$ref": "#/components/schemas/RemasterGenerationInput"
           }
-        }
+        ]
       },
       "InsertionPointScope": {
         "type": "object",
@@ -480,68 +451,14 @@
         }
       },
       "StudioChangeGenerationSnapshot": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "generation_ref",
-          "generation_kind",
-          "project_ref",
-          "song_plan_ref",
-          "mode",
-          "source_version_ref",
-          "operation",
-          "status",
-          "progress",
-          "candidate_refs",
-          "created_at"
-        ],
-        "properties": {
-          "generation_ref": {
-            "type": "string",
-            "minLength": 1
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/StandardStudioChangeGenerationSnapshot"
           },
-          "generation_kind": {
-            "const": "studio_change"
-          },
-          "project_ref": {
-            "type": "string",
-            "minLength": 1
-          },
-          "song_plan_ref": {
-            "type": "null"
-          },
-          "mode": {
-            "type": "null"
-          },
-          "source_version_ref": {
-            "type": "string",
-            "minLength": 1
-          },
-          "operation": {
-            "type": "string",
-            "enum": [
-              "add_part",
-              "replace_section",
-              "extend",
-              "transform"
-            ]
-          },
-          "status": {
-            "$ref": "#/components/schemas/GenerationStatus"
-          },
-          "progress": {
-            "type": "integer",
-            "minimum": 0,
-            "maximum": 100
-          },
-          "candidate_refs": {
-            "$ref": "#/components/schemas/CandidateRefs"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time"
+          {
+            "$ref": "#/components/schemas/StudioRemasterGenerationSnapshot"
           }
-        }
+        ]
       },
       "GenerationStatus": {
         "type": "string",
@@ -826,6 +743,272 @@
             }
           }
         ]
+      },
+      "StandardTransformGenerationInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "scope",
+          "instruction",
+          "preserve",
+          "reference_asset_refs",
+          "output_count"
+        ],
+        "properties": {
+          "operation": {
+            "const": "transform"
+          },
+          "scope": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/TimeRangeScope"
+              },
+              {
+                "$ref": "#/components/schemas/WholeVersionScope"
+              }
+            ]
+          },
+          "instruction": {
+            "$ref": "#/components/schemas/Instruction"
+          },
+          "preserve": {
+            "$ref": "#/components/schemas/PreserveList"
+          },
+          "reference_asset_refs": {
+            "$ref": "#/components/schemas/ReferenceAssetRefs"
+          },
+          "output_count": {
+            "$ref": "#/components/schemas/OutputCount"
+          }
+        }
+      },
+      "VersionRemasterSource": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "const": "version"
+          }
+        }
+      },
+      "MixRevisionRemasterSource": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "mix_revision_ref"
+        ],
+        "properties": {
+          "type": {
+            "const": "mix_revision"
+          },
+          "mix_revision_ref": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "RemasterSource": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/VersionRemasterSource"
+          },
+          {
+            "$ref": "#/components/schemas/MixRevisionRemasterSource"
+          }
+        ]
+      },
+      "RemasterGenerationInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation",
+          "scope",
+          "intent",
+          "source",
+          "variation_strength",
+          "instruction",
+          "preserve",
+          "reference_asset_refs",
+          "output_count"
+        ],
+        "properties": {
+          "operation": {
+            "const": "transform"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/WholeVersionScope"
+          },
+          "intent": {
+            "const": "remaster"
+          },
+          "source": {
+            "$ref": "#/components/schemas/RemasterSource"
+          },
+          "variation_strength": {
+            "type": "string",
+            "enum": [
+              "subtle",
+              "balanced",
+              "bold"
+            ]
+          },
+          "instruction": {
+            "$ref": "#/components/schemas/Instruction"
+          },
+          "preserve": {
+            "$ref": "#/components/schemas/PreserveList"
+          },
+          "reference_asset_refs": {
+            "$ref": "#/components/schemas/ReferenceAssetRefs"
+          },
+          "output_count": {
+            "const": 2
+          }
+        }
+      },
+      "StandardStudioChangeGenerationSnapshot": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "generation_ref",
+          "generation_kind",
+          "project_ref",
+          "song_plan_ref",
+          "mode",
+          "source_version_ref",
+          "operation",
+          "status",
+          "progress",
+          "candidate_refs",
+          "created_at"
+        ],
+        "properties": {
+          "generation_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "generation_kind": {
+            "const": "studio_change"
+          },
+          "project_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "song_plan_ref": {
+            "type": "null"
+          },
+          "mode": {
+            "type": "null"
+          },
+          "source_version_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "operation": {
+            "type": "string",
+            "enum": [
+              "add_part",
+              "replace_section",
+              "extend",
+              "transform"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/GenerationStatus"
+          },
+          "progress": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "candidate_refs": {
+            "$ref": "#/components/schemas/CandidateRefs"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "StudioRemasterGenerationSnapshot": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "generation_ref",
+          "generation_kind",
+          "project_ref",
+          "song_plan_ref",
+          "mode",
+          "source_version_ref",
+          "operation",
+          "status",
+          "progress",
+          "candidate_refs",
+          "created_at",
+          "intent",
+          "source",
+          "variation_strength"
+        ],
+        "properties": {
+          "generation_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "generation_kind": {
+            "const": "studio_change"
+          },
+          "project_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "song_plan_ref": {
+            "type": "null"
+          },
+          "mode": {
+            "type": "null"
+          },
+          "source_version_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "operation": {
+            "const": "transform"
+          },
+          "status": {
+            "$ref": "#/components/schemas/GenerationStatus"
+          },
+          "progress": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "candidate_refs": {
+            "$ref": "#/components/schemas/CandidateRefs"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "intent": {
+            "const": "remaster"
+          },
+          "source": {
+            "$ref": "#/components/schemas/RemasterSource"
+          },
+          "variation_strength": {
+            "type": "string",
+            "enum": [
+              "subtle",
+              "balanced",
+              "bold"
+            ]
+          }
+        }
       }
     }
   }

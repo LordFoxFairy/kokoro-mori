@@ -40,11 +40,42 @@ describe("Mori Studio change OpenAPI contract", () => {
     ])
 
     const operations = variantNames.map((name) => {
-      const schema = recordValue(schemas[name === "AddPartGenerationInput" ? "InsertPartGenerationInput" : name], name)
+      const schemaName = name === "AddPartGenerationInput"
+        ? "InsertPartGenerationInput"
+        : name === "TransformGenerationInput"
+          ? "StandardTransformGenerationInput"
+          : name
+      const schema = recordValue(schemas[schemaName], schemaName)
       const properties = recordValue(schema.properties, `${name} properties`)
       return recordValue(properties.operation, `${name} operation`).const
     })
     expect(operations).toEqual(["add_part", "replace_section", "extend", "transform"])
+  })
+
+  it("models Remaster as a typed whole-version transform instead of a fifth top-level operation", () => {
+    const schemas = contractSchemas(readContract())
+    const transform = recordValue(schemas.TransformGenerationInput, "TransformGenerationInput")
+    const variants = arrayValue(transform.oneOf, "Transform variants").map((value) => {
+      const ref = stringValue(recordValue(value, "Transform variant").$ref, "Transform variant ref")
+      return ref.split("/").at(-1) ?? ""
+    })
+    expect(variants).toEqual(["StandardTransformGenerationInput", "RemasterGenerationInput"])
+
+    const remaster = recordValue(schemas.RemasterGenerationInput, "RemasterGenerationInput")
+    expect(arrayValue(remaster.required, "Remaster required fields")).toEqual(expect.arrayContaining([
+      "intent",
+      "source",
+      "variation_strength",
+    ]))
+    const properties = recordValue(remaster.properties, "Remaster properties")
+    expect(recordValue(properties.operation, "Remaster operation").const).toBe("transform")
+    expect(recordValue(properties.scope, "Remaster scope").$ref).toBe("#/components/schemas/WholeVersionScope")
+    expect(recordValue(properties.intent, "Remaster intent").const).toBe("remaster")
+    expect(recordValue(properties.variation_strength, "Remaster strength").enum).toEqual(["subtle", "balanced", "bold"])
+    expect(recordValue(properties.output_count, "Remaster output count").const).toBe(2)
+
+    const source = recordValue(schemas.RemasterSource, "RemasterSource")
+    expect(arrayValue(source.oneOf, "Remaster sources")).toHaveLength(2)
   })
 
   it("models whole-version vocal and instrumental layers as typed add-part variants", () => {
@@ -89,7 +120,14 @@ describe("Mori Studio change OpenAPI contract", () => {
     ])
 
     const studioSnapshot = recordValue(schemas.StudioChangeGenerationSnapshot, "StudioChangeGenerationSnapshot")
-    const studioProperties = recordValue(studioSnapshot.properties, "Studio snapshot properties")
+    const studioVariants = arrayValue(studioSnapshot.oneOf, "Studio snapshot variants").map((value) => {
+      const ref = stringValue(recordValue(value, "Studio snapshot variant").$ref, "Studio snapshot variant ref")
+      return ref.split("/").at(-1) ?? ""
+    })
+    expect(studioVariants).toEqual(["StandardStudioChangeGenerationSnapshot", "StudioRemasterGenerationSnapshot"])
+
+    const standardStudioSnapshot = recordValue(schemas.StandardStudioChangeGenerationSnapshot, "StandardStudioChangeGenerationSnapshot")
+    const studioProperties = recordValue(standardStudioSnapshot.properties, "Studio snapshot properties")
     expect(recordValue(studioProperties.generation_kind, "Studio generation kind").const).toBe("studio_change")
     expect(recordValue(studioProperties.operation, "Studio operation").enum).toEqual([
       "add_part",
@@ -97,6 +135,13 @@ describe("Mori Studio change OpenAPI contract", () => {
       "extend",
       "transform",
     ])
+
+    const remasterSnapshot = recordValue(schemas.StudioRemasterGenerationSnapshot, "StudioRemasterGenerationSnapshot")
+    expect(arrayValue(remasterSnapshot.required, "Remaster snapshot required fields")).toEqual(expect.arrayContaining([
+      "intent",
+      "source",
+      "variation_strength",
+    ]))
   })
 
   it("keeps the browser contract snake_case and provider-neutral", () => {
