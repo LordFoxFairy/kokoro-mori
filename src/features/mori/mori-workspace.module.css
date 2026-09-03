@@ -2964,105 +2964,6 @@
     display: none;
   }
 
-  .studioHeader {
-    min-height: 50px;
-  }
-
-  .studioPage .studioHeaderActions .ghostButton {
-    padding-inline: 7px;
-    font-size: 0;
-  }
-
-  .studioPage .studioHeaderActions .ghostButton svg {
-    width: 15px;
-    height: 15px;
-  }
-
-  .studioLayout {
-    grid-template-columns: 1fr;
-  }
-
-  .studioSidebar {
-    display: grid;
-    grid-template-columns: 74px minmax(0, 1fr);
-    gap: 14px;
-    padding: 14px;
-    border-right: 0;
-    border-bottom: 1px solid var(--mori-border);
-  }
-
-  .studioArtwork {
-    width: 74px;
-    height: 74px;
-    padding: 9px;
-    font-size: 25px;
-  }
-
-  .studioSidebarCopy {
-    align-content: center;
-    margin-top: 0;
-  }
-
-  .studioSidebarCopy h1 {
-    font-size: 18px;
-  }
-
-  .studioToolList {
-    display: grid;
-    grid-column: 1 / -1;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 6px;
-    margin-top: 2px;
-  }
-
-  .studioToolList button {
-    justify-content: center;
-    gap: 6px;
-    min-width: 0;
-    padding-inline: 5px;
-    font-size: 10px;
-  }
-
-  .studioSidebarBottom {
-    display: none;
-  }
-
-  .studioCanvas {
-    padding: 26px 14px 40px;
-  }
-
-  .studioCanvasTop {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .takeLane {
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 9px;
-  }
-
-  .takeLaneSelect,
-  .takeLaneActions {
-    grid-column: 1 / -1;
-  }
-
-  .takeLaneWave {
-    grid-column: 1;
-  }
-
-  .takeLaneDuration {
-    grid-column: 2;
-    align-self: center;
-  }
-
-  .takeLaneActions {
-    justify-content: space-between;
-  }
-
-  .lyricsCard p {
-    font-size: 16px;
-  }
-
   .catalogIntro {
     align-items: flex-start;
     flex-direction: column;
@@ -4260,6 +4161,10 @@
 }
 
 @media (min-width: 701px) and (max-width: 900px) {
+  .studioLayout {
+    grid-template-columns: 170px minmax(0, 1fr);
+  }
+
   .appShell:not([data-rail-collapsed="true"]) .rail {
     padding-inline: 12px;
   }
@@ -4289,6 +4194,127 @@
 }
 
 @media (max-width: 700px) {
+  .studioPage {
+    width: 100%;
+    min-width: 0;
+    overflow-x: clip;
+  }
+
+  .studioPage .studioHeader {
+    min-height: 58px;
+    gap: 10px;
+    padding-inline: 14px;
+  }
+
+  .studioHeaderLeft {
+    min-width: 0;
+  }
+
+  .studioHeaderActions {
+    flex: 0 0 auto;
+    gap: 6px;
+  }
+
+  .studioPage .studioHeaderActions .ghostButton {
+    width: 34px;
+    padding-inline: 0;
+    font-size: 0;
+  }
+
+  .studioPage .studioHeaderActions .ghostButton svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  .studioPage .studioLayout {
+    width: 100%;
+    min-height: calc(100dvh - 58px);
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .studioSidebar {
+    display: grid;
+    grid-template-columns: 74px minmax(0, 1fr);
+    gap: 14px;
+    padding: 14px;
+    border-right: 0;
+    border-bottom: 1px solid var(--mori-border);
+  }
+
+  .studioArtwork {
+    width: 74px;
+    height: 74px;
+    padding: 9px;
+    font-size: 25px;
+  }
+
+  .studioSidebarCopy {
+    align-content: center;
+    margin-top: 0;
+  }
+
+  .studioSidebarCopy h1 {
+    font-size: 18px;
+  }
+
+  .studioToolList {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    margin-top: 2px;
+  }
+
+  .studioToolList button {
+    justify-content: center;
+    gap: 6px;
+    min-width: 0;
+    padding-inline: 5px;
+    font-size: 10px;
+  }
+
+  .studioSidebarBottom {
+    display: none;
+  }
+
+  .studioCanvas {
+    width: 100%;
+    min-width: 0;
+    padding: 26px 14px 40px;
+  }
+
+  .studioCanvasTop {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .takeLane {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 9px;
+  }
+
+  .takeLaneSelect,
+  .takeLaneActions {
+    grid-column: 1 / -1;
+  }
+
+  .takeLaneWave {
+    grid-column: 1;
+  }
+
+  .takeLaneDuration {
+    grid-column: 2;
+    align-self: center;
+  }
+
+  .takeLaneActions {
+    justify-content: space-between;
+  }
+
+  .lyricsCard p {
+    font-size: 16px;
+  }
+
   .appShell {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: 56px minmax(0, 1fr);
@@ -4555,15 +4581,6 @@
     bottom: 70px;
     width: 100%;
     background: #fff;
-  }
-
-  .studioPage .studioHeader {
-    min-height: 58px;
-    padding-inline: 16px;
-  }
-
-  .studioPage .studioLayout {
-    min-height: calc(100dvh - 58px);
   }
 
   .homeWelcome {

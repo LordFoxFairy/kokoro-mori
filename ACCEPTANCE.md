@@ -70,7 +70,8 @@ Studio 顶部现在提供上下文化的 Finish，而不是新增全局 AI 工�
 开始，默认 Balanced，并提供 Subtle / Balanced / Bold 三档可解释强度。用户先 Review source、strength、Whole song、
 五项保护约束和“两条 Take”去向，再执行已有的 version-scoped Generation；窗口关闭后任务仍被 Studio 跟踪并可重新打开。
 Remaster snapshot 必须回显完全一致的 `intent`、source 与 `variation_strength`，否则整单拒收；成功结果只追加到 Take Lanes，
-不会覆盖源 Version、Mix Revision 或 Current Version；
+不会覆盖源 Version、Mix Revision 或 Current Version；390px 视口下 Studio 收敛为真正单栏，顶栏三个动作与三项工具均完整可达，
+页面无横向溢出，Finish 使用可滚动工作表并将 Review / Execute footer 固定在可见区域；
 Arrangement 已提供 Take Lanes，可试听、选择方向并明确 Use take 后切换当前版本；
 Arrangement 现在提供与时间线连在一起的 Mori AI Changes：Add part、Replace section、Extend、Transform
 共享同一套上下文式输入；Intro、Verse、Lift、Chorus、Outro 可直接选为 AI 操作上下文，操作范围和结果去向
