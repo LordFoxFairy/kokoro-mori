@@ -141,11 +141,23 @@
   box-shadow: 0 0 0 3px rgba(109, 92, 231, 0.08);
 }
 
+.segmentRail {
+  min-width: 0;
+}
+
+.segmentScroller {
+  min-width: 0;
+}
+
 .segments {
   display: flex;
   gap: 4px;
   min-height: 36px;
   padding: 0 18px 15px;
+}
+
+.segmentScrollHint {
+  display: none;
 }
 
 .segment {
@@ -277,13 +289,57 @@
   }
 
   .segments {
-    overflow-x: auto;
     padding-bottom: 13px;
+  }
+
+  .segmentScroller {
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-inline: contain;
+    scrollbar-color: rgba(109, 92, 231, 0.3) transparent;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .segmentScroller:focus-visible {
+    outline: 3px solid rgba(109, 92, 231, 0.16);
+    outline-offset: -3px;
+  }
+
+  .segments {
+    width: max-content;
+    min-width: 100%;
   }
 
   .segment {
     flex-basis: 72px;
     flex-shrink: 0;
+    scroll-snap-align: start;
+  }
+
+  .segmentScrollHint {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    margin: -5px 18px 10px;
+    color: var(--mori-faint);
+    font-size: 10px;
+    font-weight: 650;
+    line-height: 1.3;
+  }
+
+  .segmentScrollHintIcon {
+    display: inline-grid;
+    width: 18px;
+    height: 18px;
+    place-items: center;
+    border: 1px solid rgba(109, 92, 231, 0.15);
+    border-radius: 999px;
+    color: var(--mori-primary);
+    background: rgba(255, 255, 255, 0.68);
+    font-size: 13px;
+    line-height: 1;
   }
 
   .rangeEditor {

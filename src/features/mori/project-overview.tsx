@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react"
 import type { MoriApi, MoriCandidate, MoriProject } from "@/lib/mori-api"
 import { createMoriApiClient } from "@/lib/mori-api-client"
 import type { Candidate, Project } from "./domain"
+import { listAllMoriCandidates } from "./candidate-pagination"
 import { useMoriApp } from "./components/mori-app-provider"
 import { previewCandidates, previewProject, previewSongPlan } from "./preview-data"
 import { Waveform } from "./components/waveform"
@@ -49,9 +50,9 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
       // Keep the deterministic preview or neutral project shell visible while the BFF is unavailable.
     })
 
-    void overviewApi.listCandidates(requestedProjectRef).then((candidatesResponse) => {
+    void listAllMoriCandidates(overviewApi, requestedProjectRef).then((candidates) => {
       if (disposed) return
-      const nextCandidates = candidatesResponse.data.candidates.map(toDomainCandidate)
+      const nextCandidates = candidates.map(toDomainCandidate)
       setCandidateState({ projectRef: requestedProjectRef, value: nextCandidates })
       if (nextCandidates.length === 0) clearPlayerCandidate()
       else replacePlayerCandidates(nextCandidates)

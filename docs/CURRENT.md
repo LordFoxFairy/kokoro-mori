@@ -24,6 +24,11 @@
   Audio / Voice / Inspiration 使用 discriminated union。Source API 成功后不再把 preview Sources 混入 live 响应；
   未配置 API 或所有 projection 都不可用时保留 preview fallback，单个 Source projection 失败则清空该区域并明确显示 unavailable，
   避免把过期 fixture 当成真实数据；Library 会消费 `next_cursor` 提供 Load more / Try again，Create deep link 会优先解析 live Source detail。
+- Generation 生命周期已补齐 Create、snapshot、SSE replay、cancel 与 Project Candidate list 的本仓 OpenAPI；Candidate
+  list 使用 opaque cursor/limit/generation filter，页面投影统一消费全部分页并按 `candidate_ref` 去重。Generation queue
+  以显式字段白名单保存任务摘要、状态、进度、候选引用和 event cursor，不保存 prompt、lyrics、provider payload 或音频字节；
+  刷新后可从 active generation ref 恢复 snapshot polling。Generation SSE 支持 AbortSignal，页面卸载时停止长连接。
+- Studio 时间线在窄屏提供横向滚动、键盘焦点和明确的 Swipe hint；短桌面视口的 Export dialog 会避开固定 Player safe area。
 
 ## 验证证据
 
@@ -32,7 +37,7 @@
 ```text
 pnpm lint                         passed
 pnpm typecheck                    passed
-pnpm test --maxWorkers=1          passed: 45 files / 353 tests
+pnpm test --maxWorkers=1          passed: 48 files / 372 tests
 pnpm build                        passed
 ```
 

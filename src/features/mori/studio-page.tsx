@@ -24,6 +24,7 @@ import {
 } from "@/lib/mori-api"
 import { createMoriApiClient, MoriApiRequestError } from "@/lib/mori-api-client"
 import type { Candidate } from "./domain"
+import { listAllMoriCandidates } from "./candidate-pagination"
 import { MoriStudioShell } from "./components/mori-studio-shell"
 import { StudioAiComposer, type StudioAiRunState } from "./components/studio-ai-composer"
 import { StudioExportDialog } from "./components/studio-export-dialog"
@@ -304,21 +305,19 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
       })
     }
 
-    if (listCandidates) {
-      void listCandidates(requestedProjectRef).then((response) => {
-        if (disposed) return
-        projectedCandidates = response.data.candidates.map(toDomainCandidate)
-        applyCandidateProjection()
-      }).catch(() => {
-        if (initialCandidate === null) {
-          setStudioCandidates([])
-          setVersionHistoryOpen(false)
-          setActiveCandidate(null)
-          setCurrentVersionRef("")
-        }
-        // Keep the deterministic fixture visible for the known preview route.
-      })
-    }
+    void listAllMoriCandidates({ listCandidates }, requestedProjectRef).then((candidates) => {
+      if (disposed) return
+      projectedCandidates = candidates.map(toDomainCandidate)
+      applyCandidateProjection()
+    }).catch(() => {
+      if (initialCandidate === null) {
+        setStudioCandidates([])
+        setVersionHistoryOpen(false)
+        setActiveCandidate(null)
+        setCurrentVersionRef("")
+      }
+      // Keep the deterministic fixture visible for the known preview route.
+    })
 
     return () => {
       disposed = true
@@ -369,6 +368,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
     let disposed = false
     let timer: number | undefined
     let lastEventId: string | null = null
+    const eventController = new AbortController()
 
     const sync = async () => {
       try {
@@ -385,7 +385,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
 
         if (studioApi.getGenerationEvents !== undefined) {
           try {
-            const events = await studioApi.getGenerationEvents(trackedStudioChange.generationRef, lastEventId)
+            const events = await studioApi.getGenerationEvents(trackedStudioChange.generationRef, lastEventId, eventController.signal)
             const latest = events.at(-1)
             if (latest !== undefined) {
               lastEventId = latest.id
@@ -401,9 +401,9 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
         setStudioChangeRun((current) => ({ ...current, status, progress, message: null }))
 
         if (status === "succeeded") {
-          const candidateResponse = await studioApi.listCandidates(snapshot.data.project_ref)
+          const candidateResponse = await listAllMoriCandidates(studioApi, snapshot.data.project_ref)
           if (disposed) return
-          const generatedCandidates = candidateResponse.data.candidates
+          const generatedCandidates = candidateResponse
             .filter((item) => candidateRefs.includes(item.candidate_ref))
             .map((item, index) => toDomainCandidate(item, index + 47))
           setStudioCandidates((current) => mergeStudioCandidates(current, generatedCandidates))
@@ -438,6 +438,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
     void sync()
     return () => {
       disposed = true
+      eventController.abort()
       if (timer !== undefined) window.clearTimeout(timer)
     }
   }, [studioApi, trackedStudioChange])

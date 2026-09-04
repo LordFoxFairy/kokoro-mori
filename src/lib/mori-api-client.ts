@@ -9,6 +9,7 @@ import {
   type LyricsRevisionInput,
   type MoriGenerationEvent,
   type MoriApi,
+  type MoriCandidateListOptions,
   type MoriArtworkGenerationEvent,
   type MoriCreativeSourceListOptions,
   type MoriExportInput,
@@ -298,10 +299,10 @@ export function createMoriApiClient(options: MoriApiClientOptions = {}): MoriApi
       const payload = await readJson(response)
       return parseSuccessResponse(response, payload, parseGenerationSnapshot)
     },
-    async getGenerationEvents(generationRef: MoriRef, lastEventId = null) {
+    async getGenerationEvents(generationRef: MoriRef, lastEventId = null, signal?: AbortSignal) {
       const headers: HeadersInit = { Accept: "text/event-stream" }
       if (lastEventId !== null && lastEventId.trim() !== "") headers["Last-Event-ID"] = lastEventId
-      const response = await fetchImpl(`${apiBasePath}/generations/${encodeURIComponent(generationRef)}/events`, { headers })
+      const response = await fetchImpl(`${apiBasePath}/generations/${encodeURIComponent(generationRef)}/events`, { headers, signal })
       const body = await response.text()
       if (!response.ok) {
         const payload = parseJson(body)
@@ -330,8 +331,13 @@ export function createMoriApiClient(options: MoriApiClientOptions = {}): MoriApi
       }
       return events
     },
-    async listCandidates(projectRef: MoriRef) {
-      const response = await fetchImpl(`${apiBasePath}/projects/${encodeURIComponent(projectRef)}/candidates`)
+    async listCandidates(projectRef: MoriRef, options: MoriCandidateListOptions = {}) {
+      const query = new URLSearchParams()
+      if (options.limit !== undefined) query.set("limit", String(options.limit))
+      if (options.cursor !== undefined && options.cursor !== null && options.cursor.trim() !== "") query.set("cursor", options.cursor)
+      if (options.generation_ref !== undefined && options.generation_ref !== null && options.generation_ref.trim() !== "") query.set("generation_ref", options.generation_ref)
+      const queryString = query.toString()
+      const response = await fetchImpl(`${apiBasePath}/projects/${encodeURIComponent(projectRef)}/candidates${queryString ? `?${queryString}` : ""}`)
       const payload = await readJson(response)
       return parseSuccessResponse(response, payload, parseMoriCandidatePage)
     },

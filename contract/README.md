@@ -15,11 +15,11 @@ music owner、BFF 或其他 Kokoro 子仓的内部模型。
 - [`tests/mori-library-sources.contract.test.ts`](./tests/mori-library-sources.contract.test.ts)：检查独立分页、
   source_kind discriminator、深链读取、认证和 provider-neutral 字段边界。
 
-- [`openapi/mori-studio-change.v1.json`](./openapi/mori-studio-change.v1.json)：Studio 中
-  Add part、Replace section、Extend、Transform 的 version-scoped generation command；其中 Add part 同时覆盖
-  时间线插入与 whole-Version Add Vocals / Add Instrumental 图层；Transform 使用 typed `restyle`、`cover`、
-  `remaster` 分支，分别固定自由改编、整曲翻唱和完成态精修的上下文，以及刷新恢复所需的 discriminated
-  Generation snapshot。
+- [`openapi/mori-studio-change.v1.json`](./openapi/mori-studio-change.v1.json)：共享的 Generation lifecycle；覆盖
+  Create 的 new-song command、Studio 中 Add part / Replace section / Extend / Transform 的 version-scoped
+  command，以及统一的 snapshot、可 replay 的 SSE events 和 cancel。Add part 同时覆盖时间线插入与 whole-Version
+  Add Vocals / Add Instrumental 图层；Transform 使用 typed `restyle`、`cover`、`remaster` 分支，分别固定自由
+  改编、整曲翻唱和完成态精修的上下文，以及刷新恢复所需的 discriminated Generation snapshot。
 - [`tests/mori-studio-change.contract.test.ts`](./tests/mori-studio-change.contract.test.ts)：检查路径、
   幂等 Header、operation/scope 对应关系、`generation_kind` 快照分支、`snake_case` 与
   provider-neutral 边界。

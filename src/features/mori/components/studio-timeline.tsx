@@ -1,5 +1,6 @@
 "use client"
 
+import { useId } from "react"
 import type { Candidate } from "../domain"
 import {
   buildStudioTimelineTicks,
@@ -24,6 +25,7 @@ type StudioTimelineProps = {
 }
 
 export function StudioTimeline({ candidate, sections, selection, positionSeconds, playing, disabled, onSeek, onSelect }: StudioTimelineProps) {
+  const sectionHintId = useId()
   const durationMs = Math.max(minimumStudioTimelineSelectionMs, Math.round(candidate.durationSeconds * 1_000))
   const positionMs = Math.max(0, Math.min(durationMs, Math.round(positionSeconds * 1_000)))
   const activeSection = findStudioTimelineSection(sections, positionMs)
@@ -77,26 +79,40 @@ export function StudioTimeline({ candidate, sections, selection, positionSeconds
         />
       </div>
 
-      <div className={styles.segments}>
-        {sections.map((section) => {
-          const selected = selection.id === section.id
-          const underPlayhead = activeSection?.id === section.id
-          return (
-            <button
-              className={styles.segment}
-              type="button"
-              aria-pressed={selected}
-              aria-label={`Select ${section.label} section`}
-              data-playhead={underPlayhead ? "true" : "false"}
-              disabled={disabled}
-              key={section.id}
-              onClick={() => onSelect(section)}
-              style={{ flexGrow: section.weight }}
-            >
-              <span>{section.label}</span>
-            </button>
-          )
-        })}
+      <div className={styles.segmentRail}>
+        <div
+          className={styles.segmentScroller}
+          role="region"
+          aria-label="Arrangement sections"
+          aria-describedby={sectionHintId}
+          tabIndex={0}
+        >
+          <div className={styles.segments}>
+            {sections.map((section) => {
+              const selected = selection.id === section.id
+              const underPlayhead = activeSection?.id === section.id
+              return (
+                <button
+                  className={styles.segment}
+                  type="button"
+                  aria-pressed={selected}
+                  aria-label={`Select ${section.label} section`}
+                  data-playhead={underPlayhead ? "true" : "false"}
+                  disabled={disabled}
+                  key={section.id}
+                  onClick={() => onSelect(section)}
+                  style={{ flexGrow: section.weight }}
+                >
+                  <span>{section.label}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+        <p className={styles.segmentScrollHint} id={sectionHintId}>
+          <span className={styles.segmentScrollHintIcon} aria-hidden="true">↔</span>
+          <span>Swipe horizontally to see all sections</span>
+        </p>
       </div>
 
       <footer className={styles.rangeEditor}>

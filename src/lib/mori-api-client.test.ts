@@ -1172,10 +1172,12 @@ describe("Mori same-origin API client", () => {
   it("replays generation events with the last-event cursor", async () => {
     let capturedUrl = ""
     let capturedHeaders: HeadersInit | undefined
+    let capturedSignal: AbortSignal | null | undefined
     const api = createMoriApiClient({
       fetchImpl: async (input, init) => {
         capturedUrl = String(input)
         capturedHeaders = init?.headers
+        capturedSignal = init?.signal
         return new Response([
           "id: generation_1:5",
           "event: generation.generating",
@@ -1186,13 +1188,15 @@ describe("Mori same-origin API client", () => {
       },
     })
 
-    const events = await api.getGenerationEvents("generation_1", "generation_1:4")
+    const eventController = new AbortController()
+    const events = await api.getGenerationEvents("generation_1", "generation_1:4", eventController.signal)
 
     expect(capturedUrl).toBe("/api/v1/mori/generations/generation_1/events")
     expect(capturedHeaders).toEqual({
       Accept: "text/event-stream",
       "Last-Event-ID": "generation_1:4",
     })
+    expect(capturedSignal).toBe(eventController.signal)
     expect(events).toEqual([{
       id: "generation_1:5",
       event: "generation.generating",
@@ -1631,6 +1635,23 @@ describe("Mori same-origin API client", () => {
       code: "invalid_api_response",
       status: 200,
     })
+  })
+
+  it("reads candidate pages with opaque cursor filters", async () => {
+    let capturedUrl = ""
+    const api = createMoriApiClient({
+      fetchImpl: async (input) => {
+        capturedUrl = String(input)
+        return jsonResponse({
+          data: { candidates: [], next_cursor: null },
+          meta: { request_id: "request_candidates_1" },
+        })
+      },
+    })
+
+    await api.listCandidates("project/one", { cursor: "cursor/next", limit: 25, generation_ref: "generation_1" })
+
+    expect(capturedUrl).toBe("/api/v1/mori/projects/project%2Fone/candidates?limit=25&cursor=cursor%2Fnext&generation_ref=generation_1")
   })
 
   it("rejects malformed generation event frames", async () => {

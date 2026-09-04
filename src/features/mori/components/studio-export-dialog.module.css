@@ -504,6 +504,19 @@
   }
 }
 
+@media (min-width: 701px) and (max-height: 780px) {
+  /* Keep the export footer above Mori's fixed player on short desktop
+     windows. The dialog remains the scroll container when its contents
+     cannot fit in the reduced vertical lane. */
+  .layer {
+    padding: 12px 24px 84px;
+  }
+
+  .dialog {
+    max-height: calc(100dvh - 96px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .dialog {
     animation: none;

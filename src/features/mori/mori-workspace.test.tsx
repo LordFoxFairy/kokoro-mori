@@ -99,6 +99,49 @@ describe("Mori workspace", () => {
     expect(screen.queryByRole("heading", { name: "Song plan" })).not.toBeInTheDocument()
   })
 
+  it("restores the active generation reference after a refresh without restoring prompt contents", async () => {
+    localStorage.setItem("mori-generation-queue-v1", JSON.stringify({
+      version: 1,
+      active_generation_ref: "generation_restored",
+      items: [{
+        generation_ref: "generation_restored",
+        project_ref: "project_restored",
+        source_version_ref: null,
+        kind: "create",
+        label: "Restored direction",
+        created_at: "2026-09-04T12:00:00.000Z",
+        status: "generating",
+        progress: 42,
+        candidate_refs: [],
+        last_event_id: null,
+      }],
+    }))
+    const getGeneration = vi.fn<MoriApi["getGeneration"]>(async () => ({
+      data: {
+        generation_ref: "generation_restored",
+        generation_kind: "new_song",
+        project_ref: "project_restored",
+        song_plan_ref: null,
+        mode: "custom",
+        source_version_ref: null,
+        operation: null,
+        status: "generating",
+        progress: 42,
+        candidate_refs: [],
+        created_at: "2026-09-04T12:00:00.000Z",
+      },
+      meta: { request_id: "request_generation_restored" },
+    }))
+
+    render(<MoriAppProvider><MoriWorkspace api={createWorkspaceApi({ getGeneration })} /></MoriAppProvider>)
+
+    await waitFor(() => expect(getGeneration).toHaveBeenCalledWith("generation_restored"))
+    expect(screen.getByRole("button", { name: "Open generation queue" })).toHaveAttribute("data-generation-feedback", "active")
+    fireEvent.click(screen.getByRole("button", { name: "Open generation queue" }))
+    expect(screen.getAllByText("Generating").length).toBeGreaterThan(0)
+    expect(localStorage.getItem("mori-generation-queue-v1")).not.toContain("prompt")
+  })
+
   it("creates a Project from the first idea before starting an unscoped generation", async () => {
     const originalUrl = window.location.href
     window.history.replaceState({}, "", "/create?idea=A+quiet+piano+song")

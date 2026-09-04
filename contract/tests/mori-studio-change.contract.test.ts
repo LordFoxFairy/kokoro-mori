@@ -24,6 +24,69 @@ describe("Mori Studio change OpenAPI contract", () => {
     expect(responses["409"]).toBeDefined()
   })
 
+  it("covers Create, replay, and cancel on the shared Generation lifecycle", () => {
+    const document = readContract()
+    const paths = recordValue(document.paths, "paths")
+
+    const createPath = recordValue(paths["/api/v1/mori/projects/{project_ref}/generations"], "Create generation path")
+    const create = recordValue(createPath.post, "Create generation POST")
+    expect(create.operationId).toBe("createGeneration")
+    const createParameters = arrayValue(create.parameters, "Create generation parameters").map((value) => recordValue(value, "Create generation parameter"))
+    expect(createParameters).toEqual(expect.arrayContaining([
+      expect.objectContaining({ name: "project_ref", in: "path", required: true }),
+      expect.objectContaining({ name: "Idempotency-Key", in: "header", required: true }),
+    ]))
+    const createBody = recordValue(create.requestBody, "Create generation body")
+    const createContent = recordValue(createBody.content, "Create generation content")
+    expect(recordValue(recordValue(createContent["application/json"], "Create generation JSON").schema, "Create generation schema").$ref).toBe("#/components/schemas/GenerationCreateInput")
+
+    const eventsPath = recordValue(paths["/api/v1/mori/generations/{generation_ref}/events"], "Generation events path")
+    const events = recordValue(eventsPath.get, "Generation events GET")
+    expect(events.operationId).toBe("getGenerationEvents")
+    const eventParameters = arrayValue(events.parameters, "Generation event parameters").map((value) => recordValue(value, "Generation event parameter"))
+    expect(eventParameters).toEqual(expect.arrayContaining([
+      expect.objectContaining({ name: "Last-Event-ID", in: "header", required: false }),
+    ]))
+    const eventResponse = recordValue(recordValue(events.responses, "Generation event responses")["200"], "Generation event response")
+    const eventContent = recordValue(eventResponse.content, "Generation event content")
+    expect(eventContent["text/event-stream"]).toBeDefined()
+
+    const cancelPath = recordValue(paths["/api/v1/mori/generations/{generation_ref}/cancel"], "Generation cancel path")
+    const cancel = recordValue(cancelPath.post, "Generation cancel POST")
+    expect(cancel.operationId).toBe("cancelGeneration")
+    const cancelParameters = arrayValue(cancel.parameters, "Generation cancel parameters").map((value) => recordValue(value, "Generation cancel parameter"))
+    expect(cancelParameters).toEqual(expect.arrayContaining([
+      expect.objectContaining({ name: "Idempotency-Key", in: "header", required: true }),
+    ]))
+    const cancelResponse = recordValue(recordValue(cancel.responses, "Generation cancel responses")["202"], "Generation cancel response")
+    const cancelContent = recordValue(cancelResponse.content, "Generation cancel content")
+    expect(recordValue(recordValue(cancelContent["application/json"], "Generation cancel JSON").schema, "Generation cancel schema").$ref).toBe("#/components/schemas/ApiGenerationCancelReceipt")
+  })
+
+  it("publishes an opaque-cursor candidate projection for Project playback", () => {
+    const document = readContract()
+    const paths = recordValue(document.paths, "paths")
+    const path = recordValue(paths["/api/v1/mori/projects/{project_ref}/candidates"], "Candidate list path")
+    const get = recordValue(path.get, "Candidate list GET")
+    expect(get.operationId).toBe("listCandidates")
+    const parameters = arrayValue(get.parameters, "Candidate list parameters").map((value) => recordValue(value, "Candidate list parameter"))
+    expect(parameters).toEqual(expect.arrayContaining([
+      expect.objectContaining({ name: "project_ref", in: "path", required: true }),
+      expect.objectContaining({ name: "cursor", in: "query", required: false }),
+      expect.objectContaining({ name: "limit", in: "query", required: false }),
+      expect.objectContaining({ name: "generation_ref", in: "query", required: false }),
+    ]))
+    const response = recordValue(recordValue(get.responses, "Candidate list responses")["200"], "Candidate list response")
+    const content = recordValue(response.content, "Candidate list content")
+    expect(recordValue(recordValue(content["application/json"], "Candidate list JSON").schema, "Candidate list schema").$ref).toBe("#/components/schemas/ApiCandidatePage")
+    const schemas = contractSchemas(document)
+    const candidatePage = recordValue(schemas.CandidatePage, "CandidatePage")
+    const properties = recordValue(candidatePage.properties, "CandidatePage properties")
+    expect(recordValue(properties.next_cursor, "Candidate next cursor").oneOf).toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: "null" }),
+    ]))
+  })
+
   it("locks the four UI operations to explicit scope schemas", () => {
     const schemas = contractSchemas(readContract())
     const input = recordValue(schemas.StudioChangeGenerationInput, "StudioChangeGenerationInput")

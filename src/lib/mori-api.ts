@@ -540,6 +540,17 @@ export type MoriCandidate = {
   created_at: string
 }
 
+export type MoriCandidateListOptions = {
+  cursor?: string | null
+  limit?: number
+  generation_ref?: MoriRef | null
+}
+
+export type MoriCandidatePage = {
+  candidates: MoriCandidate[]
+  next_cursor: string | null
+}
+
 export const moriCreativeSourceKinds = ["audio", "voice", "inspiration"] as const
 
 export type MoriCreativeSourceKind = typeof moriCreativeSourceKinds[number]
@@ -648,8 +659,8 @@ export type MoriApi = {
   createMixRevision: (versionRef: MoriRef, input: MixRevisionInput, idempotencyKey: string) => Promise<ApiSuccess<MoriMixRevision>>
   getMixRevision: (mixRevisionRef: MoriRef) => Promise<ApiSuccess<MoriMixRevision>>
   getGeneration: (generationRef: MoriRef) => Promise<ApiSuccess<GenerationSnapshot>>
-  getGenerationEvents: (generationRef: MoriRef, lastEventId?: string | null) => Promise<MoriGenerationEvent[]>
-  listCandidates: (projectRef: MoriRef) => Promise<ApiSuccess<{ candidates: MoriCandidate[]; next_cursor: string | null }>>
+  getGenerationEvents: (generationRef: MoriRef, lastEventId?: string | null, signal?: AbortSignal) => Promise<MoriGenerationEvent[]>
+  listCandidates: (projectRef: MoriRef, options?: MoriCandidateListOptions) => Promise<ApiSuccess<MoriCandidatePage>>
   cancelGeneration: (generationRef: MoriRef, idempotencyKey: string) => Promise<ApiSuccess<GenerationCancelReceipt>>
   listLibrary: (kindOrOptions?: MoriLibraryKind | MoriLibraryListOptions) => Promise<ApiSuccess<{ items: MoriLibraryItem[]; next_cursor: string | null }>>
   listCreativeSources: (options?: MoriCreativeSourceListOptions) => Promise<ApiSuccess<MoriCreativeSourcePage>>

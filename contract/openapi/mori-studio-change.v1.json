@@ -1,9 +1,9 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Mori Studio Change API",
+    "title": "Mori Generation API",
     "version": "0.1.0",
-    "description": "Version-scoped, non-destructive music generation commands used by Mori Studio."
+    "description": "Shared Generation lifecycle for Create and version-scoped, non-destructive Mori Studio changes."
   },
   "paths": {
     "/api/v1/mori/versions/{version_ref}/generations": {
@@ -95,6 +95,75 @@
         }
       }
     },
+    "/api/v1/mori/projects/{project_ref}/candidates": {
+      "get": {
+        "operationId": "listCandidates",
+        "summary": "List playable candidate takes for a Project",
+        "parameters": [
+          {
+            "name": "project_ref",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "description": "Opaque cursor returned by the previous page.",
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            }
+          },
+          {
+            "name": "generation_ref",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Candidates ordered from newest to oldest",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiCandidatePage"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The Project was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/mori/generations/{generation_ref}": {
       "get": {
         "operationId": "getGeneration",
@@ -123,6 +192,218 @@
           },
           "404": {
             "description": "The generation was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/mori/projects/{project_ref}/generations": {
+      "post": {
+        "operationId": "createGeneration",
+        "summary": "Create a new song generation in a Project",
+        "parameters": [
+          {
+            "name": "project_ref",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerationCreateInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "The new song generation was accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiGenerationReceipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request violates an input invariant",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The Project was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The idempotency key conflicts with an earlier command",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The Project cannot accept a new generation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/mori/generations/{generation_ref}/events": {
+      "get": {
+        "operationId": "getGenerationEvents",
+        "summary": "Replay generation progress events",
+        "description": "Returns a replayable Server-Sent Events stream. Send Last-Event-ID to resume after a disconnect; the event name is generation.progress and each data payload follows GenerationEventData.",
+        "parameters": [
+          {
+            "name": "generation_ref",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "Last-Event-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A replayable generation event stream",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string",
+                  "description": "SSE frames with event: generation.progress and JSON data shaped as GenerationEventData."
+                },
+                "x-event-data-schema": {
+                  "$ref": "#/components/schemas/GenerationEventData"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The generation was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/mori/generations/{generation_ref}/cancel": {
+      "post": {
+        "operationId": "cancelGeneration",
+        "summary": "Cancel an active generation",
+        "parameters": [
+          {
+            "name": "generation_ref",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "The cancellation was accepted or already applied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiGenerationCancelReceipt"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The generation was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The generation is already in a terminal state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The generation cannot be cancelled",
             "content": {
               "application/json": {
                 "schema": {
@@ -359,6 +640,125 @@
         "maximum": 4,
         "default": 2
       },
+      "GenerationCreateInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "mode",
+          "prompt",
+          "song_plan_ref",
+          "lyrics",
+          "style",
+          "reference_asset_refs",
+          "voice_ref",
+          "duration_seconds",
+          "lyrics_mode"
+        ],
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "smart",
+              "custom"
+            ]
+          },
+          "prompt": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
+          "song_plan_ref": {
+            "oneOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lyrics": {
+            "oneOf": [
+              {
+                "type": "string",
+                "maxLength": 20000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "style": {
+            "oneOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reference_asset_refs": {
+            "$ref": "#/components/schemas/ReferenceAssetRefs"
+          },
+          "voice_ref": {
+            "oneOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "duration_seconds": {
+            "oneOf": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 600
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lyrics_mode": {
+            "type": "string",
+            "enum": [
+              "lyrics",
+              "instrumental"
+            ]
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "lyrics_mode": {
+                  "const": "instrumental"
+                }
+              },
+              "required": [
+                "lyrics_mode"
+              ]
+            },
+            "then": {
+              "properties": {
+                "lyrics": {
+                  "const": null
+                },
+                "voice_ref": {
+                  "const": null
+                }
+              }
+            }
+          }
+        ]
+      },
       "ApiGenerationSnapshot": {
         "type": "object",
         "additionalProperties": false,
@@ -498,6 +898,113 @@
           "minLength": 1
         }
       },
+      "MoriCandidate": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "candidate_ref",
+          "generation_ref",
+          "version_ref",
+          "project_ref",
+          "title",
+          "duration_seconds",
+          "audio_asset_ref",
+          "waveform_asset_ref",
+          "style_tags",
+          "created_at"
+        ],
+        "properties": {
+          "candidate_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "generation_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "version_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "project_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "duration_seconds": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "audio_asset_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "waveform_asset_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "style_tags": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            }
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CandidatePage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "candidates",
+          "next_cursor"
+        ],
+        "properties": {
+          "candidates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MoriCandidate"
+            }
+          },
+          "next_cursor": {
+            "oneOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "ApiCandidatePage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "data",
+          "meta"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CandidatePage"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ApiMeta"
+          }
+        }
+      },
       "ApiGenerationReceipt": {
         "type": "object",
         "additionalProperties": false,
@@ -533,6 +1040,71 @@
               "preparing",
               "generating"
             ]
+          }
+        }
+      },
+      "ApiGenerationCancelReceipt": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "data",
+          "meta"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/GenerationCancelReceipt"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ApiMeta"
+          }
+        }
+      },
+      "GenerationCancelReceipt": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "generation_ref",
+          "status"
+        ],
+        "properties": {
+          "generation_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "$ref": "#/components/schemas/GenerationStatus"
+          }
+        }
+      },
+      "GenerationEventData": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "generation_ref",
+          "project_ref",
+          "status",
+          "progress",
+          "candidate_refs"
+        ],
+        "properties": {
+          "generation_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "project_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "$ref": "#/components/schemas/GenerationStatus"
+          },
+          "progress": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "candidate_refs": {
+            "$ref": "#/components/schemas/CandidateRefs"
           }
         }
       },

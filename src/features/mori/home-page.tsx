@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react"
 import type { MoriApi, MoriCandidate, MoriProject } from "@/lib/mori-api"
 import { createMoriApiClient } from "@/lib/mori-api-client"
 import type { Candidate, Project } from "./domain"
+import { listAllMoriCandidates } from "./candidate-pagination"
 import { useMoriApp } from "./components/mori-app-provider"
 import { previewCandidates, previewProject } from "./preview-data"
 import { Waveform } from "./components/waveform"
@@ -44,9 +45,9 @@ export function HomePageContent({ api }: HomePageContentProps = {}) {
       setDirectionStatus("loading")
 
       try {
-        const candidateResponse = await homeApi.listCandidates(project.project_ref)
+        const candidateResponse = await listAllMoriCandidates(homeApi, project.project_ref)
         if (disposed) return
-        const nextCandidates = candidateResponse.data.candidates
+        const nextCandidates = candidateResponse
           .filter((candidate) => candidate.project_ref === project.project_ref)
           .map((candidate, index) => toDomainCandidate(candidate, index, project.current_version_ref))
         setCandidates(nextCandidates)
