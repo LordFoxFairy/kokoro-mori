@@ -778,6 +778,42 @@ describe("Mori same-origin API client", () => {
     expect(cancelled.data.status).toBe("cancelled")
   })
 
+  it("returns the first complete lyrics event without waiting for the SSE connection to close", async () => {
+    let streamCancelled = false
+    let capturedSignal: AbortSignal | null | undefined
+    const eventBytes = new TextEncoder().encode([
+      "id: lyrics_revision_1:4",
+      "event: lyrics_revision.generating",
+      'data: {"data":{"lyrics_revision_ref":"lyrics_revision_1","version_ref":"version_1","status":"generating","progress":68,"suggestion_refs":[]},"meta":{"request_id":"request_lyrics_event_stream_1"}}',
+      "",
+      "",
+    ].join("\n"))
+    const api = createMoriApiClient({
+      fetchImpl: async (_input, init) => {
+        capturedSignal = init?.signal
+        return new Response(new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(eventBytes)
+          },
+          cancel() {
+            streamCancelled = true
+          },
+        }), { status: 200, headers: { "Content-Type": "text/event-stream" } })
+      },
+    })
+    const eventController = new AbortController()
+
+    const result = await Promise.race([
+      api.getLyricsRevisionEvents("lyrics_revision_1", null, eventController.signal).then((events) => ({ kind: "events" as const, events })),
+      new Promise<{ kind: "timeout" }>((resolve) => setTimeout(() => resolve({ kind: "timeout" }), 80)),
+    ])
+
+    expect(result.kind).toBe("events")
+    if (result.kind === "events") expect(result.events[0]?.data.progress).toBe(68)
+    expect(capturedSignal).toBe(eventController.signal)
+    expect(streamCancelled).toBe(true)
+  })
+
   it("rejects malformed lyrics revision drafts before sending them", () => {
     expect(() => createLyricsRevisionRequest({
       direction: "rewrite",
@@ -1222,6 +1258,36 @@ describe("Mori same-origin API client", () => {
         candidate_refs: [],
       },
     }])
+  })
+
+  it("returns the first complete generation event without waiting for the SSE connection to close", async () => {
+    let streamCancelled = false
+    const eventBytes = new TextEncoder().encode([
+      "id: generation_1:6",
+      "event: generation.generating",
+      'data: {"data":{"generation_ref":"generation_1","project_ref":"project_1","status":"generating","progress":68,"candidate_refs":[]},"meta":{"request_id":"request_generation_event_stream_1"}}',
+      "",
+      "",
+    ].join("\n"))
+    const api = createMoriApiClient({
+      fetchImpl: async () => new Response(new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(eventBytes)
+        },
+        cancel() {
+          streamCancelled = true
+        },
+      }), { status: 200, headers: { "Content-Type": "text/event-stream" } }),
+    })
+
+    const result = await Promise.race([
+      api.getGenerationEvents("generation_1").then((events) => ({ kind: "events" as const, events })),
+      new Promise<{ kind: "timeout" }>((resolve) => setTimeout(() => resolve({ kind: "timeout" }), 80)),
+    ])
+
+    expect(result.kind).toBe("events")
+    if (result.kind === "events") expect(result.events[0]?.data.progress).toBe(68)
+    expect(streamCancelled).toBe(true)
   })
 
   it("preserves the normalized API error for UI state mapping", async () => {

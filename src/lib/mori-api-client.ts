@@ -172,16 +172,18 @@ export function createMoriApiClient(options: MoriApiClientOptions = {}): MoriApi
       const payload = await readJson(response)
       return parseSuccessResponse(response, payload, parseLyricsRevisionSnapshot)
     },
-    async getLyricsRevisionEvents(lyricsRevisionRef: MoriRef, lastEventId = null) {
+    async getLyricsRevisionEvents(lyricsRevisionRef: MoriRef, lastEventId = null, signal) {
       const headers: HeadersInit = { Accept: "text/event-stream" }
       if (lastEventId !== null && lastEventId.trim() !== "") headers["Last-Event-ID"] = lastEventId
-      const response = await fetchImpl(`${apiBasePath}/lyrics_revisions/${encodeURIComponent(lyricsRevisionRef)}/events`, { headers })
-      const body = await response.text()
-      if (!response.ok) throwEventStreamError(response, body, "Mori lyrics revision event stream")
+      const response = await fetchImpl(`${apiBasePath}/lyrics_revisions/${encodeURIComponent(lyricsRevisionRef)}/events`, { headers, signal })
+      if (!response.ok) {
+        const body = await response.text()
+        throwEventStreamError(response, body, "Mori lyrics revision event stream")
+      }
       if (!(response.headers.get("content-type") || "").toLowerCase().startsWith("text/event-stream")) {
         throw invalidEventStreamResponse("Mori lyrics revision event stream returned an invalid content type", response.status)
       }
-      const events = parseLyricsRevisionEvents(body)
+      const events = await readFirstCompleteEventBatch(response, parseLyricsRevisionEvents)
       if (events === null) {
         throw invalidEventStreamResponse("Mori lyrics revision event stream returned an invalid response", response.status)
       }
@@ -313,8 +315,8 @@ export function createMoriApiClient(options: MoriApiClientOptions = {}): MoriApi
       const headers: HeadersInit = { Accept: "text/event-stream" }
       if (lastEventId !== null && lastEventId.trim() !== "") headers["Last-Event-ID"] = lastEventId
       const response = await fetchImpl(`${apiBasePath}/generations/${encodeURIComponent(generationRef)}/events`, { headers, signal })
-      const body = await response.text()
       if (!response.ok) {
+        const body = await response.text()
         const payload = parseJson(body)
         const apiError = parseApiError(payload)
         if (apiError !== null) throw new MoriApiRequestError(apiError.error, apiError.meta.request_id, response.status)
@@ -331,7 +333,7 @@ export function createMoriApiClient(options: MoriApiClientOptions = {}): MoriApi
           response.status,
         )
       }
-      const events = parseGenerationEvents(body)
+      const events = await readFirstCompleteEventBatch(response, parseGenerationEvents)
       if (events === null) {
         throw new MoriApiRequestError(
           { code: "invalid_api_response", message: "Mori event stream returned an invalid response", retryable: response.status >= 500, details: null },

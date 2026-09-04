@@ -1877,13 +1877,15 @@ describe("Mori studio page", () => {
   it("lets the new Version start a lyric revision after an old event replay fails late", async () => {
     let releaseEvents: () => void = () => undefined
     let markEventsReturned: () => void = () => undefined
+    let capturedEventSignal: AbortSignal | undefined
     const eventsGate = new Promise<void>((resolve) => { releaseEvents = resolve })
     const eventsReturned = new Promise<void>((resolve) => { markEventsReturned = resolve })
     const createLyricsRevision = vi.fn<MoriApi["createLyricsRevision"]>(async () => ({
       data: { lyrics_revision_ref: "lyrics_revision_late_events", status: "queued" as const },
       meta: { request_id: "request_lyrics_late_events" },
     }))
-    const getLyricsRevisionEvents = vi.fn(async () => {
+    const getLyricsRevisionEvents = vi.fn<MoriApi["getLyricsRevisionEvents"]>(async (_lyricsRevisionRef, _lastEventId, signal) => {
+      capturedEventSignal = signal
       await eventsGate
       markEventsReturned()
       throw new Error("event replay unavailable")
@@ -1924,6 +1926,7 @@ describe("Mori studio page", () => {
     fireEvent.click(screen.getByRole("button", { name: "Select First Light · Afterglow take" }))
     await waitFor(() => expect(screen.getByRole("button", { name: "Select First Light · Afterglow take" })).toHaveAttribute("aria-pressed", "true"))
     fireEvent.click(screen.getByRole("tab", { name: "Lyrics" }))
+    expect(capturedEventSignal?.aborted).toBe(true)
 
     releaseEvents()
     await eventsReturned

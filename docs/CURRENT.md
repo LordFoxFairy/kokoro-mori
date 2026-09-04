@@ -40,6 +40,8 @@
   Create 与 Studio Change 共用这份队列；Create 不会接管 Studio Change，Studio 路由会从 active generation ref 拉回 snapshot 并恢复工作上下文，
   网络瞬时错误按退避重试而非立即伪装成失败，在切换任务时保持其他进行中任务的后台轮询。
   Generation SSE 支持 AbortSignal，页面卸载时停止长连接；Create / Studio Change 的生成与取消命令带 epoch/context guard，
+  Generation 与 Lyrics Revision 会在收到首批完整 SSE frame 后立即解析并取消本次 reader，不再等待长连接关闭；
+  Lyrics Revision 同样把 AbortSignal 贯穿到同源 fetch，切换 Version 或卸载 Studio 会中止旧事件流。
   重复点击会进入 Stopping 状态，过期响应不会覆盖用户当前查看的任务。队列更新在支持 Web Locks 的浏览器中使用跨标签页互斥，
   并通过 storage event 的 old/new value 单调合并修复并发追加；终态、进度和候选引用不会被旧快照回退，冲突的 opaque event cursor 会安全回退至完整 replay。
   Create / Studio deep link 现在携带显式 `generation_ref`，同一项目的多个进行中任务可以各自恢复，不再依赖全局 active 指针。
@@ -63,7 +65,7 @@
 ```text
 pnpm lint                         passed
 pnpm typecheck                    passed
-pnpm test                         passed: 54 files / 443 tests
+pnpm test                         passed: 54 files / 445 tests
 pnpm build                        passed
 ```
 

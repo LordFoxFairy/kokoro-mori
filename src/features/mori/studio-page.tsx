@@ -769,6 +769,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
     let disposed = false
     let timer: number | undefined
     let lastEventId: string | null = null
+    const eventController = new AbortController()
     const isCurrent = () => (
       !disposed
       && trackedLyricsRevision.commandEpoch === lyricsRevisionCommandEpochRef.current
@@ -813,7 +814,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
         let status = snapshot.status
         let progress = snapshot.progress
         try {
-          const events = await studioApi.getLyricsRevisionEvents(trackedLyricsRevision.lyricsRevisionRef, lastEventId)
+          const events = await studioApi.getLyricsRevisionEvents(trackedLyricsRevision.lyricsRevisionRef, lastEventId, eventController.signal)
           if (!isCurrent()) return
           const latest = events.at(-1)
           if (
@@ -848,6 +849,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
     void sync()
     return () => {
       disposed = true
+      eventController.abort()
       if (timer !== undefined) window.clearTimeout(timer)
     }
   }, [studioApi, trackedLyricsRevision])
