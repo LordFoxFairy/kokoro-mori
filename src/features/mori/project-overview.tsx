@@ -32,9 +32,12 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
   const requestedProject = projectState.projectRef === initialProjectRef ? projectState.value : createUnavailableProject(initialProjectRef)
   const candidates = candidateState.projectRef === initialProjectRef ? candidateState.value : []
   const hasPlanProjection = initialProjectRef === previewProject.projectRef
-  const studioCandidate = requestedProject.currentVersionRef === null
+  const currentCandidate = requestedProject.currentVersionRef === null
     ? undefined
     : candidates.find((candidate) => candidate.versionRef === requestedProject.currentVersionRef)
+  const studioBaseHref = requestedProject.currentVersionRef === null
+    ? null
+    : `/projects/${encodeURIComponent(requestedProject.projectRef)}/studio/${encodeURIComponent(requestedProject.currentVersionRef)}`
 
   useEffect(() => {
     const requestedProjectRef = projectRef.trim() || previewProject.projectRef
@@ -81,7 +84,7 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
             <h1 className={styles.catalogTitle}>{requestedProject.title}</h1>
           <p>{requestedProject.description}</p>
           <div className={styles.projectOverviewActions}>
-            {studioCandidate ? <Link className={styles.generateButton} href={`/projects/${requestedProject.projectRef}/studio/${studioCandidate.versionRef}`}><Play size={14} fill="currentColor" /> Open Studio</Link> : null}
+            {studioBaseHref ? <Link className={styles.generateButton} href={studioBaseHref}><Play size={14} fill="currentColor" /> Open Studio</Link> : null}
             <Link className={styles.ghostButton} href={`/create?project_ref=${encodeURIComponent(requestedProject.projectRef)}`}><Sparkles size={14} /> New direction</Link>
           </div>
         </div>
@@ -94,39 +97,39 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
         <div><span>Plan mood</span><strong>{hasPlanProjection ? previewSongPlan.mood : "Unavailable"}</strong></div>
       </div>
 
-      {studioCandidate ? (
+      {studioBaseHref ? (
         <section className={`${styles.overviewSection} ${styles.continueMaking}`} aria-labelledby="continue-making-heading">
           <div className={styles.overviewSectionHeader}>
             <div>
               <h2 id="continue-making-heading">Continue making</h2>
               <p>Choose what you want to do next. Mori keeps this Project and Current Version in place.</p>
             </div>
-            <span>Current · {studioCandidate.title}</span>
+            <span>Current · {currentCandidate?.title ?? "Current Version"}</span>
           </div>
           <div className={styles.continueMakingGrid}>
             <ProjectContinuationLink
-              href={`/projects/${requestedProject.projectRef}/studio/${studioCandidate.versionRef}?surface=arrangement&intent=transform`}
+              href={`${studioBaseHref}?surface=arrangement&intent=transform`}
               label="Transform song"
               description="Restyle, cover, or remix this Version."
               destination="Arrangement · Take lanes"
               icon={Sparkles}
             />
             <ProjectContinuationLink
-              href={`/projects/${requestedProject.projectRef}/studio/${studioCandidate.versionRef}?surface=lyrics`}
+              href={`${studioBaseHref}?surface=lyrics`}
               label="Write lyrics"
               description="Draft or revise words with the song in view."
               destination="Lyrics · Review first"
               icon={FileText}
             />
             <ProjectContinuationLink
-              href={`/projects/${requestedProject.projectRef}/studio/${studioCandidate.versionRef}?surface=stems`}
+              href={`${studioBaseHref}?surface=stems`}
               label="Voice and stems"
               description="Separate, layer, and rebalance the performance."
               destination="Stems · Mix revision"
               icon={AudioWaveform}
             />
             <ProjectContinuationLink
-              href={`/projects/${requestedProject.projectRef}/studio/${studioCandidate.versionRef}?surface=finish`}
+              href={`${studioBaseHref}?surface=finish`}
               label="Finish song"
               description="Remaster, shape artwork, and prepare release details."
               destination="Finish · Release draft"

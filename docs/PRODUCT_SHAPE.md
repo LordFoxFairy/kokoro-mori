@@ -164,6 +164,8 @@ Workspace nav    内容随项目上下文变化                     跨页面保
 - 已落地第一版：Projects 列表不再用统一的模糊续作入口。已有 Current Version 的 Project 直接回到对应 Studio；
   已有候选但尚未确认 Current 的 Project 回到 Project Overview 比较 Directions；空 Project 直接进入 Create 开始
   第一条 Direction。新建 Project 后的主动作同样是开始第一条 Direction，减少一次没有决策价值的页面跳转。
+  Project 的 `current_version_ref` 是续作入口的事实来源；即使 Candidate projection 暂时不可用，已确认作品仍可进入
+  Studio 和对应的 Transform / Lyrics / Stems / Finish 上下文，不因辅助列表故障失去主路径。
 - 后续：Song Plan 的服务端版本历史、正式音频上传、版本自动保存，以及建立在真实时间选区和多轨交付模型上的
   更多导出 scope；AI MV 与真正的 Publish command 保持为完成歌曲后的后置流程。
 

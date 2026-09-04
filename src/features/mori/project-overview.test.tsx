@@ -278,4 +278,44 @@ describe("Mori project overview", () => {
     expect(player).toHaveTextContent("Nothing playing")
     expect(player).toHaveTextContent("No version selected")
   })
+
+  it("keeps the confirmed Current Version actionable when the candidate projection is unavailable", async () => {
+    const api = {
+      getProject: async () => ({
+        data: {
+          project_ref: "project_live_current_partial",
+          title: "Blue Hour",
+          description: "A current song whose direction list is temporarily unavailable.",
+          current_version_ref: "version_live_current",
+          candidate_count: 2,
+          last_activity_at: "2026-09-04T12:00:00.000Z",
+        },
+        meta: { request_id: "request_project_current_partial" },
+      }),
+      listCandidates: async () => {
+        throw new Error("candidate projection unavailable")
+      },
+    }
+
+    render(
+      <MoriAppProvider>
+        <MoriCatalogShell activeKey="projects" ariaLabel="Project overview">
+          <ProjectOverviewPageContent projectRef="project_live_current_partial" api={api} />
+        </MoriCatalogShell>
+      </MoriAppProvider>,
+    )
+
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Blue Hour" })).toBeInTheDocument())
+    expect(screen.getByRole("link", { name: "Open Studio" })).toHaveAttribute(
+      "href",
+      "/projects/project_live_current_partial/studio/version_live_current",
+    )
+    const continuation = screen.getByRole("region", { name: "Continue making" })
+    expect(within(continuation).getByText("Current · Current Version")).toBeInTheDocument()
+    expect(within(continuation).getByRole("link", { name: "Transform song" })).toHaveAttribute(
+      "href",
+      "/projects/project_live_current_partial/studio/version_live_current?surface=arrangement&intent=transform",
+    )
+    expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("Nothing playing")
+  })
 })
