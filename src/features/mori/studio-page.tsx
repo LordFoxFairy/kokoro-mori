@@ -7,12 +7,10 @@ import {
   createLyricsRevisionRequest,
   createStemSeparationRequest,
   createStudioChangeRequest,
-  type CurrentVersionInput,
   type LyricsRevisionSnapshot,
   type MixRevisionInput,
   type MoriApi,
   type MoriCandidate,
-  type MoriCurrentVersionSelection,
   type MoriExportInput,
   type MoriExportSnapshot,
   type MoriExportStatus,
@@ -44,6 +42,14 @@ import { isStudioRemasterPlan, isStudioRemasterSnapshot } from "./studio-remaste
 import { createStudioStemSeparationDraft, isActiveStemSeparationStatus, stemSeparationSnapshotMatchesPlan, type StudioStemSeparationPlan } from "./studio-stems"
 import { createHtmlStemPlaybackController, type StemPlaybackFactory } from "./stem-playback"
 import { useStudioReleaseWorkflow } from "./use-studio-release-workflow"
+import {
+  currentVersionCommand,
+  currentVersionCommitFailure,
+  currentVersionSelectionMatchesCommand,
+  idleCurrentVersionCommitRun,
+  type CurrentVersionCommitRun,
+  type PendingCurrentVersionCommand,
+} from "./current-version"
 import styles from "./mori-workspace.module.css"
 
 type StudioTool = "arrangement" | "lyrics" | "stems"
@@ -93,19 +99,6 @@ type PendingExportCommand = {
   idempotencyKey: string
 }
 
-type PendingCurrentVersionCommand = {
-  projectRef: string
-  input: CurrentVersionInput
-  idempotencyKey: string
-}
-
-type CurrentVersionCommitRun = {
-  status: "idle" | "saving" | "failed" | "succeeded"
-  targetVersionRef: string | null
-  message: string | null
-  retryable: boolean
-}
-
 const idleStudioChangeRun: StudioAiRunState = {
   status: "idle",
   progress: 0,
@@ -133,13 +126,6 @@ const idleStemSeparationRun: StudioStemSeparationRunState = {
   midiAssetRef: null,
   sourceAudioDigest: null,
   message: null,
-}
-
-const idleCurrentVersionCommitRun: CurrentVersionCommitRun = {
-  status: "idle",
-  targetVersionRef: null,
-  message: null,
-  retryable: false,
 }
 
 const versionHistoryDrawerId = "studio-version-history-drawer"
@@ -230,7 +216,6 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
       setFinishDialogOpen(false)
     }
     setExportDialogOpen(false)
-    setVersionHistoryOpen(false)
   }, [activeProjectRef, activeVersionRef])
 
   useEffect(() => {
@@ -253,6 +238,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
         ? projectedCandidates.find((item) => item.isCurrent)?.versionRef ?? nextActiveCandidate?.versionRef ?? ""
         : projectedCurrentVersionRef ?? ""
       setStudioCandidates(projectedCandidates.map((item) => ({ ...item, isCurrent: item.versionRef === nextCurrentVersionRef })))
+      if ((nextActiveCandidate?.versionRef ?? null) !== activeVersionRefRef.current) setVersionHistoryOpen(false)
       setActiveCandidate(nextActiveCandidate ?? null)
       setCurrentVersionRef(nextCurrentVersionRef)
     }
@@ -276,6 +262,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
       }).catch(() => {
         if (initialCandidate === null) {
           setStudioCandidates([])
+          setVersionHistoryOpen(false)
           setActiveCandidate(null)
           setCurrentVersionRef("")
         }
@@ -830,6 +817,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
   }
 
   const selectTake = (take: Candidate) => {
+    if (take.versionRef !== activeVersionRefRef.current) setVersionHistoryOpen(false)
     setActiveCandidate(take)
   }
 
@@ -853,23 +841,14 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
   const commitCurrentVersion = async (take: Candidate, retryCommand?: PendingCurrentVersionCommand) => {
     if (currentVersionCommitRun.status === "saving" || take.versionRef === currentVersionRef) return
     const expectedCurrentVersionRef = currentVersionRef.trim() === "" ? null : currentVersionRef
-    const previousCommand = pendingCurrentVersionCommandRef.current
     const command = retryCommand
-      ?? (previousCommand !== null
-        && previousCommand.projectRef === activeProjectRef
-        && previousCommand.input.candidate_ref === take.candidateRef
-        && previousCommand.input.version_ref === take.versionRef
-        && previousCommand.input.expected_current_version_ref === expectedCurrentVersionRef
-        ? previousCommand
-        : {
-            projectRef: activeProjectRef,
-            input: {
-              candidate_ref: take.candidateRef,
-              version_ref: take.versionRef,
-              expected_current_version_ref: expectedCurrentVersionRef,
-            },
-            idempotencyKey: `mori-current-version-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-          })
+      ?? currentVersionCommand(
+        activeProjectRef,
+        take.candidateRef,
+        take.versionRef,
+        expectedCurrentVersionRef,
+        pendingCurrentVersionCommandRef.current,
+      )
     pendingCurrentVersionCommandRef.current = command
     setCurrentVersionCommitRun({
       status: "saving",
@@ -884,6 +863,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
       }
       setCurrentVersionRef(take.versionRef)
       setStudioCandidates((current) => current.map((item) => ({ ...item, isCurrent: item.versionRef === take.versionRef })))
+      if (take.versionRef !== activeVersionRefRef.current) setVersionHistoryOpen(false)
       setActiveCandidate(take)
       pendingCurrentVersionCommandRef.current = null
       setCurrentVersionCommitRun({
@@ -893,7 +873,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
         retryable: false,
       })
     } catch (error) {
-      const failure = currentVersionCommitFailure(error)
+      const failure = currentVersionCommitFailure(error, "Take")
       if (!failure.retryable) pendingCurrentVersionCommandRef.current = null
       setCurrentVersionCommitRun({
         status: "failed",
@@ -1235,38 +1215,6 @@ function mergeStudioCandidates(current: Candidate[], generated: Candidate[]): Ca
     ...current.filter((candidate) => !generatedRefs.has(candidate.candidateRef)),
     ...generated,
   ]
-}
-
-function currentVersionSelectionMatchesCommand(selection: MoriCurrentVersionSelection, command: PendingCurrentVersionCommand): boolean {
-  return selection.project_ref === command.projectRef
-    && selection.current_version_ref === command.input.version_ref
-    && selection.source_candidate_ref === command.input.candidate_ref
-    && selection.previous_version_ref === command.input.expected_current_version_ref
-}
-
-function currentVersionCommitFailure(error: unknown): { message: string; retryable: boolean } {
-  if (error instanceof Error && error.message === "current_version_confirmation_mismatch") {
-    return {
-      message: "The confirmation did not match this Take. Your previous Current is unchanged.",
-      retryable: false,
-    }
-  }
-  if (error instanceof MoriApiRequestError && error.code === "current_version_conflict") {
-    return {
-      message: "Current Version changed elsewhere. Refresh Studio before choosing again.",
-      retryable: false,
-    }
-  }
-  if (error instanceof MoriApiRequestError && !error.retryable) {
-    return {
-      message: "This Take is no longer eligible to become Current. Your previous Current is unchanged.",
-      retryable: false,
-    }
-  }
-  return {
-    message: "Mori couldn't make this Take Current. Your previous Current is unchanged.",
-    retryable: true,
-  }
 }
 
 function mixRevisionMatchesInput(revision: MoriMixRevision, input: MixRevisionInput): boolean {

@@ -1,7 +1,8 @@
-import { ArrowUpRight, Check, Clock3, Play, Sparkles, X } from "lucide-react"
+import { AlertCircle, ArrowUpRight, Check, Clock3, LoaderCircle, Play, RotateCcw, Sparkles, X } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useRef } from "react"
 import type { Candidate, Generation, SongPlan } from "../domain"
+import { idleCurrentVersionCommitRun, type CurrentVersionCommitRun } from "../current-version"
 import { Waveform } from "./waveform"
 import styles from "../mori-workspace.module.css"
 
@@ -12,8 +13,11 @@ type InspectorPanelProps = {
   songPlan: SongPlan | null
   selectedCandidateRef: string
   playing: boolean
+  currentVersionCommitRun?: CurrentVersionCommitRun
   onSelect: (candidate: Candidate) => void
   onPromote: (candidate: Candidate) => void
+  onRetryCurrentVersion?: () => void
+  onDismissCurrentVersion?: () => void
   onPlay: (candidate: Candidate) => void
   onCancel?: () => void
   onRetry?: () => void
@@ -26,7 +30,7 @@ function formatDuration(seconds: number): string {
   return `${minutes}:${remaining}`
 }
 
-export function InspectorPanel({ projectRef, generation, candidates, songPlan, selectedCandidateRef, playing, onSelect, onPromote, onPlay, onCancel, onRetry, onClose }: InspectorPanelProps) {
+export function InspectorPanel({ projectRef, generation, candidates, songPlan, selectedCandidateRef, playing, currentVersionCommitRun = idleCurrentVersionCommitRun, onSelect, onPromote, onRetryCurrentVersion, onDismissCurrentVersion, onPlay, onCancel, onRetry, onClose }: InspectorPanelProps) {
   const generationActive = generation !== null && ["queued", "preparing", "generating", "post_processing"].includes(generation.status)
   const generationFailed = generation !== null && (generation.status === "failed" || generation.status === "expired")
   const generationEmpty = generation?.status === "succeeded" && candidates.length === 0
@@ -100,6 +104,19 @@ export function InspectorPanel({ projectRef, generation, candidates, songPlan, s
             <h3 id="candidate-heading">Candidates</h3>
             <span>{candidates.length} directions</span>
           </div>
+          {currentVersionCommitRun.status === "failed" ? <div className={`${styles.queueCommitNotice} ${styles.queueCommitNoticeError}`} role="alert">
+            <AlertCircle aria-hidden="true" size={15} />
+            <div><strong>Current wasn&apos;t changed</strong><span>{currentVersionCommitRun.message}</span></div>
+            <div className={styles.queueCommitActions}>
+              {currentVersionCommitRun.retryable && onRetryCurrentVersion ? <button type="button" onClick={onRetryCurrentVersion}><RotateCcw size={12} /> Retry Set as current</button> : null}
+              {onDismissCurrentVersion ? <button type="button" onClick={onDismissCurrentVersion}><X size={12} /> Dismiss</button> : null}
+            </div>
+          </div> : null}
+          {currentVersionCommitRun.status === "succeeded" ? <div className={`${styles.queueCommitNotice} ${styles.queueCommitNoticeSuccess}`} role="status">
+            <Check aria-hidden="true" size={15} />
+            <div><strong>Current Version updated</strong><span>{currentVersionCommitRun.message}</span></div>
+            {onDismissCurrentVersion ? <button className={styles.queueCommitDismiss} type="button" aria-label="Dismiss Current Version confirmation" onClick={onDismissCurrentVersion}><X size={12} /></button> : null}
+          </div> : null}
           {candidates.length === 0 ? <div className={styles.candidateEmpty} role="status">
             <div className={styles.candidateEmptyIcon}><Sparkles size={16} /></div>
             <strong>No playable directions yet</strong>
@@ -107,6 +124,8 @@ export function InspectorPanel({ projectRef, generation, candidates, songPlan, s
           </div> : candidates.map((candidate, index) => {
             const isCurrent = candidate.isCurrent
             const isSelected = selectedCandidateRef === candidate.candidateRef
+            const isCommitting = currentVersionCommitRun.status === "saving"
+            const isCommitTarget = isCommitting && currentVersionCommitRun.targetVersionRef === candidate.versionRef
             return (
               <article className={`${styles.candidateCard} ${isCurrent ? styles.candidateCardCurrent : ""}`} key={candidate.candidateRef} onClick={() => onSelect(candidate)}>
                 <div className={styles.candidateTop}>
@@ -133,7 +152,15 @@ export function InspectorPanel({ projectRef, generation, candidates, songPlan, s
                   {isCurrent ? (
                     <span className={styles.promotedLabel}><Check /> Current version</span>
                   ) : (
-                    <button className={styles.promoteButton} type="button" onClick={(event) => { event.stopPropagation(); onPromote(candidate) }}>Set as current</button>
+                    <button
+                      className={styles.promoteButton}
+                      type="button"
+                      disabled={isCommitting}
+                      aria-label={isCommitTarget ? `Setting ${candidate.title} as current` : undefined}
+                      onClick={(event) => { event.stopPropagation(); onPromote(candidate) }}
+                    >
+                      {isCommitTarget ? <><LoaderCircle aria-hidden="true" size={12} /> Saving…</> : "Set as current"}
+                    </button>
                   )}
                 </div>
               </article>

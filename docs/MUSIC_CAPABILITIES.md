@@ -121,6 +121,9 @@ Take Lanes 中的 **Open Version、Playing、Selected Take、Current Version** �
 前端本地切换：它通过 Project-scoped、带幂等键和期望旧 Current 的 compare-and-set 命令提交。等待期间旧 Current
 继续保持；成功响应必须精确确认 Project、Candidate、Version 与 previous Current，界面才更新 Project Current 并
 打开该 Take。瞬时失败保留原 Current 和 Retry，重试复用原幂等键；并发冲突要求刷新，不用旧页面覆盖新选择。
+Create 的 Generation Queue 中 `Set as current` 复用完全相同的命令和确认规则；进入既有 Project 时先读取其
+`current_version_ref` 作为并发条件。Queue 与 Studio 因此只是同一作品提交能力的两个界面，不再出现 Queue 看似成功、
+刷新后却回到旧 Current 的前端假状态。
 
 Version history 继续属于 Project / Studio，而不是全局工具：大于 1360px 时作为第三栏持续可见；画布更窄时由
 Studio 顶部 Versions 动作打开右侧抽屉，移动端使用全宽工作表。常驻栏与抽屉共享同一 Version 列表和状态规则，

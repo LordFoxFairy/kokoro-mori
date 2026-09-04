@@ -10,6 +10,14 @@ import type { Candidate, CreationMode, GenerationStatus, SongPlan } from "./doma
 import type { MoriCreativeSourceSelection } from "./creative-assets"
 import { previewCandidates, previewGeneration, previewProject, previewSongPlan } from "./preview-data"
 import { buildSongPlan, toSongPlanCreateInput } from "./song-plan"
+import {
+  currentVersionCommand,
+  currentVersionCommitFailure,
+  currentVersionSelectionMatchesCommand,
+  idleCurrentVersionCommitRun,
+  type CurrentVersionCommitRun,
+  type PendingCurrentVersionCommand,
+} from "./current-version"
 import { CreateCanvas, type CreationDraft } from "./components/create-canvas"
 import { InspectorPanel } from "./components/inspector-panel"
 import { useMoriApp } from "./components/mori-app-provider"
@@ -19,7 +27,7 @@ import styles from "./mori-workspace.module.css"
 type MoriWorkspaceProps = {
   projectRef?: string
   initialCreativeSource?: MoriCreativeSourceSelection
-  api?: Pick<MoriApi, "createSongPlan" | "createGeneration" | "getGeneration" | "getGenerationEvents" | "listCandidates" | "cancelGeneration"> & Partial<Pick<MoriApi, "createProject" | "getProject">>
+  api?: Pick<MoriApi, "createSongPlan" | "createGeneration" | "getGeneration" | "getGenerationEvents" | "listCandidates" | "cancelGeneration"> & Partial<Pick<MoriApi, "createProject" | "getProject" | "putCurrentVersion">>
 }
 
 type GenerationAttempt = {
@@ -42,7 +50,7 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialCreative
   const [queueOpen, setQueueOpen] = useState(false)
   const [candidates, setCandidates] = useState(initialCandidates)
   const [songPlan, setSongPlan] = useState<SongPlan | null>(initialProjectRef === previewProject.projectRef ? previewSongPlan : null)
-  const [currentVersionRef, setCurrentVersionRef] = useState(initialProjectRef === previewProject.projectRef ? previewProject.currentVersionRef : "")
+  const [currentVersionRef, setCurrentVersionRef] = useState<string>(initialProjectRef === previewProject.projectRef ? previewProject.currentVersionRef ?? "" : "")
   const [selectedCandidateRef, setSelectedCandidateRef] = useState(initialCandidates[0]?.candidateRef ?? "")
   const [hasGeneration, setHasGeneration] = useState(initialProjectRef === previewProject.projectRef)
   const [generationStatus, setGenerationStatus] = useState<GenerationStatus>(previewGeneration.status)
@@ -50,10 +58,12 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialCreative
   const [progress, setProgress] = useState(previewGeneration.progress)
   const [generationRef, setGenerationRef] = useState<string | null>(null)
   const [lastGenerationAttempt, setLastGenerationAttempt] = useState<GenerationAttempt | null>(null)
+  const [currentVersionCommitRun, setCurrentVersionCommitRun] = useState<CurrentVersionCommitRun>(idleCurrentVersionCommitRun)
   const [shareFeedback, setShareFeedback] = useState(false)
   const [workspaceProjectTitle, setWorkspaceProjectTitle] = useState(initialProjectRef === null ? "New project" : initialProjectRef === previewProject.projectRef ? previewProject.title : "Project")
   const workspaceProjectRefMirror = useRef<string | null>(initialProjectRef)
   const projectCreationAttemptRef = useRef<ProjectCreationAttempt | null>(null)
+  const pendingCurrentVersionCommandRef = useRef<PendingCurrentVersionCommand | null>(null)
   const defaultApi = useMemo(() => createMoriApiClient(), [])
   const api = injectedApi ?? defaultApi
   const mode = modeOverride ?? preferences.defaultMode
@@ -72,7 +82,10 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialCreative
     let disposed = false
 
     void api.getProject(workspaceProjectRef).then((response) => {
-      if (!disposed) setWorkspaceProjectTitle(response.data.title)
+      if (!disposed) {
+        setWorkspaceProjectTitle(response.data.title)
+        setCurrentVersionRef((current) => current.trim() === "" ? response.data.current_version_ref ?? "" : current)
+      }
     }).catch(() => {
       // The neutral Project label keeps creation usable while the projection is unavailable.
     })
@@ -129,6 +142,8 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialCreative
     setProgress(8)
     setPlaying(false)
     setQueueOpen(true)
+    pendingCurrentVersionCommandRef.current = null
+    setCurrentVersionCommitRun(idleCurrentVersionCommitRun)
     const localPlan = generationMode === "smart"
       ? draft.songPlan ?? buildSongPlan(workspaceProjectRefMirror.current ?? "project_pending", draft)
       : null
@@ -263,12 +278,78 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialCreative
     }
   }, [queueOpen])
 
-  const handlePromote = useCallback((candidate: Candidate) => {
-    setCurrentVersionRef(candidate.versionRef)
-    setCandidates((items) => items.map((item) => ({ ...item, isCurrent: item.candidateRef === candidate.candidateRef })))
-    setSelectedCandidateRef(candidate.candidateRef)
-    selectPlayerCandidate(candidate)
-  }, [selectPlayerCandidate])
+  const commitCurrentVersion = useCallback(async (candidate: Candidate, retryCommand?: PendingCurrentVersionCommand) => {
+    const projectRef = workspaceProjectRefMirror.current
+    if (currentVersionCommitRun.status === "saving" || projectRef === null || candidate.versionRef === currentVersionRef) return
+    if (api.putCurrentVersion === undefined) {
+      setCurrentVersionCommitRun({
+        status: "failed",
+        targetVersionRef: candidate.versionRef,
+        message: "Current Version saving is not connected. Your previous Current is unchanged.",
+        retryable: false,
+      })
+      return
+    }
+
+    const expectedCurrentVersionRef = currentVersionRef.trim() === "" ? null : currentVersionRef
+    const command = retryCommand
+      ?? currentVersionCommand(
+        projectRef,
+        candidate.candidateRef,
+        candidate.versionRef,
+        expectedCurrentVersionRef,
+        pendingCurrentVersionCommandRef.current,
+      )
+    pendingCurrentVersionCommandRef.current = command
+    setCurrentVersionCommitRun({
+      status: "saving",
+      targetVersionRef: candidate.versionRef,
+      message: null,
+      retryable: false,
+    })
+
+    try {
+      const response = await api.putCurrentVersion(command.projectRef, command.input, command.idempotencyKey)
+      if (!currentVersionSelectionMatchesCommand(response.data, command)) {
+        throw new Error("current_version_confirmation_mismatch")
+      }
+      setCurrentVersionRef(candidate.versionRef)
+      setCandidates((items) => items.map((item) => ({ ...item, isCurrent: item.candidateRef === candidate.candidateRef })))
+      setSelectedCandidateRef(candidate.candidateRef)
+      selectPlayerCandidate(candidate)
+      pendingCurrentVersionCommandRef.current = null
+      setCurrentVersionCommitRun({
+        status: "succeeded",
+        targetVersionRef: candidate.versionRef,
+        message: `${candidate.title} is now the Current Version.`,
+        retryable: false,
+      })
+    } catch (error) {
+      const failure = currentVersionCommitFailure(error, "direction")
+      if (!failure.retryable) pendingCurrentVersionCommandRef.current = null
+      setCurrentVersionCommitRun({
+        status: "failed",
+        targetVersionRef: candidate.versionRef,
+        message: failure.message,
+        retryable: failure.retryable,
+      })
+    }
+  }, [api, currentVersionCommitRun.status, currentVersionRef, selectPlayerCandidate])
+
+  const retryCurrentVersionCommit = useCallback(() => {
+    const command = pendingCurrentVersionCommandRef.current
+    if (command === null || !currentVersionCommitRun.retryable) return
+    const candidate = candidates.find((item) => (
+      item.candidateRef === command.input.candidate_ref
+      && item.versionRef === command.input.version_ref
+    ))
+    if (candidate !== undefined) void commitCurrentVersion(candidate, command)
+  }, [candidates, commitCurrentVersion, currentVersionCommitRun.retryable])
+
+  const dismissCurrentVersionCommit = useCallback(() => {
+    pendingCurrentVersionCommandRef.current = null
+    setCurrentVersionCommitRun(idleCurrentVersionCommitRun)
+  }, [])
 
   const handleCancel = useCallback(async () => {
     if (generationRef === null) return
@@ -335,7 +416,10 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialCreative
             selectedCandidateRef={selectedCandidateRef}
             playing={playing}
             onSelect={(candidate) => { setSelectedCandidateRef(candidate.candidateRef); selectPlayerCandidate(candidate); setPlaying(false) }}
-            onPromote={handlePromote}
+            currentVersionCommitRun={currentVersionCommitRun}
+            onPromote={(candidate) => { void commitCurrentVersion(candidate) }}
+            onRetryCurrentVersion={retryCurrentVersionCommit}
+            onDismissCurrentVersion={dismissCurrentVersionCommit}
             onCancel={() => { void handleCancel() }}
             onRetry={retryLastGeneration}
             onPlay={(candidate) => {

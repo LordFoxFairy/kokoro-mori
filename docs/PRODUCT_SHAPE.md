@@ -170,6 +170,9 @@ Workspace nav    内容随项目上下文变化                     跨页面保
   第一条 Direction。新建 Project 后的主动作同样是开始第一条 Direction，减少一次没有决策价值的页面跳转。
   Project 的 `current_version_ref` 是续作入口的事实来源；即使 Candidate projection 暂时不可用，已确认作品仍可进入
   Studio 和对应的 Transform / Lyrics / Stems / Finish 上下文，不因辅助列表故障失去主路径。
+- 已落地第一版：Create 的 Generation Queue 不再本地伪造 `Set as current`。它与 Studio Take Lanes 复用同一个
+  Project-scoped Current Version command、期望旧 Current、幂等重试和完整响应核对；提交确认前保留原 Current，
+  失败提供可解释的重试/冲突状态。既有 Project 的 `current_version_ref` 会先从 projection 恢复为并发条件。
 - 后续：Song Plan 的服务端版本历史、正式音频上传、版本自动保存，以及建立在真实时间选区和多轨交付模型上的
   更多导出 scope；AI MV 与真正的 Publish command 保持为完成歌曲后的后置流程。
 

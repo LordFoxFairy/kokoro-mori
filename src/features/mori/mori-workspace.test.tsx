@@ -7,6 +7,21 @@ import { CreateCanvas, type CreationDraft } from "./components/create-canvas"
 import { MoriWorkspace } from "./mori-workspace"
 import { previewCandidates, previewProject } from "./preview-data"
 
+type WorkspaceApi = Pick<MoriApi, "createSongPlan" | "createGeneration" | "getGeneration" | "getGenerationEvents" | "listCandidates" | "cancelGeneration">
+  & Partial<Pick<MoriApi, "createProject" | "getProject" | "putCurrentVersion">>
+
+function createWorkspaceApi(overrides: Partial<WorkspaceApi> = {}): WorkspaceApi {
+  return {
+    createSongPlan: async () => { throw new Error("unexpected createSongPlan") },
+    createGeneration: async () => { throw new Error("unexpected createGeneration") },
+    getGeneration: async () => { throw new Error("unexpected getGeneration") },
+    getGenerationEvents: async () => [],
+    listCandidates: async () => ({ data: { candidates: [], next_cursor: null }, meta: { request_id: "request_empty_candidates" } }),
+    cancelGeneration: async () => { throw new Error("unexpected cancelGeneration") },
+    ...overrides,
+  }
+}
+
 function renderWorkspace() {
   return render(
     <MoriAppProvider>
@@ -670,6 +685,255 @@ describe("Mori workspace", () => {
     fireEvent.keyDown(window, { key: "Escape" })
     expect(screen.queryByRole("dialog", { name: /generation queue/i })).not.toBeInTheDocument()
     expect(document.body.style.overflow).toBe("")
+  })
+
+  it("keeps the previous Current until the queue selection is confirmed", async () => {
+    let releaseSelection: () => void = () => undefined
+    const selectionGate = new Promise<void>((resolve) => { releaseSelection = resolve })
+    const putCurrentVersion = vi.fn<MoriApi["putCurrentVersion"]>(async () => {
+      await selectionGate
+      return {
+        data: {
+          project_ref: previewProject.projectRef,
+          current_version_ref: previewCandidates[1].versionRef,
+          source_candidate_ref: previewCandidates[1].candidateRef,
+          previous_version_ref: previewCandidates[0].versionRef,
+          selected_at: "2026-09-04T13:00:00.000Z",
+        },
+        meta: { request_id: "request_queue_current_success" },
+      }
+    })
+
+    render(
+      <MoriAppProvider>
+        <MoriWorkspace projectRef={previewProject.projectRef} api={createWorkspaceApi({ putCurrentVersion })} />
+      </MoriAppProvider>,
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Open generation queue" }))
+    const queue = screen.getByRole("dialog", { name: "Generation queue" })
+    const currentCard = within(queue).getByText("First Light", { selector: "div" }).closest("article") as HTMLElement
+    const nextCard = within(queue).getByText("First Light · Afterglow").closest("article") as HTMLElement
+
+    fireEvent.click(within(nextCard).getByRole("button", { name: "Set as current" }))
+
+    await waitFor(() => expect(putCurrentVersion).toHaveBeenCalledOnce())
+    expect(within(currentCard).getByText("Current version")).toBeInTheDocument()
+    expect(within(nextCard).queryByText("Current version")).not.toBeInTheDocument()
+    expect(within(nextCard).getByRole("button", { name: "Setting First Light · Afterglow as current" })).toBeDisabled()
+    expect(putCurrentVersion.mock.calls[0]?.slice(0, 2)).toEqual([
+      previewProject.projectRef,
+      {
+        candidate_ref: previewCandidates[1].candidateRef,
+        version_ref: previewCandidates[1].versionRef,
+        expected_current_version_ref: previewCandidates[0].versionRef,
+      },
+    ])
+    expect(putCurrentVersion.mock.calls[0]?.[2]).toMatch(/^mori-current-version-/u)
+
+    releaseSelection()
+
+    await waitFor(() => expect(within(nextCard).getByText("Current version")).toBeInTheDocument())
+    expect(within(currentCard).queryByText("Current version")).not.toBeInTheDocument()
+    expect(within(queue).getByRole("status")).toHaveTextContent("Current Version updated")
+  })
+
+  it("keeps the queue Current unchanged and reuses its command identity on retry", async () => {
+    const idempotencyKeys: string[] = []
+    let attempt = 0
+    const putCurrentVersion = vi.fn<MoriApi["putCurrentVersion"]>(async (_projectRef, _input, idempotencyKey) => {
+      idempotencyKeys.push(idempotencyKey)
+      attempt += 1
+      if (attempt === 1) throw new Error("temporary failure")
+      return {
+        data: {
+          project_ref: previewProject.projectRef,
+          current_version_ref: previewCandidates[1].versionRef,
+          source_candidate_ref: previewCandidates[1].candidateRef,
+          previous_version_ref: previewCandidates[0].versionRef,
+          selected_at: "2026-09-04T13:01:00.000Z",
+        },
+        meta: { request_id: "request_queue_current_retry" },
+      }
+    })
+
+    render(
+      <MoriAppProvider>
+        <MoriWorkspace projectRef={previewProject.projectRef} api={createWorkspaceApi({ putCurrentVersion })} />
+      </MoriAppProvider>,
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Open generation queue" }))
+    fireEvent.click(screen.getByRole("button", { name: "Set as current" }))
+
+    const alert = await screen.findByRole("alert")
+    expect(alert).toHaveTextContent("Your previous Current is unchanged.")
+    expect(screen.getByText("Current version")).toBeInTheDocument()
+    fireEvent.click(within(alert).getByRole("button", { name: "Retry Set as current" }))
+
+    await waitFor(() => expect(putCurrentVersion).toHaveBeenCalledTimes(2))
+    expect(idempotencyKeys[0]).toBe(idempotencyKeys[1])
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Current Version updated"))
+  })
+
+  it("uses the Project projection as the queue command's expected Current", async () => {
+    const putCurrentVersion = vi.fn<MoriApi["putCurrentVersion"]>(async () => ({
+      data: {
+        project_ref: "project_live_queue",
+        current_version_ref: "version_live_queue_b",
+        source_candidate_ref: "candidate_live_queue_b",
+        previous_version_ref: "version_live_queue_a",
+        selected_at: "2026-09-04T13:02:00.000Z",
+      },
+      meta: { request_id: "request_live_queue_current" },
+    }))
+    const api = createWorkspaceApi({
+      getProject: async () => ({
+        data: {
+          project_ref: "project_live_queue",
+          title: "Window Seat",
+          description: "A quiet, forward-moving sketch.",
+          current_version_ref: "version_live_queue_a",
+          candidate_count: 1,
+          last_activity_at: "2026-09-04T12:00:00.000Z",
+        },
+        meta: { request_id: "request_live_queue_project" },
+      }),
+      createGeneration: async () => ({
+        data: { generation_ref: "generation_live_queue", status: "queued" },
+        meta: { request_id: "request_live_queue_generation" },
+      }),
+      getGeneration: async () => ({
+        data: {
+          generation_ref: "generation_live_queue",
+          generation_kind: "new_song",
+          project_ref: "project_live_queue",
+          song_plan_ref: null,
+          mode: "custom",
+          source_version_ref: null,
+          operation: null,
+          status: "succeeded",
+          progress: 100,
+          candidate_refs: ["candidate_live_queue_b"],
+          created_at: "2026-09-04T13:02:00.000Z",
+        },
+        meta: { request_id: "request_live_queue_snapshot" },
+      }),
+      listCandidates: async () => ({
+        data: {
+          candidates: [{
+            candidate_ref: "candidate_live_queue_b",
+            version_ref: "version_live_queue_b",
+            generation_ref: "generation_live_queue",
+            project_ref: "project_live_queue",
+            title: "Window Seat · Dawn",
+            duration_seconds: 188,
+            audio_asset_ref: "asset_live_queue_b",
+            waveform_asset_ref: "waveform_live_queue_b",
+            style_tags: ["quiet", "forward-moving"],
+            created_at: "2026-09-04T13:02:00.000Z",
+          }],
+          next_cursor: null,
+        },
+        meta: { request_id: "request_live_queue_candidates" },
+      }),
+      putCurrentVersion,
+    })
+
+    render(
+      <MoriAppProvider>
+        <MoriWorkspace projectRef="project_live_queue" api={api} />
+      </MoriAppProvider>,
+    )
+    await waitFor(() => expect(screen.getByRole("link", { name: "Window Seat" })).toBeInTheDocument())
+    fireEvent.click(screen.getByRole("tab", { name: "Custom" }))
+    fireEvent.submit(screen.getByRole("textbox", { name: "Song idea" }).closest("form") as HTMLFormElement)
+    await waitFor(() => expect(screen.getByRole("button", { name: "Set as current" })).toBeInTheDocument())
+    fireEvent.click(screen.getByRole("button", { name: "Set as current" }))
+
+    await waitFor(() => expect(putCurrentVersion).toHaveBeenCalledOnce())
+    expect(putCurrentVersion.mock.calls[0]?.[1].expected_current_version_ref).toBe("version_live_queue_a")
+  })
+
+  it("does not let a stale Project projection overwrite a confirmed queue selection", async () => {
+    let releaseProject: (project: Awaited<ReturnType<MoriApi["getProject"]>>) => void = () => undefined
+    const projectGate = new Promise<Awaited<ReturnType<MoriApi["getProject"]>>>((resolve) => { releaseProject = resolve })
+    const api = createWorkspaceApi({
+      getProject: async () => projectGate,
+      createGeneration: async () => ({
+        data: { generation_ref: "generation_projection_race", status: "queued" },
+        meta: { request_id: "request_projection_race_generation" },
+      }),
+      getGeneration: async () => ({
+        data: {
+          generation_ref: "generation_projection_race",
+          generation_kind: "new_song",
+          project_ref: "project_projection_race",
+          song_plan_ref: null,
+          mode: "custom",
+          source_version_ref: null,
+          operation: null,
+          status: "succeeded",
+          progress: 100,
+          candidate_refs: ["candidate_projection_race_b"],
+          created_at: "2026-09-04T13:03:00.000Z",
+        },
+        meta: { request_id: "request_projection_race_snapshot" },
+      }),
+      listCandidates: async () => ({
+        data: {
+          candidates: [{
+            candidate_ref: "candidate_projection_race_b",
+            version_ref: "version_projection_race_b",
+            generation_ref: "generation_projection_race",
+            project_ref: "project_projection_race",
+            title: "Open Window",
+            duration_seconds: 184,
+            audio_asset_ref: "asset_projection_race_b",
+            waveform_asset_ref: "waveform_projection_race_b",
+            style_tags: ["open", "quiet"],
+            created_at: "2026-09-04T13:03:00.000Z",
+          }],
+          next_cursor: null,
+        },
+        meta: { request_id: "request_projection_race_candidates" },
+      }),
+      putCurrentVersion: async () => ({
+        data: {
+          project_ref: "project_projection_race",
+          current_version_ref: "version_projection_race_b",
+          source_candidate_ref: "candidate_projection_race_b",
+          previous_version_ref: null,
+          selected_at: "2026-09-04T13:03:30.000Z",
+        },
+        meta: { request_id: "request_projection_race_current" },
+      }),
+    })
+
+    render(
+      <MoriAppProvider>
+        <MoriWorkspace projectRef="project_projection_race" api={api} />
+      </MoriAppProvider>,
+    )
+    fireEvent.click(screen.getByRole("tab", { name: "Custom" }))
+    fireEvent.submit(screen.getByRole("textbox", { name: "Song idea" }).closest("form") as HTMLFormElement)
+    await waitFor(() => expect(screen.getByRole("button", { name: "Set as current" })).toBeInTheDocument())
+    fireEvent.click(screen.getByRole("button", { name: "Set as current" }))
+    await waitFor(() => expect(screen.getByText("Current version")).toBeInTheDocument())
+
+    releaseProject({
+      data: {
+        project_ref: "project_projection_race",
+        title: "Open Window Project",
+        description: "A quiet sketch.",
+        current_version_ref: null,
+        candidate_count: 0,
+        last_activity_at: "2026-09-04T13:00:00.000Z",
+      },
+      meta: { request_id: "request_projection_race_project" },
+    })
+
+    await waitFor(() => expect(screen.getByRole("link", { name: "Open Window Project" })).toBeInTheDocument())
+    expect(screen.getByText("Current version")).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Set as current" })).not.toBeInTheDocument()
   })
 
   it("lets a user cancel an active generation from the queue", async () => {
