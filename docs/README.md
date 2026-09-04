@@ -5,6 +5,7 @@
 - [Mori API 契约 v0.1](../../docs/superpowers/specs/2026-09-02-mori-api-contract-v0.1.md)
 - [Mori 代码地图](./CODEBASE_MAP.md)
 - [Mori 当前状态](./CURRENT.md)
+- [Mori × Suno 能力对齐基线](./SUNO_PARITY.md)
 - [Mori Studio Change OpenAPI](../contract/openapi/mori-studio-change.v1.json)
 - [Mori Library Sources OpenAPI](../contract/openapi/mori-library-sources.v1.json)
 - [Mori 音乐能力模型](./MUSIC_CAPABILITIES.md)

@@ -18,7 +18,7 @@ pnpm build
 
 - `pnpm lint`：通过，`--max-warnings=0`
 - `pnpm typecheck`：通过
-- `pnpm test`：通过，45 个测试文件、353 个测试
+- `pnpm test`：通过，54 个测试文件、445 个测试
 - `pnpm build`：通过，生成 `/`、`/create`、`/projects`、`/library`、`/settings`、`/help`、Project Overview 和 Studio 路由
 
 ## 页面巡检
@@ -53,7 +53,7 @@ Create 的 `Generations` 默认关闭，可通过 `Generations` 动作打开并�
 transport + progress、右侧音量/队列的音乐播放器层级；移动端收敛为当前歌曲、播放和队列入口。
 播放支持在非输入控件上使用 Space 快捷键，输入歌词或表单时不会拦截空格；播放主按钮声明对应键盘快捷键。
 
-Library 已巡检 All、Versions、Sources、Lyrics、Exports 过滤器，以及版本 Play/Pause、项目和
+Library 已巡检 All、Projects、Versions、Sources 视图，以及版本 Play/Pause、项目和
 Studio 链接；All 视图将 Projects & versions 与 Creative sources 分成连续但清晰的两个区域，Sources 再按
 Audio、Voices、Inspiration 渐进筛选，避免把资产类型继续堆进全局 Rail。搜索会在当前分类内匹配项目、版本
 标题、说明与创作素材，持续反馈结果数，并在无匹配时提供明确的清除入口；Browse all sources 会重置为完整
