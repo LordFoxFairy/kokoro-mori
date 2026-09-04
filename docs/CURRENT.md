@@ -38,7 +38,7 @@
 ```text
 pnpm lint                         passed
 pnpm typecheck                    passed
-pnpm test --maxWorkers=1          passed: 48 files / 374 tests
+pnpm test --maxWorkers=1          passed: 48 files / 373 tests
 pnpm build                        passed
 ```
 
