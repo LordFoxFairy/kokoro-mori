@@ -14,23 +14,29 @@ describe("Mori project overview", () => {
       </MoriAppProvider>,
     )
 
+    const workspace = screen.getByRole("group", { name: "Project workspace" })
+    expect(within(workspace).getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent)).toEqual([
+      "Latest directions",
+      "Continue making",
+    ])
     const continuation = screen.getByRole("region", { name: "Continue making" })
-    expect(within(continuation).getByRole("link", { name: "Transform song" })).toHaveAttribute(
+    expect(within(continuation).getByRole("link", { name: "Restyle or cover" })).toHaveAttribute(
       "href",
       "/projects/project_preview_first_light/studio/version_preview_first_light_a?surface=arrangement&intent=transform",
     )
-    expect(within(continuation).getByRole("link", { name: "Write lyrics" })).toHaveAttribute(
+    expect(within(continuation).getByRole("link", { name: "Lyrics" })).toHaveAttribute(
       "href",
       "/projects/project_preview_first_light/studio/version_preview_first_light_a?surface=lyrics",
     )
-    expect(within(continuation).getByRole("link", { name: "Voice and stems" })).toHaveAttribute(
+    expect(within(continuation).getByRole("link", { name: "Voice & stems" })).toHaveAttribute(
       "href",
       "/projects/project_preview_first_light/studio/version_preview_first_light_a?surface=stems",
     )
-    expect(within(continuation).getByRole("link", { name: "Finish song" })).toHaveAttribute(
+    expect(within(continuation).getByRole("link", { name: "Remaster & release" })).toHaveAttribute(
       "href",
       "/projects/project_preview_first_light/studio/version_preview_first_light_a?surface=finish",
     )
+    expect(screen.getAllByText("Warm · hopeful")).toHaveLength(1)
   })
 
   it("uses the global player when a candidate is played", () => {
@@ -312,7 +318,7 @@ describe("Mori project overview", () => {
     )
     const continuation = screen.getByRole("region", { name: "Continue making" })
     expect(within(continuation).getByText("Current · Current Version")).toBeInTheDocument()
-    expect(within(continuation).getByRole("link", { name: "Transform song" })).toHaveAttribute(
+    expect(within(continuation).getByRole("link", { name: "Restyle or cover" })).toHaveAttribute(
       "href",
       "/projects/project_live_current_partial/studio/version_live_current?surface=arrangement&intent=transform",
     )
