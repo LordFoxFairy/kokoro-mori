@@ -266,16 +266,6 @@ export function MoriAppProvider({ children, mediaFactory = createHtmlPlayerMedia
   }, [mediaFactory, muted])
 
   useEffect(() => {
-    const keepMobileRailCompact = () => {
-      if (window.innerWidth <= 700) setRailCollapsedState(true)
-    }
-
-    keepMobileRailCompact()
-    window.addEventListener("resize", keepMobileRailCompact)
-    return () => window.removeEventListener("resize", keepMobileRailCompact)
-  }, [])
-
-  useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.code !== "Space" || !isPlayableCandidate(playerCandidate)) return
       if (document.querySelector('[aria-modal="true"]') !== null) return

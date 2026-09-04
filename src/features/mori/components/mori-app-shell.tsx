@@ -16,38 +16,52 @@ type MoriAppShellProps = {
 }
 
 export function MoriAppShell({ activeKey, ariaLabel, projectRef, children }: MoriAppShellProps) {
-  const { railCollapsed, toggleRail, setRailCollapsed, playerCandidate, playerCandidates, playing, playerMediaStatus, playerMediaMessage, muted, positionSeconds, togglePlaying, retryPlayerPlayback, toggleMuted, setPlaying, seekPlayer, selectPlayerCandidate, previousPlayerCandidate, nextPlayerCandidate, preferences } = useMoriApp()
+  const { railCollapsed, toggleRail, playerCandidate, playerCandidates, playing, playerMediaStatus, playerMediaMessage, muted, positionSeconds, togglePlaying, retryPlayerPlayback, toggleMuted, setPlaying, seekPlayer, selectPlayerCandidate, previousPlayerCandidate, nextPlayerCandidate, preferences } = useMoriApp()
   const [playbackQueueOpen, setPlaybackQueueOpen] = useState(false)
-  const [isMobileViewport, setIsMobileViewport] = useState<boolean | null>(null)
+  const [{ isMobileViewport, mobileRailExpanded }, setViewportState] = useState({
+    isMobileViewport: null as boolean | null,
+    mobileRailExpanded: false,
+  })
+  const [appShellElement, setAppShellElement] = useState<HTMLDivElement | null>(null)
   const railRef = useRef<HTMLElement>(null)
   const railToggleRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
-    const updateViewport = () => setIsMobileViewport(window.innerWidth <= 700)
+    const updateViewport = () => {
+      const nextIsMobileViewport = window.innerWidth <= 700
+      setViewportState((current) => ({
+        isMobileViewport: nextIsMobileViewport,
+        mobileRailExpanded: nextIsMobileViewport && current.isMobileViewport !== true
+          ? false
+          : current.mobileRailExpanded,
+      }))
+    }
     updateViewport()
     window.addEventListener("resize", updateViewport)
     return () => window.removeEventListener("resize", updateViewport)
   }, [])
 
-  const mobileRailOpen = !railCollapsed && isMobileViewport === true
+  const mobileRailOpen = mobileRailExpanded && isMobileViewport === true
+  const effectiveRailCollapsed = isMobileViewport === true ? !mobileRailExpanded : railCollapsed
 
   const handleRailToggle = useCallback(() => {
     const isMobile = window.innerWidth <= 700
-    toggleRail()
+    if (isMobile) setViewportState((current) => ({ ...current, mobileRailExpanded: !current.mobileRailExpanded }))
+    else toggleRail()
     if (isMobile) window.requestAnimationFrame(() => railToggleRef.current?.focus())
   }, [toggleRail])
 
   const handleRailNavigation = useCallback(() => {
     if (window.innerWidth <= 700) {
-      setRailCollapsed(true)
+      setViewportState((current) => ({ ...current, mobileRailExpanded: false }))
       window.requestAnimationFrame(() => railToggleRef.current?.focus())
     }
-  }, [setRailCollapsed])
+  }, [])
 
   const openPlaybackQueue = useCallback(() => {
-    if (window.innerWidth <= 700) setRailCollapsed(true)
+    if (window.innerWidth <= 700) setViewportState((current) => ({ ...current, mobileRailExpanded: false }))
     setPlaybackQueueOpen(true)
-  }, [setRailCollapsed])
+  }, [])
 
   const closePlaybackQueue = useCallback(() => setPlaybackQueueOpen(false), [])
 
@@ -100,16 +114,16 @@ export function MoriAppShell({ activeKey, ariaLabel, projectRef, children }: Mor
 
   const compactPlayer = playerCandidate === null || playerMediaStatus === "unavailable"
   const shellStyle = {
-    "--mori-rail-width": railCollapsed ? "64px" : "256px",
+    "--mori-rail-width": effectiveRailCollapsed ? "64px" : "256px",
     ...(compactPlayer ? { "--mori-player-height": "64px", "--mori-player-safe-space": "66px" } : {}),
   } as CSSProperties
   const className = `${styles.appShell} ${styles.appShellWithPlayer}`
 
   return (
-    <div className={className} data-rail-collapsed={railCollapsed} data-reduce-motion={preferences.reduceMotion} data-viewport-ready={isMobileViewport === null ? "false" : "true"} style={shellStyle}>
+    <div ref={setAppShellElement} className={className} data-mori-app-shell="true" data-rail-collapsed={effectiveRailCollapsed} data-reduce-motion={preferences.reduceMotion} data-viewport-ready={isMobileViewport === null ? "false" : "true"} style={shellStyle}>
       <MoriRail
         activeKey={activeKey}
-        collapsed={railCollapsed}
+        collapsed={effectiveRailCollapsed}
         projectRef={projectRef}
         onNavigate={handleRailNavigation}
         onToggle={handleRailToggle}
@@ -138,7 +152,7 @@ export function MoriAppShell({ activeKey, ariaLabel, projectRef, children }: Mor
           onSelectQueue={playerCandidates.length > 0 ? openPlaybackQueue : undefined}
         />
       </div>
-      {playbackQueueOpen && typeof document !== "undefined" ? createPortal(
+      {playbackQueueOpen && appShellElement !== null ? createPortal(
         <PlaybackQueue
           candidates={playerCandidates}
           currentCandidateRef={playerCandidate?.candidateRef ?? null}
@@ -146,7 +160,7 @@ export function MoriAppShell({ activeKey, ariaLabel, projectRef, children }: Mor
           onChoose={chooseQueuedCandidate}
           onClose={closePlaybackQueue}
         />,
-        document.body,
+        appShellElement,
       ) : null}
     </div>
   )

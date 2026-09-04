@@ -4602,7 +4602,7 @@
   position: absolute;
   top: 0;
   right: 0;
-  bottom: 76px;
+  bottom: var(--mori-player-height);
   z-index: 1;
   width: min(370px, calc(100vw - 24px));
   min-height: 0;
@@ -5689,7 +5689,7 @@
     top: 0;
     right: 0;
     left: 0;
-    bottom: 70px;
+    bottom: var(--mori-player-height);
     width: 100%;
     background: #fff;
   }

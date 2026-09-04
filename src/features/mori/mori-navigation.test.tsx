@@ -112,6 +112,23 @@ describe("Mori application navigation", () => {
     expect(trigger).toHaveFocus()
   })
 
+  it("keeps the portalled playback queue inside the player geometry contract", () => {
+    render(
+      <MoriAppProvider>
+        <MoriCatalogShell activeKey="library" ariaLabel="Library">
+          <div>Library content</div>
+        </MoriCatalogShell>
+      </MoriAppProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Open playback queue" }))
+
+    const queue = screen.getByRole("dialog", { name: "Up next" })
+    const shell = queue.closest('[data-mori-app-shell="true"]')
+    expect(shell).not.toBeNull()
+    expect(shell).toHaveStyle({ "--mori-player-height": "64px" })
+  })
+
   it("does not expose seek controls before a Version is chosen", () => {
     render(
       <MoriAppProvider>
@@ -163,6 +180,36 @@ describe("Mori application navigation", () => {
       fireEvent(window, new Event("resize"))
 
       await waitFor(() => expect(screen.getByRole("button", { name: "Expand sidebar" })).toBeInTheDocument())
+    } finally {
+      localStorage.removeItem("mori.rail.v1")
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: originalWidth })
+    }
+  })
+
+  it("does not overwrite the desktop rail preference during a mobile resize", async () => {
+    const originalWidth = window.innerWidth
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 1280 })
+    localStorage.setItem("mori.rail.v1", "expanded")
+
+    try {
+      render(
+        <MoriAppProvider>
+          <MoriCatalogShell activeKey="library" ariaLabel="Library">
+            <div>Library content</div>
+          </MoriCatalogShell>
+        </MoriAppProvider>,
+      )
+
+      await waitFor(() => expect(screen.getByRole("button", { name: "Collapse sidebar" })).toBeInTheDocument())
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: 390 })
+      fireEvent(window, new Event("resize"))
+      await waitFor(() => expect(screen.getByRole("button", { name: "Expand sidebar" })).toBeInTheDocument())
+
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: 1280 })
+      fireEvent(window, new Event("resize"))
+
+      await waitFor(() => expect(screen.getByRole("button", { name: "Collapse sidebar" })).toBeInTheDocument())
+      expect(localStorage.getItem("mori.rail.v1")).toBe("expanded")
     } finally {
       localStorage.removeItem("mori.rail.v1")
       Object.defineProperty(window, "innerWidth", { configurable: true, value: originalWidth })
