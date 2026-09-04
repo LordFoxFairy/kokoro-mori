@@ -63,20 +63,25 @@ export function stemSeparationSnapshotMatchesPlan(snapshot: StemSeparationSnapsh
 
 export function studioStemSeparationModeLabel(mode: StudioStemSeparationMode): string {
   switch (mode) {
-    case "isolate_part": return "Isolate a part"
-    case "auto_stems": return "Auto split"
-    case "custom_stems": return "Custom stems"
+    case "isolate_part": return "Vocals or one part"
+    case "auto_stems": return "Full stem split"
+    case "custom_stems": return "Choose parts"
   }
 }
 
 export function studioStemSeparationOutputLabel(plan: StudioStemSeparationPlan): string {
-  if (plan.output.kind === "isolate") return `${studioStemTargetLabel(plan.targetKinds[0])} + remaining mix`
+  if (plan.output.kind === "isolate") {
+    const target = plan.targetKinds[0]
+    if (target === "vocals") return "Vocals + instrumental"
+    const label = studioStemTargetLabel(target)
+    return `${label} + mix without ${label.toLocaleLowerCase()}`
+  }
   if (plan.output.kind === "maximum") return `Up to ${plan.output.count} detected stems`
   return `Up to ${plan.output.count} selected stems`
 }
 
 export function studioStemSeparationActionLabel(plan: StudioStemSeparationPlan): string {
-  if (plan.output.kind === "isolate") return `Isolate ${studioStemTargetLabel(plan.targetKinds[0]).toLocaleLowerCase()}`
+  if (plan.output.kind === "isolate") return `Separate ${studioStemTargetLabel(plan.targetKinds[0]).toLocaleLowerCase()}`
   if (plan.output.kind === "maximum") return "Separate detected stems"
   return `Separate ${plan.output.count} selected stems`
 }

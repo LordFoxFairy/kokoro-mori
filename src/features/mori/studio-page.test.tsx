@@ -1028,26 +1028,33 @@ describe("Mori studio page", () => {
     localStorage.clear()
   })
 
-  it("defaults to a focused isolate-part plan and makes its requested part explicit", () => {
+  it("surfaces vocal removal as the default separation path and keeps other parts explicit", () => {
     renderStudio()
 
     fireEvent.click(screen.getByRole("tab", { name: "Voice & stems" }))
     const stemsEditor = screen.getByRole("region", { name: "Stems editor" })
-    expect(within(stemsEditor).getByRole("button", { name: "Isolate a part" })).toHaveAttribute("aria-pressed", "true")
+    expect(within(stemsEditor).getByRole("button", { name: "Vocals or one part" })).toHaveAttribute("aria-pressed", "true")
     expect(within(stemsEditor).getByRole("combobox", { name: "Part to isolate" })).toHaveValue("vocals")
-    expect(within(stemsEditor).queryByText("Lead vocal")).not.toBeInTheDocument()
+    expect(within(stemsEditor).getByText("Returns vocals and an instrumental version.")).toBeInTheDocument()
+
+    fireEvent.click(within(stemsEditor).getByRole("button", { name: "Review separation" }))
+    let plan = within(stemsEditor).getByRole("region", { name: "Stem separation plan" })
+    expect(within(plan).getByText("Vocals + instrumental")).toBeInTheDocument()
+    expect(within(plan).getByRole("button", { name: "Separate vocals" })).toBeInTheDocument()
+
+    fireEvent.click(within(plan).getByRole("button", { name: "Edit" }))
 
     fireEvent.change(within(stemsEditor).getByRole("combobox", { name: "Part to isolate" }), { target: { value: "drums" } })
     fireEvent.click(within(stemsEditor).getByRole("checkbox", { name: "Export MIDI transcription" }))
     fireEvent.click(within(stemsEditor).getByRole("button", { name: "Review separation" }))
 
-    const plan = within(stemsEditor).getByRole("region", { name: "Stem separation plan" })
-    expect(within(plan).getByText("Isolate a part")).toBeInTheDocument()
-    expect(within(plan).getByText("Drums + remaining mix")).toBeInTheDocument()
+    plan = within(stemsEditor).getByRole("region", { name: "Stem separation plan" })
+    expect(within(plan).getByText("Vocals or one part")).toBeInTheDocument()
+    expect(within(plan).getByText("Drums + mix without drums")).toBeInTheDocument()
     expect(within(plan).getByText("Drums")).toBeInTheDocument()
     expect(within(plan).getByText("MIDI included")).toBeInTheDocument()
     expect(within(plan).getByText("Current version stays untouched.")).toBeInTheDocument()
-    expect(within(plan).getByRole("button", { name: "Isolate drums" })).toBeInTheDocument()
+    expect(within(plan).getByRole("button", { name: "Separate drums" })).toBeInTheDocument()
   })
 
   it("requires a meaningful multi-target selection for custom stems", () => {
@@ -1055,7 +1062,7 @@ describe("Mori studio page", () => {
 
     fireEvent.click(screen.getByRole("tab", { name: "Voice & stems" }))
     const stemsEditor = screen.getByRole("region", { name: "Stems editor" })
-    fireEvent.click(within(stemsEditor).getByRole("button", { name: "Custom stems" }))
+    fireEvent.click(within(stemsEditor).getByRole("button", { name: "Choose parts" }))
 
     const review = within(stemsEditor).getByRole("button", { name: "Review separation" })
     expect(review).toBeDisabled()
@@ -1067,7 +1074,7 @@ describe("Mori studio page", () => {
 
     fireEvent.click(review)
     const plan = within(stemsEditor).getByRole("region", { name: "Stem separation plan" })
-    expect(within(plan).getByText("Custom stems")).toBeInTheDocument()
+    expect(within(plan).getByText("Choose parts")).toBeInTheDocument()
     expect(within(plan).getByText("Drums · Bass")).toBeInTheDocument()
     expect(within(plan).getByText("Up to 2 selected stems")).toBeInTheDocument()
     expect(within(plan).getByRole("button", { name: "Separate 2 selected stems" })).toBeInTheDocument()
@@ -1099,12 +1106,18 @@ describe("Mori studio page", () => {
     fireEvent.click(within(layerComposer).getByRole("button", { name: "Review vocal layer" }))
 
     const plan = within(layerComposer).getByRole("region", { name: "Studio layer plan" })
+    expect(within(layerComposer).queryByRole("textbox", { name: "Lyrics for vocal layer" })).not.toBeInTheDocument()
     expect(within(plan).getByText("Add vocals")).toBeInTheDocument()
     expect(within(plan).getByText("Whole song")).toBeInTheDocument()
     expect(within(plan).getByText("Melody · Tempo · Structure")).toBeInTheDocument()
     expect(within(plan).getByText("2 alternatives · Take lanes")).toBeInTheDocument()
     expect(within(plan).getByText("Current version stays untouched.")).toBeInTheDocument()
     expect(within(plan).getByRole("button", { name: "Generate 2 takes" })).toBeInTheDocument()
+
+    fireEvent.click(within(plan).getByRole("button", { name: "Edit request" }))
+    expect(within(layerComposer).getByRole("textbox", { name: "Lyrics for vocal layer" })).toHaveValue("Meet me where the streetlights fade.")
+    expect(within(layerComposer).getByRole("textbox", { name: "Vocal direction" })).toHaveValue("Keep the delivery close and unhurried.")
+    expect(within(layerComposer).queryByRole("region", { name: "Studio layer plan" })).not.toBeInTheDocument()
   })
 
   it("preserves an unsubmitted layer draft while comparing Stems workflows", () => {
@@ -1355,7 +1368,7 @@ describe("Mori studio page", () => {
 
     fireEvent.click(screen.getByRole("tab", { name: "Voice & stems" }))
     const stemsEditor = screen.getByRole("region", { name: "Stems editor" })
-    fireEvent.click(within(stemsEditor).getByRole("button", { name: "Auto split" }))
+    fireEvent.click(within(stemsEditor).getByRole("button", { name: "Full stem split" }))
     fireEvent.click(within(stemsEditor).getByRole("checkbox", { name: "Export MIDI transcription" }))
     fireEvent.click(within(stemsEditor).getByRole("button", { name: "Review separation" }))
     fireEvent.click(within(stemsEditor).getByRole("button", { name: "Separate detected stems" }))
@@ -1436,7 +1449,7 @@ describe("Mori studio page", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Voice & stems" }))
     let stemsEditor = screen.getByRole("region", { name: "Stems editor" })
     fireEvent.click(within(stemsEditor).getByRole("button", { name: "Review separation" }))
-    fireEvent.click(within(stemsEditor).getByRole("button", { name: "Isolate vocals" }))
+    fireEvent.click(within(stemsEditor).getByRole("button", { name: "Separate vocals" }))
     await waitFor(() => expect(within(stemsEditor).getByRole("progressbar", { name: "Stem separation progress" })).toHaveAttribute("aria-valuenow", "47"))
 
     fireEvent.click(screen.getByRole("tab", { name: "Lyrics" }))
@@ -1444,7 +1457,7 @@ describe("Mori studio page", () => {
 
     stemsEditor = screen.getByRole("region", { name: "Stems editor" })
     const plan = within(stemsEditor).getByRole("region", { name: "Stem separation plan" })
-    expect(within(plan).getByText("Isolate a part")).toBeInTheDocument()
+    expect(within(plan).getByText("Vocals or one part")).toBeInTheDocument()
     expect(within(plan).getByRole("progressbar", { name: "Stem separation progress" })).toHaveAttribute("aria-valuenow", "47")
     fireEvent.click(within(plan).getByRole("button", { name: "Cancel separation" }))
 
@@ -1486,7 +1499,7 @@ describe("Mori studio page", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Voice & stems" }))
     const stemsEditor = screen.getByRole("region", { name: "Stems editor" })
     fireEvent.click(within(stemsEditor).getByRole("button", { name: "Review separation" }))
-    fireEvent.click(within(stemsEditor).getByRole("button", { name: "Isolate vocals" }))
+    fireEvent.click(within(stemsEditor).getByRole("button", { name: "Separate vocals" }))
     await waitFor(() => expect(eventResolvers).toHaveLength(1))
     fireEvent.click(within(stemsEditor).getByRole("button", { name: "Cancel separation" }))
     await waitFor(() => expect(within(stemsEditor).getByText("Cancelled")).toBeInTheDocument())
@@ -1551,7 +1564,7 @@ describe("Mori studio page", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Voice & stems" }))
     let stemsEditor = screen.getByRole("region", { name: "Stems editor" })
     fireEvent.click(within(stemsEditor).getByRole("button", { name: "Review separation" }))
-    fireEvent.click(within(stemsEditor).getByRole("button", { name: "Isolate vocals" }))
+    fireEvent.click(within(stemsEditor).getByRole("button", { name: "Separate vocals" }))
     expect(await within(stemsEditor).findByText("Version vocals")).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole("tab", { name: "Arrangement" }))

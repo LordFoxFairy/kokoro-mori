@@ -253,7 +253,8 @@ Add Instrumental
 两条路径都先 Review Layer Plan，默认生成两个 alternatives，并复用 Studio Change 的 Generation lifecycle；
 成功结果进入 Arrangement 的 Take Lanes，用户明确 `Use take` 前不替换 Current Version。切换 Add Vocals、
 Add Instrumental 与 Separate mix 时，本地未提交草稿不会丢失；运行中的图层在离开并返回 Stems 后仍恢复到原意图，
-保留取消和重试入口。该层级吸收 [Suno Add Vocals](https://help.suno.com/en/articles/6882817)
+保留取消和重试入口。进入 Review 后输入表单会让位于单一 Layer Plan，`Edit request` 再恢复原草稿，避免请求与复核
+同时堆在一个长页面里。该层级吸收 [Suno Add Vocals](https://help.suno.com/en/articles/6882817)
 的“歌词 + 声音身份 + 当前伴奏”关系，以及 [Suno Studio 2.0](https://help.suno.com/en/articles/13670529)
 在作品内创建 vocals / instruments 的连续工作流；但 Mori 使用结构化、provider-neutral 请求，不让自然语言承担关键类型判断。
 
@@ -266,7 +267,7 @@ Stems 吸收 Tad Stem Splitter 的“来源 → 模式 → 结果”短路径，
 
 ```text
 Source       当前不可变 Version
-Mode         Isolate a part | Auto split | Custom stems
+Mode         Vocals or one part | Full stem split | Choose parts
 Targets      1 个 | 自动检测 | 2–10 个
 Option       可选 MIDI transcription
 Review       先确认输出数量、来源与结果去向
@@ -277,8 +278,10 @@ Save         完整 Gain / Mute → 不可变 Mix Revision；Solo 不持久化
 Export       每个返回音轨可独立下载
 ```
 
-`Isolate a part` 是默认快路径，选择一个 vocals / drums / bass 等目标，得到该目标与 remaining mix；
-`Auto split` 按内容检测最多 12 个制作轨；`Custom stems` 让用户从十个稳定的 Mori 音轨类别中选择 2–10 个目标。
+`Vocals or one part` 是默认快路径：默认直接说明会得到 Vocals + Instrumental，也可改选 drums / bass 等目标，
+得到目标与不含该目标的 mix；`Full stem split` 按内容检测最多 12 个制作轨；`Choose parts` 让用户从十个稳定的 Mori
+音轨类别中选择 2–10 个目标。界面名称面向用户，契约仍保持 `isolate_part | auto_stems | custom_stems`，不因文案
+升级破坏 provider-neutral 协议。
 三者吸收 [Suno Advanced Stem Separation](https://help.suno.com/en/articles/12702337) 当前的 Split from Mix、
 Auto Split、Advanced Split 意图层级，但使用 Mori 自己的名称和 provider-neutral `target_kinds`，不泄漏套餐、
 credits 或供应商的近百个乐器 ID。它们都坚持 Suno Studio 的连续上下文：分离发生在当前 Version，用户留在
@@ -527,12 +530,12 @@ BFF 必须按受信会话校验该 asset 与用户可见 Mori 资源的关联，
 - Lyrics 已完成按 Verse / Chorus / Whole lyrics 组织的 Rewrite、Continue、Find rhyme、Restructure
   界面闭环，并支持 Review、可编辑 Suggestion、Apply 与 Undo；Lyrics Revision contract、client、response parser、
   snapshot / SSE / cancel seam 已接入组件运行态，多候选保持独立且只应用用户选中的草稿。
-- Stem split 已完成浏览器侧闭环：Isolate part、Auto split、Custom stems、可选 MIDI、Review、snapshot / SSE、
+- Stem split 已完成浏览器侧闭环：Vocals or one part、Full stem split、Choose parts、可选 MIDI、Review、snapshot / SSE、
   取消、重试与实际资产。成功结果已接入同步 Transport、Seek、逐轨 Mute / Solo / Level 与单轨下载；媒体通过
   同源、支持 Range 的 asset content seam 读取，失败不回退到假音频。Gain / Mute 现可明确保存为不可变
   Mix Revision，保存失败保留当前调整，未变化时不重复创建；Solo 保持 preview-only。
 - Add Vocal、Add Instrumental 已落地为 Stems 内的 whole-Version `add_part` 图层工作流：意图选择、结构化输入、
-  Review、进度/取消/重试与 Take Lanes 去向均复用既有 Generation lifecycle，不新增全局工具或第二套任务状态机。
+  单步 Review、进度/取消/重试与 Take Lanes 去向均复用既有 Generation lifecycle，不新增全局工具或第二套任务状态机。
 - Create 已建立 Audio / Voice / Inspiration 的统一选择位，并把 `voice_ref` 与 Vocal direction 分离；Library
   已加入同源 preview 素材架、类型筛选、搜索和 `Use in Create` 上下文恢复。下一步由 storage/music owner
   adapter 提供正式 Audio、Voice、Persona、Style preset 与 Reference projection，替换当前 preview 目录。

@@ -595,10 +595,6 @@
 }
 
 @container (max-width: 560px) {
-  .workflowTabs {
-    grid-template-columns: 1fr;
-  }
-
   .modeGrid,
   .planFacts {
     grid-template-columns: 1fr;

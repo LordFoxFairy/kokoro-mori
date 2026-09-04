@@ -72,7 +72,7 @@ export function StudioLayerComposer({ mode, durationSeconds, run, onGenerate, on
         </div>
       </header>
 
-      <form className={styles.form} onSubmit={review}>
+      {visiblePlan === null ? <form className={styles.form} onSubmit={review}>
         {mode === "vocals" ? (
           <label className={styles.field} htmlFor={lyricsId}>
             <span>Lyrics</span>
@@ -125,7 +125,7 @@ export function StudioLayerComposer({ mode, durationSeconds, run, onGenerate, on
         <button className={styles.reviewButton} type="submit" disabled={!canReview}>
           Review {mode === "vocals" ? "vocal" : "instrumental"} layer <ArrowRight />
         </button>
-      </form>
+      </form> : null}
 
       {visiblePlan !== null ? (
         <section className={styles.plan} aria-label="Studio layer plan" aria-live="polite" aria-busy={busy}>

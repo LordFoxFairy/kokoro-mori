@@ -122,9 +122,10 @@ Workspace nav    内容随项目上下文变化                     跨页面保
   并在宽屏常驻右栏、中屏/移动端上下文抽屉中始终可达。历史行把正在查看的 Open 与项目确认的 Current 独立展示，
   抽屉支持焦点约束、Escape / 遮罩关闭、导航关闭与焦点返回。
   Lyrics 支持本地草稿保存、分段 AI Revision、
-  多 Suggestion 对比以及 Apply / Undo；Stems 支持基于当前 Version 的 Isolate part、Auto split、Custom stems
+  多 Suggestion 对比以及 Apply / Undo；Stems 支持基于当前 Version 的 Vocals or one part、Full stem split、Choose parts
   三种渐进意图、可选 MIDI、异步恢复/取消/重试，以及对真实返回资产的逐轨 Mute/Solo/Level；
-  Isolate 明确一个目标与 remaining mix，Custom 要求 2–10 个稳定目标。成功结果现已提供共享 Play/Pause、Seek、
+  默认把 Tad 风格的 Vocal Remover 心智翻译为清楚的 Vocals + Instrumental 结果，其他单轨目标则明确为目标轨加
+  不含该轨的 mix；Choose parts 要求 2–10 个稳定目标。成功结果现已提供共享 Play/Pause、Seek、
   同步校正和单轨下载；与全局 Player 互斥，媒体失败时明确报错，不用 preview 音频顶替。用户可以把完整 Gain / Mute
   明确保存为不可变 Mix Revision，失败时调整仍保留，Solo 只属于试听态，不进入持久化请求。Studio Export 已从
   固定 MP3 快捷动作升级为显式渲染流程：可选择 Studio 当前打开的 Version 或最新 Mix Revision、MP3/WAV 与 Full song，

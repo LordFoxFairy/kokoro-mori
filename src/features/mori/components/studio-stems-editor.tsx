@@ -51,9 +51,9 @@ type StudioStemsEditorProps = {
 }
 
 const modes = [
-  { id: "isolate_part", detail: "One chosen part + remaining mix", Icon: Scissors },
-  { id: "auto_stems", detail: "Up to 12 detected parts", Icon: Sparkles },
-  { id: "custom_stems", detail: "Choose 2–10 parts", Icon: Layers3 },
+  { id: "isolate_part", detail: "One part + mix without it", Icon: Scissors },
+  { id: "auto_stems", detail: "Detect up to 12 usable stems", Icon: Sparkles },
+  { id: "custom_stems", detail: "Pick 2–10 parts to keep", Icon: Layers3 },
 ] satisfies readonly { id: StudioStemSeparationMode; detail: string; Icon: typeof Scissors }[]
 type StemsWorkflow = "separate" | "vocals" | "instrumental"
 
@@ -126,7 +126,7 @@ export function StudioStemsEditor({ durationSeconds, run, layerRun, onSeparate, 
         <section className={styles.setupPanel} aria-label="Stem separation setup">
           <div className={styles.setupIntro}>
             <span className={styles.setupIcon} aria-hidden="true"><Scissors size={16} /></span>
-            <div><span>Mori separation</span><h4>Choose what you need from the mix.</h4><p>Start with one part, let Mori detect everything, or name the parts you want. The current version remains intact.</p></div>
+            <div><span>Mori separation</span><h4>Split what you need from this version.</h4><p>Remove vocals, isolate one part, or turn the full mix into editable stems. The current version remains intact.</p></div>
           </div>
           <div className={styles.modeGrid} role="group" aria-label="Separation mode">
             {modes.map(({ id, detail, Icon }) => (
@@ -139,7 +139,7 @@ export function StudioStemsEditor({ durationSeconds, run, layerRun, onSeparate, 
           </div>
           {mode === "isolate_part" ? (
             <label className={styles.targetPicker}>
-              <span><strong>Part to isolate</strong><small>Mori also returns the mix without this part.</small></span>
+              <span><strong>Part to isolate</strong><small>{isolateTarget === "vocals" ? "Returns vocals and an instrumental version." : `Returns ${studioStemTargetLabel(isolateTarget).toLocaleLowerCase()} and the mix without it.`}</small></span>
               <select aria-label="Part to isolate" value={isolateTarget} onChange={(event) => {
                 const target = studioStemTargets.find((item) => item.kind === event.target.value)
                 if (target !== undefined) setIsolateTarget(target.kind)
