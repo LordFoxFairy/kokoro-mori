@@ -1474,6 +1474,25 @@
   white-space: nowrap;
 }
 
+.libraryAvailability {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 10px 12px;
+  border: 1px solid rgba(204, 139, 69, 0.2);
+  border-radius: 10px;
+  color: #7d5d36;
+  font-size: 10px;
+  line-height: 1.45;
+  background: rgba(255, 248, 237, 0.82);
+}
+
+.libraryAvailability svg {
+  flex: 0 0 auto;
+  color: #b37738;
+}
+
 .libraryResults {
   display: block;
 }

@@ -20,9 +20,11 @@ describe("Mori catalog surfaces", () => {
         <LibraryPageContent />
       </MoriAppProvider>,
     )
-    for (const label of ["All", "Projects", "Versions", "Sources", "Lyrics", "Exports"]) {
+    for (const label of ["All", "Projects", "Versions", "Sources"]) {
       expect(screen.getByRole("button", { name: label })).toBeInTheDocument()
     }
+    expect(screen.queryByRole("button", { name: "Lyrics" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Exports" })).not.toBeInTheDocument()
     expect(screen.queryByText(/suno|tad/i)).not.toBeInTheDocument()
   })
 
@@ -38,8 +40,8 @@ describe("Mori catalog surfaces", () => {
     expect(screen.queryByText("2 versions · Updated just now")).not.toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Versions" })).toHaveAttribute("aria-pressed", "true")
 
-    fireEvent.click(screen.getByRole("button", { name: "Lyrics" }))
-    expect(screen.getByText("No lyrics saved yet")).toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: "Projects" }))
+    expect(screen.getByText("2 versions · Updated just now")).toBeInTheDocument()
   })
 
   it("filters library items by title", () => {
@@ -129,17 +131,99 @@ describe("Mori catalog surfaces", () => {
     expect(screen.getByRole("status")).toHaveTextContent("1 result")
   })
 
-  it("routes the export center action to the exports shelf", () => {
+  it("keeps lyrics and exports in their Project and Studio context instead of advertising empty shelves", () => {
     render(
       <MoriAppProvider>
         <LibraryPageContent />
       </MoriAppProvider>,
     )
 
-    fireEvent.click(screen.getByRole("button", { name: "Export center" }))
+    expect(screen.queryByRole("button", { name: "Export center" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Lyrics" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Exports" })).not.toBeInTheDocument()
+  })
 
-    expect(screen.getByRole("button", { name: "Exports" })).toHaveAttribute("aria-pressed", "true")
-    expect(screen.getByText("No exports yet")).toBeInTheDocument()
+  it("does not mix preview Versions into a live Project when the library projection fails", async () => {
+    const api = {
+      listLibrary: async () => { throw new Error("library unavailable") },
+      listProjects: async () => ({
+        data: {
+          projects: [{
+            project_ref: "project_window_seat",
+            title: "Window Seat",
+            description: "A quiet, forward-moving sketch.",
+            current_version_ref: null,
+            candidate_count: 0,
+            last_activity_at: "2026-09-04T12:00:00.000Z",
+          }],
+          next_cursor: null,
+        },
+        meta: { request_id: "request_projects_partial_library" },
+      }),
+    }
+
+    render(<MoriAppProvider><LibraryPageContent api={api} /></MoriAppProvider>)
+
+    await waitFor(() => expect(screen.getByText("Window Seat")).toBeInTheDocument())
+    expect(screen.getByRole("status", { name: "Library availability" })).toHaveTextContent("Versions are temporarily unavailable")
+    expect(screen.queryByRole("link", { name: "Open First Light studio" })).not.toBeInTheDocument()
+  })
+
+  it("does not mix the preview Project into live Versions when the project projection fails", async () => {
+    const item: MoriLibraryItem = {
+      library_item_ref: "library_version_window_seat",
+      kind: "version",
+      project_ref: "project_window_seat",
+      project_title: "Window Seat",
+      version_ref: "version_window_seat_a",
+      title: "Window Seat · Close",
+      duration_seconds: 143,
+      audio_asset_ref: "asset_window_seat_a",
+      waveform_asset_ref: "waveform_window_seat_a",
+      created_at: "2026-09-04T12:00:00.000Z",
+    }
+    const api = {
+      listLibrary: async () => ({ data: { items: [item], next_cursor: null }, meta: { request_id: "request_library_partial_projects" } }),
+      listProjects: async () => { throw new Error("projects unavailable") },
+    }
+
+    render(<MoriAppProvider><LibraryPageContent api={api} /></MoriAppProvider>)
+
+    await waitFor(() => expect(screen.getByText("Window Seat · Close")).toBeInTheDocument())
+    expect(screen.getByRole("status", { name: "Library availability" })).toHaveTextContent("Projects are temporarily unavailable")
+    expect(screen.queryByRole("link", { name: "Open First Light project" })).not.toBeInTheDocument()
+  })
+
+  it("labels Current Version from the live Project projection rather than the preview Project", async () => {
+    const item: MoriLibraryItem = {
+      library_item_ref: "library_version_current_window_seat",
+      kind: "version",
+      project_ref: "project_window_seat",
+      project_title: "Window Seat",
+      version_ref: "version_window_seat_current",
+      title: "Window Seat · Wide",
+      duration_seconds: 148,
+      audio_asset_ref: "asset_window_seat_current",
+      waveform_asset_ref: "waveform_window_seat_current",
+      created_at: "2026-09-04T12:00:00.000Z",
+    }
+    const project: MoriProject = {
+      project_ref: "project_window_seat",
+      title: "Window Seat",
+      description: "A quiet, forward-moving sketch.",
+      current_version_ref: "version_window_seat_current",
+      candidate_count: 1,
+      last_activity_at: "2026-09-04T12:00:00.000Z",
+    }
+    const api = {
+      listLibrary: async () => ({ data: { items: [item], next_cursor: null }, meta: { request_id: "request_library_current" } }),
+      listProjects: async () => ({ data: { projects: [project], next_cursor: null }, meta: { request_id: "request_projects_current" } }),
+    }
+
+    render(<MoriAppProvider><LibraryPageContent api={api} /></MoriAppProvider>)
+
+    await waitFor(() => expect(screen.getByText("Current version · Window Seat")).toBeInTheDocument())
+    expect(screen.queryByText("Version · Window Seat")).not.toBeInTheDocument()
   })
 
   it("hydrates the shelf from the Mori library projection", async () => {
