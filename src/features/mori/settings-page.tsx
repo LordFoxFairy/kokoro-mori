@@ -28,7 +28,17 @@ export function MoriSettingsPage({ returnTo = "/" }: MoriSettingsPageProps = {})
   const settingsDialogRef = useRef<HTMLElement>(null)
   const { railCollapsed, setRailCollapsed, preferences, updatePreferences } = useMoriApp()
   const returnLabel = settingsReturnLabel(returnTo)
-  const visibleSections = sections.filter(({ label }) => label.toLocaleLowerCase().includes(navQuery.trim().toLocaleLowerCase()))
+  const visibleSections = filterSettingsSections(navQuery)
+
+  const handleNavQueryChange = (nextQuery: string) => {
+    const nextVisibleSections = filterSettingsSections(nextQuery)
+    setNavQuery(nextQuery)
+    setSection((currentSection) => (
+      nextVisibleSections.some(({ key }) => key === currentSection)
+        ? currentSection
+        : nextVisibleSections[0]?.key ?? currentSection
+    ))
+  }
 
   const handleSectionKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>, currentSection: SettingsSection) => {
     if (!["ArrowDown", "ArrowLeft", "ArrowRight", "ArrowUp", "End", "Home"].includes(event.key)) return
@@ -116,7 +126,7 @@ export function MoriSettingsPage({ returnTo = "/" }: MoriSettingsPageProps = {})
               value={navQuery}
               aria-label="Search settings"
               placeholder="Search settings"
-              onChange={(event) => setNavQuery(event.target.value)}
+              onChange={(event) => handleNavQueryChange(event.target.value)}
             />
           </label>
           <span className={styles.settingsNavLabel} id="mori-settings-sections-label">Preferences</span>
@@ -140,6 +150,7 @@ export function MoriSettingsPage({ returnTo = "/" }: MoriSettingsPageProps = {})
               </button>
             ))}
           </div>
+          {visibleSections.length === 0 ? <p className={styles.settingsNavEmpty}>No matching sections</p> : null}
           <div className={styles.settingsNavDivider} />
           <div className={styles.settingsNavNote}>Mori music workspace</div>
         </nav>
@@ -156,6 +167,11 @@ export function MoriSettingsPage({ returnTo = "/" }: MoriSettingsPageProps = {})
           </header>
 
           <section className={styles.settingsMain} aria-live="polite">
+            {visibleSections.length === 0 ? <div className={styles.settingsSearchEmpty} role="status">
+              <span aria-hidden="true"><Search size={18} /></span>
+              <h2>No settings found</h2>
+              <p>Try another word or clear the search to see every preference.</p>
+            </div> : <>
             <div id="mori-settings-panel-appearance" role="tabpanel" aria-labelledby="mori-settings-tab-appearance" hidden={section !== "appearance"}>
               {section === "appearance" ? (
                 <SettingsPanel icon={Palette} title="Appearance" description="Keep the studio light, quiet, and easy to scan.">
@@ -249,6 +265,7 @@ export function MoriSettingsPage({ returnTo = "/" }: MoriSettingsPageProps = {})
                 </SettingsPanel>
               ) : null}
             </div>
+            </>}
           </section>
         </div>
       </section>
@@ -256,6 +273,14 @@ export function MoriSettingsPage({ returnTo = "/" }: MoriSettingsPageProps = {})
   )
 
   return portalTarget === null ? settingsWindow : createPortal(settingsWindow, portalTarget)
+}
+
+function filterSettingsSections(query: string): typeof sections {
+  const normalizedQuery = query.trim().toLocaleLowerCase()
+  if (normalizedQuery === "") return sections
+  return sections.filter(({ label, description }) => (
+    `${label} ${description}`.toLocaleLowerCase().includes(normalizedQuery)
+  ))
 }
 
 function settingsReturnLabel(returnTo: string): string {

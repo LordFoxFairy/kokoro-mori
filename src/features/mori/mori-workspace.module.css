@@ -2131,6 +2131,13 @@
   gap: 2px;
 }
 
+.settingsNavEmpty {
+  margin: 6px 12px 2px;
+  color: var(--mori-faint);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
 .settingsNavLabel {
   padding: 0 12px 8px;
   color: var(--mori-faint);
@@ -2257,6 +2264,41 @@
   flex: 1;
   overflow: auto;
   padding: 28px 32px 36px;
+}
+
+.settingsSearchEmpty {
+  display: grid;
+  min-height: 100%;
+  place-content: center;
+  justify-items: center;
+  padding: 36px;
+  text-align: center;
+}
+
+.settingsSearchEmpty > span {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  margin-bottom: 13px;
+  place-items: center;
+  border: 1px solid rgba(109, 92, 231, 0.14);
+  border-radius: 13px;
+  color: var(--mori-primary);
+  background: linear-gradient(145deg, rgba(237, 233, 255, 0.92), rgba(255, 240, 231, 0.78));
+}
+
+.settingsSearchEmpty h2 {
+  margin: 0;
+  font-size: 17px;
+  letter-spacing: -0.03em;
+}
+
+.settingsSearchEmpty p {
+  max-width: 310px;
+  margin: 7px 0 0;
+  color: var(--mori-muted);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .settingsPanel {

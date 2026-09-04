@@ -89,6 +89,32 @@ describe("Mori settings", () => {
     expect(screen.queryByText("Light gradient")).not.toBeInTheDocument()
   })
 
+  it("keeps the selected panel aligned with filtered settings sections", () => {
+    renderSettings()
+
+    fireEvent.click(screen.getByRole("tab", { name: "Playback" }))
+    fireEvent.change(screen.getByRole("textbox", { name: "Search settings" }), { target: { value: "creation" } })
+
+    expect(screen.getByRole("tab", { name: "Creation" })).toHaveAttribute("aria-selected", "true")
+    expect(screen.getByRole("tabpanel", { name: "Creation" })).toBeInTheDocument()
+    expect(screen.getByRole("heading", { name: "Creation" })).toBeInTheDocument()
+    expect(screen.queryByText("Autoplay new takes")).not.toBeInTheDocument()
+  })
+
+  it("searches section descriptions and replaces stale content with an empty state", () => {
+    renderSettings()
+
+    const search = screen.getByRole("textbox", { name: "Search settings" })
+    fireEvent.change(search, { target: { value: "player" } })
+    expect(screen.getByRole("tab", { name: "Playback" })).toHaveAttribute("aria-selected", "true")
+    expect(screen.getByRole("heading", { name: "Playback" })).toBeInTheDocument()
+
+    fireEvent.change(search, { target: { value: "billing" } })
+    expect(screen.getByText("No settings found")).toBeInTheDocument()
+    expect(screen.getByText("Try another word or clear the search to see every preference.")).toBeInTheDocument()
+    expect(screen.queryByRole("tabpanel")).not.toBeInTheDocument()
+  })
+
   it("makes preference controls visible and reversible", () => {
     renderSettings()
 
