@@ -1,0 +1,265 @@
+.layer {
+  position: fixed;
+  z-index: 90;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  isolation: isolate;
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: rgba(52, 45, 67, 0.2);
+  backdrop-filter: blur(9px) saturate(0.9);
+}
+
+.dialog {
+  position: relative;
+  z-index: 1;
+  width: min(530px, 100%);
+  overflow: hidden;
+  border: 1px solid rgba(218, 211, 227, 0.98);
+  border-radius: 20px;
+  color: var(--mori-foreground);
+  background: rgba(255, 255, 255, 0.985);
+  box-shadow:
+    0 28px 90px rgba(62, 45, 86, 0.24),
+    0 0 0 1px rgba(255, 255, 255, 0.74);
+  outline: 0;
+  animation: reveal 180ms ease-out;
+}
+
+.header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 13px;
+  align-items: start;
+  padding: 22px 23px 20px;
+  border-bottom: 1px solid var(--mori-border);
+  background:
+    radial-gradient(
+      circle at 88% 8%,
+      rgba(255, 213, 190, 0.47),
+      transparent 9rem
+    ),
+    linear-gradient(
+      135deg,
+      rgba(244, 240, 255, 0.97),
+      rgba(255, 251, 247, 0.95)
+    );
+}
+
+.icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 1px solid rgba(196, 121, 90, 0.2);
+  border-radius: 12px;
+  color: #ad725b;
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.header > div > span {
+  color: var(--mori-primary);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.header h2 {
+  margin: 4px 0 0;
+  font-size: 20px;
+  line-height: 1.14;
+  letter-spacing: -0.04em;
+}
+
+.header p {
+  margin: 7px 0 0;
+  color: var(--mori-muted);
+  font-size: 11px;
+  line-height: 1.52;
+}
+
+.closeButton {
+  display: grid;
+  width: 33px;
+  height: 33px;
+  place-items: center;
+  border: 1px solid rgba(218, 213, 217, 0.88);
+  border-radius: 10px;
+  color: var(--mori-muted);
+  background: rgba(255, 255, 255, 0.74);
+}
+
+.closeButton:hover {
+  border-color: rgba(109, 92, 231, 0.25);
+  color: var(--mori-primary);
+}
+
+.body {
+  display: grid;
+  gap: 12px;
+  padding: 19px 23px;
+}
+
+.choice,
+.notice,
+.error {
+  border-radius: 13px;
+}
+
+.choice {
+  padding: 13px 14px;
+  border: 1px solid rgba(109, 92, 231, 0.13);
+  background: linear-gradient(
+    130deg,
+    rgba(241, 237, 255, 0.72),
+    rgba(255, 250, 247, 0.74)
+  );
+}
+
+.choice strong {
+  font-size: 11px;
+}
+
+.choice p,
+.notice p,
+.error p {
+  margin: 5px 0 0;
+  color: var(--mori-muted);
+  font-size: 10px;
+  line-height: 1.52;
+}
+
+.notice,
+.error {
+  padding: 11px 12px;
+}
+
+.notice {
+  border: 1px solid rgba(203, 170, 115, 0.2);
+  background: rgba(255, 249, 229, 0.76);
+}
+
+.error {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  border: 1px solid rgba(196, 121, 90, 0.2);
+  color: #a56852;
+  background: rgba(253, 231, 218, 0.72);
+}
+
+.error p {
+  color: #805849;
+}
+
+.footer {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 16px 23px 20px;
+  border-top: 1px solid rgba(229, 225, 231, 0.78);
+}
+
+.footer button {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 12px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.stayButton {
+  border: 1px solid transparent;
+  color: var(--mori-muted);
+  background: transparent;
+}
+
+.stayButton:hover {
+  color: var(--mori-foreground);
+}
+
+.discardButton {
+  border: 1px solid rgba(196, 121, 90, 0.25);
+  color: #9d6d59;
+  background: rgba(253, 231, 218, 0.62);
+}
+
+.saveButton {
+  border: 1px solid var(--mori-primary);
+  color: #fff;
+  background: var(--mori-primary);
+  box-shadow: 0 8px 18px rgba(95, 73, 180, 0.17);
+}
+
+.saveButton:hover:not(:disabled) {
+  background: #5844c6;
+}
+
+.footer button:disabled {
+  cursor: default;
+  opacity: 0.52;
+}
+
+.spinner {
+  animation: spin 900ms linear infinite;
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dialog {
+    animation: none;
+  }
+  .spinner {
+    animation: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .layer {
+    padding: 14px;
+  }
+  .header,
+  .body,
+  .footer {
+    padding-left: 17px;
+    padding-right: 17px;
+  }
+  .footer {
+    flex-wrap: wrap;
+  }
+  .saveButton {
+    flex: 1 0 100%;
+    order: -1;
+  }
+}

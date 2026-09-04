@@ -2,7 +2,7 @@
 
 import { AlertCircle, ArrowLeft, ArrowRight, AudioLines, AudioWaveform, Check, Download, FileText, History, Link2, LoaderCircle, Play, RotateCcw, Sparkles, X } from "lucide-react"
 import Link from "next/link"
-import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react"
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react"
 import {
   createLyricsRevisionRequest,
   createStemSeparationRequest,
@@ -32,11 +32,13 @@ import { MoriStudioShell } from "./components/mori-studio-shell"
 import { StudioAiComposer, type StudioAiRunState } from "./components/studio-ai-composer"
 import { StudioExportDialog } from "./components/studio-export-dialog"
 import { StudioFinishDialog } from "./components/studio-finish-dialog"
-import { StudioLyricsEditor, type StudioLyricsRunState } from "./components/studio-lyrics-editor"
+import { StudioLyricsEditor, type StudioLyricsDraftSource, type StudioLyricsDraftState, type StudioLyricsRunState } from "./components/studio-lyrics-editor"
 import { StudioStemsEditor, type StudioStemSeparationRunState } from "./components/studio-stems-editor"
 import { StudioGenerationQueue } from "./components/studio-generation-queue"
 import { StudioTimeline } from "./components/studio-timeline"
+import { StudioUnsavedLyricsDialog } from "./components/studio-unsaved-lyrics-dialog"
 import { StudioVersionHistoryDrawer, StudioVersionHistoryRail } from "./components/studio-version-history"
+import { StudioWorkspaceSaveStatus } from "./components/studio-workspace-save-status"
 import { useMoriApp } from "./components/mori-app-provider"
 import { Waveform } from "./components/waveform"
 import { previewCandidates, previewProject, previewSongPlan } from "./preview-data"
@@ -49,6 +51,7 @@ import { canonicalStudioHref, studioVersionRefFromPath } from "./studio-location
 import { createStudioStemSeparationDraft, isActiveStemSeparationStatus, stemSeparationSnapshotMatchesPlan, type StudioStemSeparationPlan } from "./studio-stems"
 import { createHtmlStemPlaybackController, type StemPlaybackFactory } from "./stem-playback"
 import { useStudioReleaseWorkflow } from "./use-studio-release-workflow"
+import { useStudioProjectWorkspaceMemory } from "./use-studio-project-workspace-memory"
 import {
   currentVersionCommand,
   currentVersionCommitFailure,
@@ -73,7 +76,7 @@ type StudioPageContentProps = {
   initialSurface?: StudioEntrySurface
   initialIntent?: StudioEntryIntent
   initialGenerationRef?: string | null
-  api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "putCurrentVersion" | "listCandidates" | "createStudioChange" | "getGeneration" | "getGenerationEvents" | "cancelGeneration" | "createLyricsRevision" | "getLyricsRevision" | "getLyricsRevisionEvents" | "cancelLyricsRevision" | "createStemSeparation" | "getStemSeparation" | "getStemSeparationEvents" | "cancelStemSeparation" | "createArtworkGeneration" | "getArtworkGeneration" | "getArtworkGenerationEvents" | "cancelArtworkGeneration" | "getReleaseDraft" | "putReleaseDraft" | "createMixRevision">>
+  api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "getProjectWorkspace" | "putCurrentVersion" | "putLyricsDraft" | "putProjectWorkspaceOpenVersion" | "listCandidates" | "createStudioChange" | "getGeneration" | "getGenerationEvents" | "cancelGeneration" | "createLyricsRevision" | "getLyricsRevision" | "getLyricsRevisionEvents" | "cancelLyricsRevision" | "createStemSeparation" | "getStemSeparation" | "getStemSeparationEvents" | "cancelStemSeparation" | "createArtworkGeneration" | "getArtworkGeneration" | "getArtworkGenerationEvents" | "cancelArtworkGeneration" | "getReleaseDraft" | "putReleaseDraft" | "createMixRevision">>
   stemPlaybackFactory?: StemPlaybackFactory
 }
 
@@ -224,9 +227,48 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
   const [trackedStudioChange, setTrackedStudioChange] = useState<TrackedStudioChange | null>(null)
   const [lyricsRevisionRun, setLyricsRevisionRun] = useState<StudioLyricsRunState>(idleLyricsRevisionRun)
   const [trackedLyricsRevision, setTrackedLyricsRevision] = useState<TrackedLyricsRevision | null>(null)
+  const [pendingLyricsDraft, setPendingLyricsDraft] = useState<StudioLyricsDraftState | null>(null)
+  const [pendingVersionSelection, setPendingVersionSelection] = useState<Candidate | null>(null)
+  const [saveBeforeVersionSwitch, setSaveBeforeVersionSwitch] = useState(false)
   const [stemSeparationRun, setStemSeparationRun] = useState<StudioStemSeparationRunState>(idleStemSeparationRun)
   const [trackedStemSeparation, setTrackedStemSeparation] = useState<TrackedStemSeparation | null>(null)
   const activeVersionRef = activeCandidate?.versionRef ?? null
+  const hasInjectedWorkspaceReader = api?.getProjectWorkspace !== undefined
+  const shouldUseWorkspaceMemory = api === undefined
+    ? activeProjectRef !== previewProject.projectRef
+    : hasInjectedWorkspaceReader
+  const workspaceMemoryApi = shouldUseWorkspaceMemory ? {
+    getProjectWorkspace: api === undefined ? studioApi.getProjectWorkspace : api.getProjectWorkspace,
+    putLyricsDraft: api === undefined ? studioApi.putLyricsDraft : api.putLyricsDraft,
+    putProjectWorkspaceOpenVersion: api === undefined ? studioApi.putProjectWorkspaceOpenVersion : api.putProjectWorkspaceOpenVersion,
+  } : undefined
+  const projectWorkspaceMemory = useStudioProjectWorkspaceMemory({
+    projectRef: activeProjectRef,
+    activeVersionRef,
+    api: workspaceMemoryApi,
+  })
+  const rememberPendingLyricsDraft = useCallback((next: StudioLyricsDraftState) => {
+    setPendingLyricsDraft((current) => {
+      if (!next.dirty) return current?.versionRef === next.versionRef ? null : current
+      if (
+        current?.versionRef === next.versionRef
+        && current.revision === next.revision
+        && current.text === next.text
+      ) return current
+      return next
+    })
+  }, [])
+  const pendingLyricsAreDurable = pendingLyricsDraft !== null
+    && pendingLyricsDraft.versionRef === activeVersionRef
+    && projectWorkspaceMemory.lyricsDraft?.version_ref === activeVersionRef
+    && projectWorkspaceMemory.lyricsDraft.text === pendingLyricsDraft.text
+    && projectWorkspaceMemory.lyricsDraft.revision !== pendingLyricsDraft.revision
+  const activePendingLyricsDraft = pendingLyricsDraft !== null
+    && pendingLyricsDraft.versionRef === activeVersionRef
+    && pendingLyricsDraft.dirty
+    && !pendingLyricsAreDurable
+    ? pendingLyricsDraft
+    : null
   const releaseWorkflow = useStudioReleaseWorkflow({
     versionRef: activeVersionRef,
     versionTitle: activeCandidate?.title ?? "",
@@ -1142,12 +1184,55 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
     return revision
   }
 
-  const selectTake = (take: Candidate) => {
+  const completeTakeSelection = useCallback((take: Candidate) => {
     if (take.versionRef !== activeVersionRefRef.current) setVersionHistoryOpen(false)
     setActiveCandidate(take)
     const nextHref = canonicalStudioHref(window.location.href, activeProjectRefRef.current, take.versionRef)
     if (nextHref !== window.location.href) window.history.pushState(null, "", nextHref)
-  }
+  }, [])
+
+  const selectTake = useCallback((take: Candidate) => {
+    if (take.versionRef === activeVersionRefRef.current) return
+    if (activePendingLyricsDraft === null) {
+      completeTakeSelection(take)
+      return
+    }
+    setPendingVersionSelection(take)
+    setSaveBeforeVersionSwitch(projectWorkspaceMemory.saveRun.status === "saving")
+  }, [activePendingLyricsDraft, completeTakeSelection, projectWorkspaceMemory.saveRun.status])
+
+  const stayOnCurrentVersion = useCallback(() => {
+    setPendingVersionSelection(null)
+    setSaveBeforeVersionSwitch(false)
+  }, [])
+
+  const discardLyricsAndOpenVersion = useCallback(() => {
+    const nextVersion = pendingVersionSelection
+    if (nextVersion === null) return
+    setPendingLyricsDraft(null)
+    setPendingVersionSelection(null)
+    setSaveBeforeVersionSwitch(false)
+    completeTakeSelection(nextVersion)
+  }, [completeTakeSelection, pendingVersionSelection])
+
+  const saveLyricsAndOpenVersion = useCallback(() => {
+    if (pendingVersionSelection === null || pendingLyricsDraft === null) return
+    setSaveBeforeVersionSwitch(true)
+    if (projectWorkspaceMemory.saveRun.status === "failed" && projectWorkspaceMemory.saveRun.retryable) {
+      projectWorkspaceMemory.retrySave()
+      return
+    }
+    projectWorkspaceMemory.saveLyrics(pendingLyricsDraft.text)
+  }, [pendingLyricsDraft, pendingVersionSelection, projectWorkspaceMemory])
+
+  useEffect(() => {
+    if (!saveBeforeVersionSwitch || pendingVersionSelection === null || projectWorkspaceMemory.saveRun.status !== "saved") return
+    const nextVersion = pendingVersionSelection
+    setPendingLyricsDraft(null)
+    setPendingVersionSelection(null)
+    setSaveBeforeVersionSwitch(false)
+    completeTakeSelection(nextVersion)
+  }, [completeTakeSelection, pendingVersionSelection, projectWorkspaceMemory.saveRun.status, saveBeforeVersionSwitch])
 
   const previewTake = (take: Candidate) => {
     if (playerCandidate?.versionRef === take.versionRef) {
@@ -1381,6 +1466,31 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
 
   const activeProjectTitle = projectTitle ?? (activeProjectRef === previewProject.projectRef ? previewProject.title : "Project")
   const hasPreviewProjectContent = activeProjectRef === previewProject.projectRef
+  const workspaceVersionIsOpen = activeVersionRef !== null
+    && projectWorkspaceMemory.projection?.open_version?.version_ref === activeVersionRef
+  const isRecoveringWorkspaceVersion = projectWorkspaceMemory.workspaceStatus === "ready"
+    && !workspaceVersionIsOpen
+    && projectWorkspaceMemory.canSyncOpenVersion
+    && projectWorkspaceMemory.saveRun.status !== "failed"
+  const lyricsDraftSource: StudioLyricsDraftSource = projectWorkspaceMemory.workspaceStatus === "loading" || isRecoveringWorkspaceVersion
+    ? "loading"
+    : projectWorkspaceMemory.workspaceStatus === "ready" && workspaceVersionIsOpen
+      ? "workspace"
+      : hasPreviewProjectContent
+        ? "preview"
+        : "unavailable"
+  const durableStudioLyrics = lyricsDraftSource === "workspace"
+    ? projectWorkspaceMemory.lyricsDraft?.text ?? ""
+    : lyricsDraftSource === "preview"
+      ? defaultStudioLyrics
+      : ""
+  const workspaceLyricsRevision = projectWorkspaceMemory.lyricsDraft?.revision ?? null
+  const canRestorePendingLyrics = activePendingLyricsDraft !== null
+    && (lyricsDraftSource !== "workspace" || activePendingLyricsDraft.revision === workspaceLyricsRevision)
+  const initialStudioLyrics = canRestorePendingLyrics && activePendingLyricsDraft !== null
+    ? activePendingLyricsDraft.text
+    : durableStudioLyrics
+  const studioLyricsKey = `${activeVersionRef ?? "no-version"}:${lyricsDraftSource}:${projectWorkspaceMemory.lyricsDraft?.revision ?? "new"}`
   const remasterRun = isStudioRemasterPlan(studioChangeRun.plan)
   const remasterActive = remasterRun && isActiveStudioChangeStatus(studioChangeRun.status)
   const finishActive = remasterActive || releaseWorkflow.active
@@ -1397,6 +1507,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
       <header className={styles.studioHeader}>
           <div className={styles.studioHeaderLeft}><Link className={styles.studioBack} href={`/projects/${activeProjectRef}`}><ArrowLeft size={15} /> {activeProjectTitle}</Link><span>/</span><strong>Studio</strong></div>
           <div className={styles.studioHeaderActions}>
+            <StudioWorkspaceSaveStatus run={projectWorkspaceMemory.saveRun} hasCurrentDraftChanges={activePendingLyricsDraft !== null} onRetry={projectWorkspaceMemory.retrySave} onRefresh={projectWorkspaceMemory.refresh} />
             <button
               className={`${styles.ghostButton} ${styles.linkCopyButton}`}
               type="button"
@@ -1478,13 +1589,13 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
         <section className={styles.studioCanvas} aria-label="Studio editor">
           <div className={styles.studioCanvasTop}><div><span className={styles.eyebrow}><span className={styles.eyebrowDot} />Editing with intention</span><h2>Shape the feeling.</h2></div></div>
           <div id="mori-studio-panel-arrangement" role="tabpanel" aria-labelledby="mori-studio-tool-arrangement" hidden={activeTool !== "arrangement"}>
-            {activeTool === "arrangement" ? <ArrangementEditor candidate={activeCandidate} takes={studioCandidates} structure={hasPreviewProjectContent ? previewSongPlan.structure : wholeSongStructure} lyricsPreview={hasPreviewProjectContent ? defaultStudioLyrics : ""} currentVersionRef={currentVersionRef} playerVersionRef={playerCandidate?.versionRef ?? ""} positionSeconds={playerCandidate?.versionRef === activeCandidate.versionRef ? positionSeconds : 0} playing={playerCandidate?.versionRef === activeCandidate.versionRef && playing} initialIntent={initialIntent} studioChangeRun={studioChangeRun} currentVersionCommitRun={currentVersionCommitRun} onSeekTimeline={(nextPositionSeconds) => seekTimeline(activeCandidate, nextPositionSeconds)} onGenerateStudioChange={(plan) => { void generateStudioChange(plan) }} onCancelStudioChange={() => { void cancelStudioChange() }} onResetStudioChange={resetStudioChange} onSelectTake={selectTake} onPreviewTake={previewTake} onPromoteTake={(take) => { void commitCurrentVersion(take) }} onRetryCurrentVersion={retryCurrentVersionCommit} onDismissCurrentVersion={dismissCurrentVersionCommit} onOpenLyrics={() => {
+            {activeTool === "arrangement" ? <ArrangementEditor candidate={activeCandidate} takes={studioCandidates} structure={hasPreviewProjectContent ? previewSongPlan.structure : wholeSongStructure} lyricsPreview={initialStudioLyrics} currentVersionRef={currentVersionRef} playerVersionRef={playerCandidate?.versionRef ?? ""} positionSeconds={playerCandidate?.versionRef === activeCandidate.versionRef ? positionSeconds : 0} playing={playerCandidate?.versionRef === activeCandidate.versionRef && playing} initialIntent={initialIntent} studioChangeRun={studioChangeRun} currentVersionCommitRun={currentVersionCommitRun} onSeekTimeline={(nextPositionSeconds) => seekTimeline(activeCandidate, nextPositionSeconds)} onGenerateStudioChange={(plan) => { void generateStudioChange(plan) }} onCancelStudioChange={() => { void cancelStudioChange() }} onResetStudioChange={resetStudioChange} onSelectTake={selectTake} onPreviewTake={previewTake} onPromoteTake={(take) => { void commitCurrentVersion(take) }} onRetryCurrentVersion={retryCurrentVersionCommit} onDismissCurrentVersion={dismissCurrentVersionCommit} onOpenLyrics={() => {
               setActiveTool("lyrics")
               window.requestAnimationFrame(() => document.getElementById("mori-studio-tool-lyrics")?.focus())
             }} /> : null}
           </div>
           <div id="mori-studio-panel-lyrics" role="tabpanel" aria-labelledby="mori-studio-tool-lyrics" hidden={activeTool !== "lyrics"}>
-            {activeTool === "lyrics" ? <StudioLyricsEditor key={activeCandidate.versionRef} versionRef={activeCandidate.versionRef} initialLyrics={hasPreviewProjectContent ? defaultStudioLyrics : ""} run={lyricsRevisionRun} onGenerate={(plan) => { void generateLyricsRevision(plan) }} onCancel={() => { void cancelLyricsRevision() }} onReset={resetLyricsRevision} /> : null}
+            {activeTool === "lyrics" ? <StudioLyricsEditor key={studioLyricsKey} versionRef={activeCandidate.versionRef} initialLyrics={initialStudioLyrics} baselineLyrics={durableStudioLyrics} draftRevision={workspaceLyricsRevision} draftSource={lyricsDraftSource} draftSaveRun={projectWorkspaceMemory.saveRun} canSaveDraft={projectWorkspaceMemory.canSaveLyrics} run={lyricsRevisionRun} onGenerate={(plan) => { void generateLyricsRevision(plan) }} onCancel={() => { void cancelLyricsRevision() }} onReset={resetLyricsRevision} onSaveDraft={projectWorkspaceMemory.saveLyrics} onRefreshDraft={projectWorkspaceMemory.refresh} onDraftStateChange={rememberPendingLyricsDraft} /> : null}
           </div>
           <div id="mori-studio-panel-stems" role="tabpanel" aria-labelledby="mori-studio-tool-stems" hidden={activeTool !== "stems"}>
             {activeTool === "stems" ? <StudioStemsEditor key={activeVersionRef ?? "no-version"} durationSeconds={activeCandidate.durationSeconds} run={stemSeparationRun} layerRun={studioChangeRun} onSeparate={(plan) => { void generateStemSeparation(plan) }} onCancel={() => { void cancelStemSeparation() }} onReset={resetStemSeparation} onSaveMix={saveMixRevision} onGenerateLayer={(plan) => { void generateStudioChange(plan) }} onCancelLayer={() => { void cancelStudioChange() }} onResetLayer={resetStudioChange} onReviewTakes={() => setActiveTool("arrangement")} playbackFactory={stemPlaybackFactory} /> : null}
@@ -1496,6 +1607,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
           projectRef={activeProjectRef}
           openVersionRef={activeCandidate.versionRef}
           currentVersionRef={currentVersionRef}
+          onSelectVersion={selectTake}
         />
       </div>}
       {versionHistoryOpen && activeCandidate !== null ? <StudioVersionHistoryDrawer
@@ -1504,7 +1616,19 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
         projectRef={activeProjectRef}
         openVersionRef={activeCandidate.versionRef}
         currentVersionRef={currentVersionRef}
+        onSelectVersion={selectTake}
         onClose={() => setVersionHistoryOpen(false)}
+      /> : null}
+      {pendingVersionSelection !== null && activeCandidate !== null ? <StudioUnsavedLyricsDialog
+        currentVersionTitle={activeCandidate.title}
+        targetVersionTitle={pendingVersionSelection.title}
+        canSave={projectWorkspaceMemory.canSaveLyrics}
+        canRefreshWorkspace={lyricsDraftSource === "unavailable"}
+        saveRun={projectWorkspaceMemory.saveRun}
+        onStay={stayOnCurrentVersion}
+        onDiscard={discardLyricsAndOpenVersion}
+        onSave={saveLyricsAndOpenVersion}
+        onRefresh={projectWorkspaceMemory.refresh}
       /> : null}
       {exportDialogOpen && activeCandidate !== null ? <StudioExportDialog
         versionTitle={activeCandidate.title}

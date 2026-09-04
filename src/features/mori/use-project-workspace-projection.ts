@@ -21,7 +21,7 @@ type ProjectWorkspaceProjectionRequestState = ProjectWorkspaceProjectionState & 
 export function useProjectWorkspaceProjection(
   requestedProjectRef: string,
   getProjectWorkspace: GetProjectWorkspace | undefined,
-): ProjectWorkspaceProjectionState & { retry: () => void } {
+): ProjectWorkspaceProjectionState & { retry: () => void; acceptProjection: (projection: MoriProjectWorkspaceProjection) => boolean } {
   const projectRef = requestedProjectRef.trim()
   const [attempt, setAttempt] = useState(0)
   const [state, setState] = useState<ProjectWorkspaceProjectionRequestState>(() => initialState(projectRef, getProjectWorkspace, attempt))
@@ -57,9 +57,16 @@ export function useProjectWorkspaceProjection(
     setAttempt((current) => current + 1)
   }, [])
 
-  if (!canLoad) return { projectRef, status: "unavailable", projection: null, retry }
-  if (!isCurrentRequest) return { projectRef, status: "loading", projection: null, retry }
-  return { projectRef: state.projectRef, status: state.status, projection: state.projection, retry }
+  const acceptProjection = useCallback((projection: MoriProjectWorkspaceProjection): boolean => {
+    if (!canLoad || projection.project.project_ref !== projectRef) return false
+    requestEpochRef.current += 1
+    setState({ projectRef, status: "ready", projection, attempt, source: getProjectWorkspace })
+    return true
+  }, [attempt, canLoad, getProjectWorkspace, projectRef])
+
+  if (!canLoad) return { projectRef, status: "unavailable", projection: null, retry, acceptProjection }
+  if (!isCurrentRequest) return { projectRef, status: "loading", projection: null, retry, acceptProjection }
+  return { projectRef: state.projectRef, status: state.status, projection: state.projection, retry, acceptProjection }
 }
 
 function initialState(

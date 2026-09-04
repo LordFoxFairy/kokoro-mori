@@ -25,9 +25,17 @@ src/features/mori/               Mori 页面、组件、交互状态与 fixture 
   project-workspace-memory.ts     Song Plan / Lyrics Draft / Open Version 的 revisioned 保存确认、冲突与原幂等键重试
   use-project-workspace-projection.ts
                                   browser-private Project Workspace projection 的读取、上下文核对与重试
+  use-studio-project-workspace-memory.ts
+                                  Studio 的 Open Version 同步、Lyrics Draft 保存、迟到响应隔离与 owner-confirmed 状态收敛
   project-overview-song-plan.tsx  Project Overview 的真实/Preview Song Plan 呈现与不可用状态
   project-overview-song-plan-preview.ts
                                   preview Song Plan 到 browser projection 的显式 fixture 适配
+  components/studio-lyrics-editor.tsx
+                                  Version-bound Lyrics Draft、AI Revision 建议与明确的 workspace / preview / unavailable 状态
+  components/studio-workspace-save-status.tsx
+                                  Studio 顶栏的 Saving / Saved / Retry 状态；不让旧成功提示覆盖新编辑
+  components/studio-unsaved-lyrics-dialog.tsx
+                                  切换 Version 前的 Keep / Discard / Save guard；保存确认后才允许导航
   *-page.tsx / *-workspace.tsx    页面级组合和 API 状态编排
 src/lib/mori-api.ts              Mori wire type、Library/Creative Source projection、请求 builder 与同源 client seam
 contract/openapi/                本仓 Studio / release / Project Workspace 等机器契约事实源

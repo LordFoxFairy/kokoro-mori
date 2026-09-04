@@ -61,9 +61,9 @@ Prompt / Upload
 | 每次生成多个候选并持续跟踪 | 浏览器已对齐 | Generation Queue、snapshot、SSE、cancel、retry、Candidate projection | Runtime 以真实 provider integration smoke 为完成门槛 |
 | 上传 / 录制音频并跨项目复用 | 部分对齐 | 文件类型与大小校验、Audio Source UI；当前仍写固定 preview asset ref | **P0：正式 Creative Source Ingest** |
 | Cover / Extend / Replace / Remaster | 浏览器已对齐 | Arrangement Change Plan、typed snapshot、Take Lanes、Finish Remaster | 补真实执行验收；Mori 的 Balanced / Bold 是自有语言，不冒充 Suno 原词 |
-| Add vocals / Add instrumental / Lyrics revision | 浏览器已对齐 | Voice & stems、Lyrics Revision、非破坏式 Generation | Lyrics 最终草稿改为耐久提交，不再只保存在浏览器 |
+| Add vocals / Add instrumental / Lyrics revision | 浏览器 foundation 已对齐 | Voice & stems、Lyrics Revision、Studio 的 owner-confirmed Lyrics Draft seam | Lyrics runtime 由 Workspace owner 接通并做 recovery smoke；浏览器不再以 localStorage 冒充保存 |
 | Take audition / Commit / Current Version | 浏览器已对齐 | Open、Playing、Selected、Current 分离；Project-scoped CAS | **P0：Durable Project Memory 的 Version / Revision 一致性** |
-| 保存版本、刷新或跨设备继续 | 部分对齐 | Current/Mix/Release 有契约；历史仍由 Candidate feed 投影，Lyrics 仅 localStorage | **P0 首项：Durable Project Memory** |
+| 保存版本、刷新或跨设备继续 | 部分对齐 | Current/Mix/Release 有契约；Workspace projection、Open Version 同步与 Studio Lyrics Draft 保存状态机已落地浏览器 | **P0 首项：Durable Project Memory**；Create Smart Song Plan 写入与 BFF runtime recovery 仍待完成 |
 | Library / Workspace 搜索与素材复用 | 部分对齐 | Projects、Versions、Audio/Voice/Inspiration Sources、cursor/search/filter | 接入真实 Source 生命周期；Studio 内 Asset Dock 放入 P1 |
 | Song Editor 的 Split / Crop / Fade / Move | 缺失 | 当前时间线只支持段落/时间范围选择和生成式 Change | P1 多轨 Composition 的确定性命令，不伪装成 AI prompt |
 | 多轨 timeline、录音、loop、tempo | 部分对齐 | 现有 Timeline + Stem Mixer 是正确起点，但不是 clip composition | P1：revisioned Track / Clip / Placement 模型后渐进开放 |
@@ -133,10 +133,12 @@ ProjectWorkspaceProjection
   -> revision cursor
 ```
 
-当前只算 **P0.1 foundation**，不是 Runtime 完成：Studio 仍须将 Lyrics editor 的本地保存替换为 owner-confirmed
-`Saving / Saved / Retry`，Create 的 Smart Song Plan 也须在生成前后写入同一条 revisioned 事实；真实 BFF owner
-随后需实现 projection 组合、revision 存储、幂等 receipt 与 recovery smoke。preview Project 会明确标记
-`Preview plan`，不以 `saved` 假装为用户的持久化事实。
+当前仍只算 **P0.1 browser foundation**，不是 Runtime 完成：Studio Lyrics 已移除 localStorage 保存，先把显式
+Studio URL 同步为用户的 Open Version，再通过 revisioned Workspace command 保存该 Version 的 Draft。文字在保存中锁定；
+只有 owner 返回完整且精确匹配的新 revision 后才显示 `Saved`；短暂网络失败复用原 `Idempotency-Key`，冲突要求刷新；
+切换 Version 时提供 Keep editing / Discard & open / Save & open，避免静默丢稿。Create 的 Smart Song Plan 仍须在生成前后
+写入同一条 revisioned 事实；真实 BFF owner 随后需实现 projection 组合、revision 存储、幂等 receipt 与 recovery smoke。
+preview Project 会明确标记为 preview，绝不以 `saved` 假装为用户的持久化事实。
 
 以下两个浏览器侧连续性问题已修完：
 

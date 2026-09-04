@@ -2,7 +2,7 @@
 
 import { Check, History, Play, X } from "lucide-react"
 import Link from "next/link"
-import { useEffect, useId, useRef } from "react"
+import { useEffect, useId, useRef, type MouseEvent as ReactMouseEvent } from "react"
 import { createPortal } from "react-dom"
 import type { Candidate } from "../domain"
 import styles from "./studio-version-history.module.css"
@@ -12,6 +12,7 @@ type StudioVersionHistoryProps = {
   projectRef: string
   openVersionRef: string
   currentVersionRef: string
+  onSelectVersion?: (candidate: Candidate) => void
 }
 
 type StudioVersionHistoryRailProps = StudioVersionHistoryProps & {
@@ -128,7 +129,7 @@ function VersionHistoryHeader({ count }: { count: number }) {
   )
 }
 
-function VersionHistoryList({ candidates, projectRef, openVersionRef, currentVersionRef, onNavigate }: StudioVersionHistoryProps & { onNavigate?: () => void }) {
+function VersionHistoryList({ candidates, projectRef, openVersionRef, currentVersionRef, onNavigate, onSelectVersion }: StudioVersionHistoryProps & { onNavigate?: () => void }) {
   return (
     <nav className={styles.list} aria-label="Project versions">
       {candidates.map((candidate, index) => {
@@ -147,7 +148,15 @@ function VersionHistoryList({ candidates, projectRef, openVersionRef, currentVer
             data-current={isCurrent ? "true" : undefined}
             href={`/projects/${encodeURIComponent(projectRef)}/studio/${encodeURIComponent(candidate.versionRef)}`}
             key={candidate.versionRef}
-            onClick={onNavigate}
+            onClick={(event) => {
+              if (onSelectVersion === undefined || keepsNativeVersionLinkBehavior(event)) {
+                onNavigate?.()
+                return
+              }
+              event.preventDefault()
+              onNavigate?.()
+              onSelectVersion(candidate)
+            }}
           >
             <span className={styles.thumb} data-accent={String(index % 3)} aria-hidden="true"><Play size={12} fill="currentColor" /></span>
             <span className={styles.itemCopy}>
@@ -160,6 +169,15 @@ function VersionHistoryList({ candidates, projectRef, openVersionRef, currentVer
       })}
     </nav>
   )
+}
+
+function keepsNativeVersionLinkBehavior(event: ReactMouseEvent<HTMLAnchorElement>): boolean {
+  return event.defaultPrevented
+    || event.button !== 0
+    || event.metaKey
+    || event.altKey
+    || event.ctrlKey
+    || event.shiftKey
 }
 
 function formatDuration(durationSeconds: number): string {

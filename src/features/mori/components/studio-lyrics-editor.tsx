@@ -1,7 +1,7 @@
 "use client"
 
 import { ArrowRight, Check, LoaderCircle, Pencil, RotateCcw, Save, Sparkles, X } from "lucide-react"
-import { useId, useState } from "react"
+import { useEffect, useId, useState } from "react"
 import type { FormEvent } from "react"
 import type { LyricsRevisionStatus, MoriLyricsSuggestion } from "@/lib/mori-api"
 import {
@@ -15,6 +15,7 @@ import {
   type StudioLyricsPlan,
   type StudioLyricsScope,
 } from "../studio-lyrics"
+import { idleProjectWorkspaceSaveRun, type ProjectWorkspaceSaveRun } from "../project-workspace-memory"
 import styles from "./studio-lyrics-editor.module.css"
 
 export type StudioLyricsRunState = {
@@ -26,13 +27,30 @@ export type StudioLyricsRunState = {
   message: string | null
 }
 
+export type StudioLyricsDraftSource = "loading" | "workspace" | "preview" | "unavailable"
+
+export type StudioLyricsDraftState = {
+  versionRef: string
+  revision: number | null
+  text: string
+  dirty: boolean
+}
+
 type StudioLyricsEditorProps = {
   versionRef: string
   initialLyrics?: string
+  baselineLyrics?: string
+  draftRevision?: number | null
+  draftSource?: StudioLyricsDraftSource
+  draftSaveRun?: ProjectWorkspaceSaveRun
+  canSaveDraft?: boolean
   run: StudioLyricsRunState
   onGenerate: (plan: StudioLyricsPlan) => void
   onCancel: () => void
   onReset: () => void
+  onSaveDraft?: (text: string) => void
+  onRefreshDraft?: () => void
+  onDraftStateChange?: (state: StudioLyricsDraftState) => void
 }
 
 const directions: readonly StudioLyricsDirection[] = ["rewrite", "continue", "rhyme", "restructure"]
@@ -45,11 +63,24 @@ const directionPlaceholders: Record<StudioLyricsDirection, string> = {
   restructure: "Describe how the lyrical arc should unfold…",
 }
 
-export function StudioLyricsEditor({ versionRef, initialLyrics = defaultStudioLyrics, run, onGenerate, onCancel, onReset }: StudioLyricsEditorProps) {
+export function StudioLyricsEditor({
+  versionRef,
+  initialLyrics = defaultStudioLyrics,
+  baselineLyrics = initialLyrics,
+  draftRevision = null,
+  draftSource = "preview",
+  draftSaveRun = idleProjectWorkspaceSaveRun,
+  canSaveDraft = false,
+  run,
+  onGenerate,
+  onCancel,
+  onReset,
+  onSaveDraft,
+  onRefreshDraft,
+  onDraftStateChange,
+}: StudioLyricsEditorProps) {
   const promptId = useId()
-  const storageKey = `mori.lyrics.${versionRef}`
-  const [lyrics, setLyrics] = useState(() => readStoredLyrics(storageKey) ?? initialLyrics)
-  const [saved, setSaved] = useState(true)
+  const [lyrics, setLyrics] = useState(initialLyrics)
   const [direction, setDirection] = useState<StudioLyricsDirection>(() => run.plan?.direction ?? "rewrite")
   const [scope, setScope] = useState<StudioLyricsScope>(() => run.plan?.scope ?? "verse")
   const [instruction, setInstruction] = useState(() => run.plan?.instruction ?? "")
@@ -58,10 +89,17 @@ export function StudioLyricsEditor({ versionRef, initialLyrics = defaultStudioLy
   const wordCount = lyrics.trim() === "" ? 0 : lyrics.trim().split(/\s+/u).length
   const visiblePlan = run.status === "idle" ? reviewedPlan : run.plan
   const draftChangedSinceReview = visiblePlan !== null && lyrics.trim() !== visiblePlan.lyricsContext
+  const hasUnsavedChanges = lyrics !== baselineLyrics
+  const isSavingDraft = draftSaveRun.status === "saving"
+  const hasSavedDraft = draftRevision !== null
+
+  useEffect(() => {
+    onDraftStateChange?.({ versionRef, revision: draftRevision, text: lyrics, dirty: hasUnsavedChanges })
+  }, [draftRevision, hasUnsavedChanges, lyrics, onDraftStateChange, versionRef])
 
   const editLyrics = (nextLyrics: string) => {
+    if (isSavingDraft) return
     setLyrics(nextLyrics)
-    setSaved(false)
     if (run.status === "idle") setReviewedPlan(null)
   }
 
@@ -100,53 +138,61 @@ export function StudioLyricsEditor({ versionRef, initialLyrics = defaultStudioLy
   }
 
   const applySuggestion = (suggestionText: string) => {
-    if (visiblePlan === null || suggestionText.trim() === "" || draftChangedSinceReview) return
+    if (isSavingDraft || visiblePlan === null || suggestionText.trim() === "" || draftChangedSinceReview) return
     setUndoDraft(lyrics)
     setLyrics(replaceStudioLyricsScope(lyrics, visiblePlan, suggestionText))
-    setSaved(false)
     setReviewedPlan(null)
     onReset()
   }
 
   const undoAiEdit = () => {
-    if (undoDraft === null) return
+    if (isSavingDraft || undoDraft === null) return
     setLyrics(undoDraft)
     setUndoDraft(null)
-    setSaved(false)
   }
 
   const saveDraft = () => {
-    try {
-      window.localStorage.setItem(storageKey, lyrics)
-      setSaved(true)
-      setUndoDraft(null)
-    } catch {
-      setSaved(false)
-    }
+    if (!canSaveDraft || isSavingDraft || draftSaveRun.status === "failed") return
+    onSaveDraft?.(lyrics)
+  }
+
+  if (draftSource === "loading") {
+    return <section className={styles.lyricsEditor} aria-label="Lyrics editor" data-version-ref={versionRef}>
+      <header className={styles.lyricsHeader}>
+        <div><span>Words stay close to the take</span><h3>Lyrics draft</h3></div>
+        <span className={styles.savingBadge}><LoaderCircle size={12} /> Preparing</span>
+      </header>
+      <div className={styles.draftRecovery} aria-live="polite"><LoaderCircle size={18} /><div><strong>Preparing this Version</strong><p>Mori is checking the current Version before opening its words.</p></div></div>
+    </section>
   }
 
   return (
-    <section className={styles.lyricsEditor} aria-label="Lyrics editor">
+    <section className={styles.lyricsEditor} aria-label="Lyrics editor" data-version-ref={versionRef}>
       <header className={styles.lyricsHeader}>
         <div><span>Words stay close to the take</span><h3>Lyrics draft</h3></div>
-        <span className={saved ? styles.savedBadge : styles.unsavedBadge}>{saved ? "Saved locally" : "Unsaved changes"}</span>
+        <span className={draftBadgeClass(draftSaveRun, draftSource, hasUnsavedChanges, hasSavedDraft)}>{draftBadgeLabel(draftSaveRun, draftSource, hasUnsavedChanges, hasSavedDraft)}</span>
       </header>
 
       <div className={styles.lyricsWorkspace}>
         <section className={styles.draftPanel} aria-label="Current lyric draft">
-          <div className={styles.draftMeta}><span>Draft 01</span><span>{wordCount} words</span></div>
+          <div className={styles.draftMeta}><span>{draftRevision === null ? "New draft" : `Draft ${String(draftRevision).padStart(2, "0")}`}</span><span>{wordCount} words</span></div>
           <textarea
             className={styles.draftArea}
             aria-label="Lyrics draft"
+            aria-busy={isSavingDraft}
+            readOnly={isSavingDraft}
             value={lyrics}
             placeholder="Start a lyric draft for this Version…"
             onChange={(event) => editLyrics(event.target.value)}
           />
           <footer className={styles.draftFooter}>
-            <span>Changes stay local until saved.</span>
+            <span>{draftSaveDescription(draftSaveRun, draftSource, hasUnsavedChanges, hasSavedDraft)}</span>
             <div>
-              {undoDraft !== null ? <button className={styles.textButton} type="button" onClick={undoAiEdit}><RotateCcw size={13} /> Undo AI edit</button> : null}
-              <button className={styles.saveButton} type="button" disabled={saved} onClick={saveDraft}>{saved ? <><Check size={13} /> Saved</> : <><Save size={13} /> Save draft</>}</button>
+              {undoDraft !== null ? <button className={styles.textButton} type="button" disabled={isSavingDraft} onClick={undoAiEdit}><RotateCcw size={13} /> Undo AI edit</button> : null}
+              {draftSource === "unavailable" && draftSaveRun.status === "idle" && onRefreshDraft !== undefined ? <button className={styles.textButton} type="button" onClick={onRefreshDraft}><RotateCcw size={13} /> Retry workspace</button> : null}
+              {draftSaveRun.status !== "failed" ? <button className={styles.saveButton} type="button" data-save-status={draftSaveRun.status === "saved" && !hasUnsavedChanges ? "saved" : canSaveDraft ? "ready" : "unavailable"} disabled={!canSaveDraft || !hasUnsavedChanges || isSavingDraft} onClick={saveDraft}>
+                {isSavingDraft ? <><LoaderCircle size={13} /> Saving</> : draftSaveRun.status === "saved" && !hasUnsavedChanges ? <><Check size={13} /> Saved</> : <><Save size={13} /> Save draft</>}
+              </button> : null}
             </div>
           </footer>
         </section>
@@ -196,6 +242,7 @@ export function StudioLyricsEditor({ versionRef, initialLyrics = defaultStudioLy
               plan={visiblePlan}
               run={run}
               draftChangedSinceReview={draftChangedSinceReview}
+              draftSaving={isSavingDraft}
               onApply={applySuggestion}
               onStartOver={startOver}
             />
@@ -206,15 +253,49 @@ export function StudioLyricsEditor({ versionRef, initialLyrics = defaultStudioLy
   )
 }
 
+function draftBadgeClass(run: ProjectWorkspaceSaveRun, source: StudioLyricsDraftSource, dirty: boolean, hasSavedDraft: boolean): string {
+  if (run.status === "saving") return styles.savingBadge
+  if (run.status === "failed") return styles.unsavedBadge
+  if (dirty) return styles.unsavedBadge
+  if (run.status === "saved") return styles.savedBadge
+  if (source === "workspace" && !hasSavedDraft) return styles.unsavedBadge
+  if (source === "workspace") return styles.savedBadge
+  if (source === "preview") return styles.previewBadge
+  return styles.unavailableBadge
+}
+
+function draftBadgeLabel(run: ProjectWorkspaceSaveRun, source: StudioLyricsDraftSource, dirty: boolean, hasSavedDraft: boolean): string {
+  if (run.status === "saving") return "Saving"
+  if (run.status === "failed") return "Needs attention"
+  if (dirty) return "Unsaved changes"
+  if (run.status === "saved") return "Saved"
+  if (source === "workspace" && !hasSavedDraft) return "New draft"
+  if (source === "workspace") return "Saved draft"
+  if (source === "preview") return "Preview draft"
+  return "Draft sync unavailable"
+}
+
+function draftSaveDescription(run: ProjectWorkspaceSaveRun, source: StudioLyricsDraftSource, dirty: boolean, hasSavedDraft: boolean): string {
+  if (run.status === "saving") return "Waiting for Mori to confirm this new revision."
+  if (run.status === "failed") return run.message ?? "Mori could not confirm this draft."
+  if (source === "preview") return "Preview words are editable but are not a saved Project draft."
+  if (source === "unavailable") return "Connect the Project workspace to save this draft."
+  if (dirty) return "Save creates a new revision for this Version."
+  if (run.status === "saved") return "Mori confirmed the saved draft revision."
+  if (!hasSavedDraft) return "No lyrics draft has been saved for this Version yet."
+  return "This Version’s saved draft is ready to refine."
+}
+
 type LyricsSuggestionsProps = {
   plan: StudioLyricsPlan
   run: StudioLyricsRunState
   draftChangedSinceReview: boolean
+  draftSaving: boolean
   onApply: (suggestionText: string) => void
   onStartOver: () => void
 }
 
-function LyricsSuggestions({ plan, run, draftChangedSinceReview, onApply, onStartOver }: LyricsSuggestionsProps) {
+function LyricsSuggestions({ plan, run, draftChangedSinceReview, draftSaving, onApply, onStartOver }: LyricsSuggestionsProps) {
   const [suggestionDrafts, setSuggestionDrafts] = useState<Record<string, string>>(() => suggestionDraftMap(run.suggestions))
   const [selectedSuggestionRef, setSelectedSuggestionRef] = useState<string | null>(() => run.suggestions[0]?.suggestion_ref ?? null)
   const selectedSuggestion = run.suggestions.find((suggestion) => suggestion.suggestion_ref === selectedSuggestionRef) ?? run.suggestions[0] ?? null
@@ -252,7 +333,7 @@ function LyricsSuggestions({ plan, run, draftChangedSinceReview, onApply, onStar
       {run.message !== null ? <p className={styles.runMessage}>{run.message}</p> : null}
       <footer>
         <button type="button" onClick={onStartOver}><X size={12} /> Start over</button>
-        <button className={styles.primaryAction} type="button" disabled={selectedSuggestionText.trim() === "" || draftChangedSinceReview} onClick={() => onApply(selectedSuggestionText)}>Apply to draft <ArrowRight size={12} /></button>
+        <button className={styles.primaryAction} type="button" disabled={selectedSuggestionText.trim() === "" || draftChangedSinceReview || draftSaving} onClick={() => onApply(selectedSuggestionText)}>Apply to draft <ArrowRight size={12} /></button>
       </footer>
     </section>
   )
@@ -335,13 +416,4 @@ function lyricsConstraintLabel(constraint: StudioLyricsPlan["constraints"][numbe
 
 function suggestionDraftMap(suggestions: MoriLyricsSuggestion[]): Record<string, string> {
   return Object.fromEntries(suggestions.map((suggestion) => [suggestion.suggestion_ref, suggestion.text]))
-}
-
-function readStoredLyrics(storageKey: string): string | null {
-  if (typeof window === "undefined") return null
-  try {
-    return window.localStorage.getItem(storageKey)
-  } catch {
-    return null
-  }
 }

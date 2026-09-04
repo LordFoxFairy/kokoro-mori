@@ -61,10 +61,14 @@
 
 .savedBadge,
 .unsavedBadge,
-.draftOnly {
+.draftOnly,
+.savingBadge,
+.previewBadge,
+.unavailableBadge {
   display: inline-flex;
   min-height: 24px;
   align-items: center;
+  gap: 5px;
   padding: 0 8px;
   border-radius: 999px;
   font-size: 8px;
@@ -82,11 +86,67 @@
   background: rgba(253, 231, 218, 0.84);
 }
 
+.savingBadge {
+  color: var(--mori-primary);
+  background: var(--mori-primary-soft);
+}
+
+.previewBadge {
+  color: #7868ad;
+  background: rgba(240, 237, 255, 0.78);
+}
+
+.unavailableBadge {
+  color: #896d62;
+  background: rgba(252, 241, 233, 0.86);
+}
+
+.savingBadge svg,
+.draftRecovery > svg {
+  animation: lyricDraftSpin 900ms linear infinite;
+}
+
 .lyricsWorkspace {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(270px, 0.85fr);
   align-items: stretch;
   min-height: 430px;
+}
+
+.draftRecovery {
+  display: flex;
+  min-height: 250px;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 28px;
+  color: var(--mori-muted);
+  text-align: left;
+  background:
+    radial-gradient(circle at 18% 18%, rgba(139, 114, 231, 0.1), transparent 34%),
+    rgba(255, 255, 255, 0.68);
+}
+
+.draftRecovery > svg {
+  flex: 0 0 auto;
+  color: var(--mori-primary);
+}
+
+.draftRecovery > div {
+  display: grid;
+  gap: 4px;
+}
+
+.draftRecovery strong {
+  color: var(--mori-foreground);
+  font-size: 12px;
+}
+
+.draftRecovery p {
+  max-width: 280px;
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.55;
 }
 
 .draftPanel {
@@ -166,13 +226,28 @@
 
 .draftFooter .saveButton:disabled {
   cursor: default;
-  color: var(--mori-success);
+  color: var(--mori-muted);
   opacity: 0.74;
+}
+
+.draftFooter .saveButton:disabled[data-save-status="saved"] {
+  color: var(--mori-success);
 }
 
 .textButton {
   border-color: transparent !important;
   background: transparent !important;
+}
+
+@keyframes lyricDraftSpin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .savingBadge svg,
+  .draftRecovery > svg {
+    animation: none;
+  }
 }
 
 .lyricPartner {

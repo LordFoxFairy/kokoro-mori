@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from "@testing-library/react"
 import { useState } from "react"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import type { Candidate } from "../domain"
 import { StudioVersionHistoryDrawer, StudioVersionHistoryRail } from "./studio-version-history"
 
@@ -102,6 +102,27 @@ describe("Studio Version history", () => {
 
     expect(screen.queryByRole("dialog", { name: "Version history" })).not.toBeInTheDocument()
     expect(launcher).not.toHaveFocus()
+  })
+
+  it("keeps modifier-clicks native when Studio supplies an in-place Version selector", () => {
+    const onSelectVersion = vi.fn()
+    render(<StudioVersionHistoryRail {...sharedProps} onSelectVersion={onSelectVersion} />)
+
+    const rail = screen.getByRole("complementary", { name: "Version history" })
+    const versionLink = within(rail).getByRole("link", {
+      name: "Afterglow, Current, 3:16",
+    })
+    const click = new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+      metaKey: true,
+    })
+    document.addEventListener("click", (event) => event.preventDefault(), {
+      once: true,
+    })
+    versionLink.dispatchEvent(click)
+
+    expect(onSelectVersion).not.toHaveBeenCalled()
   })
 })
 

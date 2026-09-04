@@ -1,0 +1,65 @@
+.status,
+.retry {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 9px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.status {
+  color: var(--mori-muted);
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.saving {
+  border-color: rgba(109, 92, 231, 0.18);
+  color: var(--mori-primary);
+  background: var(--mori-primary-soft);
+}
+
+.saved {
+  border-color: rgba(61, 155, 114, 0.16);
+  color: var(--mori-success);
+  background: rgba(231, 246, 239, 0.74);
+}
+
+.retry {
+  border-color: rgba(196, 121, 90, 0.2);
+  color: #9d6d59;
+  background: rgba(253, 231, 218, 0.72);
+}
+
+.retry:hover {
+  border-color: rgba(196, 121, 90, 0.36);
+  color: #7d5546;
+}
+
+.saving svg {
+  animation: spin 900ms linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .saving svg { animation: none; }
+}
+
+@media (max-width: 700px) {
+  .status,
+  .retry {
+    width: 30px;
+    min-width: 30px;
+    padding: 0;
+  }
+
+  .label { display: none; }
+}

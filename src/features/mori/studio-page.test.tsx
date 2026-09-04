@@ -6,6 +6,7 @@ import { MoriApiRequestError } from "@/lib/mori-api-client"
 import { MoriAppProvider } from "./components/mori-app-provider"
 import { previewCandidates } from "./preview-data"
 import { readGenerationQueueState } from "./generation-queue-storage"
+import { defaultStudioLyrics } from "./studio-lyrics"
 import type { StemPlaybackFactory } from "./stem-playback"
 import { StudioPageContent } from "./studio-page"
 
@@ -2061,7 +2062,7 @@ describe("Mori studio page", () => {
     expect(within(lyricPartner).queryByText("Cancelled")).not.toBeInTheDocument()
   })
 
-  it("keeps lyrics editable with an explicit local save state", () => {
+  it("keeps preview lyrics editable without presenting browser storage as a saved Project draft", () => {
     renderStudio()
 
     fireEvent.click(screen.getByRole("tab", { name: "Lyrics" }))
@@ -2069,28 +2070,250 @@ describe("Mori studio page", () => {
     const lyrics = within(lyricsEditor).getByRole("textbox", { name: "Lyrics draft" })
 
     fireEvent.change(lyrics, { target: { value: "A new line for the morning." } })
-    fireEvent.click(within(lyricsEditor).getByRole("button", { name: "Save draft" }))
+    const save = within(lyricsEditor).getByRole("button", { name: "Save draft" })
 
-    expect(within(lyricsEditor).getByText("Saved locally")).toBeInTheDocument()
+    expect(save).toBeDisabled()
+    expect(within(lyricsEditor).getByText("Preview words are editable but are not a saved Project draft.")).toBeInTheDocument()
     expect(lyrics).toHaveValue("A new line for the morning.")
+    expect(localStorage.getItem("mori.lyrics.version_preview_first_light_a")).toBeNull()
   })
 
-  it("restores a saved lyric draft for the same version", () => {
-    localStorage.clear()
-    const firstRender = renderStudio()
-
-    fireEvent.click(screen.getByRole("tab", { name: "Lyrics" }))
-    const lyricsEditor = screen.getByRole("region", { name: "Lyrics editor" })
-    const lyrics = within(lyricsEditor).getByRole("textbox", { name: "Lyrics draft" })
-    fireEvent.change(lyrics, { target: { value: "A saved line for the next take." } })
-    fireEvent.click(within(lyricsEditor).getByRole("button", { name: "Save draft" }))
-
-    firstRender.unmount()
+  it("does not hydrate a legacy local lyric value as a saved Project draft", () => {
+    localStorage.setItem("mori.lyrics.version_preview_first_light_a", "A legacy local line.")
     renderStudio()
     fireEvent.click(screen.getByRole("tab", { name: "Lyrics" }))
 
-    expect(screen.getByRole("textbox", { name: "Lyrics draft" })).toHaveValue("A saved line for the next take.")
+    expect(screen.getByRole("textbox", { name: "Lyrics draft" })).toHaveValue(defaultStudioLyrics)
+    expect(screen.getByText("Preview draft")).toBeInTheDocument()
     localStorage.clear()
+  })
+
+  it("keeps an unsaved lyric draft until the user explicitly stays or discards before opening another take", async () => {
+    renderStudio()
+
+    fireEvent.click(screen.getByRole("tab", { name: "Lyrics" }))
+    fireEvent.change(screen.getByRole("textbox", { name: "Lyrics draft" }), { target: { value: "Keep this line with the first take." } })
+    await waitFor(() => expect(screen.getByText("Unsaved changes")).toBeInTheDocument())
+
+    fireEvent.click(screen.getByRole("tab", { name: "Arrangement" }))
+    fireEvent.click(screen.getByRole("button", { name: "Select First Light · Afterglow take" }))
+    const dialog = await screen.findByRole("dialog", { name: "Save changes before opening another Version?" })
+    expect(within(dialog).getByText("Save unavailable")).toBeInTheDocument()
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Keep editing" }))
+    fireEvent.click(screen.getByRole("tab", { name: "Lyrics" }))
+    expect(screen.getByRole("textbox", { name: "Lyrics draft" })).toHaveValue("Keep this line with the first take.")
+
+    fireEvent.click(screen.getByRole("tab", { name: "Arrangement" }))
+    fireEvent.click(screen.getByRole("button", { name: "Select First Light · Afterglow take" }))
+    fireEvent.click(await screen.findByRole("button", { name: "Discard & open" }))
+    await waitFor(() => expect(screen.getByRole("button", { name: "Select First Light · Afterglow take" })).toHaveAttribute("aria-pressed", "true"))
+  })
+
+  it("saves the active Version’s lyrics before opening the requested take", async () => {
+    const projectRef = "project_switch_after_lyrics_save"
+    const versionA = previewCandidates[0].versionRef
+    const workspace = (revision: number, text: string) => ({
+      project: {
+        project_ref: projectRef,
+        title: "First Light",
+        description: "A project with two directions.",
+        current_version_ref: versionA,
+        candidate_count: 2,
+        last_activity_at: "2026-09-04T18:00:00.000Z",
+      },
+      current_song_plan: null,
+      open_version: {
+        project_ref: projectRef,
+        version_ref: versionA,
+        revision: 1,
+        updated_at: "2026-09-04T18:00:00.000Z",
+      },
+      latest_lyrics_draft: {
+        lyrics_draft_ref: "lyrics_draft_switch_a",
+        project_ref: projectRef,
+        version_ref: versionA,
+        revision,
+        text,
+        source_digest: `lyrics-switch-${revision}`,
+        updated_at: "2026-09-04T18:00:00.000Z",
+      },
+      latest_mix_revision: null,
+      active_tasks: [],
+      revision_cursor: `workspace_switch_${revision}`,
+      observed_at: "2026-09-04T18:00:00.000Z",
+    })
+    const putLyricsDraft = vi.fn<MoriApi["putLyricsDraft"]>(async (_versionRef, input) => ({
+      data: workspace(2, input.text),
+      meta: { request_id: "request_switch_lyrics_saved" },
+    }))
+
+    render(
+      <MoriAppProvider>
+        <StudioPageContent
+          candidate={previewCandidates[0]}
+          projectRef={projectRef}
+          versionRef={versionA}
+          initialSurface="lyrics"
+          api={{
+            getProject: async () => ({
+              data: workspace(1, "Saved words").project,
+              meta: { request_id: "request_switch_project" },
+            }),
+            listCandidates: async () => ({
+              data: {
+                candidates: previewCandidates.map((candidate) => ({
+                  candidate_ref: candidate.candidateRef,
+                  generation_ref: candidate.generationRef,
+                  version_ref: candidate.versionRef,
+                  project_ref: projectRef,
+                  title: candidate.title,
+                  duration_seconds: candidate.durationSeconds,
+                  audio_asset_ref: `asset_${candidate.versionRef}`,
+                  waveform_asset_ref: `waveform_${candidate.versionRef}`,
+                  style_tags: [candidate.mood.toLowerCase()],
+                  created_at: "2026-09-04T18:00:00.000Z",
+                })),
+                next_cursor: null,
+              },
+              meta: { request_id: "request_switch_candidates" },
+            }),
+            getProjectWorkspace: async () => ({
+              data: workspace(1, "Saved words"),
+              meta: { request_id: "request_switch_workspace" },
+            }),
+            putLyricsDraft,
+          }}
+          stemPlaybackFactory={createTestStemPlaybackController}
+        />
+      </MoriAppProvider>,
+    )
+
+    const lyrics = await screen.findByRole("textbox", { name: "Lyrics draft" })
+    fireEvent.change(lyrics, { target: { value: "Save this before I compare another take." } })
+    fireEvent.click(screen.getByRole("tab", { name: "Arrangement" }))
+    fireEvent.click(screen.getByRole("button", { name: "Select First Light · Afterglow take" }))
+    const dialog = await screen.findByRole("dialog", { name: "Save changes before opening another Version?" })
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save & open" }))
+
+    await waitFor(() => expect(putLyricsDraft).toHaveBeenCalledWith(
+      versionA,
+      { text: "Save this before I compare another take.", expected_revision: 1 },
+      expect.any(String),
+    ))
+    await waitFor(() => expect(screen.getByRole("button", { name: "Select First Light · Afterglow take" })).toHaveAttribute("aria-pressed", "true"))
+    expect(screen.queryByRole("dialog", { name: "Save changes before opening another Version?" })).not.toBeInTheDocument()
+  })
+
+  it("hydrates and owner-confirms a Version-bound Lyrics Draft through the Project workspace", async () => {
+    const projectRef = "project_workspace_lyrics"
+    const versionRef = "version_workspace_lyrics_b"
+    let resolveDraftSave: ((value: Awaited<ReturnType<MoriApi["putLyricsDraft"]>>) => void) | undefined
+    const putLyricsDraft = vi.fn<MoriApi["putLyricsDraft"]>(() => new Promise((resolve) => {
+      resolveDraftSave = resolve
+    }))
+    const workspace = (revision: number, text: string) => ({
+      project: {
+        project_ref: projectRef,
+        title: "Window Seat",
+        description: "A quiet, forward-moving sketch.",
+        current_version_ref: "version_workspace_lyrics_a",
+        candidate_count: 2,
+        last_activity_at: "2026-09-04T18:00:00.000Z",
+      },
+      current_song_plan: null,
+      open_version: {
+        project_ref: projectRef,
+        version_ref: versionRef,
+        revision: 2,
+        updated_at: "2026-09-04T18:01:00.000Z",
+      },
+      latest_lyrics_draft: {
+        lyrics_draft_ref: "lyrics_draft_workspace_b",
+        project_ref: projectRef,
+        version_ref: versionRef,
+        revision,
+        text,
+        source_digest: `lyrics-digest-${revision}`,
+        updated_at: "2026-09-04T18:02:00.000Z",
+      },
+      latest_mix_revision: null,
+      active_tasks: [],
+      revision_cursor: `workspace_cursor_${revision}`,
+      observed_at: "2026-09-04T18:03:00.000Z",
+    })
+
+    render(
+      <MoriAppProvider>
+        <StudioPageContent
+          candidate={previewCandidates[0]}
+          projectRef={projectRef}
+          versionRef={versionRef}
+          initialSurface="lyrics"
+          api={{
+            getProject: async () => ({
+              data: {
+                project_ref: projectRef,
+                title: "Window Seat",
+                description: "A quiet, forward-moving sketch.",
+                current_version_ref: "version_workspace_lyrics_a",
+                candidate_count: 2,
+                last_activity_at: "2026-09-04T18:00:00.000Z",
+              },
+              meta: { request_id: "request_project_workspace_lyrics" },
+            }),
+            listCandidates: async () => ({
+              data: {
+                candidates: [{
+                  candidate_ref: "candidate_workspace_lyrics_b",
+                  generation_ref: "generation_workspace_lyrics",
+                  version_ref: versionRef,
+                  project_ref: projectRef,
+                  title: "Window Seat · Wide",
+                  duration_seconds: 146,
+                  audio_asset_ref: "asset_workspace_lyrics_b",
+                  waveform_asset_ref: "waveform_workspace_lyrics_b",
+                  style_tags: ["wide", "patient"],
+                  created_at: "2026-09-04T18:00:00.000Z",
+                }],
+                next_cursor: null,
+              },
+              meta: { request_id: "request_candidates_workspace_lyrics" },
+            }),
+            getProjectWorkspace: async () => ({ data: workspace(4, "Meet me where the streetlights fade"), meta: { request_id: "request_workspace_lyrics" } }),
+            putLyricsDraft,
+          }}
+          stemPlaybackFactory={createTestStemPlaybackController}
+        />
+      </MoriAppProvider>,
+    )
+
+    const lyrics = await screen.findByRole("textbox", { name: "Lyrics draft" })
+    expect(lyrics).toHaveValue("Meet me where the streetlights fade")
+    expect(screen.getByText("Draft 04")).toBeInTheDocument()
+    fireEvent.change(lyrics, { target: { value: "A saved line for the next take." } })
+    fireEvent.click(screen.getByRole("button", { name: "Save draft" }))
+
+    await waitFor(() => expect(putLyricsDraft).toHaveBeenCalledWith(
+      versionRef,
+      { text: "A saved line for the next take.", expected_revision: 4 },
+      expect.any(String),
+    ))
+    expect(screen.getByRole("status", { name: "Saving Project workspace" })).toBeInTheDocument()
+    const savingLyrics = screen.getByRole("textbox", { name: "Lyrics draft" })
+    expect(savingLyrics).toHaveAttribute("readonly")
+    fireEvent.change(savingLyrics, { target: { value: "This cannot overwrite the pending save." } })
+    expect(savingLyrics).toHaveValue("A saved line for the next take.")
+
+    resolveDraftSave?.({ data: workspace(5, "A saved line for the next take."), meta: { request_id: "request_lyrics_saved" } })
+
+    await waitFor(() => expect(screen.getByText("Draft 05")).toBeInTheDocument())
+    expect(screen.getByRole("textbox", { name: "Lyrics draft" })).toHaveValue("A saved line for the next take.")
+    await waitFor(() => expect(screen.getByRole("status", { name: "Project workspace saved" })).toBeInTheDocument())
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Lyrics draft" }), { target: { value: "A later unsaved lyric." } })
+    await waitFor(() => expect(screen.queryByRole("status", { name: "Project workspace saved" })).not.toBeInTheDocument())
+    expect(screen.getByText("Unsaved changes")).toBeInTheDocument()
   })
 
   it("surfaces vocal removal as the default separation path and keeps other parts explicit", () => {

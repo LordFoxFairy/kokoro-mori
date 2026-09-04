@@ -251,6 +251,13 @@ Commit       Apply to draft；应用后仍可 Undo，最终由 Save draft 持久
 Lyrics Revision seam：一次请求默认返回两个可切换 Suggestion，运行中展示 snapshot / SSE 进度并允许取消，
 失败时保留已复核方向供重试；BFF 未接通时明确显示离线状态，不在组件内伪造歌词结果。
 
+Lyrics Draft 的保存与 AI Revision 分开：AI Revision 只给出可选择、可编辑的建议，`Save draft` 才会创建
+Version-bound、不可变的 Workspace revision。浏览器不得把 localStorage 当作 Draft 事实；显式 Studio URL 优先于
+历史 Open Version，确认 Open Version 后才允许写入。保存时锁定词稿与 Apply / Undo；只有返回的完整 projection
+精确匹配输入和下一 revision 后才显示 `Saved`。临时网络失败保留原命令和 `Idempotency-Key`，冲突要求 Refresh。
+若用户带着未保存文字打开另一 Version，必须显式选择 Keep editing、Discard & open 或 Save & open；后者只在
+owner 确认新 revision 后完成跳转。preview 词稿可以编辑，但不可显示为已保存或跨设备可恢复。
+
 ### Voice & Stems 的图层工作流
 
 Add Vocals、Add Instrumental 与 Separate mix 统一留在当前 Version 的 **Voice & stems** 工作面，不复制 Tad
@@ -439,6 +446,11 @@ Song Plan、Lyrics Draft 与 Open Version 各自带自己的 `expected_revision`
 网络失败保留原 command 和原 `Idempotency-Key` 重试，`409` 则保留用户文字并要求刷新/rebase。显式 Studio URL
 优先于保存的 Open Version；Open、Playing、Selected 与 Current 永远不合并。机器事实源见
 [`contract/openapi/mori-project-workspace.v1.json`](../contract/openapi/mori-project-workspace.v1.json)。
+
+当前浏览器接入顺序固定为：读取 Workspace → 将 URL 指定的 Version 作为 Open Version 精确确认 → 打开该 Version
+的 Lyrics Draft → 执行 owner-confirmed 保存。Studio 顶栏只展示当前 Workspace command 的 Saving / Saved / Retry；
+任何新的未保存编辑都会覆盖旧的 `Saved` 提示。Save 响应先进入 projection context check，旧 Project / Version 的
+迟到响应不得改变当前编辑面。这样即使用户在多个 Studio 窗口间切换，也不会把歌词写到另一个 Version 或由旧响应覆盖。
 
 ### Lyrics Revision API
 
