@@ -7,7 +7,6 @@ import { MoriAppProvider } from "./components/mori-app-provider"
 import { previewCandidates } from "./preview-data"
 import type { StemPlaybackFactory } from "./stem-playback"
 import { StudioPageContent } from "./studio-page"
-import styles from "./mori-workspace.module.css"
 
 const createTestStemPlaybackController: StemPlaybackFactory = () => ({
   setTracks: () => undefined,
@@ -33,7 +32,9 @@ describe("Mori studio page", () => {
     const workspaceTabs = screen.getByRole("tablist", { name: "Studio workspace" })
     const arrangementTab = within(workspaceTabs).getByRole("tab", { name: "Arrangement" })
     expect(arrangementTab).toHaveAttribute("aria-selected", "true")
-    expect(screen.getByRole("button", { name: "Preview" })).toHaveClass(styles.studioPreviewButton)
+    expect(screen.queryByRole("button", { name: "Preview" })).not.toBeInTheDocument()
+    expect(screen.getByText("Current · saved")).toBeInTheDocument()
+    expect(screen.queryByText("version_preview_first_light_a")).not.toBeInTheDocument()
 
     fireEvent.keyDown(arrangementTab, { key: "ArrowDown" })
     const lyricsTab = within(workspaceTabs).getByRole("tab", { name: "Lyrics" })
@@ -44,7 +45,7 @@ describe("Mori studio page", () => {
     expect(screen.getByRole("region", { name: "Lyrics editor" })).toBeInTheDocument()
 
     fireEvent.keyDown(lyricsTab, { key: "End" })
-    const stemsTab = within(workspaceTabs).getByRole("tab", { name: "Stems" })
+    const stemsTab = within(workspaceTabs).getByRole("tab", { name: "Voice & stems" })
     expect(stemsTab).toHaveAttribute("aria-selected", "true")
     expect(stemsTab).toHaveFocus()
     expect(screen.getByRole("region", { name: "Stems editor" })).toBeInTheDocument()
@@ -1030,7 +1031,7 @@ describe("Mori studio page", () => {
   it("defaults to a focused isolate-part plan and makes its requested part explicit", () => {
     renderStudio()
 
-    fireEvent.click(screen.getByRole("tab", { name: "Stems" }))
+    fireEvent.click(screen.getByRole("tab", { name: "Voice & stems" }))
     const stemsEditor = screen.getByRole("region", { name: "Stems editor" })
     expect(within(stemsEditor).getByRole("button", { name: "Isolate a part" })).toHaveAttribute("aria-pressed", "true")
     expect(within(stemsEditor).getByRole("combobox", { name: "Part to isolate" })).toHaveValue("vocals")
@@ -1052,7 +1053,7 @@ describe("Mori studio page", () => {
   it("requires a meaningful multi-target selection for custom stems", () => {
     renderStudio()
 
-    fireEvent.click(screen.getByRole("tab", { name: "Stems" }))
+    fireEvent.click(screen.getByRole("tab", { name: "Voice & stems" }))
     const stemsEditor = screen.getByRole("region", { name: "Stems editor" })
     fireEvent.click(within(stemsEditor).getByRole("button", { name: "Custom stems" }))
 
@@ -1075,7 +1076,7 @@ describe("Mori studio page", () => {
   it("keeps Add vocals and Add instrumental as contextual Stems workflows", () => {
     renderStudio()
 
-    fireEvent.click(screen.getByRole("tab", { name: "Stems" }))
+    fireEvent.click(screen.getByRole("tab", { name: "Voice & stems" }))
     const stemsEditor = screen.getByRole("region", { name: "Stems editor" })
     expect(within(stemsEditor).getByRole("button", { name: "Separate mix" })).toHaveAttribute("aria-pressed", "true")
     expect(within(stemsEditor).getByRole("button", { name: "Add vocals" })).toBeInTheDocument()
@@ -1109,7 +1110,7 @@ describe("Mori studio page", () => {
   it("preserves an unsubmitted layer draft while comparing Stems workflows", () => {
     renderStudio()
 
-    fireEvent.click(screen.getByRole("tab", { name: "Stems" }))
+    fireEvent.click(screen.getByRole("tab", { name: "Voice & stems" }))
     const stemsEditor = screen.getByRole("region", { name: "Stems editor" })
     fireEvent.click(within(stemsEditor).getByRole("button", { name: "Add vocals" }))
     fireEvent.change(within(stemsEditor).getByRole("textbox", { name: "Lyrics for vocal layer" }), {
@@ -1173,7 +1174,7 @@ describe("Mori studio page", () => {
       }),
     })
 
-    fireEvent.click(screen.getByRole("tab", { name: "Stems" }))
+    fireEvent.click(screen.getByRole("tab", { name: "Voice & stems" }))
     const stemsEditor = screen.getByRole("region", { name: "Stems editor" })
     fireEvent.click(within(stemsEditor).getByRole("button", { name: "Add vocals" }))
     const layerComposer = within(stemsEditor).getByRole("region", { name: "Add vocals workflow" })
@@ -1243,7 +1244,7 @@ describe("Mori studio page", () => {
       },
     })
 
-    fireEvent.click(screen.getByRole("tab", { name: "Stems" }))
+    fireEvent.click(screen.getByRole("tab", { name: "Voice & stems" }))
     let stemsEditor = screen.getByRole("region", { name: "Stems editor" })
     fireEvent.click(within(stemsEditor).getByRole("button", { name: "Add vocals" }))
     let layerComposer = within(stemsEditor).getByRole("region", { name: "Add vocals workflow" })
@@ -1258,7 +1259,7 @@ describe("Mori studio page", () => {
     await waitFor(() => expect(within(layerComposer).getByRole("progressbar", { name: "Studio layer progress" })).toHaveAttribute("aria-valuenow", "44"))
 
     fireEvent.click(screen.getByRole("tab", { name: "Lyrics" }))
-    fireEvent.click(screen.getByRole("tab", { name: "Stems" }))
+    fireEvent.click(screen.getByRole("tab", { name: "Voice & stems" }))
 
     stemsEditor = screen.getByRole("region", { name: "Stems editor" })
     expect(within(stemsEditor).getByRole("button", { name: "Add vocals" })).toHaveAttribute("aria-pressed", "true")
@@ -1352,7 +1353,7 @@ describe("Mori studio page", () => {
     expect(await within(exportDialog).findByRole("status")).toHaveTextContent("Waiting to render MP3")
     fireEvent.click(within(exportDialog).getByRole("button", { name: "Close export" }))
 
-    fireEvent.click(screen.getByRole("tab", { name: "Stems" }))
+    fireEvent.click(screen.getByRole("tab", { name: "Voice & stems" }))
     const stemsEditor = screen.getByRole("region", { name: "Stems editor" })
     fireEvent.click(within(stemsEditor).getByRole("button", { name: "Auto split" }))
     fireEvent.click(within(stemsEditor).getByRole("checkbox", { name: "Export MIDI transcription" }))
@@ -1432,14 +1433,14 @@ describe("Mori studio page", () => {
       },
     })
 
-    fireEvent.click(screen.getByRole("tab", { name: "Stems" }))
+    fireEvent.click(screen.getByRole("tab", { name: "Voice & stems" }))
     let stemsEditor = screen.getByRole("region", { name: "Stems editor" })
     fireEvent.click(within(stemsEditor).getByRole("button", { name: "Review separation" }))
     fireEvent.click(within(stemsEditor).getByRole("button", { name: "Isolate vocals" }))
     await waitFor(() => expect(within(stemsEditor).getByRole("progressbar", { name: "Stem separation progress" })).toHaveAttribute("aria-valuenow", "47"))
 
     fireEvent.click(screen.getByRole("tab", { name: "Lyrics" }))
-    fireEvent.click(screen.getByRole("tab", { name: "Stems" }))
+    fireEvent.click(screen.getByRole("tab", { name: "Voice & stems" }))
 
     stemsEditor = screen.getByRole("region", { name: "Stems editor" })
     const plan = within(stemsEditor).getByRole("region", { name: "Stem separation plan" })
@@ -1482,7 +1483,7 @@ describe("Mori studio page", () => {
       }),
     })
 
-    fireEvent.click(screen.getByRole("tab", { name: "Stems" }))
+    fireEvent.click(screen.getByRole("tab", { name: "Voice & stems" }))
     const stemsEditor = screen.getByRole("region", { name: "Stems editor" })
     fireEvent.click(within(stemsEditor).getByRole("button", { name: "Review separation" }))
     fireEvent.click(within(stemsEditor).getByRole("button", { name: "Isolate vocals" }))
@@ -1547,7 +1548,7 @@ describe("Mori studio page", () => {
       getStemSeparationEvents: async () => [],
     })
 
-    fireEvent.click(screen.getByRole("tab", { name: "Stems" }))
+    fireEvent.click(screen.getByRole("tab", { name: "Voice & stems" }))
     let stemsEditor = screen.getByRole("region", { name: "Stems editor" })
     fireEvent.click(within(stemsEditor).getByRole("button", { name: "Review separation" }))
     fireEvent.click(within(stemsEditor).getByRole("button", { name: "Isolate vocals" }))
@@ -1556,18 +1557,19 @@ describe("Mori studio page", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Arrangement" }))
     fireEvent.click(screen.getByRole("button", { name: "Use First Light · Afterglow as current" }))
     await waitFor(() => expect(screen.getByRole("article", { name: "Take 2: First Light · Afterglow" })).toHaveTextContent("Current version"))
-    fireEvent.click(screen.getByRole("tab", { name: "Stems" }))
+    fireEvent.click(screen.getByRole("tab", { name: "Voice & stems" }))
 
     stemsEditor = screen.getByRole("region", { name: "Stems editor" })
     await waitFor(() => expect(within(stemsEditor).getByRole("region", { name: "Stem separation setup" })).toBeInTheDocument())
     expect(within(stemsEditor).queryByText("Version vocals")).not.toBeInTheDocument()
   })
 
-  it("uses the global player for studio preview and gives share feedback", () => {
+  it("uses the global player as the single transport and gives share feedback", () => {
     renderStudio()
 
-    fireEvent.click(screen.getByRole("button", { name: "Preview" }))
-    expect(within(screen.getByRole("region", { name: "Global player" })).getByRole("button", { name: "Pause" })).toBeInTheDocument()
+    const player = screen.getByRole("region", { name: "Global player" })
+    fireEvent.click(within(player).getByRole("button", { name: "Play" }))
+    expect(within(player).getByRole("button", { name: "Pause" })).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole("button", { name: "Share" }))
     expect(screen.getByText("Link copied")).toBeInTheDocument()

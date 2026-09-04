@@ -1,6 +1,6 @@
 "use client"
 
-import { AlertCircle, ArrowLeft, ArrowRight, AudioLines, AudioWaveform, Check, Download, FileText, History, LoaderCircle, Pause, Play, RotateCcw, Share2, Sparkles, X } from "lucide-react"
+import { AlertCircle, ArrowLeft, ArrowRight, AudioLines, AudioWaveform, Check, Download, FileText, History, LoaderCircle, Play, RotateCcw, Share2, Sparkles, X } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react"
 import {
@@ -806,16 +806,6 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
     return revision
   }
 
-  const preview = () => {
-    if (activeCandidate === null) return
-    if (playerCandidate?.versionRef === activeCandidate.versionRef) {
-      setPlaying(!playing)
-      return
-    }
-    selectPlayerCandidate(activeCandidate)
-    setPlaying(true)
-  }
-
   const selectTake = (take: Candidate) => {
     if (take.versionRef !== activeVersionRefRef.current) setVersionHistoryOpen(false)
     setActiveCandidate(take)
@@ -1037,8 +1027,6 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
   const remasterRun = isStudioRemasterPlan(studioChangeRun.plan)
   const remasterActive = remasterRun && isActiveStudioChangeStatus(studioChangeRun.status)
   const finishActive = remasterActive || releaseWorkflow.active
-  const isActiveVersionPlaying = playerCandidate?.versionRef === activeCandidate?.versionRef && playing
-
   function navigateStudioTools(event: ReactKeyboardEvent<HTMLButtonElement>, currentTool: StudioTool) {
     const nextTool = studioToolForKey(event.key, currentTool)
     if (nextTool === null) return
@@ -1091,12 +1079,16 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
           <div className={styles.studioToolList} role="tablist" aria-label="Studio workspace">
             <button className={activeTool === "arrangement" ? styles.studioToolActive : ""} id="mori-studio-tool-arrangement" type="button" role="tab" aria-selected={activeTool === "arrangement"} aria-controls="mori-studio-panel-arrangement" tabIndex={activeTool === "arrangement" ? 0 : -1} onKeyDown={(event) => navigateStudioTools(event, "arrangement")} onClick={() => setActiveTool("arrangement")}><AudioLines size={15} /> Arrangement</button>
             <button className={activeTool === "lyrics" ? styles.studioToolActive : ""} id="mori-studio-tool-lyrics" type="button" role="tab" aria-selected={activeTool === "lyrics"} aria-controls="mori-studio-panel-lyrics" tabIndex={activeTool === "lyrics" ? 0 : -1} onKeyDown={(event) => navigateStudioTools(event, "lyrics")} onClick={() => setActiveTool("lyrics")}><FileText size={15} /> Lyrics</button>
-            <button className={activeTool === "stems" ? styles.studioToolActive : ""} id="mori-studio-tool-stems" type="button" role="tab" aria-selected={activeTool === "stems"} aria-controls="mori-studio-panel-stems" tabIndex={activeTool === "stems" ? 0 : -1} onKeyDown={(event) => navigateStudioTools(event, "stems")} onClick={() => setActiveTool("stems")}><AudioWaveform size={15} /> Stems</button>
+            <button className={activeTool === "stems" ? styles.studioToolActive : ""} id="mori-studio-tool-stems" type="button" role="tab" aria-selected={activeTool === "stems"} aria-controls="mori-studio-panel-stems" tabIndex={activeTool === "stems" ? 0 : -1} onKeyDown={(event) => navigateStudioTools(event, "stems")} onClick={() => setActiveTool("stems")}><AudioWaveform size={15} /> Voice &amp; stems</button>
           </div>
-          <div className={styles.studioSidebarBottom}><span>Version</span><strong>{activeCandidate.versionRef}</strong></div>
+          <div className={styles.studioSidebarBottom}>
+            <span>Version state</span>
+            <strong>{activeCandidate.versionRef === currentVersionRef ? "Current · saved" : "Open take · not current"}</strong>
+            <small>AI changes create new takes.</small>
+          </div>
         </aside>
         <section className={styles.studioCanvas} aria-label="Studio editor">
-          <div className={styles.studioCanvasTop}><div><span className={styles.eyebrow}><span className={styles.eyebrowDot} />Editing with intention</span><h2>Shape the feeling.</h2></div><button className={`${styles.generateButton} ${styles.studioPreviewButton}`} type="button" aria-label={isActiveVersionPlaying ? "Pause" : "Preview"} onClick={preview}>{isActiveVersionPlaying ? <Pause size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" />}<span>{isActiveVersionPlaying ? "Pause" : "Preview"}</span></button></div>
+          <div className={styles.studioCanvasTop}><div><span className={styles.eyebrow}><span className={styles.eyebrowDot} />Editing with intention</span><h2>Shape the feeling.</h2></div></div>
           <div id="mori-studio-panel-arrangement" role="tabpanel" aria-labelledby="mori-studio-tool-arrangement" hidden={activeTool !== "arrangement"}>
             {activeTool === "arrangement" ? <ArrangementEditor candidate={activeCandidate} takes={studioCandidates} structure={hasPreviewProjectContent ? previewSongPlan.structure : wholeSongStructure} lyricsPreview={hasPreviewProjectContent ? defaultStudioLyrics : ""} currentVersionRef={currentVersionRef} playerVersionRef={playerCandidate?.versionRef ?? ""} positionSeconds={playerCandidate?.versionRef === activeCandidate.versionRef ? positionSeconds : 0} playing={playerCandidate?.versionRef === activeCandidate.versionRef && playing} initialIntent={initialIntent} studioChangeRun={studioChangeRun} currentVersionCommitRun={currentVersionCommitRun} onSeekTimeline={(nextPositionSeconds) => seekTimeline(activeCandidate, nextPositionSeconds)} onGenerateStudioChange={(plan) => { void generateStudioChange(plan) }} onCancelStudioChange={() => { void cancelStudioChange() }} onResetStudioChange={resetStudioChange} onSelectTake={selectTake} onPreviewTake={previewTake} onPromoteTake={(take) => { void commitCurrentVersion(take) }} onRetryCurrentVersion={retryCurrentVersionCommit} onDismissCurrentVersion={dismissCurrentVersionCommit} onOpenLyrics={() => {
               setActiveTool("lyrics")

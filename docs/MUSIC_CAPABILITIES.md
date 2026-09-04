@@ -39,7 +39,7 @@ Idea / Reference
 | 探索 | Generation / Candidate | Create Queue / Project | 生成多个方向、取消、重试、A/B 试听 | Candidates |
 | 编曲 | Version / Timeline range | Studio · Arrangement | Add part、Replace section、Extend、Transform | Take Lanes |
 | 歌词 | Lyrics draft / Section | Studio · Lyrics | 续写、改写、押韵、结构调整、按段落应用 | Lyrics revision |
-| 声音 | Stem / Mix | Studio · Stems | Separate、Add vocal、Add instrumental、Remove FX、Mute/Solo | Stem takes / Mix revision |
+| 声音 | Stem / Mix | Studio · Voice & stems | Separate、Add vocal、Add instrumental、Remove FX、Mute/Solo | Stem takes / Mix revision |
 | 完成 | Export / Release | Studio / Project | Remaster、全曲导出、Release artwork 与 draft；MV 后置 | Export / Release draft |
 | 复用 | Asset | Library | Reference、Voice、Persona、Style preset | 可跨项目复用资产 |
 

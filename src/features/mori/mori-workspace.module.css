@@ -2942,11 +2942,16 @@
 
 .studioSidebarBottom strong {
   overflow: hidden;
-  color: var(--mori-muted);
-  font-family: var(--mori-font-mono);
-  font-size: 9px;
-  font-weight: 500;
+  color: var(--mori-foreground);
+  font-size: 11px;
+  font-weight: 700;
   text-overflow: ellipsis;
+}
+
+.studioSidebarBottom small {
+  color: var(--mori-muted);
+  font-size: 9px;
+  line-height: 1.45;
 }
 
 .studioCanvas {
@@ -2973,10 +2978,6 @@
   font-size: clamp(31px, 4vw, 48px);
   font-weight: 400;
   letter-spacing: -0.06em;
-}
-
-.studioPreviewButton {
-  flex: 0 0 auto;
 }
 
 .lyricsCard {
@@ -4969,12 +4970,6 @@
 
   .studioCanvasTop > div {
     min-width: 0;
-  }
-
-  .studioCanvasTop .studioPreviewButton {
-    width: auto;
-    min-height: 36px;
-    padding-inline: 14px;
   }
 
   .takeLane {
