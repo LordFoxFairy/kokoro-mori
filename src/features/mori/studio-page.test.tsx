@@ -707,6 +707,8 @@ describe("Mori studio page", () => {
   })
 
   it("keeps the previous Current until the Use take command is confirmed", async () => {
+    const originalUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`
+    window.history.replaceState({}, "", "/projects/project_preview_first_light/studio/version_preview_first_light_a?surface=arrangement")
     let releaseSelection: () => void = () => undefined
     const selectionGate = new Promise<void>((resolve) => { releaseSelection = resolve })
     const putCurrentVersion = vi.fn<MoriApi["putCurrentVersion"]>(async () => {
@@ -748,6 +750,8 @@ describe("Mori studio page", () => {
     releaseSelection()
 
     await waitFor(() => expect(within(secondTake).getByText("Current version")).toBeInTheDocument())
+    expect(window.location.pathname).toBe("/projects/project_preview_first_light/studio/version_preview_first_light_b")
+    expect(window.location.search).toBe("?surface=arrangement")
     expect(within(firstTake).getByRole("button", { name: "Use First Light as current" })).toBeInTheDocument()
     const history = screen.getByRole("complementary", { name: "Version history" })
     expect(within(history).getByRole("link", { name: /First Light · Afterglow, Current/u })).toHaveAttribute("aria-current", "page")
@@ -757,6 +761,7 @@ describe("Mori studio page", () => {
     const drawer = screen.getByRole("dialog", { name: "Version history" })
     expect(within(drawer).getByRole("link", { name: "First Light · Afterglow, Current, Open, 3:16" })).toHaveAttribute("aria-current", "page")
     expect(within(drawer).getByRole("link", { name: "First Light, Draft, 3:02" })).not.toHaveAttribute("aria-current")
+    window.history.replaceState({}, "", originalUrl)
   })
 
   it("keeps Current unchanged and safely reuses the command identity on retry", async () => {
@@ -2647,7 +2652,33 @@ describe("Mori studio page", () => {
     expect(player).toHaveTextContent("Ready when you are")
   })
 
+  it("keeps the selected Open Version, canonical URL, copied link, and browser history aligned", async () => {
+    const originalUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`
+    window.history.replaceState({}, "", "/projects/project_preview_first_light/studio/version_preview_first_light_a?surface=arrangement&intent=transform")
+    const writeText = vi.fn<(value: string) => Promise<void>>().mockResolvedValue()
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } })
+    renderStudio()
+
+    fireEvent.click(screen.getByRole("button", { name: "Select First Light · Afterglow take" }))
+
+    expect(window.location.pathname).toBe("/projects/project_preview_first_light/studio/version_preview_first_light_b")
+    expect(window.location.search).toBe("?surface=arrangement&intent=transform")
+    expect(screen.getByRole("button", { name: "Select First Light · Afterglow take" })).toHaveAttribute("aria-pressed", "true")
+
+    fireEvent.click(screen.getByRole("button", { name: "Copy link" }))
+    await screen.findByRole("button", { name: "Link copied" })
+    expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/projects/project_preview_first_light/studio/version_preview_first_light_b?surface=arrangement&intent=transform`)
+
+    window.history.replaceState({}, "", "/projects/project_preview_first_light/studio/version_preview_first_light_a?surface=arrangement&intent=transform")
+    fireEvent.popState(window)
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Select First Light take" })).toHaveAttribute("aria-pressed", "true"))
+    window.history.replaceState({}, "", originalUrl)
+  })
+
   it("confirms the Studio deep link only after the clipboard write succeeds", async () => {
+    const originalUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`
+    window.history.replaceState({}, "", "/projects/project_preview_first_light/studio/version_preview_first_light_b")
     const writeText = vi.fn<(value: string) => Promise<void>>().mockResolvedValue()
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } })
     renderStudio()
@@ -2660,7 +2691,8 @@ describe("Mori studio page", () => {
     const copiedButton = await screen.findByRole("button", { name: "Link copied" })
     expect(copiedButton).toHaveAttribute("data-link-copy-status", "copied")
     expect(copiedButton.querySelector('[data-link-copy-icon="copied"]')).toBeInTheDocument()
-    expect(writeText).toHaveBeenCalledWith(window.location.href)
+    expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/projects/project_preview_first_light/studio/version_preview_first_light_a`)
+    window.history.replaceState({}, "", originalUrl)
   })
 
   it("reports a failed Studio link copy without claiming success", async () => {

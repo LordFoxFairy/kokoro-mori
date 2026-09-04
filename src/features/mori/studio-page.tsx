@@ -45,6 +45,7 @@ import { buildStudioTimelineSections, isActiveStudioChangeStatus, type StudioCha
 import { createStudioLyricsRevisionDraft, defaultStudioLyrics, isActiveLyricsRevisionStatus, studioLyricsScopeLabel, type StudioLyricsPlan } from "./studio-lyrics"
 import { isStudioRemasterPlan, isStudioRemasterSnapshot } from "./studio-remaster"
 import { studioChangePlanFromSnapshot } from "./studio-recovery"
+import { canonicalStudioHref, studioVersionRefFromPath } from "./studio-location"
 import { createStudioStemSeparationDraft, isActiveStemSeparationStatus, stemSeparationSnapshotMatchesPlan, type StudioStemSeparationPlan } from "./studio-stems"
 import { createHtmlStemPlaybackController, type StemPlaybackFactory } from "./stem-playback"
 import { useStudioReleaseWorkflow } from "./use-studio-release-workflow"
@@ -233,6 +234,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
   })
   const activeVersionRefRef = useRef(activeVersionRef)
   const activeProjectRefRef = useRef(activeProjectRef)
+  const studioCandidatesRef = useRef(studioCandidates)
   const exportCommandEpochRef = useRef(0)
   const exportFeedbackRef = useRef<StudioExportFeedback>("idle")
   const pendingExportCommandRef = useRef<PendingExportCommand | null>(null)
@@ -258,6 +260,20 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
   }, [])
   activeVersionRefRef.current = activeVersionRef
   activeProjectRefRef.current = activeProjectRef
+  studioCandidatesRef.current = studioCandidates
+
+  useEffect(() => {
+    const restoreVersionFromLocation = () => {
+      const locationVersionRef = studioVersionRefFromPath(window.location.pathname, activeProjectRef)
+      if (locationVersionRef === null || locationVersionRef === activeVersionRefRef.current) return
+      const restoredCandidate = studioCandidatesRef.current.find((item) => item.versionRef === locationVersionRef)
+      if (restoredCandidate === undefined) return
+      setVersionHistoryOpen(false)
+      setActiveCandidate(restoredCandidate)
+    }
+    window.addEventListener("popstate", restoreVersionFromLocation)
+    return () => window.removeEventListener("popstate", restoreVersionFromLocation)
+  }, [activeProjectRef])
 
   useEffect(() => {
     const previousContext = previousStudioContextRef.current
@@ -1129,6 +1145,8 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
   const selectTake = (take: Candidate) => {
     if (take.versionRef !== activeVersionRefRef.current) setVersionHistoryOpen(false)
     setActiveCandidate(take)
+    const nextHref = canonicalStudioHref(window.location.href, activeProjectRefRef.current, take.versionRef)
+    if (nextHref !== window.location.href) window.history.pushState(null, "", nextHref)
   }
 
   const previewTake = (take: Candidate) => {
@@ -1173,8 +1191,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
       }
       setCurrentVersionRef(take.versionRef)
       setStudioCandidates((current) => current.map((item) => ({ ...item, isCurrent: item.versionRef === take.versionRef })))
-      if (take.versionRef !== activeVersionRefRef.current) setVersionHistoryOpen(false)
-      setActiveCandidate(take)
+      selectTake(take)
       pendingCurrentVersionCommandRef.current = null
       setCurrentVersionCommitRun({
         status: "succeeded",
@@ -1220,7 +1237,9 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
     setLinkCopyStatus("copying")
     try {
       if (navigator.clipboard === undefined) throw new Error("Clipboard access is unavailable")
-      await navigator.clipboard.writeText(window.location.href)
+      const versionRef = activeVersionRefRef.current
+      if (versionRef === null) throw new Error("Studio Version is unavailable")
+      await navigator.clipboard.writeText(canonicalStudioHref(window.location.href, activeProjectRefRef.current, versionRef))
       if (linkCopyAttemptRef.current !== attempt) return
       setLinkCopyStatus("copied")
     } catch {

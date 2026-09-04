@@ -134,7 +134,7 @@ ProjectWorkspaceProjection
 在契约进入实现前，先修完两个现有连续性问题：
 
 1. Project Candidate 必须能在 Overview 明确 `Set as current`，成功后才开放 Continue making。
-2. Studio 选择或提交 Take 后，canonical URL、Open Version、刷新恢复和 Copy link 必须指向同一 Version。
+2. Studio 选择或提交 Take 后，canonical URL、Open Version、刷新恢复和 Copy link 必须指向同一 Version。**已完成。**
 
 这两项是 Durable Project Memory 的入口一致性，不是额外功能。
 
@@ -144,4 +144,3 @@ ProjectWorkspaceProjection
 - 详细 API docs 登录核验完成前，只记录“官方账号门控 REST API 存在”。
 - Provider model、credits、状态名、媒体 URL 和错误原文不得进入 React component 或 Mori Domain。
 - 接入顺序：冻结官方文档证据 -> owner adapter contract -> BFF 同源 projection/command -> Mori runtime parser -> integration smoke。
-
