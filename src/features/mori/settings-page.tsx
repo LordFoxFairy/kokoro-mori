@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { Check, Headphones, Palette, Search, Sparkles, UserRound, X } from "lucide-react"
-import { useEffect, useRef, useState, type ReactNode } from "react"
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react"
 import { createPortal } from "react-dom"
 import { useMoriApp } from "./components/mori-app-provider"
 import styles from "./mori-workspace.module.css"
@@ -29,6 +29,25 @@ export function MoriSettingsPage({ returnTo = "/" }: MoriSettingsPageProps = {})
   const { railCollapsed, setRailCollapsed, preferences, updatePreferences } = useMoriApp()
   const returnLabel = settingsReturnLabel(returnTo)
   const visibleSections = sections.filter(({ label }) => label.toLocaleLowerCase().includes(navQuery.trim().toLocaleLowerCase()))
+
+  const handleSectionKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>, currentSection: SettingsSection) => {
+    if (!["ArrowDown", "ArrowLeft", "ArrowRight", "ArrowUp", "End", "Home"].includes(event.key)) return
+    event.preventDefault()
+
+    const currentIndex = visibleSections.findIndex(({ key }) => key === currentSection)
+    if (currentIndex < 0) return
+
+    let nextIndex = currentIndex
+    if (event.key === "Home") nextIndex = 0
+    if (event.key === "End") nextIndex = visibleSections.length - 1
+    if (event.key === "ArrowDown" || event.key === "ArrowRight") nextIndex = (currentIndex + 1) % visibleSections.length
+    if (event.key === "ArrowUp" || event.key === "ArrowLeft") nextIndex = (currentIndex - 1 + visibleSections.length) % visibleSections.length
+
+    const nextSection = visibleSections[nextIndex]
+    if (nextSection === undefined) return
+    setSection(nextSection.key)
+    document.getElementById(`mori-settings-tab-${nextSection.key}`)?.focus()
+  }
 
   useEffect(() => {
     const timer = window.setTimeout(() => setPortalTarget(document.body), 0)
@@ -83,7 +102,7 @@ export function MoriSettingsPage({ returnTo = "/" }: MoriSettingsPageProps = {})
     <div className={styles.settingsPage} data-testid="settings-overlay">
       <Link className={styles.settingsBackdrop} href={returnTo} aria-label="Close settings" />
       <section ref={settingsDialogRef} className={styles.settingsWindow} role="dialog" aria-modal="true" aria-labelledby="mori-settings-title">
-        <nav className={styles.settingsNav} aria-label="Settings sections">
+        <nav className={styles.settingsNav} aria-label="Settings navigation">
           <div className={styles.settingsNavBrand}>
             <div className={styles.settingsNavBrandMark} aria-hidden="true">M</div>
             <div className={styles.settingsNavBrandCopy}>
@@ -100,21 +119,26 @@ export function MoriSettingsPage({ returnTo = "/" }: MoriSettingsPageProps = {})
               onChange={(event) => setNavQuery(event.target.value)}
             />
           </label>
-          <div className={styles.settingsNavSection}>
-            <span className={styles.settingsNavLabel}>Preferences</span>
-          {visibleSections.map(({ key, label, icon: Icon }) => (
-            <button
-              className={styles.settingsNavItem}
-              type="button"
-              key={key}
-              aria-current={section === key ? "page" : undefined}
-              data-active={section === key}
-              onClick={() => setSection(key)}
-            >
-              <Icon size={16} strokeWidth={1.8} aria-hidden="true" />
-              <span>{label}</span>
-            </button>
-          ))}
+          <span className={styles.settingsNavLabel} id="mori-settings-sections-label">Preferences</span>
+          <div className={styles.settingsNavSection} role="tablist" aria-label="Settings sections">
+            {visibleSections.map(({ key, label, icon: Icon }) => (
+              <button
+                className={styles.settingsNavItem}
+                type="button"
+                key={key}
+                id={`mori-settings-tab-${key}`}
+                role="tab"
+                aria-selected={section === key}
+                aria-controls={`mori-settings-panel-${key}`}
+                tabIndex={section === key ? 0 : -1}
+                data-active={section === key}
+                onClick={() => setSection(key)}
+                onKeyDown={(event) => handleSectionKeyDown(event, key)}
+              >
+                <Icon size={16} strokeWidth={1.8} aria-hidden="true" />
+                <span>{label}</span>
+              </button>
+            ))}
           </div>
           <div className={styles.settingsNavDivider} />
           <div className={styles.settingsNavNote}>Mori music workspace</div>
@@ -132,91 +156,99 @@ export function MoriSettingsPage({ returnTo = "/" }: MoriSettingsPageProps = {})
           </header>
 
           <section className={styles.settingsMain} aria-live="polite">
-          {section === "appearance" ? (
-            <SettingsPanel icon={Palette} title="Appearance" description="Keep the studio light, quiet, and easy to scan.">
-              <SettingRow title="Theme" description="Mori uses a warm light canvas with lavender, peach, and mint accents.">
-                <div className={styles.themeChoice} aria-label="Theme">
-                  <span className={styles.themeSwatch} aria-hidden="true" />
-                  <strong>Light gradient</strong>
-                  <Check size={15} aria-hidden="true" />
-                </div>
-              </SettingRow>
-              <SettingRow title="Desktop sidebar" description="Choose how much navigation is visible when you open Mori.">
-                <SegmentedControl
-                  ariaLabel="Desktop sidebar"
-                  value={railCollapsed ? "compact" : "expanded"}
-                  options={[{ value: "expanded", label: "Expanded" }, { value: "compact", label: "Compact" }]}
-                  onChange={(value) => setRailCollapsed(value === "compact")}
-                />
-              </SettingRow>
-              <SettingRow title="Reduce motion" description="Use calmer transitions throughout the workspace.">
-                <Toggle pressed={preferences.reduceMotion} onChange={(value) => updatePreferences({ reduceMotion: value })} label={preferences.reduceMotion ? "On" : "Off"} />
-              </SettingRow>
-            </SettingsPanel>
-          ) : null}
+            <div id="mori-settings-panel-appearance" role="tabpanel" aria-labelledby="mori-settings-tab-appearance" hidden={section !== "appearance"}>
+              {section === "appearance" ? (
+                <SettingsPanel icon={Palette} title="Appearance" description="Keep the studio light, quiet, and easy to scan.">
+                  <SettingRow title="Theme" description="Mori uses a warm light canvas with lavender, peach, and mint accents.">
+                    <div className={styles.themeChoice} aria-label="Theme">
+                      <span className={styles.themeSwatch} aria-hidden="true" />
+                      <strong>Light gradient</strong>
+                      <Check size={15} aria-hidden="true" />
+                    </div>
+                  </SettingRow>
+                  <SettingRow title="Desktop sidebar" description="Choose how much navigation is visible when you open Mori.">
+                    <SegmentedControl
+                      ariaLabel="Desktop sidebar"
+                      value={railCollapsed ? "compact" : "expanded"}
+                      options={[{ value: "expanded", label: "Expanded" }, { value: "compact", label: "Compact" }]}
+                      onChange={(value) => setRailCollapsed(value === "compact")}
+                    />
+                  </SettingRow>
+                  <SettingRow title="Reduce motion" description="Use calmer transitions throughout the workspace.">
+                    <Toggle pressed={preferences.reduceMotion} onChange={(value) => updatePreferences({ reduceMotion: value })} label={preferences.reduceMotion ? "On" : "Off"} />
+                  </SettingRow>
+                </SettingsPanel>
+              ) : null}
+            </div>
 
-          {section === "playback" ? (
-            <SettingsPanel icon={Headphones} title="Playback" description="Make listening continuous without getting in the way of creating.">
-              <SettingRow title="Autoplay new takes" description="Start a newly generated direction as soon as it is ready.">
-                <Toggle pressed={preferences.autoplay} onChange={(value) => updatePreferences({ autoplay: value })} label={preferences.autoplay ? "On" : "Off"} />
-              </SettingRow>
-              <SettingRow title="After a track ends" description="Choose what the player should do next.">
-                <SegmentedControl
-                  ariaLabel="After a track ends"
-                  value={preferences.endBehavior}
-                  options={[{ value: "stop", label: "Stop" }, { value: "next", label: "Play next" }]}
-                  onChange={(value) => updatePreferences({ endBehavior: value })}
-                />
-              </SettingRow>
-            </SettingsPanel>
-          ) : null}
+            <div id="mori-settings-panel-playback" role="tabpanel" aria-labelledby="mori-settings-tab-playback" hidden={section !== "playback"}>
+              {section === "playback" ? (
+                <SettingsPanel icon={Headphones} title="Playback" description="Make listening continuous without getting in the way of creating.">
+                  <SettingRow title="Autoplay new takes" description="Start a newly generated direction as soon as it is ready.">
+                    <Toggle pressed={preferences.autoplay} onChange={(value) => updatePreferences({ autoplay: value })} label={preferences.autoplay ? "On" : "Off"} />
+                  </SettingRow>
+                  <SettingRow title="After a track ends" description="Choose what the player should do next.">
+                    <SegmentedControl
+                      ariaLabel="After a track ends"
+                      value={preferences.endBehavior}
+                      options={[{ value: "stop", label: "Stop" }, { value: "next", label: "Play next" }]}
+                      onChange={(value) => updatePreferences({ endBehavior: value })}
+                    />
+                  </SettingRow>
+                </SettingsPanel>
+              ) : null}
+            </div>
 
-          {section === "creation" ? (
-            <SettingsPanel icon={Sparkles} title="Creation" description="Set the starting point for every new idea. You can change these before generating.">
-              <SettingRow title="Default mode" description="Smart keeps the first step simple; Custom opens the full control set.">
-                <SegmentedControl
-                  ariaLabel="Default creation mode"
-                  value={preferences.defaultMode}
-                  options={[{ value: "smart", label: "Smart" }, { value: "custom", label: "Custom" }]}
-                  onChange={(value) => updatePreferences({ defaultMode: value })}
-                />
-              </SettingRow>
-              <SettingRow title="Default output" description="Choose whether new directions begin with a vocal or an instrumental arrangement.">
-                <SegmentedControl
-                  ariaLabel="Default output"
-                  value={preferences.lyricsMode}
-                  options={[{ value: "lyrics", label: "Lyrics" }, { value: "instrumental", label: "Instrumental" }]}
-                  onChange={(value) => updatePreferences({ lyricsMode: value })}
-                />
-              </SettingRow>
-              <SettingRow title="Default duration" description="The initial duration shown in the Create form.">
-                <label className={styles.settingsSelectWrap}>
-                  <span className={styles.srOnly}>Default duration</span>
-                  <select className={styles.settingsSelect} value={preferences.durationSeconds} onChange={(event) => updatePreferences({ durationSeconds: Number(event.target.value) })}>
-                    <option value="120">2 minutes</option>
-                    <option value="180">3 minutes</option>
-                    <option value="240">4 minutes</option>
-                    <option value="300">5 minutes</option>
-                  </select>
-                </label>
-              </SettingRow>
-            </SettingsPanel>
-          ) : null}
+            <div id="mori-settings-panel-creation" role="tabpanel" aria-labelledby="mori-settings-tab-creation" hidden={section !== "creation"}>
+              {section === "creation" ? (
+                <SettingsPanel icon={Sparkles} title="Creation" description="Set the starting point for every new idea. You can change these before generating.">
+                  <SettingRow title="Default mode" description="Smart keeps the first step simple; Custom opens the full control set.">
+                    <SegmentedControl
+                      ariaLabel="Default creation mode"
+                      value={preferences.defaultMode}
+                      options={[{ value: "smart", label: "Smart" }, { value: "custom", label: "Custom" }]}
+                      onChange={(value) => updatePreferences({ defaultMode: value })}
+                    />
+                  </SettingRow>
+                  <SettingRow title="Default output" description="Choose whether new directions begin with a vocal or an instrumental arrangement.">
+                    <SegmentedControl
+                      ariaLabel="Default output"
+                      value={preferences.lyricsMode}
+                      options={[{ value: "lyrics", label: "Lyrics" }, { value: "instrumental", label: "Instrumental" }]}
+                      onChange={(value) => updatePreferences({ lyricsMode: value })}
+                    />
+                  </SettingRow>
+                  <SettingRow title="Default duration" description="The initial duration shown in the Create form.">
+                    <label className={styles.settingsSelectWrap}>
+                      <span className={styles.srOnly}>Default duration</span>
+                      <select className={styles.settingsSelect} value={preferences.durationSeconds} onChange={(event) => updatePreferences({ durationSeconds: Number(event.target.value) })}>
+                        <option value="120">2 minutes</option>
+                        <option value="180">3 minutes</option>
+                        <option value="240">4 minutes</option>
+                        <option value="300">5 minutes</option>
+                      </select>
+                    </label>
+                  </SettingRow>
+                </SettingsPanel>
+              ) : null}
+            </div>
 
-          {section === "account" ? (
-            <SettingsPanel icon={UserRound} title="Account" description="The essentials for your Mori workspace.">
-              <div className={styles.accountIdentity}>
-                <div className={styles.accountAvatar} aria-hidden="true">M</div>
-                <div><strong>Mori creator</strong><span>Preview workspace</span></div>
-              </div>
-              <SettingRow title="Workspace plan" description="Preview mode keeps the complete creative loop available without provider usage.">
-                <span className={styles.settingsValue}>Preview</span>
-              </SettingRow>
-              <SettingRow title="Audio ownership" description="Generated audio will be linked to this workspace when the Music owner is connected.">
-                <span className={styles.settingsValue}>Workspace library</span>
-              </SettingRow>
-              </SettingsPanel>
-            ) : null}
+            <div id="mori-settings-panel-account" role="tabpanel" aria-labelledby="mori-settings-tab-account" hidden={section !== "account"}>
+              {section === "account" ? (
+                <SettingsPanel icon={UserRound} title="Account" description="The essentials for your Mori workspace.">
+                  <div className={styles.accountIdentity}>
+                    <div className={styles.accountAvatar} aria-hidden="true">M</div>
+                    <div><strong>Mori creator</strong><span>Preview workspace</span></div>
+                  </div>
+                  <SettingRow title="Workspace plan" description="Preview mode keeps the complete creative loop available without provider usage.">
+                    <span className={styles.settingsValue}>Preview</span>
+                  </SettingRow>
+                  <SettingRow title="Audio ownership" description="Generated audio will be linked to this workspace when the Music owner is connected.">
+                    <span className={styles.settingsValue}>Workspace library</span>
+                  </SettingRow>
+                </SettingsPanel>
+              ) : null}
+            </div>
           </section>
         </div>
       </section>

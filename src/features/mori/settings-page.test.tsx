@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 import { MoriAppProvider, useMoriApp } from "./components/mori-app-provider"
 import { MoriSettingsPage } from "./settings-page"
@@ -70,11 +70,20 @@ describe("Mori settings", () => {
     expect(screen.getByRole("link", { name: "Back to studio" })).toHaveAttribute("href", "/projects/project_live_1/studio/version_live_1")
   })
 
-  it("switches between focused settings sections", () => {
+  it("switches settings sections as one keyboard-accessible tab set", () => {
     renderSettings()
 
-    fireEvent.click(screen.getByRole("button", { name: /playback/i }))
+    const sectionTabs = screen.getByRole("tablist", { name: "Settings sections" })
+    const appearanceTab = within(sectionTabs).getByRole("tab", { name: "Appearance" })
+    expect(appearanceTab).toHaveAttribute("aria-selected", "true")
 
+    fireEvent.keyDown(appearanceTab, { key: "ArrowDown" })
+    const playbackTab = within(sectionTabs).getByRole("tab", { name: "Playback" })
+    expect(playbackTab).toHaveAttribute("aria-selected", "true")
+    expect(playbackTab).toHaveFocus()
+    expect(playbackTab).toHaveAttribute("aria-controls", "mori-settings-panel-playback")
+
+    expect(screen.getByRole("tabpanel", { name: "Playback" })).toHaveAttribute("id", "mori-settings-panel-playback")
     expect(screen.getByRole("heading", { name: "Playback" })).toBeInTheDocument()
     expect(screen.getByText("Autoplay new takes")).toBeInTheDocument()
     expect(screen.queryByText("Light gradient")).not.toBeInTheDocument()
@@ -108,7 +117,7 @@ describe("Mori settings", () => {
       </MoriAppProvider>,
     )
 
-    fireEvent.click(screen.getByRole("button", { name: /creation/i }))
+    fireEvent.click(screen.getByRole("tab", { name: "Creation" }))
     fireEvent.click(screen.getByRole("button", { name: "Custom" }))
     fireEvent.click(screen.getByRole("button", { name: "Instrumental" }))
     fireEvent.change(screen.getByLabelText("Default duration"), { target: { value: "240" } })
