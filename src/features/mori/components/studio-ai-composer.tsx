@@ -193,6 +193,8 @@ export function StudioAiComposer({ selectedSection, run, initialOperation, initi
   const chooseOperation = (nextOperation: StudioChangeOperation) => {
     if (busy) return
     clearFinishedRun()
+    if (nextOperation !== operation) setInstruction("")
+    if (nextOperation !== "transform") setReferenceAssetRefs([])
     setOperation(nextOperation)
     setPlan(null)
   }
@@ -235,6 +237,7 @@ export function StudioAiComposer({ selectedSection, run, initialOperation, initi
   const chooseTransformIntent = (nextIntent: StudioTransformIntent) => {
     if (busy) return
     clearFinishedRun()
+    if (nextIntent === "cover") setReferenceAssetRefs([])
     setTransformIntent(nextIntent)
     setPlan(null)
   }

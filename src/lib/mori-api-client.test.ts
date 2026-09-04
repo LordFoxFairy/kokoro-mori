@@ -1255,6 +1255,105 @@ describe("Mori same-origin API client", () => {
     expect(response?.data.items).toEqual([])
   })
 
+  it("reads a typed creative source projection without exposing provider fields", async () => {
+    let capturedUrl = ""
+    const api = createMoriApiClient({
+      fetchImpl: async (input) => {
+        capturedUrl = String(input)
+        return new Response(JSON.stringify({
+          data: {
+            sources: [{
+              source_kind: "audio",
+              source_ref: "asset_city_lights",
+              name: "City Lights demo",
+              description: "24 sec · soft city pulse",
+              duration_seconds: 24,
+              created_at: "2026-09-04T12:00:00.000Z",
+            }],
+            next_cursor: null,
+          },
+          meta: { request_id: "request_source_1" },
+        }), { status: 200, headers: { "Content-Type": "application/json" } })
+      },
+    })
+
+    const response = await api.listCreativeSources()
+
+    expect(response.data.sources).toEqual([{
+      source_kind: "audio",
+      source_ref: "asset_city_lights",
+      name: "City Lights demo",
+      description: "24 sec · soft city pulse",
+      duration_seconds: 24,
+      created_at: "2026-09-04T12:00:00.000Z",
+    }])
+    expect(capturedUrl).toBe("/api/v1/mori/library/sources?source_kind=all")
+  })
+
+  it("keeps library pagination explicit and cursor-based", async () => {
+    let capturedUrl = ""
+    const api = createMoriApiClient({
+      fetchImpl: async (input) => {
+        capturedUrl = String(input)
+        return new Response(JSON.stringify({ data: { items: [], next_cursor: "cursor_2" }, meta: { request_id: "request_library_page_1" } }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      },
+    })
+
+    const response = await api.listLibrary?.({ kind: "version", limit: 20, cursor: "cursor_1" })
+
+    expect(capturedUrl).toBe("/api/v1/mori/library?kind=version&limit=20&cursor=cursor_1")
+    expect(response?.data.next_cursor).toBe("cursor_2")
+  })
+
+  it("reads one creative source through an encoded, kind-scoped route", async () => {
+    let capturedUrl = ""
+    const api = createMoriApiClient({
+      fetchImpl: async (input) => {
+        capturedUrl = String(input)
+        return new Response(JSON.stringify({
+          data: {
+            source_kind: "inspiration",
+            source_ref: "style/city lights",
+            name: "City Lights",
+            description: "Soft pulse · intimate glow",
+            style: "Dream pop · intimate · organic",
+            created_at: "2026-09-04T12:00:00.000Z",
+          },
+          meta: { request_id: "request_source_single_1" },
+        }), { status: 200, headers: { "Content-Type": "application/json" } })
+      },
+    })
+
+    const response = await api.getCreativeSource("inspiration", "style/city lights")
+
+    expect(capturedUrl).toBe("/api/v1/mori/library/sources/inspiration/style%2Fcity%20lights")
+    expect(response.data.source_kind).toBe("inspiration")
+    if (response.data.source_kind === "inspiration") expect(response.data.style).toBe("Dream pop · intimate · organic")
+  })
+
+  it("rejects a malformed creative source projection", async () => {
+    const api = createMoriApiClient({
+      fetchImpl: async () => new Response(JSON.stringify({
+        data: {
+          sources: [{
+            source_kind: "provider_private_voice",
+            source_ref: "voice_invalid",
+            name: "Invalid source",
+            description: "Missing a public source kind",
+            created_at: "2026-09-04T12:00:00.000Z",
+          }],
+          next_cursor: null,
+        },
+        meta: { request_id: "request_source_invalid" },
+      }), { status: 200, headers: { "Content-Type": "application/json" } }),
+    })
+
+    await expect(api.listCreativeSources()).rejects.toMatchObject({ code: "invalid_api_response" })
+  })
+
   it("reads paginated project projections through the same-origin contract", async () => {
     let capturedUrl = ""
     const api = createMoriApiClient({

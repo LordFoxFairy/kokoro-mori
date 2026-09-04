@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { renderToString } from "react-dom/server"
 import { useState } from "react"
 import { describe, expect, it, vi } from "vitest"
 import { previewCandidates } from "./preview-data"
@@ -6,6 +7,18 @@ import { MoriCatalogShell } from "./components/mori-catalog-shell"
 import { MoriAppProvider, useMoriApp } from "./components/mori-app-provider"
 
 describe("Mori application navigation", () => {
+  it("keeps the server shell viewport-neutral until the client measures mobile layout", () => {
+    const markup = renderToString(
+      <MoriAppProvider>
+        <MoriCatalogShell activeKey="library" ariaLabel="Library">
+          <div>Library content</div>
+        </MoriCatalogShell>
+      </MoriAppProvider>,
+    )
+
+    expect(markup).toContain('data-viewport-ready="false"')
+  })
+
   it("keeps product-level destinations in one shared shell", () => {
     render(
       <MoriAppProvider>

@@ -3,9 +3,9 @@
 import { ChevronDown, FileAudio, Mic2, Plus, Sparkles, X } from "lucide-react"
 import { useState } from "react"
 import {
-  previewInspirationPresets,
-  previewVoiceProfiles,
+  previewCreativeSources,
   type MoriAudioReferenceSelection,
+  type MoriCreativeLibrarySource,
   type MoriInspirationPreset,
 } from "../creative-assets"
 import styles from "./creative-source-dock.module.css"
@@ -20,6 +20,7 @@ type CreativeSourceDockProps = {
   onRemoveReference: () => void
   onVoiceChange: (voiceRef: string | null) => void
   onInspirationChange: (preset: MoriInspirationPreset | null) => void
+  creativeSources?: readonly MoriCreativeLibrarySource[]
 }
 
 type OpenPicker = "voice" | "inspiration" | null
@@ -34,10 +35,23 @@ export function CreativeSourceDock({
   onRemoveReference,
   onVoiceChange,
   onInspirationChange,
+  creativeSources,
 }: CreativeSourceDockProps) {
   const [openPicker, setOpenPicker] = useState<OpenPicker>(null)
-  const selectedVoice = previewVoiceProfiles.find((profile) => profile.ref === voiceRef) ?? null
-  const selectedInspiration = previewInspirationPresets.find((preset) => preset.ref === inspirationRef) ?? null
+  const sourceCatalog: readonly MoriCreativeLibrarySource[] = creativeSources ?? previewCreativeSources
+  const voiceProfiles = sourceCatalog.filter((source) => source.sourceKind === "voice").map((source) => ({
+    ref: source.ref,
+    name: source.name,
+    description: source.description,
+  }))
+  const inspirationPresets = sourceCatalog.filter((source) => source.sourceKind === "inspiration").map((source) => ({
+    ref: source.ref,
+    name: source.name,
+    description: source.description,
+    style: source.style ?? source.description,
+  }))
+  const selectedVoice = voiceProfiles.find((profile) => profile.ref === voiceRef) ?? null
+  const selectedInspiration = inspirationPresets.find((preset) => preset.ref === inspirationRef) ?? null
 
   function togglePicker(picker: Exclude<OpenPicker, null>) {
     setOpenPicker((current) => current === picker ? null : picker)
@@ -119,7 +133,7 @@ export function CreativeSourceDock({
             <button className={styles.pickerClose} type="button" onClick={() => setOpenPicker(null)} aria-label="Close voice profiles"><X /></button>
           </header>
           <div className={`${styles.pickerOptions} ${styles.pickerOptionsTwo}`}>
-            {previewVoiceProfiles.map((profile) => (
+            {voiceProfiles.map((profile) => (
               <button
                 className={styles.pickerOption}
                 type="button"
@@ -147,7 +161,7 @@ export function CreativeSourceDock({
             <button className={styles.pickerClose} type="button" onClick={() => setOpenPicker(null)} aria-label="Close inspiration presets"><X /></button>
           </header>
           <div className={styles.pickerOptions}>
-            {previewInspirationPresets.map((preset) => (
+            {inspirationPresets.map((preset) => (
               <button
                 className={styles.pickerOption}
                 type="button"

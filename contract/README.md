@@ -5,6 +5,16 @@ music owner、BFF 或其他 Kokoro 子仓的内部模型。
 
 ## 当前契约
 
+- [`openapi/mori-library.v1.json`](./openapi/mori-library.v1.json)：以 cursor 为边界的只读 Library
+  projection；使用 `kind=all|version` 返回可播放 Saved Version，不与 Creative Source 共用分页事实。
+- [`tests/mori-library.contract.test.ts`](./tests/mori-library.contract.test.ts)：检查筛选、cursor/limit、
+  `kind`、认证与 provider-neutral 字段边界。
+- [`openapi/mori-library-sources.v1.json`](./openapi/mori-library-sources.v1.json)：独立的 Creative Source
+  list/deep-link projection；使用 `source_kind=all|audio|voice|inspiration`，并按 Audio / Voice / Inspiration
+  固定各自需要的 metadata，避免 Source 受 Version 分页和状态影响。
+- [`tests/mori-library-sources.contract.test.ts`](./tests/mori-library-sources.contract.test.ts)：检查独立分页、
+  source_kind discriminator、深链读取、认证和 provider-neutral 字段边界。
+
 - [`openapi/mori-studio-change.v1.json`](./openapi/mori-studio-change.v1.json)：Studio 中
   Add part、Replace section、Extend、Transform 的 version-scoped generation command；其中 Add part 同时覆盖
   时间线插入与 whole-Version Add Vocals / Add Instrumental 图层；Transform 使用 typed `restyle`、`cover`、

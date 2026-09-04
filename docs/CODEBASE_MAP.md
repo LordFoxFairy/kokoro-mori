@@ -15,10 +15,10 @@ src/app/                         Next.js 路由入口与页面装配
 src/features/mori/domain.ts      Candidate、Project、Version、生成状态等产品类型
 src/features/mori/               Mori 页面、组件、交互状态与 fixture projection
   components/                    全局 Rail、Player、Queue、Studio 工作面
-  creative-assets.ts              本地 preview Creative source projection
+  creative-assets.ts              本地 preview Creative source projection 与 UI 映射类型
   studio-change.ts                Studio Change 领域计划与 scope 计算
   *-page.tsx / *-workspace.tsx    页面级组合和 API 状态编排
-src/lib/mori-api.ts              Mori wire type、请求 builder 与同源 client seam
+src/lib/mori-api.ts              Mori wire type、Library/Creative Source projection、请求 builder 与同源 client seam
 contract/openapi/                本仓 Studio / release 等机器契约事实源
 test/                             跨组件与契约测试（若新增独立测试目录则按 unit/contract 归类）
 ```

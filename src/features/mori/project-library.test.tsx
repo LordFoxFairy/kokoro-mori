@@ -259,6 +259,61 @@ describe("Mori catalog surfaces", () => {
     expect(screen.getByRole("link", { name: "Open First Light · Sunrise studio" })).toHaveAttribute("href", "/projects/project_preview_first_light/studio/version_mori_1")
   })
 
+  it("hydrates reusable creative sources from the live library projection", async () => {
+    const sourceItem = {
+      library_item_ref: "library_source_live_mira",
+      kind: "source" as const,
+      source_kind: "voice" as const,
+      source_ref: "voice_live_mira",
+      name: "Mira Live",
+      description: "Warm alto · intimate phrasing",
+      created_at: "2026-09-04T12:00:00.000Z",
+    }
+    const api = {
+      listLibrary: async () => ({ data: { items: [], next_cursor: null }, meta: { request_id: "request_library_source_1" } }),
+      listCreativeSources: async () => ({
+        data: {
+          sources: [{
+            source_kind: sourceItem.source_kind,
+            source_ref: sourceItem.source_ref,
+            name: sourceItem.name,
+            description: sourceItem.description,
+            created_at: sourceItem.created_at,
+          }],
+          next_cursor: null,
+        },
+        meta: { request_id: "request_library_source_1" },
+      }),
+    }
+
+    render(
+      <MoriAppProvider>
+        <LibraryPageContent api={api} />
+      </MoriAppProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Sources" }))
+
+    await waitFor(() => expect(screen.getByText("Mira Live")).toBeInTheDocument())
+    expect(screen.getByRole("link", { name: "Use Mira Live in Create" })).toHaveAttribute("href", "/create?source_kind=voice&source_ref=voice_live_mira")
+    expect(screen.queryByText("Mira")).not.toBeInTheDocument()
+    expect(screen.queryByText("City Lights demo")).not.toBeInTheDocument()
+  })
+
+  it("does not mix preview Sources into a live Version response when the Source projection fails", async () => {
+    const api = {
+      listLibrary: async () => ({ data: { items: [], next_cursor: null }, meta: { request_id: "request_library_versions_only" } }),
+      listCreativeSources: async () => { throw new Error("creative sources unavailable") },
+    }
+
+    render(<MoriAppProvider><LibraryPageContent api={api} /></MoriAppProvider>)
+    fireEvent.click(screen.getByRole("button", { name: "Sources" }))
+
+    await waitFor(() => expect(screen.getByRole("status", { name: "Library availability" })).toHaveTextContent("Creative sources are temporarily unavailable"))
+    expect(screen.queryByText("City Lights demo")).not.toBeInTheDocument()
+    expect(screen.getByText("Creative sources are temporarily unavailable")).toBeInTheDocument()
+  })
+
   it("renders a clear empty state for an empty version projection", async () => {
     const api = {
       listLibrary: async () => ({ data: { items: [], next_cursor: null }, meta: { request_id: "request_library_empty" } }),

@@ -92,8 +92,9 @@ Voice profile 与 **Vocal direction** 必须分开：前者是可复用资产身
 这一层吸收 Suno 在 Create 中把 Audio、Voice、Inspo 放在创作上下文里的做法，也吸收 Tad 对 Reference
 输入的明确分类；但只展示少量策展方向，避免把 Tad 的大规模标签树直接复制进首屏。Library 已用同一套
 Audio / Voice / Inspiration 语义建立可复用素材层：默认 All 视图将可播放 Version 与素材分区，Sources 视图再渐进展开
-类型筛选；Project 只留在独立的 Projects 工作区，不作为 Library 筛选或重复行。`Use in Create` 只传递
-provider-neutral 的 `source_kind` 与 `source_ref`，由 Create 校验后恢复选择。
+类型筛选；Project 只留在独立的 Projects 工作区，不作为 Library 筛选或重复行。Version 与 Creative Source 使用独立的
+cursor feed，避免一个 Version 页把 Source 挤出首屏；`Use in Create` 只传递 provider-neutral 的 `source_kind` 与
+`source_ref`，Create 再通过 source detail projection 恢复不在第一页的来源。
 当前使用确定性 preview assets，正式资产接线后位置、层级和交互保持不变。参考 Suno 的
 [Studio Library](https://help.suno.com/en/articles/13670849)、[Voices](https://help.suno.com/en/articles/11362369)
 和 [Audio Uploads](https://help.suno.com/en/articles/6141569)。

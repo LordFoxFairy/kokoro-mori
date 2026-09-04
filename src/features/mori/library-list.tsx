@@ -3,10 +3,10 @@
 import { ArrowUpRight, CircleAlert, Headphones, Music2, Pause, Play, Search, Sparkles, X } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
-import type { MoriApi, MoriLibraryItem, MoriProject } from "@/lib/mori-api"
+import type { MoriApi, MoriCreativeSource, MoriLibraryItem, MoriProject } from "@/lib/mori-api"
 import { createMoriApiClient } from "@/lib/mori-api-client"
 import type { Candidate, LibraryItem, Project } from "./domain"
-import { creativeSourceKindLabel, previewCreativeSources } from "./creative-assets"
+import { creativeSourceKindLabel, previewCreativeSources, type MoriCreativeLibrarySource } from "./creative-assets"
 import { CreativeSourceLibrary, type CreativeSourceFilter } from "./components/creative-source-library"
 import { useMoriApp } from "./components/mori-app-provider"
 import { previewCandidates, previewLibrary, previewProject } from "./preview-data"
@@ -32,7 +32,7 @@ const emptyCopy: Record<LibraryFilter, { title: string; description: string }> =
 }
 
 type LibraryPageContentProps = {
-  api?: Pick<MoriApi, "listLibrary"> & Partial<Pick<MoriApi, "listProjects">>
+  api?: Pick<MoriApi, "listLibrary"> & Partial<Pick<MoriApi, "listCreativeSources" | "listProjects">>
 }
 
 export function LibraryPageContent({ api }: LibraryPageContentProps = {}) {
@@ -40,7 +40,9 @@ export function LibraryPageContent({ api }: LibraryPageContentProps = {}) {
   const defaultApi = useMemo(() => createMoriApiClient(), [])
   const libraryApi = api ?? defaultApi
   const [libraryItems, setLibraryItems] = useState<LibraryItem[]>(previewLibrary)
+  const [librarySources, setLibrarySources] = useState<readonly MoriCreativeLibrarySource[]>(previewCreativeSources)
   const [libraryStatus, setLibraryStatus] = useState<ProjectionStatus>("loading")
+  const [sourceStatus, setSourceStatus] = useState<ProjectionStatus>("loading")
   const [projects, setProjects] = useState<Project[]>([previewProject])
   const [projectStatus, setProjectStatus] = useState<ProjectionStatus>("loading")
   const [filter, setFilter] = useState<LibraryFilter>("All")
@@ -50,29 +52,44 @@ export function LibraryPageContent({ api }: LibraryPageContentProps = {}) {
   useEffect(() => {
     let disposed = false
     const listProjects = libraryApi.listProjects
+    const listCreativeSources = libraryApi.listCreativeSources
     const projectRequest = listProjects === undefined
       ? Promise.resolve(null)
       : listProjects({ limit: 20 })
+    const sourceRequest = listCreativeSources === undefined
+      ? Promise.resolve(null)
+      : listCreativeSources({ limit: 20 })
 
     void Promise.allSettled([
       libraryApi.listLibrary("all"),
       projectRequest,
-    ]).then(([libraryResult, projectResult]) => {
+      sourceRequest,
+    ]).then(([libraryResult, projectResult, sourceResult]) => {
       if (disposed) return
 
       const libraryReady = libraryResult.status === "fulfilled"
       const projectResponse = projectResult.status === "fulfilled" ? projectResult.value : null
       const projectsReady = projectResponse !== null
-      if (!libraryReady && !projectsReady) {
+      const sourceResponse = sourceResult.status === "fulfilled" ? sourceResult.value : null
+      const sourcesReady = sourceResponse !== null
+      if (!libraryReady && !projectsReady && !sourcesReady) {
         setLibraryStatus("preview")
         setProjectStatus(listProjects === undefined ? "omitted" : "preview")
+        setSourceStatus(listCreativeSources === undefined ? "omitted" : "preview")
         return
       }
 
-      setLibraryItems(libraryReady ? toDomainLibrary(libraryResult.value.data.items) : [])
+      if (libraryReady) {
+        setLibraryItems(toDomainLibrary(libraryResult.value.data.items))
+      } else {
+        setLibraryItems([])
+      }
+      if (sourcesReady) setLibrarySources(sourceResponse.data.sources.map(toCreativeSource))
+      else if (listCreativeSources !== undefined) setLibrarySources([])
       setLibraryStatus(libraryReady ? "ready" : "unavailable")
       setProjects(projectsReady ? projectResponse.data.projects.map(toDomainProject) : [])
       setProjectStatus(listProjects === undefined ? "omitted" : projectsReady ? "ready" : "unavailable")
+      setSourceStatus(listCreativeSources === undefined ? "omitted" : sourcesReady ? "ready" : "unavailable")
     })
 
     return () => {
@@ -102,7 +119,7 @@ export function LibraryPageContent({ api }: LibraryPageContentProps = {}) {
     if (!hasQuery) return true
     return `${item.title} ${item.subtitle}`.toLowerCase().includes(normalizedQuery)
   })
-  const visibleSources = previewCreativeSources.filter((source) => {
+  const visibleSources = librarySources.filter((source) => {
     if (filter !== "All" && filter !== "Sources") return false
     const matchesSourceFilter = filter !== "Sources"
       || sourceFilter === "All sources"
@@ -115,16 +132,20 @@ export function LibraryPageContent({ api }: LibraryPageContentProps = {}) {
   })
   const resultCount = visibleVersions.length + visibleSources.length
   const showsVersions = filter === "All" || filter === "Versions"
+  const showsSources = filter === "All" || filter === "Sources"
   const unavailableKinds = [
     showsVersions && libraryStatus === "unavailable" ? "Versions" : null,
     showsVersions && projectStatus === "unavailable" ? "Current Version labels" : null,
+    showsSources && sourceStatus === "unavailable" ? "Creative sources" : null,
   ].filter((value): value is string => value !== null)
   const availabilityMessage = unavailableKinds.length === 0
     ? null
     : `${unavailableKinds.join(" and ")} are temporarily unavailable. The work that loaded successfully is still shown.`
   const unavailableEmpty = filter === "Versions" && libraryStatus === "unavailable"
     ? { title: "Versions are temporarily unavailable", description: "Creative sources are still available from their own shelf." }
-    : null
+    : filter === "Sources" && sourceStatus === "unavailable"
+      ? { title: "Creative sources are temporarily unavailable", description: "Saved Versions are still available from their own shelf." }
+      : null
   const emptyState = hasQuery
     ? {
         title: `No matches for “${query.trim()}”`,
@@ -260,7 +281,7 @@ export function LibraryPageContent({ api }: LibraryPageContentProps = {}) {
 
 function toDomainLibrary(items: MoriLibraryItem[]): LibraryItem[] {
   return [
-    ...items.map((item, index) => ({
+    ...items.filter((item): item is Extract<MoriLibraryItem, { kind: "version" }> => item.kind === "version").map((item, index) => ({
       kind: "version" as const,
       ref: item.version_ref,
       projectRef: item.project_ref,
@@ -270,6 +291,17 @@ function toDomainLibrary(items: MoriLibraryItem[]): LibraryItem[] {
       accent: index % 2 === 0 ? "lavender" as const : "peach" as const,
     })),
   ]
+}
+
+function toCreativeSource(source: MoriCreativeSource): MoriCreativeLibrarySource {
+  return {
+    sourceKind: source.source_kind,
+    ref: source.source_ref,
+    name: source.name,
+    description: source.description,
+    ...(source.source_kind === "audio" ? { durationSeconds: source.duration_seconds } : {}),
+    ...(source.source_kind === "inspiration" ? { style: source.style } : {}),
+  }
 }
 
 function toDomainProject(project: MoriProject, index: number): Project {

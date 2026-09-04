@@ -36,6 +36,8 @@ export type MoriCreativeLibrarySource = {
   ref: string
   name: string
   description: string
+  durationSeconds?: number
+  style?: string
 }
 
 export const previewReferenceAudios = [
@@ -87,6 +89,7 @@ export const previewCreativeSources = [
     ref: audio.ref,
     name: audio.name,
     description: audio.description,
+    durationSeconds: audio.durationSeconds,
   })),
   ...previewVoiceProfiles.map((voice) => ({
     sourceKind: "voice" as const,
@@ -99,14 +102,22 @@ export const previewCreativeSources = [
     ref: preset.ref,
     name: preset.name,
     description: preset.description,
+    style: preset.style,
   })),
 ] satisfies readonly MoriCreativeLibrarySource[]
 
 export function resolvePreviewCreativeSource(kind: string | undefined, ref: string | undefined): MoriCreativeSourceSelection | undefined {
-  if (ref === undefined) return undefined
-  if (kind === "audio" && previewReferenceAudios.some((audio) => audio.ref === ref)) return { kind, ref }
-  if (kind === "voice" && previewVoiceProfiles.some((voice) => voice.ref === ref)) return { kind, ref }
-  if (kind === "inspiration" && previewInspirationPresets.some((preset) => preset.ref === ref)) return { kind, ref }
+  const selection = resolveCreativeSourceSelection(kind, ref)
+  if (selection === undefined) return undefined
+  if (selection.kind === "audio" && previewReferenceAudios.some((audio) => audio.ref === selection.ref)) return selection
+  if (selection.kind === "voice" && previewVoiceProfiles.some((voice) => voice.ref === selection.ref)) return selection
+  if (selection.kind === "inspiration" && previewInspirationPresets.some((preset) => preset.ref === selection.ref)) return selection
+  return undefined
+}
+
+export function resolveCreativeSourceSelection(kind: string | undefined, ref: string | undefined): MoriCreativeSourceSelection | undefined {
+  if (ref === undefined || ref.trim() === "") return undefined
+  if (kind === "audio" || kind === "voice" || kind === "inspiration") return { kind, ref }
   return undefined
 }
 

@@ -6,6 +6,7 @@
 - [Mori 代码地图](./CODEBASE_MAP.md)
 - [Mori 当前状态](./CURRENT.md)
 - [Mori Studio Change OpenAPI](../contract/openapi/mori-studio-change.v1.json)
+- [Mori Library Sources OpenAPI](../contract/openapi/mori-library-sources.v1.json)
 - [Mori 音乐能力模型](./MUSIC_CAPABILITIES.md)
 - [Mori 产品形态基线](./PRODUCT_SHAPE.md)
 - [Suno / Tad 竞品与供应商研究](./COMPETITIVE_RESEARCH.md)

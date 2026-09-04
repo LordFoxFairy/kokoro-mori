@@ -10,6 +10,7 @@ import {
   type MoriGenerationEvent,
   type MoriApi,
   type MoriArtworkGenerationEvent,
+  type MoriCreativeSourceListOptions,
   type MoriExportInput,
   type MoriLyricsRevisionEvent,
   type MoriStemSeparationEvent,
@@ -33,6 +34,8 @@ import {
   parseLyricsRevisionReceipt,
   parseLyricsRevisionSnapshot,
   parseMoriCandidatePage,
+  parseMoriCreativeSource,
+  parseMoriCreativeSourcePage,
   parseMoriCurrentVersionSelection,
   parseMoriExportReceipt,
   parseMoriExportSnapshot,
@@ -340,10 +343,27 @@ export function createMoriApiClient(options: MoriApiClientOptions = {}): MoriApi
       const payload = await readJson(response)
       return parseSuccessResponse(response, payload, parseGenerationCancelReceipt)
     },
-    async listLibrary(kind = "all") {
-      const response = await fetchImpl(`${apiBasePath}/library?kind=${encodeURIComponent(kind)}`)
+    async listLibrary(kindOrOptions = "all") {
+      const options = typeof kindOrOptions === "string" ? { kind: kindOrOptions } : kindOrOptions
+      const query = new URLSearchParams({ kind: options.kind ?? "all" })
+      if (options.limit !== undefined) query.set("limit", String(options.limit))
+      if (options.cursor !== undefined && options.cursor !== null && options.cursor.trim() !== "") query.set("cursor", options.cursor)
+      const response = await fetchImpl(`${apiBasePath}/library?${query.toString()}`)
       const payload = await readJson(response)
       return parseSuccessResponse(response, payload, parseMoriLibraryPage)
+    },
+    async listCreativeSources(options: MoriCreativeSourceListOptions = {}) {
+      const query = new URLSearchParams({ source_kind: options.source_kind ?? "all" })
+      if (options.limit !== undefined) query.set("limit", String(options.limit))
+      if (options.cursor !== undefined && options.cursor !== null && options.cursor.trim() !== "") query.set("cursor", options.cursor)
+      const response = await fetchImpl(`${apiBasePath}/library/sources?${query.toString()}`)
+      const payload = await readJson(response)
+      return parseSuccessResponse(response, payload, parseMoriCreativeSourcePage)
+    },
+    async getCreativeSource(sourceKind, sourceRef) {
+      const response = await fetchImpl(`${apiBasePath}/library/sources/${encodeURIComponent(sourceKind)}/${encodeURIComponent(sourceRef)}`)
+      const payload = await readJson(response)
+      return parseSuccessResponse(response, payload, parseMoriCreativeSource)
     },
     async createExport(versionRef: MoriRef, input: MoriExportInput, idempotencyKey: string) {
       const response = await fetchImpl(`${apiBasePath}/versions/${encodeURIComponent(versionRef)}/exports`, {

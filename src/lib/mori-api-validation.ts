@@ -1,6 +1,7 @@
 import {
   artworkPalettes,
   artworkStyles,
+  moriCreativeSourceKinds,
   releaseVisibilities,
   stemSeparationModes,
   stemTargetKinds,
@@ -37,6 +38,8 @@ import type {
   MoriExportSource,
   MoriGenerationEvent,
   MoriLibraryItem,
+  MoriCreativeSource,
+  MoriCreativeSourceKind,
   MoriLyricsRevisionEvent,
   MoriLyricsSuggestion,
   MoriMixRevision,
@@ -225,6 +228,10 @@ function stemTargetKindArray(value: unknown): value is StemTargetKind[] {
     && value.length <= 10
     && value.every(stemTargetKind)
     && new Set(value).size === value.length
+}
+
+function moriCreativeSourceKind(value: unknown): value is MoriCreativeSourceKind {
+  return typeof value === "string" && moriCreativeSourceKinds.some((kind) => kind === value)
 }
 
 function stemSeparationStatus(value: unknown): value is StemSeparationStatus {
@@ -870,25 +877,77 @@ export function parseMoriCandidatePage(value: unknown): { candidates: MoriCandid
 }
 
 export function parseMoriLibraryItem(value: unknown): MoriLibraryItem | null {
-  if (!isRecord(value) || !nonEmptyString(value.library_item_ref) || value.kind !== "version" || !nonEmptyString(value.project_ref) || !nonEmptyString(value.project_title) || !nonEmptyString(value.version_ref) || !nonEmptyString(value.title) || !integer(value.duration_seconds, 1) || !nonEmptyString(value.audio_asset_ref) || !nonEmptyString(value.waveform_asset_ref) || !dateString(value.created_at)) return null
-  return {
-    library_item_ref: value.library_item_ref,
-    kind: "version",
-    project_ref: value.project_ref,
-    project_title: value.project_title,
-    version_ref: value.version_ref,
-    title: value.title,
-    duration_seconds: value.duration_seconds,
-    audio_asset_ref: value.audio_asset_ref,
-    waveform_asset_ref: value.waveform_asset_ref,
-    created_at: value.created_at,
+  if (!isRecord(value) || !nonEmptyString(value.library_item_ref) || !dateString(value.created_at)) return null
+  if (
+    value.kind === "version"
+    && nonEmptyString(value.project_ref)
+    && nonEmptyString(value.project_title)
+    && nonEmptyString(value.version_ref)
+    && nonEmptyString(value.title)
+    && integer(value.duration_seconds, 1)
+    && nonEmptyString(value.audio_asset_ref)
+    && nonEmptyString(value.waveform_asset_ref)
+  ) {
+    return {
+      library_item_ref: value.library_item_ref,
+      kind: "version",
+      project_ref: value.project_ref,
+      project_title: value.project_title,
+      version_ref: value.version_ref,
+      title: value.title,
+      duration_seconds: value.duration_seconds,
+      audio_asset_ref: value.audio_asset_ref,
+      waveform_asset_ref: value.waveform_asset_ref,
+      created_at: value.created_at,
+    }
   }
+  return null
 }
 
 export function parseMoriLibraryPage(value: unknown): { items: MoriLibraryItem[]; next_cursor: string | null } | null {
   if (!isRecord(value) || !Array.isArray(value.items) || !nullableString(value.next_cursor)) return null
   const items = value.items.map(parseMoriLibraryItem)
   return items.every(present) ? { items, next_cursor: value.next_cursor } : null
+}
+
+export function parseMoriCreativeSource(value: unknown): MoriCreativeSource | null {
+  if (!isRecord(value) || !moriCreativeSourceKind(value.source_kind) || !nonEmptyString(value.source_ref) || !nonEmptyString(value.name) || !nonEmptyString(value.description) || !dateString(value.created_at)) return null
+  if (value.source_kind === "audio" && integer(value.duration_seconds, 1)) {
+    return {
+      source_kind: "audio",
+      source_ref: value.source_ref,
+      name: value.name,
+      description: value.description,
+      duration_seconds: value.duration_seconds,
+      created_at: value.created_at,
+    }
+  }
+  if (value.source_kind === "voice") {
+    return {
+      source_kind: "voice",
+      source_ref: value.source_ref,
+      name: value.name,
+      description: value.description,
+      created_at: value.created_at,
+    }
+  }
+  if (value.source_kind === "inspiration" && nonEmptyString(value.style)) {
+    return {
+      source_kind: "inspiration",
+      source_ref: value.source_ref,
+      name: value.name,
+      description: value.description,
+      style: value.style,
+      created_at: value.created_at,
+    }
+  }
+  return null
+}
+
+export function parseMoriCreativeSourcePage(value: unknown): { sources: MoriCreativeSource[]; next_cursor: string | null } | null {
+  if (!isRecord(value) || !Array.isArray(value.sources) || !nullableString(value.next_cursor)) return null
+  const sources = value.sources.map(parseMoriCreativeSource)
+  return sources.every(present) ? { sources, next_cursor: value.next_cursor } : null
 }
 
 export function parseMoriExportReceipt(value: unknown): MoriExportReceipt | null {

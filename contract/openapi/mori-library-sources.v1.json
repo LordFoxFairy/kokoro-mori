@@ -1,0 +1,225 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Mori Library Sources API",
+    "version": "0.1.0",
+    "description": "Independent, cursor-based projections of reusable audio references, voice profiles, and inspiration presets."
+  },
+  "paths": {
+    "/api/v1/mori/library/sources": {
+      "get": {
+        "operationId": "listMoriCreativeSources",
+        "summary": "List reusable Creative Sources",
+        "description": "Returns only ready-to-use sources visible in the current session. Source pagination is independent from the playable Version Library.",
+        "security": [{ "moriSession": [] }],
+        "parameters": [
+          {
+            "name": "source_kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["all", "audio", "voice", "inspiration"],
+              "default": "all"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "description": "Opaque cursor returned as next_cursor; clients must not parse or construct it.",
+            "schema": { "type": "string", "minLength": 1, "maxLength": 500 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of reusable sources",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiCreativeSourcePage" } } }
+          },
+          "400": {
+            "description": "The source kind, limit, or cursor is malformed",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiErrorResponse" } } }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiErrorResponse" } } }
+          }
+        }
+      }
+    },
+    "/api/v1/mori/library/sources/{source_kind}/{source_ref}": {
+      "get": {
+        "operationId": "getMoriCreativeSource",
+        "summary": "Read one reusable Creative Source",
+        "description": "Resolves a source for a Create deep link without requiring it to appear on the first list page.",
+        "security": [{ "moriSession": [] }],
+        "parameters": [
+          {
+            "name": "source_kind",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "enum": ["audio", "voice", "inspiration"] }
+          },
+          {
+            "name": "source_ref",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "minLength": 1, "maxLength": 500 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The requested reusable source",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiCreativeSource" } } }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiErrorResponse" } } }
+          },
+          "404": {
+            "description": "The source does not exist, is not visible, or is no longer ready",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiErrorResponse" } } }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "moriSession": { "type": "apiKey", "in": "cookie", "name": "kokoro_session" }
+    },
+    "schemas": {
+      "MoriAudioCreativeSource": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["source_kind", "source_ref", "name", "description", "duration_seconds", "created_at"],
+        "properties": {
+          "source_kind": { "const": "audio" },
+          "source_ref": { "type": "string", "minLength": 1, "maxLength": 500 },
+          "name": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "description": { "type": "string", "minLength": 1, "maxLength": 500 },
+          "duration_seconds": { "type": "integer", "minimum": 1 },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "MoriVoiceCreativeSource": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["source_kind", "source_ref", "name", "description", "created_at"],
+        "properties": {
+          "source_kind": { "const": "voice" },
+          "source_ref": { "type": "string", "minLength": 1, "maxLength": 500 },
+          "name": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "description": { "type": "string", "minLength": 1, "maxLength": 500 },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "MoriInspirationCreativeSource": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["source_kind", "source_ref", "name", "description", "style", "created_at"],
+        "properties": {
+          "source_kind": { "const": "inspiration" },
+          "source_ref": { "type": "string", "minLength": 1, "maxLength": 500 },
+          "name": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "description": { "type": "string", "minLength": 1, "maxLength": 500 },
+          "style": { "type": "string", "minLength": 1, "maxLength": 500 },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "MoriCreativeSource": {
+        "oneOf": [
+          { "$ref": "#/components/schemas/MoriAudioCreativeSource" },
+          { "$ref": "#/components/schemas/MoriVoiceCreativeSource" },
+          { "$ref": "#/components/schemas/MoriInspirationCreativeSource" }
+        ],
+        "discriminator": {
+          "propertyName": "source_kind",
+          "mapping": {
+            "audio": "#/components/schemas/MoriAudioCreativeSource",
+            "voice": "#/components/schemas/MoriVoiceCreativeSource",
+            "inspiration": "#/components/schemas/MoriInspirationCreativeSource"
+          }
+        }
+      },
+      "MoriCreativeSourcePage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sources", "next_cursor"],
+        "properties": {
+          "sources": { "type": "array", "items": { "$ref": "#/components/schemas/MoriCreativeSource" } },
+          "next_cursor": {
+            "oneOf": [
+              { "type": "null" },
+              { "type": "string", "minLength": 1, "maxLength": 500 }
+            ]
+          }
+        }
+      },
+      "ApiCreativeSource": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["data", "meta"],
+        "properties": {
+          "data": { "$ref": "#/components/schemas/MoriCreativeSource" },
+          "meta": { "$ref": "#/components/schemas/ApiMeta" }
+        }
+      },
+      "ApiCreativeSourcePage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["data", "meta"],
+        "properties": {
+          "data": { "$ref": "#/components/schemas/MoriCreativeSourcePage" },
+          "meta": { "$ref": "#/components/schemas/ApiMeta" }
+        }
+      },
+      "ApiMeta": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["request_id"],
+        "properties": { "request_id": { "type": "string", "minLength": 1 } }
+      },
+      "ApiErrorDetail": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["field", "reason"],
+        "properties": {
+          "field": { "type": ["string", "null"] },
+          "reason": { "type": "string", "minLength": 1 }
+        }
+      },
+      "ApiError": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "message", "retryable", "details"],
+        "properties": {
+          "code": { "type": "string", "minLength": 1 },
+          "message": { "type": "string", "minLength": 1 },
+          "retryable": { "type": "boolean" },
+          "details": {
+            "oneOf": [
+              { "type": "null" },
+              { "type": "array", "items": { "$ref": "#/components/schemas/ApiErrorDetail" } }
+            ]
+          }
+        }
+      },
+      "ApiErrorResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["error", "meta"],
+        "properties": {
+          "error": { "$ref": "#/components/schemas/ApiError" },
+          "meta": { "$ref": "#/components/schemas/ApiMeta" }
+        }
+      }
+    }
+  }
+}

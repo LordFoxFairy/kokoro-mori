@@ -620,6 +620,63 @@ describe("Mori workspace", () => {
     expect(onGenerate.mock.calls[0]?.[0].referenceAssetRefs).toEqual(["asset_preview_city_lights"])
   })
 
+  it("hydrates a live Voice deep link through the source detail projection", async () => {
+    const getCreativeSource = vi.fn<MoriApi["getCreativeSource"]>(async () => ({
+      data: {
+        source_kind: "voice",
+        source_ref: "voice_live_mira",
+        name: "Mira Live",
+        description: "Warm alto · intimate phrasing",
+        created_at: "2026-09-04T12:00:00.000Z",
+      },
+      meta: { request_id: "request_live_voice" },
+    }))
+    const api = {
+      ...createWorkspaceApi(),
+      getCreativeSource,
+    }
+
+    render(
+      <MoriAppProvider>
+        <MoriWorkspace api={api} initialCreativeSource={{ kind: "voice", ref: "voice_live_mira" }} />
+      </MoriAppProvider>,
+    )
+
+    await waitFor(() => expect(getCreativeSource).toHaveBeenCalledWith("voice", "voice_live_mira"))
+    await waitFor(() => expect(screen.getByRole("button", { name: "Change voice profile Mira Live" })).toBeInTheDocument())
+    expect(screen.getByRole("button", { name: "Song with lyrics" })).toHaveAttribute("aria-pressed", "true")
+  })
+
+  it("uses the live Source catalog for Create pickers", async () => {
+    const listCreativeSources = vi.fn<MoriApi["listCreativeSources"]>(async () => ({
+      data: {
+        sources: [{
+          source_kind: "inspiration",
+          source_ref: "style_live_night_drive",
+          name: "Night Drive",
+          description: "Nocturnal rhythm · glassy motion",
+          style: "Future garage · nocturnal · glassy motion",
+          created_at: "2026-09-04T12:00:00.000Z",
+        }],
+        next_cursor: null,
+      },
+      meta: { request_id: "request_live_sources" },
+    }))
+    const api = {
+      ...createWorkspaceApi(),
+      listCreativeSources,
+    }
+
+    render(<MoriAppProvider><MoriWorkspace api={api} /></MoriAppProvider>)
+
+    await waitFor(() => expect(listCreativeSources).toHaveBeenCalledWith({ limit: 20 }))
+    fireEvent.click(screen.getByRole("tab", { name: "Custom" }))
+    fireEvent.click(screen.getByRole("button", { name: "Choose inspiration" }))
+    await waitFor(() => expect(screen.getByRole("button", { name: "Use Night Drive inspiration" })).toBeInTheDocument())
+    fireEvent.click(screen.getByRole("button", { name: "Use Night Drive inspiration" }))
+    expect(screen.getByLabelText("Style")).toHaveValue("Future garage · nocturnal · glassy motion")
+  })
+
   it("carries selected creative asset refs into the generation command", async () => {
     let request: GenerationCreateInput | null = null
     const api: Pick<MoriApi, "createSongPlan" | "createGeneration" | "getGeneration" | "getGenerationEvents" | "listCandidates" | "cancelGeneration"> = {

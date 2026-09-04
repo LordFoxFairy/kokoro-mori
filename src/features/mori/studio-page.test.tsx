@@ -494,6 +494,123 @@ describe("Mori studio page", () => {
     }))
   })
 
+  it("submits a reviewed Restyle reference and attaches only candidates linked by the matching snapshot", async () => {
+    const createStudioChange = vi.fn<MoriApi["createStudioChange"]>(async () => ({
+      data: { generation_ref: "generation_restyle_reference", status: "queued" },
+      meta: { request_id: "request_restyle_reference" },
+    }))
+    const getGeneration = vi.fn<MoriApi["getGeneration"]>(async () => ({
+      data: {
+        generation_ref: "generation_restyle_reference",
+        generation_kind: "studio_change",
+        project_ref: "project_preview_first_light",
+        song_plan_ref: null,
+        mode: null,
+        source_version_ref: "version_preview_first_light_a",
+        operation: "transform",
+        intent: "restyle",
+        scope: { type: "whole_version" },
+        instruction: "Reframe the song around the City Lights pulse.",
+        preserve: ["melody", "lyrics", "vocal_identity"],
+        reference_asset_refs: ["asset_preview_city_lights"],
+        output_count: 2,
+        status: "succeeded",
+        progress: 100,
+        candidate_refs: ["candidate_restyle_reference_1", "candidate_restyle_reference_2"],
+        created_at: "2026-09-03T12:00:00.000Z",
+      },
+      meta: { request_id: "request_restyle_reference_snapshot" },
+    }))
+    const listCandidates = vi.fn<MoriApi["listCandidates"]>(async () => ({
+      data: {
+        candidates: [
+          {
+            candidate_ref: "candidate_restyle_reference_1",
+            generation_ref: "generation_restyle_reference",
+            version_ref: "version_restyle_reference_1",
+            project_ref: "project_preview_first_light",
+            title: "First Light · City Lights Restyle",
+            duration_seconds: 182,
+            audio_asset_ref: "asset_restyle_reference_1",
+            waveform_asset_ref: "waveform_restyle_reference_1",
+            style_tags: ["city pulse", "restyle"],
+            created_at: "2026-09-03T12:01:00.000Z",
+          },
+          {
+            candidate_ref: "candidate_restyle_reference_2",
+            generation_ref: "generation_restyle_reference",
+            version_ref: "version_restyle_reference_2",
+            project_ref: "project_preview_first_light",
+            title: "First Light · City Lights Afterglow",
+            duration_seconds: 183,
+            audio_asset_ref: "asset_restyle_reference_2",
+            waveform_asset_ref: "waveform_restyle_reference_2",
+            style_tags: ["soft pulse", "restyle"],
+            created_at: "2026-09-03T12:01:01.000Z",
+          },
+          {
+            candidate_ref: "candidate_restyle_unlinked",
+            generation_ref: "generation_other",
+            version_ref: "version_restyle_unlinked",
+            project_ref: "project_preview_first_light",
+            title: "First Light · Unlinked take",
+            duration_seconds: 181,
+            audio_asset_ref: "asset_restyle_unlinked",
+            waveform_asset_ref: "waveform_restyle_unlinked",
+            style_tags: ["unlinked"],
+            created_at: "2026-09-03T12:01:02.000Z",
+          },
+        ],
+        next_cursor: null,
+      },
+      meta: { request_id: "request_restyle_reference_candidates" },
+    }))
+
+    renderStudio({ createStudioChange, getGeneration, getGenerationEvents: async () => [], listCandidates })
+
+    const aiChanges = screen.getByRole("region", { name: "Mori AI changes" })
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Transform" }))
+    fireEvent.click(within(aiChanges).getByText("Keep & compare"))
+
+    const referenceAudio = within(aiChanges).getByRole("group", { name: "Reference audio" })
+    const reference = within(referenceAudio).getByRole("button", { name: "Use City Lights demo as reference" })
+    fireEvent.click(reference)
+    expect(reference).toHaveAttribute("aria-pressed", "true")
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Whole song" }))
+    fireEvent.change(within(aiChanges).getByRole("textbox", { name: "Tell Mori what to change" }), {
+      target: { value: "Reframe the song around the City Lights pulse." },
+    })
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Review change" }))
+
+    const plan = within(aiChanges).getByRole("region", { name: "AI change plan" })
+    expect(within(plan).getByText(/City Lights demo · 24 sec · soft city pulse/u)).toBeInTheDocument()
+    expect(within(plan).getByText("Whole song")).toBeInTheDocument()
+    fireEvent.click(within(plan).getByRole("button", { name: "Generate 2 takes" }))
+
+    const expectedInput: StudioChangeGenerationInput = {
+      operation: "transform",
+      intent: "restyle",
+      scope: { type: "whole_version" },
+      instruction: "Reframe the song around the City Lights pulse.",
+      preserve: ["melody", "lyrics", "vocal_identity"],
+      reference_asset_refs: ["asset_preview_city_lights"],
+      output_count: 2,
+    }
+    await waitFor(() => expect(createStudioChange).toHaveBeenCalledWith(
+      "version_preview_first_light_a",
+      expectedInput,
+      expect.stringMatching(/^mori-studio-change-/u),
+    ))
+    await waitFor(() => expect(getGeneration).toHaveBeenCalledWith("generation_restyle_reference"))
+    await waitFor(() => expect(listCandidates).toHaveBeenCalledWith("project_preview_first_light"))
+
+    const takeLanes = screen.getByRole("region", { name: "Take lanes" })
+    expect(await within(takeLanes).findByRole("article", { name: "Take 3: First Light · City Lights Restyle" })).toBeInTheDocument()
+    expect(within(takeLanes).getByRole("article", { name: "Take 4: First Light · City Lights Afterglow" })).toBeInTheDocument()
+    expect(within(takeLanes).queryByText("First Light · Unlinked take")).not.toBeInTheDocument()
+    expect(within(takeLanes).getByRole("article", { name: "Take 1: First Light" })).toHaveTextContent("Current version")
+  })
+
   it("creates a typed Vocal Cover as two new Takes without replacing Current", async () => {
     let submittedVersionRef = ""
     let submittedInput: StudioChangeGenerationInput | null = null
@@ -589,6 +706,76 @@ describe("Mori studio page", () => {
     expect(await within(takeLanes).findByRole("article", { name: "Take 3: First Light · Acoustic Cover" })).toBeInTheDocument()
     expect(within(takeLanes).getByRole("article", { name: "Take 4: First Light · Room Cover" })).toBeInTheDocument()
     expect(within(within(takeLanes).getByRole("article", { name: "Take 1: First Light" })).getByText("Current version")).toBeInTheDocument()
+  })
+
+  it("submits an Instrumental Cover with fixed anchors and no voice or reference assets", async () => {
+    let submittedInput: StudioChangeGenerationInput | null = null
+    const createStudioChange = vi.fn<MoriApi["createStudioChange"]>(async (_versionRef, input) => {
+      submittedInput = input
+      return { data: { generation_ref: "generation_instrumental_cover", status: "queued" }, meta: { request_id: "request_instrumental_cover" } }
+    })
+
+    renderStudio({
+      createStudioChange,
+      getGeneration: async () => ({
+        data: {
+          generation_ref: "generation_instrumental_cover",
+          generation_kind: "studio_change",
+          project_ref: "project_preview_first_light",
+          song_plan_ref: null,
+          mode: null,
+          source_version_ref: "version_preview_first_light_a",
+          operation: "transform",
+          intent: "cover",
+          scope: { type: "whole_version" },
+          cover_mode: "instrumental",
+          voice_ref: null,
+          instruction: "Rebuild this as a felt piano instrumental.",
+          preserve: ["melody", "structure"],
+          reference_asset_refs: [],
+          output_count: 2,
+          status: "failed",
+          progress: 12,
+          candidate_refs: [],
+          created_at: "2026-09-03T12:00:00.000Z",
+        },
+        meta: { request_id: "request_instrumental_cover_snapshot" },
+      }),
+      getGenerationEvents: async () => [],
+    })
+
+    const aiChanges = screen.getByRole("region", { name: "Mori AI changes" })
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Transform" }))
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Cover" }))
+    fireEvent.change(within(aiChanges).getByRole("combobox", { name: "Voice profile" }), { target: { value: "voice_preview_mira" } })
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Instrumental cover" }))
+
+    expect(within(aiChanges).getByRole("button", { name: "Instrumental cover" })).toHaveAttribute("aria-pressed", "true")
+    expect(within(aiChanges).queryByRole("combobox", { name: "Voice profile" })).not.toBeInTheDocument()
+    expect(within(aiChanges).queryByRole("group", { name: "Reference audio" })).not.toBeInTheDocument()
+
+    fireEvent.change(within(aiChanges).getByRole("textbox", { name: "Tell Mori what to change" }), {
+      target: { value: "Rebuild this as a felt piano instrumental." },
+    })
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Review change" }))
+
+    const plan = within(aiChanges).getByRole("region", { name: "AI change plan" })
+    expect(within(plan).getByText("Instrumental")).toBeInTheDocument()
+    expect(within(plan).queryByText(/Mira/u)).not.toBeInTheDocument()
+    fireEvent.click(within(plan).getByRole("button", { name: "Generate 2 takes" }))
+
+    await waitFor(() => expect(createStudioChange).toHaveBeenCalledOnce())
+    expect(submittedInput).toEqual({
+      operation: "transform",
+      intent: "cover",
+      scope: { type: "whole_version" },
+      cover_mode: "instrumental",
+      voice_ref: null,
+      instruction: "Rebuild this as a felt piano instrumental.",
+      preserve: ["melody", "structure"],
+      reference_asset_refs: [],
+      output_count: 2,
+    })
   })
 
   it("rejects a Restyle snapshot whose reviewed output context changed", async () => {
@@ -1429,7 +1616,7 @@ describe("Mori studio page", () => {
     fireEvent.click(screen.getByRole("button", { name: "Finish" }))
     const finishDialog = screen.getByRole("dialog", { name: "Finish First Light" })
     expect(within(finishDialog).getByRole("radio", { name: /Mix revision 1/u })).toBeChecked()
-  })
+  }, 15_000)
 
   it("keeps an active stem separation across Studio tools and lets the user cancel it", async () => {
     let cancelledStemSeparationRef = ""

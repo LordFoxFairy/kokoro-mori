@@ -5,10 +5,9 @@ import { AudioLines, Check, Disc3, Mic2, SlidersHorizontal, Sparkles } from "luc
 import type { CreationMode, LyricsMode, SongPlan } from "../domain"
 import { t } from "../copy"
 import {
-  previewInspirationPresets,
-  previewReferenceAudios,
-  previewVoiceProfiles,
+  previewCreativeSources,
   type MoriAudioReferenceSelection,
+  type MoriCreativeLibrarySource,
   type MoriCreativeSourceSelection,
   type MoriInspirationPreset,
 } from "../creative-assets"
@@ -36,20 +35,22 @@ type CreateCanvasProps = {
   mode: CreationMode
   initialPrompt?: string
   initialCreativeSource?: MoriCreativeSourceSelection
+  creativeSources?: readonly MoriCreativeLibrarySource[]
   onModeChange: (mode: CreationMode) => void
   onGenerate: (draft: CreationDraft) => void
 }
 
-export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeSource, onModeChange, onGenerate }: CreateCanvasProps) {
+export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeSource, creativeSources, onModeChange, onGenerate }: CreateCanvasProps) {
   const { preferences } = useMoriApp()
+  const sourceCatalog: readonly MoriCreativeLibrarySource[] = creativeSources ?? previewCreativeSources
   const initialVoiceProfile = initialCreativeSource?.kind === "voice"
-    ? previewVoiceProfiles.find((profile) => profile.ref === initialCreativeSource.ref) ?? null
+    ? sourceCatalog.find((source) => source.sourceKind === "voice" && source.ref === initialCreativeSource.ref) ?? null
     : null
   const initialInspiration = initialCreativeSource?.kind === "inspiration"
-    ? previewInspirationPresets.find((preset) => preset.ref === initialCreativeSource.ref) ?? null
+    ? sourceCatalog.find((source) => source.sourceKind === "inspiration" && source.ref === initialCreativeSource.ref) ?? null
     : null
   const initialReferenceAudio = initialCreativeSource?.kind === "audio"
-    ? previewReferenceAudios.find((audio) => audio.ref === initialCreativeSource.ref) ?? null
+    ? sourceCatalog.find((source) => source.sourceKind === "audio" && source.ref === initialCreativeSource.ref) ?? null
     : null
   const smartTabRef = useRef<HTMLButtonElement>(null)
   const customTabRef = useRef<HTMLButtonElement>(null)
@@ -69,6 +70,7 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
     name: initialReferenceAudio.name,
     detail: `${initialReferenceAudio.description} · from Library`,
   })
+  const initialSourceAppliedRef = useRef<string | null>(null)
   const [referenceError, setReferenceError] = useState<string | null>(null)
   const [planPreview, setPlanPreview] = useState<ReturnType<typeof buildSongPlan> | null>(null)
   const [planEditing, setPlanEditing] = useState(false)
@@ -77,6 +79,27 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
   const lyricsMode = lyricsModeOverride ?? preferences.lyricsMode
   const durationSeconds = durationOverride ?? preferences.durationSeconds
   const planPreviewVisible = planPreview !== null
+
+  useEffect(() => {
+    if (initialCreativeSource === undefined) return
+    const sourceKey = `${initialCreativeSource.kind}:${initialCreativeSource.ref}`
+    if (initialSourceAppliedRef.current === sourceKey) return
+    const source = sourceCatalog.find((item) => item.sourceKind === initialCreativeSource.kind && item.ref === initialCreativeSource.ref)
+    if (source === undefined) return
+    initialSourceAppliedRef.current = sourceKey
+    const frame = window.requestAnimationFrame(() => {
+      if (source.sourceKind === "voice") {
+        setLyricsModeOverride("lyrics")
+        setVoiceProfileRef(source.ref)
+      } else if (source.sourceKind === "inspiration") {
+        setStyle(source.style ?? source.description)
+        setInspirationRef(source.ref)
+      } else {
+        setReferenceSource({ ref: source.ref, name: source.name, detail: `${source.description} · from Library` })
+      }
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [initialCreativeSource, sourceCatalog])
 
   useEffect(() => {
     if (!planPreviewVisible) return
@@ -256,6 +279,7 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
             onRemoveReference={removeReference}
             onVoiceChange={(nextVoiceRef) => { setVoiceProfileRef(nextVoiceRef); clearPlanPreview() }}
             onInspirationChange={chooseInspiration}
+            creativeSources={sourceCatalog}
           />
 
           {mode === "custom" ? (

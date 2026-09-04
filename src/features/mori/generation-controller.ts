@@ -396,6 +396,20 @@ export const previewMoriApi: MoriApi = {
       },
     }
   },
+  async listCreativeSources() {
+    return {
+      data: {
+        sources: [],
+        next_cursor: null,
+      },
+      meta: {
+        request_id: "preview-creative-sources-request",
+      },
+    }
+  },
+  async getCreativeSource() {
+    throw new Error("preview_creative_source_not_found")
+  },
   async listCandidates() {
     return {
       data: {

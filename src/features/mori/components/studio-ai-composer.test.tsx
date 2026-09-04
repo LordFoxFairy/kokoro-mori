@@ -59,6 +59,17 @@ describe("Studio AI composer", () => {
     expect(screen.getByRole("button", { name: "Review change" })).toBeEnabled()
   })
 
+  it("clears an operation-specific instruction when the user switches the task", () => {
+    renderComposer()
+
+    fireEvent.click(screen.getByRole("button", { name: "Add a restrained string lift" }))
+    expect(screen.getByRole("textbox", { name: "Tell Mori what to change" })).toHaveValue("Add a restrained string lift")
+
+    fireEvent.click(screen.getByRole("button", { name: "Transform" }))
+
+    expect(screen.getByRole("textbox", { name: "Tell Mori what to change" })).toHaveValue("")
+  })
+
   it("reveals clear Restyle and Cover intents only inside Transform", () => {
     renderComposer()
 

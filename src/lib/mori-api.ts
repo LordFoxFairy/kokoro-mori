@@ -540,7 +540,11 @@ export type MoriCandidate = {
   created_at: string
 }
 
-export type MoriLibraryItem = {
+export const moriCreativeSourceKinds = ["audio", "voice", "inspiration"] as const
+
+export type MoriCreativeSourceKind = typeof moriCreativeSourceKinds[number]
+
+export type MoriLibraryVersionItem = {
   library_item_ref: MoriRef
   kind: "version"
   project_ref: MoriRef
@@ -551,6 +555,39 @@ export type MoriLibraryItem = {
   audio_asset_ref: string
   waveform_asset_ref: string
   created_at: string
+}
+
+type MoriCreativeSourceCommon = {
+  source_ref: MoriRef
+  name: string
+  description: string
+  created_at: string
+}
+
+export type MoriCreativeSource =
+  | (MoriCreativeSourceCommon & { source_kind: "audio"; duration_seconds: number })
+  | (MoriCreativeSourceCommon & { source_kind: "voice" })
+  | (MoriCreativeSourceCommon & { source_kind: "inspiration"; style: string })
+
+export type MoriLibraryItem = MoriLibraryVersionItem
+
+export type MoriLibraryKind = "all" | "version"
+
+export type MoriLibraryListOptions = {
+  kind?: MoriLibraryKind
+  cursor?: string | null
+  limit?: number
+}
+
+export type MoriCreativeSourceListOptions = {
+  source_kind?: "all" | MoriCreativeSourceKind
+  cursor?: string | null
+  limit?: number
+}
+
+export type MoriCreativeSourcePage = {
+  sources: MoriCreativeSource[]
+  next_cursor: string | null
 }
 
 export type MoriExportStatus = "queued" | "processing" | "succeeded" | "failed"
@@ -614,7 +651,9 @@ export type MoriApi = {
   getGenerationEvents: (generationRef: MoriRef, lastEventId?: string | null) => Promise<MoriGenerationEvent[]>
   listCandidates: (projectRef: MoriRef) => Promise<ApiSuccess<{ candidates: MoriCandidate[]; next_cursor: string | null }>>
   cancelGeneration: (generationRef: MoriRef, idempotencyKey: string) => Promise<ApiSuccess<GenerationCancelReceipt>>
-  listLibrary: (kind?: "all" | "version") => Promise<ApiSuccess<{ items: MoriLibraryItem[]; next_cursor: string | null }>>
+  listLibrary: (kindOrOptions?: MoriLibraryKind | MoriLibraryListOptions) => Promise<ApiSuccess<{ items: MoriLibraryItem[]; next_cursor: string | null }>>
+  listCreativeSources: (options?: MoriCreativeSourceListOptions) => Promise<ApiSuccess<MoriCreativeSourcePage>>
+  getCreativeSource: (sourceKind: MoriCreativeSourceKind, sourceRef: MoriRef) => Promise<ApiSuccess<MoriCreativeSource>>
   createExport: (versionRef: MoriRef, input: MoriExportInput, idempotencyKey: string) => Promise<ApiSuccess<MoriExportReceipt>>
   getExport: (exportRef: MoriRef) => Promise<ApiSuccess<MoriExportSnapshot>>
 }

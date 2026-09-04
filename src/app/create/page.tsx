@@ -1,5 +1,5 @@
 import { MoriWorkspace } from "@/features/mori/mori-workspace"
-import { resolvePreviewCreativeSource } from "@/features/mori/creative-assets"
+import { resolveCreativeSourceSelection } from "@/features/mori/creative-assets"
 
 type CreatePageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>
@@ -9,7 +9,7 @@ export default async function CreatePage({ searchParams }: CreatePageProps = {})
   const params = searchParams === undefined ? {} : await searchParams
   const projectRef = normalizeProjectRef(params.project_ref)
   const initialPrompt = normalizeIdea(params.idea)
-  const initialCreativeSource = resolvePreviewCreativeSource(normalizeScalar(params.source_kind), normalizeScalar(params.source_ref))
+  const initialCreativeSource = resolveCreativeSourceSelection(normalizeScalar(params.source_kind), normalizeScalar(params.source_ref))
 
   return <MoriWorkspace projectRef={projectRef} initialPrompt={initialPrompt} initialCreativeSource={initialCreativeSource} />
 }

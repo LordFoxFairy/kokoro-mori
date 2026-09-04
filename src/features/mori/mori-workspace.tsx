@@ -4,10 +4,10 @@ import { AlertCircle, Check, LoaderCircle, PanelRight } from "lucide-react"
 import { createPortal } from "react-dom"
 import Link from "next/link"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { createGenerationRequest, type MoriApi, type MoriProject, type MoriProjectCreateInput } from "@/lib/mori-api"
+import { createGenerationRequest, type MoriApi, type MoriCreativeSource, type MoriProject, type MoriProjectCreateInput } from "@/lib/mori-api"
 import { createMoriApiClient, MoriApiRequestError } from "@/lib/mori-api-client"
 import type { Candidate, CreationMode, GenerationStatus, SongPlan } from "./domain"
-import type { MoriCreativeSourceSelection } from "./creative-assets"
+import type { MoriCreativeLibrarySource, MoriCreativeSourceSelection } from "./creative-assets"
 import { previewCandidates, previewGeneration, previewProject, previewSongPlan } from "./preview-data"
 import { buildSongPlan, toSongPlanCreateInput } from "./song-plan"
 import {
@@ -28,7 +28,7 @@ type MoriWorkspaceProps = {
   projectRef?: string
   initialPrompt?: string
   initialCreativeSource?: MoriCreativeSourceSelection
-  api?: Pick<MoriApi, "createSongPlan" | "createGeneration" | "getGeneration" | "getGenerationEvents" | "listCandidates" | "cancelGeneration"> & Partial<Pick<MoriApi, "createProject" | "getProject" | "putCurrentVersion">>
+  api?: Pick<MoriApi, "createSongPlan" | "createGeneration" | "getGeneration" | "getGenerationEvents" | "listCandidates" | "cancelGeneration"> & Partial<Pick<MoriApi, "createProject" | "getProject" | "putCurrentVersion" | "listCreativeSources" | "getCreativeSource">>
 }
 
 type GenerationAttempt = {
@@ -61,6 +61,7 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
   const [generationStatus, setGenerationStatus] = useState<GenerationStatus>(previewGeneration.status)
   const [generationLabel, setGenerationLabel] = useState(previewGeneration.label)
   const [progress, setProgress] = useState(previewGeneration.progress)
+  const [creativeSources, setCreativeSources] = useState<readonly MoriCreativeLibrarySource[] | undefined>(undefined)
   const [generationRef, setGenerationRef] = useState<string | null>(null)
   const [lastGenerationAttempt, setLastGenerationAttempt] = useState<GenerationAttempt | null>(null)
   const [currentVersionCommitRun, setCurrentVersionCommitRun] = useState<CurrentVersionCommitRun>(idleCurrentVersionCommitRun)
@@ -71,6 +72,32 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
   const defaultApi = useMemo(() => createMoriApiClient(), [])
   const api = injectedApi ?? defaultApi
   const mode = modeOverride ?? preferences.defaultMode
+
+  useEffect(() => {
+    const getCreativeSource = api.getCreativeSource
+    const listCreativeSources = api.listCreativeSources
+    let disposed = false
+
+    const applySources = (sources: readonly MoriCreativeSource[]) => {
+      if (!disposed) setCreativeSources(sources.map(toDomainCreativeSource))
+    }
+
+    const request = initialCreativeSource !== undefined && getCreativeSource !== undefined
+      ? getCreativeSource(initialCreativeSource.kind, initialCreativeSource.ref).then((response) => applySources([response.data]))
+      : listCreativeSources === undefined
+        ? Promise.resolve()
+        : listCreativeSources({ limit: 20 }).then((response) => applySources(response.data.sources)).catch(() => {
+            if (!disposed) setCreativeSources(undefined)
+          })
+
+    void request.catch(() => {
+      if (!disposed) setCreativeSources(undefined)
+    })
+
+    return () => {
+      disposed = true
+    }
+  }, [api, initialCreativeSource])
   const generation = useMemo(() => hasGeneration ? {
     ...previewGeneration,
     projectRef: workspaceProjectRef ?? "project_pending",
@@ -430,7 +457,7 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
               </div>
             </header>
             <div className={styles.canvasBody}>
-              <CreateCanvas projectRef={workspaceProjectRef ?? "project_pending"} mode={mode} initialPrompt={initialPrompt} initialCreativeSource={initialCreativeSource} onModeChange={setModeOverride} onGenerate={handleGenerate} />
+              <CreateCanvas projectRef={workspaceProjectRef ?? "project_pending"} mode={mode} initialPrompt={initialPrompt} initialCreativeSource={initialCreativeSource} creativeSources={creativeSources} onModeChange={setModeOverride} onGenerate={handleGenerate} />
             </div>
           </section>
           {queueOpen && queuePresentation === "pane" ? renderQueue("pane") : null}
@@ -524,6 +551,17 @@ function toDomainCandidate(candidate: import("@/lib/mori-api").MoriCandidate, in
     mood: tags[0] ?? "new direction",
     waveformSeed: index + 5,
     isCurrent: false,
+  }
+}
+
+function toDomainCreativeSource(source: MoriCreativeSource): MoriCreativeLibrarySource {
+  return {
+    sourceKind: source.source_kind,
+    ref: source.source_ref,
+    name: source.name,
+    description: source.description,
+    ...(source.source_kind === "audio" ? { durationSeconds: source.duration_seconds } : {}),
+    ...(source.source_kind === "inspiration" ? { style: source.style } : {}),
   }
 }
 

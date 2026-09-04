@@ -18,7 +18,7 @@ type MoriAppShellProps = {
 export function MoriAppShell({ activeKey, ariaLabel, projectRef, children }: MoriAppShellProps) {
   const { railCollapsed, toggleRail, setRailCollapsed, playerCandidate, playerCandidates, playing, muted, positionSeconds, togglePlaying, toggleMuted, setPlaying, seekPlayer, selectPlayerCandidate, previousPlayerCandidate, nextPlayerCandidate, preferences } = useMoriApp()
   const [playbackQueueOpen, setPlaybackQueueOpen] = useState(false)
-  const [isMobileViewport, setIsMobileViewport] = useState(false)
+  const [isMobileViewport, setIsMobileViewport] = useState<boolean | null>(null)
   const railRef = useRef<HTMLElement>(null)
   const railToggleRef = useRef<HTMLButtonElement>(null)
 
@@ -29,7 +29,7 @@ export function MoriAppShell({ activeKey, ariaLabel, projectRef, children }: Mor
     return () => window.removeEventListener("resize", updateViewport)
   }, [])
 
-  const mobileRailOpen = !railCollapsed && (isMobileViewport || (typeof window !== "undefined" && window.innerWidth <= 700))
+  const mobileRailOpen = !railCollapsed && isMobileViewport === true
 
   const handleRailToggle = useCallback(() => {
     const isMobile = window.innerWidth <= 700
@@ -102,7 +102,7 @@ export function MoriAppShell({ activeKey, ariaLabel, projectRef, children }: Mor
   const className = `${styles.appShell} ${styles.appShellWithPlayer}`
 
   return (
-    <div className={className} data-rail-collapsed={railCollapsed} data-reduce-motion={preferences.reduceMotion} style={shellStyle}>
+    <div className={className} data-rail-collapsed={railCollapsed} data-reduce-motion={preferences.reduceMotion} data-viewport-ready={isMobileViewport === null ? "false" : "true"} style={shellStyle}>
       <MoriRail
         activeKey={activeKey}
         collapsed={railCollapsed}
