@@ -46,6 +46,7 @@ describe("Mori workspace", () => {
 
     try {
       renderWorkspace()
+      expect(screen.getByRole("button", { name: "Open generation queue" })).toHaveTextContent("Generations")
       fireEvent.click(screen.getByRole("button", { name: "Open generation queue" }))
 
       expect(screen.getByRole("complementary", { name: "Generation queue" })).toBeInTheDocument()
@@ -164,6 +165,12 @@ describe("Mori workspace", () => {
     )
     await waitFor(() => expect(createGeneration).toHaveBeenCalledOnce())
     expect(createGeneration).toHaveBeenCalledWith("project_quiet_train", expect.anything(), expect.stringMatching(/^mori-create-/u))
+    const activeTrigger = screen.getByRole("button", { name: "Hide generation queue" })
+    expect(activeTrigger).toHaveAttribute("data-generation-feedback", "active")
+    expect(activeTrigger).toHaveTextContent("Generating")
+    expect(activeTrigger.querySelector('[data-generation-icon="active"]')).toBeInTheDocument()
+    fireEvent.click(activeTrigger)
+    expect(screen.getByRole("button", { name: "Open generation queue" })).toHaveAttribute("data-generation-feedback", "active")
     expect(screen.getByRole("link", { name: "Quiet piano song for the first train home" })).toHaveAttribute("href", "/projects/project_quiet_train")
     expect(window.location.pathname + window.location.search).toBe("/create?project_ref=project_quiet_train")
     await waitFor(() => expect(screen.getByRole("link", { name: "New creation" })).toHaveAttribute("href", "/create?project_ref=project_quiet_train"))
@@ -205,6 +212,12 @@ describe("Mori workspace", () => {
     fireEvent.submit(screen.getByRole("textbox", { name: "Song idea" }).closest("form") as HTMLFormElement)
 
     await waitFor(() => expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument())
+    fireEvent.click(screen.getByRole("button", { name: "Hide generation queue" }))
+    const failedTrigger = screen.getByRole("button", { name: "Open generation queue" })
+    expect(failedTrigger).toHaveAttribute("data-generation-feedback", "attention")
+    expect(failedTrigger).toHaveTextContent("Needs attention")
+    expect(failedTrigger.querySelector('[data-generation-icon="attention"]')).toBeInTheDocument()
+    fireEvent.click(failedTrigger)
     fireEvent.click(screen.getByRole("button", { name: "Try again" }))
 
     await waitFor(() => expect(createGeneration).toHaveBeenCalledTimes(2))

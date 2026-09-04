@@ -1,6 +1,6 @@
 "use client"
 
-import { PanelRight } from "lucide-react"
+import { AlertCircle, Check, LoaderCircle, PanelRight } from "lucide-react"
 import { createPortal } from "react-dom"
 import Link from "next/link"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
@@ -43,6 +43,7 @@ type ProjectCreationAttempt = {
 }
 
 type QueuePresentation = "drawer" | "pane"
+type GenerationFeedback = "idle" | "active" | "ready" | "attention"
 
 export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, initialCreativeSource, api: injectedApi }: MoriWorkspaceProps = {}) {
   const initialProjectRef = requestedProjectRef?.trim() || null
@@ -377,6 +378,7 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
   }, [api, generationRef])
 
   const currentCandidates = candidates.map((candidate) => ({ ...candidate, isCurrent: candidate.versionRef === currentVersionRef }))
+  const generationFeedback = generationFeedbackFor(hasGeneration ? generationStatus : null)
 
   const renderQueue = (presentation: QueuePresentation) => (
     <InspectorPanel
@@ -420,8 +422,10 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
                   : <><Link className={styles.breadcrumbLink} href={`/projects/${encodeURIComponent(workspaceProjectRef)}`}>{workspaceProjectTitle}</Link><span>/</span><strong>New direction</strong></>}
               </div>
               <div className={styles.headerActions}>
-                <button className={styles.queueButton} type="button" onClick={() => setQueueOpen((value) => !value)} aria-expanded={queueOpen} aria-label={queueOpen ? "Hide generation queue" : "Open generation queue"}>
-                  <PanelRight size={14} /> <span>Queue</span><b>{currentCandidates.length}</b>
+                <button className={styles.queueButton} type="button" onClick={() => setQueueOpen((value) => !value)} aria-expanded={queueOpen} aria-label={queueOpen ? "Hide generation queue" : "Open generation queue"} title={generationFeedbackLabel(generationFeedback)} data-generation-feedback={generationFeedback}>
+                  <span className={styles.generationFeedbackIcon} data-generation-icon={generationFeedback} aria-hidden="true"><GenerationFeedbackIcon status={generationFeedback} /></span>
+                  <span>{generationFeedbackLabel(generationFeedback)}</span>
+                  <b>{currentCandidates.length}</b>
                 </button>
               </div>
             </header>
@@ -441,6 +445,29 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
       ) : null}
     </main>
   )
+}
+
+function generationFeedbackFor(status: GenerationStatus | null): GenerationFeedback {
+  if (status === null || status === "cancelled") return "idle"
+  if (["queued", "preparing", "generating", "post_processing"].includes(status)) return "active"
+  if (status === "succeeded") return "ready"
+  return "attention"
+}
+
+function generationFeedbackLabel(status: GenerationFeedback): string {
+  switch (status) {
+    case "active": return "Generating"
+    case "ready": return "Directions ready"
+    case "attention": return "Needs attention"
+    default: return "Generations"
+  }
+}
+
+function GenerationFeedbackIcon({ status }: { status: GenerationFeedback }) {
+  if (status === "active") return <LoaderCircle size={14} />
+  if (status === "ready") return <Check size={14} />
+  if (status === "attention") return <AlertCircle size={14} />
+  return <PanelRight size={14} />
 }
 
 function generationLabelFor(status: GenerationStatus): string {

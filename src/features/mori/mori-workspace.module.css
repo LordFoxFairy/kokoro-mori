@@ -4416,6 +4416,34 @@
   background: #e9e4ff;
 }
 
+.queueButton[data-generation-feedback="active"] {
+  border-color: rgba(109, 92, 231, 0.28);
+  color: var(--mori-primary);
+  background: var(--mori-primary-soft);
+}
+
+.queueButton[data-generation-feedback="ready"] {
+  border-color: rgba(61, 155, 114, 0.26);
+  color: var(--mori-success);
+  background: rgba(231, 246, 239, 0.82);
+}
+
+.queueButton[data-generation-feedback="attention"] {
+  border-color: rgba(201, 85, 85, 0.24);
+  color: var(--mori-error);
+  background: rgba(255, 241, 239, 0.86);
+}
+
+.generationFeedbackIcon {
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+}
+
+.generationFeedbackIcon[data-generation-icon="active"] svg {
+  animation: linkCopySpin 780ms linear infinite;
+}
+
 .queueButton b {
   display: grid;
   min-width: 18px;
@@ -5512,6 +5540,7 @@
   .playerButton,
   .playerTool,
   .exportStatusIcon svg,
+  .generationFeedbackIcon svg,
   .linkCopyIcon svg {
     transition: none;
     animation: none;

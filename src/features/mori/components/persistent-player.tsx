@@ -67,7 +67,7 @@ export function PersistentPlayer({ candidate, playing, muted, positionSeconds, o
       </div>
       <div className={styles.playerTools} role="group" aria-label="Player tools">
         <button className={`${styles.playerButton} ${styles.playerMuteButton}`} type="button" onClick={onToggleMute} aria-label={muted ? "Unmute" : "Mute"} disabled={!hasCandidate}>{muted ? <VolumeX /> : <Volume2 />}</button>
-        {onSelectQueue ? <button className={styles.playerTool} type="button" onClick={onSelectQueue} aria-label="Open playback queue" aria-haspopup="dialog" aria-expanded={queueOpen}><ListMusic /> <span>Queue</span></button> : null}
+        {onSelectQueue ? <button className={styles.playerTool} type="button" onClick={onSelectQueue} aria-label="Open playback queue" aria-haspopup="dialog" aria-expanded={queueOpen}><ListMusic /> <span>Up next</span></button> : null}
       </div>
     </section>
   )

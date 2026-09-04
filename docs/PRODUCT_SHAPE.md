@@ -104,7 +104,7 @@ Workspace nav    内容随项目上下文变化                     跨页面保
 - Studio 在大于 1360px 时使用工具 / 画布 / Version history 三栏；在 1360px 及以下保留工具与画布，
   Version history 由标题栏动作打开右侧抽屉，不把主画布继续挤窄。
 - Player 使用独立的全宽 transport dock：左侧当前作品，中部 transport + progress，右侧
-  音量和队列。
+  音量和 `Up next` 播放队列；Create 的 `Generations` 入口只承载生成任务，两者不混淆。
 - Settings 使用浮在当前工作区之上的窗口：左侧固定偏好导航，右侧独立滚动设置内容；关闭后
   回到原来的 studio 语境，不把设置拆成另一套页面壳体。
 - 移动端保留 Rail 的 compact 入口和 Player 的核心播放操作，不把桌面三栏硬缩成一张卡。

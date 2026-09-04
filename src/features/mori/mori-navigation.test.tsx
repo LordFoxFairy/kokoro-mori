@@ -78,6 +78,7 @@ describe("Mori application navigation", () => {
     )
 
     const trigger = screen.getByRole("button", { name: "Open playback queue" })
+    expect(trigger).toHaveTextContent("Up next")
     fireEvent.click(screen.getByRole("button", { name: "Play" }))
     trigger.focus()
     expect(trigger).toHaveAttribute("aria-expanded", "false")
