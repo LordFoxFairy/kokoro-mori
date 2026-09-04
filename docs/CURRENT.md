@@ -35,8 +35,9 @@
   重复点击会进入 Stopping 状态，过期响应不会覆盖用户当前查看的任务。队列更新在支持 Web Locks 的浏览器中使用跨标签页互斥，
   并通过 storage event 的 old/new value 单调合并修复并发追加；终态、进度和候选引用不会被旧快照回退，冲突的 opaque event cursor 会安全回退至完整 replay。
   Create / Studio deep link 现在携带显式 `generation_ref`，同一项目的多个进行中任务可以各自恢复，不再依赖全局 active 指针。
-- Settings 继续采用 Kokoro 的浮动窗口信息架构：搜索、键盘 tab 切换、Escape、焦点循环和背景 `inert` 隔离均保持可逆，
-  只保留 Mori 的外观、播放、创作与账户设置。
+- Settings 继续采用 Kokoro 的浮动窗口信息架构：侧边栏从当前 surface 原位打开设置层，不卸载 Create / Studio 草稿，`/settings`
+  仍保留可直接访问的 fallback。搜索、键盘 tab 切换、Escape、焦点循环和背景 `inert` 隔离均保持可逆；移动端改为全宽搜索与横向 section navigation，
+  交互控件使用 44px touch target。Settings 与 New Project 共用可嵌套的 body lock / shell isolation，成功态会把焦点留在弹窗内。
 - Studio 时间线在窄屏提供横向滚动、键盘焦点和明确的 Swipe hint；短桌面视口的 Export dialog 会避开固定 Player safe area。
   Studio Header 提供项目级 Generation queue 入口，使用同一浏览器任务摘要展示后台运行、完成和需处理的任务，并可回到对应的 Create 或 Studio 上下文。
 - 移动端全局 Player 保留上一首、播放、下一首、静音、Up next 和 seek 进度，不再把核心听音控制隐藏在窄屏；dock 使用独立的两行安全区，
@@ -50,7 +51,7 @@
 ```text
 pnpm lint                         passed
 pnpm typecheck                    passed
-pnpm test                         passed: 52 files / 410 tests
+pnpm test                         passed: 54 files / 415 tests
 pnpm build                        passed
 ```
 

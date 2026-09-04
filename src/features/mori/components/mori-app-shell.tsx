@@ -6,6 +6,7 @@ import { useMoriApp } from "./mori-app-provider"
 import { MoriRail, type MoriNavigationKey } from "./mori-rail"
 import { PlaybackQueue } from "./playback-queue"
 import { PersistentPlayer } from "./persistent-player"
+import { MoriSettingsPage } from "../settings-page"
 import styles from "../mori-workspace.module.css"
 
 type MoriAppShellProps = {
@@ -18,6 +19,7 @@ type MoriAppShellProps = {
 export function MoriAppShell({ activeKey, ariaLabel, projectRef, children }: MoriAppShellProps) {
   const { railCollapsed, toggleRail, playerCandidate, playerCandidates, playing, playerMediaStatus, playerMediaMessage, muted, positionSeconds, togglePlaying, retryPlayerPlayback, toggleMuted, setPlaying, seekPlayer, selectPlayerCandidate, previousPlayerCandidate, nextPlayerCandidate, preferences } = useMoriApp()
   const [playbackQueueOpen, setPlaybackQueueOpen] = useState(false)
+  const [settingsReturnTo, setSettingsReturnTo] = useState<string | null>(null)
   const [{ isMobileViewport, mobileRailExpanded }, setViewportState] = useState({
     isMobileViewport: null as boolean | null,
     mobileRailExpanded: false,
@@ -64,6 +66,12 @@ export function MoriAppShell({ activeKey, ariaLabel, projectRef, children }: Mor
   }, [])
 
   const closePlaybackQueue = useCallback(() => setPlaybackQueueOpen(false), [])
+  const openSettings = useCallback((returnTo: string) => {
+    setPlaybackQueueOpen(false)
+    setViewportState((current) => ({ ...current, mobileRailExpanded: false }))
+    setSettingsReturnTo(returnTo)
+  }, [])
+  const closeSettings = useCallback(() => setSettingsReturnTo(null), [])
 
   const chooseQueuedCandidate = useCallback((candidate: (typeof playerCandidates)[number]) => {
     if (playerCandidate?.candidateRef === candidate.candidateRef) {
@@ -126,15 +134,16 @@ export function MoriAppShell({ activeKey, ariaLabel, projectRef, children }: Mor
         collapsed={effectiveRailCollapsed}
         projectRef={projectRef}
         onNavigate={handleRailNavigation}
+        onOpenSettings={activeKey === "settings" ? undefined : openSettings}
         onToggle={handleRailToggle}
         railRef={railRef}
         toggleRef={railToggleRef}
       />
       {mobileRailOpen ? <button className={styles.railBackdrop} type="button" onClick={handleRailToggle} aria-label="Close sidebar" /> : null}
-      <section className={styles.surface} aria-label={ariaLabel} aria-hidden={mobileRailOpen ? true : undefined} inert={mobileRailOpen ? true : undefined}>
+      <section className={styles.surface} aria-label={ariaLabel} data-mori-shell-region="true" aria-hidden={mobileRailOpen ? true : undefined} inert={mobileRailOpen ? true : undefined}>
         {children}
       </section>
-      <div className={styles.globalPlayerSlot} aria-hidden={mobileRailOpen ? true : undefined} inert={mobileRailOpen ? true : undefined}>
+      <div className={styles.globalPlayerSlot} data-mori-shell-region="true" aria-hidden={mobileRailOpen ? true : undefined} inert={mobileRailOpen ? true : undefined}>
         <PersistentPlayer
           candidate={playerCandidate}
           playing={playing}
@@ -162,6 +171,7 @@ export function MoriAppShell({ activeKey, ariaLabel, projectRef, children }: Mor
         />,
         appShellElement,
       ) : null}
+      {settingsReturnTo !== null ? <MoriSettingsPage returnTo={settingsReturnTo} onRequestClose={closeSettings} /> : null}
     </div>
   )
 }

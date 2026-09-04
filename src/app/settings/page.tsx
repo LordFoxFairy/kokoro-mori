@@ -13,8 +13,9 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps =
   return (
     <main className={styles.catalogApp}>
       <MoriCatalogShell activeKey="settings" ariaLabel="Settings">
-        <MoriSettingsPage returnTo={returnTo} />
+        <div aria-hidden="true" />
       </MoriCatalogShell>
+      <MoriSettingsPage returnTo={returnTo} />
     </main>
   )
 }

@@ -2,8 +2,10 @@
 
 import { Check, FolderPlus, X } from "lucide-react"
 import { useEffect, useRef, useState, type FormEvent } from "react"
+import { createPortal } from "react-dom"
 import type { MoriApi, MoriProject, MoriProjectCreateInput } from "@/lib/mori-api"
 import { MoriApiRequestError } from "@/lib/mori-api-client"
+import { isolateMoriShellBackground, lockMoriModalBody } from "./components/mori-modal-isolation"
 import styles from "./mori-workspace.module.css"
 
 type ProjectCreateDialogProps = {
@@ -15,6 +17,8 @@ type ProjectCreateDialogProps = {
 export function ProjectCreateDialog({ createProject, onClose, onCreated }: ProjectCreateDialogProps) {
   const dialogRef = useRef<HTMLElement>(null)
   const titleRef = useRef<HTMLInputElement>(null)
+  const successActionRef = useRef<HTMLAnchorElement>(null)
+  const onCloseRef = useRef(onClose)
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [error, setError] = useState<string | null>(null)
@@ -22,14 +26,18 @@ export function ProjectCreateDialog({ createProject, onClose, onCreated }: Proje
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
+    onCloseRef.current = onClose
+  }, [onClose])
+
+  useEffect(() => {
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = "hidden"
+    const releaseBodyLock = lockMoriModalBody()
+    const releaseShellIsolation = isolateMoriShellBackground()
     titleRef.current?.focus()
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault()
-        onClose()
+        onCloseRef.current()
         return
       }
       if (event.key !== "Tab") return
@@ -56,10 +64,17 @@ export function ProjectCreateDialog({ createProject, onClose, onCreated }: Proje
     window.addEventListener("keydown", handleKeyDown)
     return () => {
       window.removeEventListener("keydown", handleKeyDown)
-      document.body.style.overflow = previousOverflow
+      releaseShellIsolation()
+      releaseBodyLock()
       if (previousFocus?.isConnected) previousFocus.focus()
     }
-  }, [onClose])
+  }, [])
+
+  useEffect(() => {
+    if (createdProject === null) return
+    const focusFrame = window.requestAnimationFrame(() => successActionRef.current?.focus())
+    return () => window.cancelAnimationFrame(focusFrame)
+  }, [createdProject])
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -87,7 +102,7 @@ export function ProjectCreateDialog({ createProject, onClose, onCreated }: Proje
     }
   }
 
-  return (
+  const layer = (
     <div className={styles.projectCreateLayer}>
       <button className={styles.projectCreateBackdrop} type="button" aria-label="Dismiss new project" onClick={onClose} />
       <section ref={dialogRef} className={styles.projectCreateDialog} role="dialog" aria-modal="true" aria-labelledby="project-create-title" tabIndex={-1}>
@@ -126,6 +141,7 @@ export function ProjectCreateDialog({ createProject, onClose, onCreated }: Proje
             <div className={styles.projectCreateActions}>
               <button className={styles.ghostButton} type="button" onClick={onClose}>Keep browsing</button>
               <a
+                ref={successActionRef}
                 className={styles.generateButton}
                 href={`/create?project_ref=${encodeURIComponent(createdProject.project_ref)}`}
                 aria-label={`Start the first direction for ${createdProject.title}`}
@@ -138,6 +154,7 @@ export function ProjectCreateDialog({ createProject, onClose, onCreated }: Proje
       </section>
     </div>
   )
+  return typeof document === "undefined" ? layer : createPortal(layer, document.body)
 }
 
 function toProjectInput(title: string, description: string): MoriProjectCreateInput | null {

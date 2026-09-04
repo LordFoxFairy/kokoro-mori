@@ -2,21 +2,16 @@
 
 import Link from "next/link"
 import { AudioLines, Check, Headphones, Palette, Search, Sparkles, UserRound, X } from "lucide-react"
-import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react"
-import { createPortal } from "react-dom"
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react"
 import { useMoriApp } from "./components/mori-app-provider"
+import { isolateMoriShellBackground, lockMoriModalBody } from "./components/mori-modal-isolation"
 import styles from "./mori-workspace.module.css"
 
 type SettingsSection = "appearance" | "playback" | "creation" | "account"
 
 type MoriSettingsPageProps = {
   returnTo?: string
-}
-
-type SettingsBackgroundAttributeSnapshot = {
-  element: HTMLElement
-  ariaHidden: string | null
-  inert: string | null
+  onRequestClose?: () => void
 }
 
 const sections: Array<{ key: SettingsSection; label: string; description: string; icon: typeof Palette }> = [
@@ -26,17 +21,18 @@ const sections: Array<{ key: SettingsSection; label: string; description: string
   { key: "account", label: "Account", description: "Profile and workspace plan", icon: UserRound },
 ]
 
-export function MoriSettingsPage({ returnTo = "/" }: MoriSettingsPageProps = {}) {
+export function MoriSettingsPage({ returnTo = "/", onRequestClose }: MoriSettingsPageProps = {}) {
   const [section, setSection] = useState<SettingsSection>("appearance")
   const [navQuery, setNavQuery] = useState("")
-  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null)
-  const closeLinkRef = useRef<HTMLAnchorElement>(null)
+  const closeControlRef = useRef<HTMLElement>(null)
   const settingsDialogRef = useRef<HTMLElement>(null)
   const settingsOverlayRef = useRef<HTMLDivElement>(null)
-  const appShellRef = useRef<HTMLElement | null>(null)
   const { railCollapsed, setRailCollapsed, preferences, updatePreferences } = useMoriApp()
   const returnLabel = settingsReturnLabel(returnTo)
   const visibleSections = filterSettingsSections(navQuery)
+  const captureCloseControl = useCallback((element: HTMLElement | null) => {
+    closeControlRef.current = element
+  }, [])
 
   const handleNavQueryChange = (nextQuery: string) => {
     const nextVisibleSections = filterSettingsSections(nextQuery)
@@ -68,27 +64,17 @@ export function MoriSettingsPage({ returnTo = "/" }: MoriSettingsPageProps = {})
   }
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setPortalTarget(document.body), 0)
-    return () => window.clearTimeout(timer)
+    return lockMoriModalBody()
   }, [])
 
   useEffect(() => {
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = "hidden"
-    return () => {
-      document.body.style.overflow = previousOverflow
-    }
-  }, [])
-
-  useEffect(() => {
-    if (portalTarget === null) return
-
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
-    const focusTimer = window.setTimeout(() => closeLinkRef.current?.focus(), 0)
+    const focusTimer = window.setTimeout(() => closeControlRef.current?.focus(), 0)
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault()
-        closeLinkRef.current?.click()
+        if (onRequestClose !== undefined) onRequestClose()
+        else closeControlRef.current?.click()
         return
       }
       if (event.key !== "Tab") return
@@ -114,22 +100,17 @@ export function MoriSettingsPage({ returnTo = "/" }: MoriSettingsPageProps = {})
       window.removeEventListener("keydown", handleKeyDown)
       if (previousFocus?.isConnected) previousFocus.focus()
     }
-  }, [portalTarget])
+  }, [onRequestClose])
 
   useEffect(() => {
-    if (portalTarget === null) {
-      appShellRef.current = settingsOverlayRef.current?.closest<HTMLElement>(`.${styles.appShell}`) ?? null
-      return
-    }
-
-    const appShell = appShellRef.current
-    if (appShell === null) return
-    return isolateSettingsBackground(appShell)
-  }, [portalTarget])
+    return isolateMoriShellBackground()
+  }, [])
 
   const settingsWindow = (
     <div ref={settingsOverlayRef} className={styles.settingsPage} data-testid="settings-overlay">
-      <Link className={styles.settingsBackdrop} href={returnTo} aria-label="Close settings" />
+      {onRequestClose === undefined
+        ? <Link className={styles.settingsBackdrop} href={returnTo} aria-label="Close settings" />
+        : <button className={styles.settingsBackdrop} type="button" onClick={onRequestClose} aria-label="Close settings" />}
       <section ref={settingsDialogRef} className={styles.settingsWindow} role="dialog" aria-modal="true" aria-labelledby="mori-settings-title">
         <nav className={styles.settingsNav} aria-label="Settings navigation">
           <div className={styles.settingsNavBrand}>
@@ -180,9 +161,13 @@ export function MoriSettingsPage({ returnTo = "/" }: MoriSettingsPageProps = {})
               <h1 className={styles.settingsWindowTitle} id="mori-settings-title">Settings</h1>
               <p>Manage the workspace without leaving your project.</p>
             </div>
-            <Link ref={closeLinkRef} className={styles.settingsClose} href={returnTo} aria-label={returnLabel}>
-              <X size={17} strokeWidth={1.8} aria-hidden="true" />
-            </Link>
+            {onRequestClose === undefined
+              ? <Link ref={captureCloseControl} className={styles.settingsClose} href={returnTo} aria-label={returnLabel}>
+                <X size={17} strokeWidth={1.8} aria-hidden="true" />
+              </Link>
+              : <button ref={captureCloseControl} className={styles.settingsClose} type="button" onClick={onRequestClose} aria-label={returnLabel}>
+                <X size={17} strokeWidth={1.8} aria-hidden="true" />
+              </button>}
           </header>
 
           <section className={styles.settingsMain} aria-live="polite">
@@ -291,7 +276,7 @@ export function MoriSettingsPage({ returnTo = "/" }: MoriSettingsPageProps = {})
     </div>
   )
 
-  return portalTarget === null ? settingsWindow : createPortal(settingsWindow, portalTarget)
+  return settingsWindow
 }
 
 function filterSettingsSections(query: string): typeof sections {
@@ -320,33 +305,6 @@ function getFocusableElements(container: HTMLElement): HTMLElement[] {
     "textarea:not([disabled])",
     "[tabindex]:not([tabindex='-1'])",
   ].join(",")))
-}
-
-function isolateSettingsBackground(appShell: HTMLElement): () => void {
-  const backgroundElements = [
-    appShell.querySelector<HTMLElement>(`.${styles.rail}`),
-    appShell.querySelector<HTMLElement>(`.${styles.surface}`),
-    appShell.querySelector<HTMLElement>(`.${styles.globalPlayerSlot}`),
-  ].filter((element): element is HTMLElement => element !== null)
-  const snapshots: SettingsBackgroundAttributeSnapshot[] = backgroundElements.map((element) => ({
-    element,
-    ariaHidden: element.getAttribute("aria-hidden"),
-    inert: element.getAttribute("inert"),
-  }))
-
-  backgroundElements.forEach((element) => {
-    element.setAttribute("aria-hidden", "true")
-    element.setAttribute("inert", "")
-  })
-
-  return () => {
-    snapshots.forEach(({ element, ariaHidden, inert }) => {
-      if (ariaHidden === null) element.removeAttribute("aria-hidden")
-      else element.setAttribute("aria-hidden", ariaHidden)
-      if (inert === null) element.removeAttribute("inert")
-      else element.setAttribute("inert", inert)
-    })
-  }
 }
 
 function SettingsPanel({ icon: Icon, title, description, children }: { icon: typeof Palette; title: string; description: string; children: ReactNode }) {

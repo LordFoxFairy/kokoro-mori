@@ -415,6 +415,46 @@ describe("Mori application navigation", () => {
     }
   })
 
+  it("opens settings over the current surface without discarding draft state", async () => {
+    const originalPath = `${window.location.pathname}${window.location.search}`
+    window.history.pushState({}, "", "/create")
+
+    function DraftSurface() {
+      const [draft, setDraft] = useState("")
+      return (
+        <MoriCatalogShell activeKey="create" ariaLabel="Create">
+          <label>
+            Working prompt
+            <input aria-label="Working prompt" value={draft} onChange={(event) => setDraft(event.target.value)} />
+          </label>
+        </MoriCatalogShell>
+      )
+    }
+
+    try {
+      render(
+        <MoriAppProvider>
+          <DraftSurface />
+        </MoriAppProvider>,
+      )
+
+      const prompt = screen.getByRole("textbox", { name: "Working prompt" })
+      fireEvent.change(prompt, { target: { value: "A quiet chorus with brushed drums" } })
+      fireEvent.click(screen.getByRole("link", { name: "Settings" }))
+
+      expect(await screen.findByRole("dialog", { name: "Settings" })).toBeInTheDocument()
+      expect(prompt).toHaveValue("A quiet chorus with brushed drums")
+      expect(prompt.closest("section")).toHaveAttribute("inert")
+
+      fireEvent.click(screen.getByRole("button", { name: "Back to create" }))
+      await waitFor(() => expect(screen.queryByRole("dialog", { name: "Settings" })).not.toBeInTheDocument())
+      expect(prompt).toHaveValue("A quiet chorus with brushed drums")
+      expect(screen.getByRole("link", { name: "Settings" })).toHaveFocus()
+    } finally {
+      window.history.pushState({}, "", originalPath)
+    }
+  })
+
   it("preserves project context when settings opens from Create", async () => {
     const originalUrl = window.location.href
     window.history.pushState({}, "", "/create?project_ref=project_live_1")

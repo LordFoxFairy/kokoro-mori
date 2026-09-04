@@ -1,6 +1,8 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 import type { MoriApi } from "@/lib/mori-api"
+import { MoriAppProvider } from "./components/mori-app-provider"
+import { MoriAppShell } from "./components/mori-app-shell"
 import { ProjectsPageContent } from "./project-list"
 
 describe("Mori projects", () => {
@@ -282,9 +284,43 @@ describe("Mori projects", () => {
       expect.stringMatching(/^mori-project-/u),
     ))
     expect(await screen.findByText("Project created")).toBeInTheDocument()
-    expect(screen.getByRole("link", { name: "Start the first direction for Window Seat" })).toHaveAttribute("href", "/create?project_ref=project_live_1")
+    const startDirection = screen.getByRole("link", { name: "Start the first direction for Window Seat" })
+    expect(startDirection).toHaveAttribute("href", "/create?project_ref=project_live_1")
+    await waitFor(() => expect(startDirection).toHaveFocus())
     fireEvent.click(screen.getByRole("button", { name: "Keep browsing" }))
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
     expect(document.body.style.overflow).toBe("")
+  })
+
+  it("layers project creation above the global shell and restores the opener", async () => {
+    render(
+      <MoriAppProvider>
+        <MoriAppShell activeKey="projects" ariaLabel="Projects">
+          <ProjectsPageContent api={{ listProjects: async () => ({ data: { projects: [], next_cursor: null }, meta: { request_id: "request_projects_modal" } }) }} />
+        </MoriAppShell>
+      </MoriAppProvider>,
+    )
+
+    const rail = screen.getByRole("navigation", { name: "Mori" })
+    const surface = screen.getByRole("region", { name: "Projects" })
+    const playerSlot = screen.getByRole("region", { name: "Global player" }).parentElement
+    const trigger = screen.getByRole("button", { name: "New project" })
+    if (playerSlot === null) throw new Error("Global player slot was not rendered")
+    trigger.focus()
+    fireEvent.click(trigger)
+
+    const dialog = screen.getByRole("dialog", { name: "Start a new project" })
+    expect(dialog.parentElement?.parentElement).toBe(document.body)
+    await waitFor(() => {
+      expect(rail).toHaveAttribute("inert")
+      expect(surface).toHaveAttribute("inert")
+      expect(playerSlot).toHaveAttribute("inert")
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }))
+    expect(rail).not.toHaveAttribute("inert")
+    expect(surface).not.toHaveAttribute("inert")
+    expect(playerSlot).not.toHaveAttribute("inert")
+    expect(trigger).toHaveFocus()
   })
 })

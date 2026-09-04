@@ -1,6 +1,6 @@
 import { AudioLines, CircleHelp, FolderKanban, House, Library, PanelLeftClose, PanelLeftOpen, Plus, Settings2, Sparkles } from "lucide-react"
 import Link from "next/link"
-import { useEffect, useState } from "react"
+import { useEffect, useState, type MouseEvent as ReactMouseEvent } from "react"
 import type { RefObject } from "react"
 import styles from "../mori-workspace.module.css"
 
@@ -11,6 +11,7 @@ type MoriRailProps = {
   collapsed?: boolean
   projectRef?: string | null
   onNavigate?: () => void
+  onOpenSettings?: (returnTo: string) => void
   onToggle?: () => void
   railRef?: RefObject<HTMLElement | null>
   toggleRef?: RefObject<HTMLButtonElement | null>
@@ -23,7 +24,7 @@ const navigation = [
   { key: "library" as const, label: "Library", href: "/library", icon: Library },
 ]
 
-export function MoriRail({ activeKey = "create", collapsed = false, projectRef, onNavigate, onToggle, railRef, toggleRef }: MoriRailProps) {
+export function MoriRail({ activeKey = "create", collapsed = false, projectRef, onNavigate, onOpenSettings, onToggle, railRef, toggleRef }: MoriRailProps) {
   const [settingsHref, setSettingsHref] = useState("/settings?return_to=%2F")
   const [createHref, setCreateHref] = useState("/create")
 
@@ -43,7 +44,7 @@ export function MoriRail({ activeKey = "create", collapsed = false, projectRef, 
   }, [projectRef])
 
   return (
-    <nav ref={railRef} className={`${styles.rail} ${collapsed ? styles.railCollapsed : ""}`} aria-label="Mori" data-rail-state={collapsed ? "collapsed" : "expanded"}>
+    <nav ref={railRef} className={`${styles.rail} ${collapsed ? styles.railCollapsed : ""}`} aria-label="Mori" data-mori-shell-region="true" data-rail-state={collapsed ? "collapsed" : "expanded"}>
       <div className={styles.brandRow}>
         <Link className={styles.brandIdentity} href="/" aria-label="Mori home" onClick={onNavigate}>
           <div className={styles.brandMark} aria-hidden="true"><AudioLines size={20} strokeWidth={1.9} /></div>
@@ -68,7 +69,15 @@ export function MoriRail({ activeKey = "create", collapsed = false, projectRef, 
       </div>
 
       <div className={styles.railBottom}>
-        <Link className={`${styles.railFooterLink} ${activeKey === "settings" ? styles.railFooterLinkActive : ""}`} href={settingsHref} aria-label="Settings" aria-current={activeKey === "settings" ? "page" : undefined} title={collapsed ? "Settings" : undefined} onClick={onNavigate}>
+        <Link className={`${styles.railFooterLink} ${activeKey === "settings" ? styles.railFooterLinkActive : ""}`} href={settingsHref} aria-label="Settings" aria-current={activeKey === "settings" ? "page" : undefined} title={collapsed ? "Settings" : undefined} onClick={(event: ReactMouseEvent<HTMLAnchorElement>) => {
+          if (onOpenSettings !== undefined) {
+            event.preventDefault()
+            event.currentTarget.focus()
+            onOpenSettings(currentMoriLocation())
+            return
+          }
+          onNavigate?.()
+        }}>
           <Settings2 size={16} />
           <span>Settings</span>
         </Link>
@@ -79,4 +88,9 @@ export function MoriRail({ activeKey = "create", collapsed = false, projectRef, 
       </div>
     </nav>
   )
+}
+
+function currentMoriLocation(): string {
+  const currentLocation = `${window.location.pathname}${window.location.search}`
+  return currentLocation.startsWith("/") && !currentLocation.startsWith("//") ? currentLocation : "/"
 }

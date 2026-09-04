@@ -16,8 +16,9 @@ function renderSettingsWithShell() {
   return render(
     <MoriAppProvider>
       <MoriAppShell activeKey="settings" ariaLabel="Settings">
-        <MoriSettingsPage />
+        <div aria-hidden="true" />
       </MoriAppShell>
+      <MoriSettingsPage />
     </MoriAppProvider>,
   )
 }
@@ -45,10 +46,10 @@ describe("Mori settings", () => {
 
   it("isolates the shell background and restores its original attributes on unmount", async () => {
     const { unmount } = renderSettingsWithShell()
-    const rail = screen.getByRole("navigation", { name: "Mori" })
-    const surface = screen.getByRole("region", { name: "Settings" })
-    const playerSlot = screen.getByRole("region", { name: "Global player" }).parentElement
-    if (playerSlot === null) throw new Error("Global player slot was not rendered")
+    const rail = document.querySelector<HTMLElement>('nav[aria-label="Mori"]')
+    const surface = document.querySelector<HTMLElement>('section[aria-label="Settings"]')
+    const playerSlot = document.querySelector<HTMLElement>('section[aria-label="Global player"]')?.parentElement ?? null
+    if (rail === null || surface === null || playerSlot === null) throw new Error("Settings shell background was not rendered")
 
     await waitFor(() => {
       expect(rail).toHaveAttribute("aria-hidden", "true")
