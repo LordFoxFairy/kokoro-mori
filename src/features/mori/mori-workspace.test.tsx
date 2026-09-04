@@ -197,8 +197,10 @@ describe("Mori workspace", () => {
     fireEvent.change(screen.getByRole("textbox", { name: "Song idea" }), { target: { value: "A quiet piano song for the first train home." } })
     fireEvent.submit(screen.getByRole("textbox", { name: "Song idea" }).closest("form") as HTMLFormElement)
 
-    expect(screen.getByRole("region", { name: "Song plan preview" })).toBeInTheDocument()
-    expect(within(screen.getByRole("region", { name: "Song plan preview" })).getByText("A quiet piano song for the first train home.")).toBeInTheDocument()
+    const planPreview = screen.getByRole("region", { name: "Song plan preview" })
+    expect(planPreview).toBeInTheDocument()
+    await waitFor(() => expect(planPreview).toHaveFocus())
+    expect(within(planPreview).getByText("A quiet piano song for the first train home.")).toBeInTheDocument()
     expect(createGeneration).not.toHaveBeenCalled()
     expect(screen.getByRole("button", { name: "Create from this plan" })).toBeInTheDocument()
 

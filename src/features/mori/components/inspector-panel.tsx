@@ -1,10 +1,12 @@
-import { Check, Clock3, Play, Sparkles, X } from "lucide-react"
+import { ArrowUpRight, Check, Clock3, Play, Sparkles, X } from "lucide-react"
+import Link from "next/link"
 import { useEffect, useRef } from "react"
 import type { Candidate, Generation, SongPlan } from "../domain"
 import { Waveform } from "./waveform"
 import styles from "../mori-workspace.module.css"
 
 type InspectorPanelProps = {
+  projectRef: string
   generation: Generation
   candidates: Candidate[]
   songPlan: SongPlan
@@ -24,7 +26,7 @@ function formatDuration(seconds: number): string {
   return `${minutes}:${remaining}`
 }
 
-export function InspectorPanel({ generation, candidates, songPlan, selectedCandidateRef, playing, onSelect, onPromote, onPlay, onCancel, onRetry, onClose }: InspectorPanelProps) {
+export function InspectorPanel({ projectRef, generation, candidates, songPlan, selectedCandidateRef, playing, onSelect, onPromote, onPlay, onCancel, onRetry, onClose }: InspectorPanelProps) {
   const generationActive = ["queued", "preparing", "generating", "post_processing"].includes(generation.status)
   const generationFailed = generation.status === "failed" || generation.status === "expired"
   const generationEmpty = generation.status === "succeeded" && candidates.length === 0
@@ -115,6 +117,14 @@ export function InspectorPanel({ generation, candidates, songPlan, selectedCandi
                   <button className={styles.candidatePlay} type="button" onClick={(event) => { event.stopPropagation(); onPlay(candidate) }} aria-label={`${playing && isSelected ? "Pause" : "Play"} ${candidate.title}`}>
                     <Play size={12} fill={playing && isSelected ? "currentColor" : "none"} /> {playing && isSelected ? "Playing" : "Preview"}
                   </button>
+                  <Link
+                    className={styles.candidateStudioLink}
+                    href={`/projects/${encodeURIComponent(projectRef)}/studio/${encodeURIComponent(candidate.versionRef)}`}
+                    aria-label={`Open Studio for ${candidate.title}`}
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    Studio <ArrowUpRight size={12} />
+                  </Link>
                   {isCurrent ? (
                     <span className={styles.promotedLabel}><Check /> Current version</span>
                   ) : (

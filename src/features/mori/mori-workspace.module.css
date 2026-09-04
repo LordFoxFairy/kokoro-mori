@@ -855,7 +855,7 @@
 .candidateActions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 6px;
 }
 
@@ -879,7 +879,30 @@
   color: var(--mori-primary);
 }
 
+.candidateStudioLink {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  gap: 4px;
+  padding: 0 7px;
+  border-radius: 8px;
+  color: var(--mori-muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.candidateStudioLink:hover {
+  color: var(--mori-primary);
+  background: var(--mori-primary-soft);
+}
+
+.candidateStudioLink:focus-visible {
+  outline: 3px solid rgba(109, 92, 231, 0.22);
+  outline-offset: 1px;
+}
+
 .promoteButton {
+  margin-left: auto;
   min-height: 28px;
   padding: 0 8px;
   border: 0;
@@ -894,6 +917,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  margin-left: auto;
   color: var(--mori-success);
   font-size: 10px;
   font-weight: 700;

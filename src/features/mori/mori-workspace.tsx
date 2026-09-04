@@ -266,6 +266,7 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialCreative
         <div className={styles.drawerLayer}>
           <button className={styles.drawerBackdrop} type="button" aria-label="Dismiss generation queue" onClick={() => setQueueOpen(false)} />
           <InspectorPanel
+            projectRef={workspaceProjectRef}
             generation={generation}
             candidates={currentCandidates}
             songPlan={songPlan}

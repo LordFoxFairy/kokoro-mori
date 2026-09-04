@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState, type ChangeEvent, type FormEvent, type KeyboardEvent } from "react"
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent, type KeyboardEvent } from "react"
 import { AudioLines, Check, Disc3, Mic2, SlidersHorizontal, Sparkles, WandSparkles } from "lucide-react"
 import type { CreationMode, LyricsMode, SongPlan } from "../domain"
 import { t } from "../copy"
@@ -51,6 +51,7 @@ export function CreateCanvas({ projectRef, mode, initialCreativeSource, onModeCh
   const smartTabRef = useRef<HTMLButtonElement>(null)
   const customTabRef = useRef<HTMLButtonElement>(null)
   const referenceInputRef = useRef<HTMLInputElement>(null)
+  const planPreviewRef = useRef<HTMLElement>(null)
   const [prompt, setPrompt] = useState("A warm, late-night track for the drive home, slowly opening into sunrise.")
   const [lyrics, setLyrics] = useState("")
   const [lyricsModeOverride, setLyricsModeOverride] = useState<LyricsMode | null>(null)
@@ -71,6 +72,21 @@ export function CreateCanvas({ projectRef, mode, initialCreativeSource, onModeCh
 
   const lyricsMode = lyricsModeOverride ?? preferences.lyricsMode
   const durationSeconds = durationOverride ?? preferences.durationSeconds
+  const planPreviewVisible = planPreview !== null
+
+  useEffect(() => {
+    if (!planPreviewVisible) return
+    const frame = window.requestAnimationFrame(() => {
+      const preview = planPreviewRef.current
+      if (preview === null) return
+      preview.focus({ preventScroll: true })
+      preview.scrollIntoView?.({
+        behavior: preferences.reduceMotion ? "auto" : "smooth",
+        block: "start",
+      })
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [planPreviewVisible, preferences.reduceMotion])
 
   function clearPlanPreview() {
     setPlanPreview(null)
@@ -248,7 +264,7 @@ export function CreateCanvas({ projectRef, mode, initialCreativeSource, onModeCh
         ) : null}
 
         {planPreview !== null ? (
-          <section className={styles.songPlanPreview} role="region" aria-label="Song plan preview">
+          <section ref={planPreviewRef} className={styles.songPlanPreview} role="region" aria-label="Song plan preview" tabIndex={-1}>
             <header className={styles.songPlanPreviewHeader}>
               <div>
                 <div className={styles.songPlanKicker}><Sparkles size={13} /> AI draft</div>

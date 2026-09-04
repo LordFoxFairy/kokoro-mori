@@ -4,11 +4,37 @@ import { previewCandidates, previewGeneration, previewSongPlan } from "../previe
 import { InspectorPanel } from "./inspector-panel"
 
 describe("Mori generation queue", () => {
+  it("keeps every generated direction connected to its Studio context", () => {
+    render(
+      <InspectorPanel
+        projectRef="project_queue_1"
+        generation={{ ...previewGeneration, status: "succeeded", progress: 100 }}
+        candidates={previewCandidates}
+        songPlan={previewSongPlan}
+        selectedCandidateRef={previewCandidates[0].candidateRef}
+        playing={false}
+        onSelect={vi.fn()}
+        onPromote={vi.fn()}
+        onPlay={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole("link", { name: "Open Studio for First Light" })).toHaveAttribute(
+      "href",
+      "/projects/project_queue_1/studio/version_preview_first_light_a",
+    )
+    expect(screen.getByRole("link", { name: "Open Studio for First Light · Afterglow" })).toHaveAttribute(
+      "href",
+      "/projects/project_queue_1/studio/version_preview_first_light_b",
+    )
+  })
+
   it("exposes cancellation while a generation is active", () => {
     const onCancel = vi.fn()
 
     render(
       <InspectorPanel
+        projectRef="project_preview_first_light"
         generation={{ ...previewGeneration, status: "generating", progress: 52 }}
         candidates={previewCandidates}
         songPlan={previewSongPlan}
@@ -31,6 +57,7 @@ describe("Mori generation queue", () => {
 
     render(
       <InspectorPanel
+        projectRef="project_preview_first_light"
         generation={{ ...previewGeneration, status: "succeeded", progress: 100 }}
         candidates={[]}
         songPlan={previewSongPlan}
@@ -57,6 +84,7 @@ describe("Mori generation queue", () => {
 
     const { unmount } = render(
       <InspectorPanel
+        projectRef="project_preview_first_light"
         generation={{ ...previewGeneration, status: "succeeded", progress: 100 }}
         candidates={previewCandidates}
         songPlan={previewSongPlan}
