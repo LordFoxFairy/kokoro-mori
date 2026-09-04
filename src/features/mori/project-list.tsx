@@ -19,12 +19,17 @@ export function ProjectsPageContent({ api }: ProjectsPageContentProps = {}) {
   const projectsApi = api ?? defaultApi
   const [projects, setProjects] = useState<Project[]>([previewProject])
   const [createOpen, setCreateOpen] = useState(false)
+  const [nextCursor, setNextCursor] = useState<string | null>(null)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [loadMoreError, setLoadMoreError] = useState(false)
 
   useEffect(() => {
     let disposed = false
     void projectsApi.listProjects({ limit: 20 }).then((response) => {
       if (!disposed) {
         setProjects(response.data.projects.map(toDomainProject))
+        setNextCursor(response.data.next_cursor)
+        setLoadMoreError(false)
       }
     }).catch(() => {
       // Keep the deterministic fixture visible while the BFF is unavailable.
@@ -34,6 +39,28 @@ export function ProjectsPageContent({ api }: ProjectsPageContentProps = {}) {
       disposed = true
     }
   }, [projectsApi])
+
+  async function loadMoreProjects() {
+    if (loadingMore || nextCursor === null) return
+
+    setLoadingMore(true)
+    setLoadMoreError(false)
+    try {
+      const response = await projectsApi.listProjects({ limit: 20, cursor: nextCursor })
+      setProjects((items) => {
+        const seenProjectRefs = new Set(items.map((item) => item.projectRef))
+        const additions = response.data.projects
+          .filter((project) => !seenProjectRefs.has(project.project_ref))
+          .map((project, index) => toDomainProject(project, items.length + index))
+        return [...items, ...additions]
+      })
+      setNextCursor(response.data.next_cursor)
+    } catch {
+      setLoadMoreError(true)
+    } finally {
+      setLoadingMore(false)
+    }
+  }
 
   return (
     <div className={styles.catalogContent}>
@@ -53,6 +80,16 @@ export function ProjectsPageContent({ api }: ProjectsPageContentProps = {}) {
           <button className={styles.ghostButton} type="button" onClick={() => setCreateOpen(true)} aria-haspopup="dialog">Start a project</button>
         </div>}
       </div>
+      {nextCursor !== null ? <div>
+        <button className={styles.ghostButton} type="button" disabled={loadingMore} aria-busy={loadingMore} onClick={() => void loadMoreProjects()}>
+          {loadingMore ? "Loading more projects…" : "Load more projects"}
+        </button>
+        {loadingMore ? <span role="status" aria-live="polite">Loading more projects…</span> : null}
+        {loadMoreError ? <span role="status">
+          The next page could not load.
+          <button type="button" onClick={() => void loadMoreProjects()}>Try again</button>
+        </span> : null}
+      </div> : null}
       {createOpen ? <ProjectCreateDialog
         createProject={projectsApi.createProject}
         onClose={() => setCreateOpen(false)}

@@ -56,6 +56,41 @@ describe("Mori generation queue", () => {
     )
   })
 
+  it("routes Studio changes back to Studio instead of switching Create context", () => {
+    const onSelectGeneration = vi.fn()
+    render(
+      <InspectorPanel
+        projectRef="project_queue_1"
+        generation={null}
+        queueItems={[{
+          generation_ref: "generation_studio_queue",
+          project_ref: "project_queue_1",
+          source_version_ref: "version_queue_1",
+          kind: "studio_change",
+          label: "Restyle · Whole song",
+          created_at: "2026-09-04T12:00:00.000Z",
+          status: "generating",
+          progress: 44,
+          candidate_refs: [],
+          last_event_id: null,
+        }]}
+        activeGenerationRef={null}
+        candidates={[]}
+        songPlan={null}
+        selectedCandidateRef=""
+        playing={false}
+        onSelect={vi.fn()}
+        onPromote={vi.fn()}
+        onPlay={vi.fn()}
+        onSelectGeneration={onSelectGeneration}
+      />,
+    )
+
+    const studioLink = screen.getByRole("link", { name: "Open Studio run Restyle · Whole song" })
+    expect(studioLink).toHaveAttribute("href", "/projects/project_queue_1/studio/version_queue_1")
+    expect(onSelectGeneration).not.toHaveBeenCalled()
+  })
+
   it("makes the paused direction selection explicit and keyboard reachable", () => {
     const onSelect = vi.fn()
 

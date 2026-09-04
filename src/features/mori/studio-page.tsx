@@ -43,6 +43,7 @@ import type { StudioEntryIntent, StudioEntrySurface } from "./studio-entry"
 import { buildStudioTimelineSections, isActiveStudioChangeStatus, type StudioChangePlan, type StudioTimelineSection } from "./studio-change"
 import { createStudioLyricsRevisionDraft, defaultStudioLyrics, isActiveLyricsRevisionStatus, studioLyricsScopeLabel, type StudioLyricsPlan } from "./studio-lyrics"
 import { isStudioRemasterPlan, isStudioRemasterSnapshot } from "./studio-remaster"
+import { studioChangePlanFromSnapshot } from "./studio-recovery"
 import { createStudioStemSeparationDraft, isActiveStemSeparationStatus, stemSeparationSnapshotMatchesPlan, type StudioStemSeparationPlan } from "./studio-stems"
 import { createHtmlStemPlaybackController, type StemPlaybackFactory } from "./stem-playback"
 import { useStudioReleaseWorkflow } from "./use-studio-release-workflow"
@@ -59,6 +60,7 @@ import styles from "./mori-workspace.module.css"
 type StudioTool = "arrangement" | "lyrics" | "stems"
 type StudioLinkCopyStatus = "idle" | "copying" | "copied" | "failed"
 type StudioExportFeedback = "idle" | MoriExportStatus
+type StudioVersionLoadState = "ready" | "loading" | "error"
 
 const studioToolOrder: readonly StudioTool[] = ["arrangement", "lyrics", "stems"]
 
@@ -196,6 +198,8 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
   const initialCandidate = resolveInitialCandidate(candidate, projectRef, versionRef)
   const activeProjectRef = projectRef?.trim() || previewProject.projectRef
   const [activeCandidate, setActiveCandidate] = useState<Candidate | null>(() => initialCandidate)
+  const [versionLoadState, setVersionLoadState] = useState<StudioVersionLoadState>(() => initialCandidate === null && projectRef?.trim() ? "loading" : "ready")
+  const [versionLoadAttempt, setVersionLoadAttempt] = useState(0)
   const [studioCandidates, setStudioCandidates] = useState(() => initialCandidate === null ? [] : [initialCandidate, ...previewCandidates.filter((item) => item.versionRef !== initialCandidate.versionRef)])
   const [currentVersionRef, setCurrentVersionRef] = useState(() => previewCandidates.find((item) => item.isCurrent)?.versionRef ?? candidate.versionRef)
   const [currentVersionCommitRun, setCurrentVersionCommitRun] = useState<CurrentVersionCommitRun>(idleCurrentVersionCommitRun)
@@ -236,6 +240,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
   const previousStudioContextRef = useRef({ projectRef: activeProjectRef, versionRef: activeVersionRef })
   const linkCopyResetTimerRef = useRef<number | null>(null)
   const linkCopyAttemptRef = useRef(0)
+  const studioRecoveryGenerationRef = useRef<string | null>(null)
 
   useEffect(() => () => {
     linkCopyAttemptRef.current += 1
@@ -284,6 +289,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
   useEffect(() => {
     const requestedProjectRef = projectRef?.trim()
     if (!requestedProjectRef) return
+    setVersionLoadState("loading")
 
     const getProject = studioApi.getProject
     const listCandidates = studioApi.listCandidates
@@ -304,6 +310,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
       if ((nextActiveCandidate?.versionRef ?? null) !== activeVersionRefRef.current) setVersionHistoryOpen(false)
       setActiveCandidate(nextActiveCandidate ?? null)
       setCurrentVersionRef(nextCurrentVersionRef)
+      setVersionLoadState("ready")
     }
 
     if (getProject) {
@@ -322,7 +329,9 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
       projectedCandidates = candidates.map(toDomainCandidate)
       applyCandidateProjection()
     }).catch(() => {
+      if (disposed) return
       if (initialCandidate === null) {
+        setVersionLoadState("error")
         setStudioCandidates([])
         setVersionHistoryOpen(false)
         setActiveCandidate(null)
@@ -334,7 +343,47 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
     return () => {
       disposed = true
     }
-  }, [initialCandidate, projectRef, studioApi, versionRef])
+  }, [initialCandidate, projectRef, studioApi, versionLoadAttempt, versionRef])
+
+  useEffect(() => {
+    const requestedProjectRef = projectRef?.trim()
+    const requestedVersionRef = versionRef?.trim()
+    const candidateToRecover = activeCandidate
+    const sourceVersionRef = candidateToRecover?.versionRef
+    if (requestedProjectRef === undefined || requestedProjectRef === "" || requestedVersionRef === undefined || requestedVersionRef === "" || candidateToRecover === null || sourceVersionRef === undefined || trackedStudioChange !== null || studioRecoveryGenerationRef.current !== null) return
+    const queue = readGenerationQueueState()
+    const queuedItem = queue.items.find((item) => (
+      item.kind === "studio_change"
+      && item.project_ref === requestedProjectRef
+      && item.source_version_ref === sourceVersionRef
+      && item.generation_ref === queue.active_generation_ref
+    ))
+    if (queuedItem === undefined) return
+
+    studioRecoveryGenerationRef.current = queuedItem.generation_ref
+    let disposed = false
+    void studioApi.getGeneration(queuedItem.generation_ref).then((snapshot) => {
+      if (disposed || snapshot.data.generation_kind !== "studio_change" || snapshot.data.source_version_ref !== sourceVersionRef) return
+      const plan = studioChangePlanFromSnapshot(snapshot.data, candidateToRecover.durationSeconds)
+      setStudioChangeRun({
+        status: snapshot.data.status,
+        progress: snapshot.data.progress,
+        resultCount: snapshot.data.candidate_refs.length,
+        plan,
+        message: null,
+      })
+      setTrackedStudioChange({
+        generationRef: queuedItem.generation_ref,
+        sourceVersionRef,
+        plan,
+      })
+    }).catch(() => {
+      if (!disposed) studioRecoveryGenerationRef.current = null
+    })
+    return () => {
+      disposed = true
+    }
+  }, [activeCandidate, activeProjectRef, projectRef, studioApi, trackedStudioChange, versionRef])
 
   useEffect(() => {
     pendingCurrentVersionCommandRef.current = null
@@ -394,6 +443,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
     let disposed = false
     let timer: number | undefined
     let lastEventId: string | null = readGenerationQueueState().items.find((item) => item.generation_ref === trackedStudioChange.generationRef)?.last_event_id ?? null
+    let retryDelayMs = 900
     const eventController = new AbortController()
 
     const sync = async () => {
@@ -404,6 +454,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
         if (!studioChangeSnapshotMatchesPlan(snapshot.data, trackedStudioChange)) {
           throw new Error(studioChangeSnapshotMismatchCode(trackedStudioChange.plan))
         }
+        retryDelayMs = 900
 
         let status = snapshot.data.status
         let progress = snapshot.data.progress
@@ -457,13 +508,19 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
         timer = window.setTimeout(() => { void sync() }, 900)
       } catch (error) {
         if (!disposed) {
+          const queued = readGenerationQueueState()
+          const queuedItem = queued.items.find((item) => item.generation_ref === trackedStudioChange.generationRef)
+          if (queuedItem !== undefined && isActiveGenerationQueueStatus(queuedItem.status) && isRetryableGenerationStatusError(error)) {
+            setStudioChangeRun((current) => ({ ...current, message: "Mori is reconnecting. The render is still running." }))
+            timer = window.setTimeout(() => { void sync() }, retryDelayMs)
+            retryDelayMs = Math.min(retryDelayMs * 2, 4_000)
+            return
+          }
           setStudioChangeRun((current) => ({
             ...current,
             status: "failed",
             message: studioChangeFailureMessage(error),
           }))
-          const queued = readGenerationQueueState()
-          const queuedItem = queued.items.find((item) => item.generation_ref === trackedStudioChange.generationRef)
           if (queuedItem !== undefined && isActiveGenerationQueueStatus(queuedItem.status)) {
             writeGenerationQueueState(updateGenerationQueueItem(queued, trackedStudioChange.generationRef, {
               status: "failed",
@@ -499,9 +556,11 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
         progress: Math.min(current.progress, 99),
         message: null,
       }))
-      writeGenerationQueueState(updateGenerationQueueItem(readGenerationQueueState(), generationRef, {
+      const queue = readGenerationQueueState()
+      const queuedItem = queue.items.find((item) => item.generation_ref === generationRef)
+      writeGenerationQueueState(updateGenerationQueueItem(queue, generationRef, {
         status: response.data.status,
-        progress: Math.min(studioChangeRun.progress, 99),
+        progress: Math.min(queuedItem?.progress ?? studioChangeRun.progress, 99),
       }))
     } catch {
       setStudioChangeRun((current) => ({ ...current, message: "Cancellation did not complete. Rendering is still being tracked." }))
@@ -1202,11 +1261,20 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
           </> : null}
         </div>
       </header>
-      {activeCandidate === null ? <section className={styles.studioUnavailable} aria-label="Studio version unavailable">
-        <div className={styles.studioUnavailableIcon}><Sparkles size={20} /></div>
-        <h1>This version is not available yet</h1>
-        <p>Mori could not find a playable version for this project. Return to the project and choose another direction.</p>
-        <Link className={styles.generateButton} href={`/projects/${activeProjectRef}`}><ArrowLeft size={14} /> Back to projects</Link>
+      {activeCandidate === null ? <section className={styles.studioUnavailable} aria-label={versionLoadState === "loading" ? "Loading Studio version" : versionLoadState === "error" ? "Studio version load error" : "Studio version unavailable"}>
+        <div className={styles.studioUnavailableIcon}>{versionLoadState === "loading" ? <LoaderCircle size={20} /> : <Sparkles size={20} />}</div>
+        {versionLoadState === "loading" ? <>
+          <h1>Loading this Version</h1>
+          <p>Mori is opening the audio, timeline, and tools for this Version.</p>
+        </> : versionLoadState === "error" ? <>
+          <h1>Version connection needs another try</h1>
+          <p>The project is still here, but this Version did not load. Try again or return to the project.</p>
+          <button className={styles.generateButton} type="button" onClick={() => setVersionLoadAttempt((attempt) => attempt + 1)}><RotateCcw size={14} /> Try again</button>
+        </> : <>
+          <h1>This Version is not available</h1>
+          <p>Mori could not find a playable Version for this project. Return to the project and choose another direction.</p>
+          <Link className={styles.generateButton} href={`/projects/${activeProjectRef}`}><ArrowLeft size={14} /> Back to projects</Link>
+        </>}
       </section> : <div className={styles.studioLayout}>
         <aside className={styles.studioSidebar} aria-label="Studio tools">
           <div className={styles.studioArtwork}><span>01</span></div>
@@ -1478,6 +1546,10 @@ function studioChangeFailureMessage(error: unknown): string {
 
 function isActiveGenerationQueueStatus(status: GenerationQueueItem["status"]): boolean {
   return status === "queued" || status === "preparing" || status === "generating" || status === "post_processing"
+}
+
+function isRetryableGenerationStatusError(error: unknown): boolean {
+  return error instanceof MoriApiRequestError && error.retryable
 }
 
 function lyricsRevisionSnapshotMatches(snapshot: LyricsRevisionSnapshot, tracked: TrackedLyricsRevision): boolean {

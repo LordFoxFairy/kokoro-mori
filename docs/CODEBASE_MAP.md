@@ -17,6 +17,8 @@ src/features/mori/               Mori 页面、组件、交互状态与 fixture 
   components/                    全局 Rail、Player、Queue、Studio 工作面
   creative-assets.ts              本地 preview Creative source projection 与 UI 映射类型
   studio-change.ts                Studio Change 领域计划与 scope 计算
+  studio-recovery.ts              从服务端 Generation snapshot 恢复 Studio Change 工作上下文
+  generation-queue-storage.ts    Generation queue 的浏览器持久化边界与跨 surface 通知
   *-page.tsx / *-workspace.tsx    页面级组合和 API 状态编排
 src/lib/mori-api.ts              Mori wire type、Library/Creative Source projection、请求 builder 与同源 client seam
 contract/openapi/                本仓 Studio / release 等机器契约事实源

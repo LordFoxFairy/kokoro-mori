@@ -88,7 +88,7 @@ export function InspectorPanel({ presentation = "drawer", projectRef, generation
       </header>
 
       <div className={styles.inspectorBody}>
-        {queueItems.length > 1 ? <section className={styles.queueTaskList} aria-labelledby="recent-generations-heading">
+        {queueItems.length > 0 ? <section className={styles.queueTaskList} aria-labelledby="recent-generations-heading">
           <div className={styles.candidatesHeader}>
             <h3 id="recent-generations-heading">Recent runs</h3>
             <span>{queueItems.length} tasks</span>
@@ -97,20 +97,31 @@ export function InspectorPanel({ presentation = "drawer", projectRef, generation
             {queueItems.map((item) => {
               const active = activeGenerationRef === item.generation_ref
               const clientPhase = generationQueueClientPhaseForStatus(item.status)
-              return <button
-                className={`${styles.queueTaskItem} ${active ? styles.queueTaskItemActive : ""}`}
-                type="button"
-                aria-current={active ? "true" : undefined}
-                key={item.generation_ref}
-                onClick={() => onSelectGeneration?.(item.generation_ref)}
-              >
+              const className = `${styles.queueTaskItem} ${active ? styles.queueTaskItemActive : ""}`
+              const content = <>
                 <span className={`${styles.queueTaskDot} ${styles[`queueTaskDot${clientPhase}`]}`} aria-hidden="true" />
                 <span className={styles.queueTaskCopy}>
                   <strong>{item.label}</strong>
                   <span>{item.kind === "create" ? "Create" : "Studio change"} · {queueStatusLabel(item.status)}</span>
                 </span>
                 <span className={styles.queueTaskProgress}>{item.progress}%</span>
-              </button>
+              </>
+              if (item.kind === "studio_change") {
+                return <Link
+                  className={className}
+                  href={studioQueueDestination(item)}
+                  aria-current={active ? "true" : undefined}
+                  aria-label={`Open Studio run ${item.label}`}
+                  key={item.generation_ref}
+                >{content}</Link>
+              }
+              return <button
+                className={className}
+                type="button"
+                aria-current={active ? "true" : undefined}
+                key={item.generation_ref}
+                onClick={() => onSelectGeneration?.(item.generation_ref)}
+              >{content}</button>
             })}
           </div>
         </section> : null}
@@ -246,4 +257,10 @@ function queueStatusLabel(status: GenerationQueueItem["status"]): string {
     case "cancelled": return "Cancelled"
     case "expired": return "Expired"
   }
+}
+
+function studioQueueDestination(item: GenerationQueueItem): string {
+  return item.source_version_ref === null
+    ? `/projects/${encodeURIComponent(item.project_ref)}`
+    : `/projects/${encodeURIComponent(item.project_ref)}/studio/${encodeURIComponent(item.source_version_ref)}`
 }

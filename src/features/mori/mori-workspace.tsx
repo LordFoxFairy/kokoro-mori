@@ -105,7 +105,7 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
       const activeRef = restored.active_generation_ref
       const activeItem = activeRef === null ? undefined : restored.items.find((item) => item.generation_ref === activeRef)
       const belongsToRoute = activeItem !== undefined && (initialProjectRef === null || activeItem.project_ref === initialProjectRef)
-      if (belongsToRoute && activeItem !== undefined) {
+      if (belongsToRoute && activeItem?.kind === "create") {
         setGenerationRef(activeItem.generation_ref)
         setHasGeneration(true)
         setGenerationStatus(activeItem.status)
@@ -311,12 +311,14 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
     let disposed = false
     let timer: number | undefined
     let lastEventId: string | null = generationQueueRef.current.items.find((item) => item.generation_ref === generationRef)?.last_event_id ?? null
+    let retryDelayMs = 900
     const eventController = new AbortController()
 
     const sync = async () => {
       try {
         const snapshot = await getGeneration(generationRef)
         if (disposed) return
+        retryDelayMs = 900
         let status = snapshot.data.status
         let progressValue = snapshot.data.progress
         let candidateRefs = snapshot.data.candidate_refs
@@ -368,8 +370,15 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
         }
         if (["failed", "cancelled", "expired"].includes(status)) return
         timer = window.setTimeout(() => { void sync() }, 220)
-      } catch {
+      } catch (error) {
         if (!disposed) {
+          const item = generationQueueRef.current.items.find((candidate) => candidate.generation_ref === generationRef)
+          if (item !== undefined && isActiveQueueStatus(item.status) && isRetryableGenerationStatusError(error)) {
+            setGenerationLabel("Reconnecting to Mori…")
+            timer = window.setTimeout(() => { void sync() }, retryDelayMs)
+            retryDelayMs = Math.min(retryDelayMs * 2, 4_000)
+            return
+          }
           setGenerationStatus("failed")
           setGenerationLabel("Generation status unavailable")
           updateQueue((current) => {
@@ -543,7 +552,7 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
 
   const selectQueuedGeneration = useCallback((nextGenerationRef: string) => {
     const item = generationQueueRef.current.items.find((candidate) => candidate.generation_ref === nextGenerationRef)
-    if (item === undefined) return
+    if (item === undefined || item.kind !== "create") return
     updateQueue((current) => ({ ...current, active_generation_ref: item.generation_ref }))
     setGenerationRef(item.generation_ref)
     setHasGeneration(true)
@@ -639,6 +648,10 @@ function generationFeedbackFor(status: GenerationStatus | null): GenerationFeedb
 
 function isActiveQueueStatus(status: GenerationQueueServerStatus): boolean {
   return status === "queued" || status === "preparing" || status === "generating" || status === "post_processing"
+}
+
+function isRetryableGenerationStatusError(error: unknown): boolean {
+  return error instanceof MoriApiRequestError && error.retryable
 }
 
 function generationFeedbackLabel(status: GenerationFeedback): string {

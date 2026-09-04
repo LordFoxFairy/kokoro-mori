@@ -4,6 +4,130 @@ import type { MoriApi } from "@/lib/mori-api"
 import { ProjectsPageContent } from "./project-list"
 
 describe("Mori projects", () => {
+  it("appends the next project page and deduplicates by project ref", async () => {
+    const listProjects = vi.fn(async (options: { limit?: number; cursor?: string | null } = {}) => {
+      if (options.cursor === "projects_cursor_2") {
+        return {
+          data: {
+            projects: [
+              {
+                project_ref: "project_live_1",
+                title: "Window Seat (duplicate)",
+                description: "The duplicate should not be appended.",
+                current_version_ref: null,
+                candidate_count: 0,
+                last_activity_at: "2026-09-02T12:00:00.000Z",
+              },
+              {
+                project_ref: "project_live_2",
+                title: "Second Light",
+                description: "A second direction.",
+                current_version_ref: null,
+                candidate_count: 1,
+                last_activity_at: "2026-09-03T12:00:00.000Z",
+              },
+            ],
+            next_cursor: null,
+          },
+          meta: { request_id: "request_projects_2" },
+        }
+      }
+      return {
+        data: {
+          projects: [{
+            project_ref: "project_live_1",
+            title: "Window Seat",
+            description: "A quiet, forward-moving sketch.",
+            current_version_ref: null,
+            candidate_count: 0,
+            last_activity_at: "2026-09-02T12:00:00.000Z",
+          }],
+          next_cursor: "projects_cursor_2",
+        },
+        meta: { request_id: "request_projects_1" },
+      }
+    })
+
+    render(<ProjectsPageContent api={{ listProjects }} />)
+
+    await screen.findByRole("heading", { name: "Window Seat" })
+    fireEvent.click(screen.getByRole("button", { name: "Load more projects" }))
+
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Second Light" })).toBeInTheDocument())
+    expect(listProjects).toHaveBeenNthCalledWith(1, { limit: 20 })
+    expect(listProjects).toHaveBeenNthCalledWith(2, { limit: 20, cursor: "projects_cursor_2" })
+    expect(screen.getAllByRole("heading", { name: "Window Seat" })).toHaveLength(1)
+    expect(screen.queryByRole("heading", { name: "Window Seat (duplicate)" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Load more projects" })).not.toBeInTheDocument()
+  })
+
+  it("does not show the load more entry when there is no next cursor", async () => {
+    const api: Pick<MoriApi, "listProjects"> = {
+      listProjects: async () => ({
+        data: {
+          projects: [],
+          next_cursor: null,
+        },
+        meta: { request_id: "request_projects_without_cursor" },
+      }),
+    }
+
+    render(<ProjectsPageContent api={api} />)
+
+    await waitFor(() => expect(screen.getByText("No projects yet")).toBeInTheDocument())
+    expect(screen.queryByRole("button", { name: "Load more projects" })).not.toBeInTheDocument()
+  })
+
+  it("keeps the cursor after a page failure and retries the request", async () => {
+    let nextPageAttempts = 0
+    const listProjects = vi.fn(async (options: { limit?: number; cursor?: string | null } = {}) => {
+      if (options.cursor === "projects_cursor_retry") {
+        nextPageAttempts += 1
+        if (nextPageAttempts === 1) throw new Error("temporary project page failure")
+        return {
+          data: {
+            projects: [{
+              project_ref: "project_live_retry",
+              title: "Retry Result",
+              description: "Loaded after retry.",
+              current_version_ref: null,
+              candidate_count: 0,
+              last_activity_at: "2026-09-04T12:00:00.000Z",
+            }],
+            next_cursor: null,
+          },
+          meta: { request_id: "request_projects_retry_success" },
+        }
+      }
+      return {
+        data: {
+          projects: [{
+            project_ref: "project_live_initial",
+            title: "Initial Project",
+            description: "The first page.",
+            current_version_ref: null,
+            candidate_count: 0,
+            last_activity_at: "2026-09-04T11:00:00.000Z",
+          }],
+          next_cursor: "projects_cursor_retry",
+        },
+        meta: { request_id: "request_projects_retry_initial" },
+      }
+    })
+
+    render(<ProjectsPageContent api={{ listProjects }} />)
+
+    await screen.findByRole("heading", { name: "Initial Project" })
+    fireEvent.click(screen.getByRole("button", { name: "Load more projects" }))
+    expect(await screen.findByText("The next page could not load.")).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }))
+
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Retry Result" })).toBeInTheDocument())
+    expect(nextPageAttempts).toBe(2)
+    expect(screen.queryByRole("button", { name: "Load more projects" })).not.toBeInTheDocument()
+  })
+
   it("renders projects returned by the provider-neutral projection", async () => {
     const api: Pick<MoriApi, "listProjects"> = {
       listProjects: async () => ({

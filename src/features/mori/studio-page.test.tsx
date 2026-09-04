@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { StrictMode } from "react"
 import { describe, expect, it, vi } from "vitest"
-import type { ArtworkGenerationInput, MoriApi, MoriExportInput, ReleaseDraftInput, StudioChangeGenerationInput } from "@/lib/mori-api"
+import type { ArtworkGenerationInput, MoriApi, MoriExportInput, ReleaseDraftInput, StudioChangeGenerationInput, StudioRestyleGenerationSnapshot } from "@/lib/mori-api"
 import { MoriApiRequestError } from "@/lib/mori-api-client"
 import { MoriAppProvider } from "./components/mori-app-provider"
 import { previewCandidates } from "./preview-data"
@@ -26,6 +26,65 @@ describe("Mori studio page", () => {
       </MoriAppProvider>,
     )
   }
+
+  it("restores an active Studio change from the durable queue after refresh", async () => {
+    localStorage.clear()
+    const snapshot: StudioRestyleGenerationSnapshot = {
+      generation_ref: "generation_restore_studio",
+      generation_kind: "studio_change" as const,
+      project_ref: "project_preview_first_light",
+      song_plan_ref: null,
+      mode: null,
+      source_version_ref: "version_preview_first_light_a",
+      operation: "transform" as const,
+      intent: "restyle" as const,
+      scope: { type: "time_range" as const, start_ms: 42_000, end_ms: 96_000 },
+      instruction: "Open the chorus into a wide live-room performance.",
+      preserve: ["melody", "lyrics"],
+      reference_asset_refs: [],
+      output_count: 2,
+      status: "generating" as const,
+      progress: 42,
+      candidate_refs: [],
+      created_at: "2026-09-04T12:00:00.000Z",
+    }
+    const { emptyGenerationQueueState } = await import("./generation-queue")
+    const { writeGenerationQueueState } = await import("./generation-queue-storage")
+    writeGenerationQueueState({
+      ...emptyGenerationQueueState(),
+      active_generation_ref: snapshot.generation_ref,
+      items: [{
+        generation_ref: snapshot.generation_ref,
+        project_ref: snapshot.project_ref,
+        source_version_ref: snapshot.source_version_ref,
+        kind: "studio_change",
+        label: "Restyle · Selected section · Chorus",
+        created_at: snapshot.created_at,
+        status: snapshot.status,
+        progress: snapshot.progress,
+        candidate_refs: [],
+        last_event_id: null,
+      }],
+    })
+
+    const getGeneration = vi.fn(async () => ({ data: snapshot, meta: { request_id: "request_restore_studio" } }))
+    render(
+      <MoriAppProvider>
+        <StudioPageContent
+          candidate={previewCandidates[0]}
+          projectRef={snapshot.project_ref}
+          versionRef={snapshot.source_version_ref}
+          api={{ getGeneration, getGenerationEvents: async () => [] }}
+          stemPlaybackFactory={createTestStemPlaybackController}
+        />
+      </MoriAppProvider>,
+    )
+
+    await waitFor(() => expect(getGeneration).toHaveBeenCalledWith(snapshot.generation_ref))
+    expect(await screen.findByText("Open the chorus into a wide live-room performance.")).toBeInTheDocument()
+    expect(screen.getByRole("progressbar", { name: "Studio change progress" })).toHaveAttribute("aria-valuenow", "42")
+    localStorage.clear()
+  })
 
   it("keeps mobile Studio actions discoverable by preserving action roles and labels", () => {
     renderStudio()
@@ -1015,6 +1074,10 @@ describe("Mori studio page", () => {
     await waitFor(() => expect(cancelledGenerationRef).toBe("generation_change_active"))
     expect(within(aiChanges).getByText("Change cancelled")).toBeInTheDocument()
     expect(within(aiChanges).getByRole("button", { name: "Retry change" })).toBeInTheDocument()
+    expect(readGenerationQueueState().items.find((item) => item.generation_ref === "generation_change_active")).toMatchObject({
+      status: "cancelled",
+      progress: 42,
+    })
   })
 
   it("keeps an in-flight change context when moving between Studio tools", async () => {
@@ -2624,7 +2687,7 @@ describe("Mori studio page", () => {
     )
 
     await waitFor(() => expect(screen.getByRole("region", { name: "Studio version unavailable" })).toBeInTheDocument())
-    expect(screen.getByText("This version is not available yet")).toBeInTheDocument()
+    expect(screen.getByText("This Version is not available")).toBeInTheDocument()
     expect(screen.queryByRole("heading", { name: "First Light" })).not.toBeInTheDocument()
     expect(screen.getByRole("link", { name: "Project" })).toHaveAttribute("href", "/projects/project_live_2")
     expect(screen.getByRole("link", { name: "Back to projects" })).toHaveAttribute("href", "/projects/project_live_2")

@@ -679,6 +679,7 @@
   border-radius: 11px;
   color: var(--mori-foreground);
   text-align: left;
+  text-decoration: none;
   background: rgba(248, 247, 252, 0.8);
   transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
 }
@@ -5169,8 +5170,8 @@
 
 @media (max-width: 700px) {
   .appShellWithPlayer {
-    --mori-player-height: 70px;
-    --mori-player-safe-space: 102px;
+    --mori-player-height: 96px;
+    --mori-player-safe-space: 108px;
   }
 
   .studioPage {
@@ -5505,10 +5506,17 @@
   }
 
   .player {
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 10px;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-rows: auto auto;
+    gap: 4px 8px;
     min-height: var(--mori-player-height);
     padding: 8px 14px max(8px, env(safe-area-inset-bottom));
+  }
+
+  .playerTrack {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
   }
 
   .playerArtwork {
@@ -5521,26 +5529,35 @@
   }
 
   .playerInfo span {
-    max-width: 31vw;
+    max-width: 38vw;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-
-  .playerSkipButton,
-  .playerMuteButton {
-    display: none;
   }
 
   .playerCenter {
     grid-column: 2;
     grid-row: 1;
     justify-self: end;
-    padding-right: 38px;
+    padding-right: 0;
   }
 
   .playerProgress {
-    display: none;
+    display: flex;
+    grid-column: 1 / -1;
+    grid-row: 2;
+    min-width: 0;
+    gap: 6px;
+  }
+
+  .playerProgress .time {
+    font-size: 9px;
+    min-width: 28px;
+  }
+
+  .playerSeek,
+  .playerSeekInput {
+    height: 22px;
   }
 
   .playerControls {
@@ -5549,27 +5566,29 @@
   }
 
   .playerButton {
-    width: 32px;
-    height: 32px;
+    width: 28px;
+    height: 28px;
   }
 
   .playerButtonPrimary {
-    width: 38px;
-    height: 38px;
+    width: 34px;
+    height: 34px;
   }
 
   .playerTool {
-    width: 32px;
-    min-height: 32px;
+    width: 28px;
+    min-height: 28px;
     justify-content: center;
     padding: 0;
   }
 
   .playerTools {
-    position: absolute;
-    top: 50%;
-    right: 12px;
-    transform: translateY(-50%);
+    position: static;
+    grid-column: 3;
+    grid-row: 1;
+    display: flex;
+    gap: 4px;
+    align-items: center;
   }
 
   .player[data-player-state="empty"] .playerCenter,
@@ -5579,7 +5598,7 @@
 
   .player[data-player-state="empty"] .playerTrack,
   .player[data-player-state="unavailable"] .playerTrack {
-    padding-right: 38px;
+    padding-right: 0;
   }
 
   .playerEmptyState {
