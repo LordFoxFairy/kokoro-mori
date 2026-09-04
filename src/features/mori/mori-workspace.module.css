@@ -2080,6 +2080,10 @@
   margin-top: 34px;
 }
 
+.overviewDirections {
+  container-type: inline-size;
+}
+
 .overviewSectionHeader {
   display: flex;
   align-items: flex-end;
@@ -2269,7 +2273,7 @@
 
 .overviewCandidate {
   display: grid;
-  grid-template-columns: 42px minmax(150px, 0.9fr) minmax(150px, 1.5fr) 38px 30px;
+  grid-template-columns: 42px minmax(150px, 0.9fr) minmax(150px, 1.5fr) 38px auto;
   gap: 12px;
   align-items: center;
   min-height: 70px;
@@ -2348,6 +2352,131 @@
   border-radius: 8px;
   color: var(--mori-primary);
   background: var(--mori-primary-soft);
+}
+
+.overviewCandidateActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.overviewPromoteButton {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 9px;
+  border: 1px solid rgba(109, 92, 231, 0.2);
+  border-radius: 8px;
+  color: var(--mori-primary-deep);
+  font-size: 9px;
+  font-weight: 750;
+  white-space: nowrap;
+  background: rgba(244, 241, 255, 0.8);
+}
+
+.overviewPromoteButton:hover:not(:disabled) {
+  border-color: rgba(109, 92, 231, 0.38);
+  background: rgba(235, 229, 255, 0.94);
+}
+
+.overviewPromoteButton:focus-visible {
+  outline: 3px solid rgba(109, 92, 231, 0.2);
+  outline-offset: 2px;
+}
+
+.overviewPromoteButton:disabled {
+  cursor: wait;
+  color: var(--mori-muted);
+  background: rgba(245, 244, 247, 0.86);
+}
+
+.overviewCandidateCommitNotice {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--mori-border);
+  border-radius: 11px;
+  font-size: 10px;
+}
+
+.overviewCandidateCommitNotice > div:not(.overviewCandidateCommitActions) {
+  display: grid;
+  gap: 2px;
+}
+
+.overviewCandidateCommitNotice strong {
+  font-size: 10px;
+}
+
+.overviewCandidateCommitNotice span {
+  color: var(--mori-muted);
+  line-height: 1.35;
+}
+
+.overviewCandidateCommitNoticeError {
+  border-color: rgba(226, 95, 108, 0.22);
+  color: #c34c5c;
+  background: rgba(255, 245, 246, 0.76);
+}
+
+.overviewCandidateCommitNoticeSuccess {
+  border-color: rgba(65, 163, 117, 0.22);
+  color: #23835b;
+  background: rgba(240, 251, 246, 0.74);
+}
+
+.overviewCandidateCommitActions {
+  display: flex;
+  gap: 5px;
+}
+
+.overviewCandidateCommitActions button {
+  display: inline-flex;
+  min-height: 26px;
+  align-items: center;
+  gap: 4px;
+  padding: 0 7px;
+  border: 1px solid currentColor;
+  border-radius: 7px;
+  color: inherit;
+  font-size: 9px;
+  font-weight: 750;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.overviewCandidateCommitActions button:hover {
+  background: #fff;
+}
+
+.overviewCandidateCommitActions button:focus-visible {
+  outline: 3px solid rgba(109, 92, 231, 0.2);
+  outline-offset: 2px;
+}
+
+@container (max-width: 620px) {
+  .overviewCandidate {
+    grid-template-columns: 42px minmax(0, 1fr) auto;
+  }
+
+  .overviewCandidateWave,
+  .overviewCandidate .candidateDuration {
+    display: none;
+  }
+
+  .overviewCandidateCommitNotice {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .overviewCandidateCommitActions {
+    grid-column: 2;
+    justify-content: flex-start;
+  }
 }
 
 .overviewPlanCard {
@@ -3727,15 +3856,6 @@
 
   .overviewPlanUnavailable > a {
     grid-column: 2;
-  }
-
-  .overviewCandidate {
-    grid-template-columns: 42px minmax(0, 1fr) 30px;
-  }
-
-  .overviewCandidateWave,
-  .overviewCandidate .candidateDuration {
-    display: none;
   }
 
   .catalogIntro {

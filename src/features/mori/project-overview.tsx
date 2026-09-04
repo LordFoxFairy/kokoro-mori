@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowLeft, ArrowUpRight, AudioLines, AudioWaveform, Clock3, FileText, Play, RotateCcw, SlidersHorizontal, Sparkles } from "lucide-react"
+import { ArrowLeft, ArrowUpRight, AudioLines, AudioWaveform, Clock3, FileText, Play, SlidersHorizontal, Sparkles } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import type { MoriApi, MoriCandidate, MoriProject } from "@/lib/mori-api"
@@ -9,15 +9,14 @@ import type { Candidate, Project } from "./domain"
 import { listAllMoriCandidates } from "./candidate-pagination"
 import { useMoriApp } from "./components/mori-app-provider"
 import { previewCandidates, previewProject, previewSongPlan } from "./preview-data"
-import { Waveform } from "./components/waveform"
+import { useProjectCurrentVersionCommit } from "./project-current-version"
+import { ProjectOverviewDirections, type CandidateProjectionStatus } from "./project-overview-directions"
 import styles from "./mori-workspace.module.css"
 
 type ProjectOverviewPageContentProps = {
   projectRef?: string
-  api?: Pick<MoriApi, "getProject" | "listCandidates">
+  api?: Pick<MoriApi, "getProject" | "listCandidates"> & Partial<Pick<MoriApi, "putCurrentVersion">>
 }
-
-type CandidateProjectionStatus = "loading" | "ready" | "unavailable"
 
 export function ProjectOverviewPageContent({ projectRef = previewProject.projectRef, api }: ProjectOverviewPageContentProps = {}) {
   const { playerCandidate, playing, selectPlayerCandidate, setPlaying } = useMoriApp()
@@ -47,13 +46,44 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
   const studioBaseHref = requestedProject.currentVersionRef === null
     ? null
     : `/projects/${encodeURIComponent(requestedProject.projectRef)}/studio/${encodeURIComponent(requestedProject.currentVersionRef)}`
+  const {
+    currentVersionCommitRun,
+    currentVersionConfirmationEpochsRef,
+    commitCurrentVersion,
+    retryCurrentVersionCommit,
+    dismissCurrentVersionCommit,
+  } = useProjectCurrentVersionCommit({
+    projectRef: initialProjectRef,
+    currentVersionRef: requestedProject.currentVersionRef,
+    candidates,
+    putCurrentVersion: overviewApi.putCurrentVersion,
+    onConfirmed: (candidate) => {
+      setProjectState((current) => current.projectRef === initialProjectRef
+        ? { ...current, value: { ...current.value, currentVersionRef: candidate.versionRef } }
+        : current)
+      setCandidateState((current) => current.projectRef === initialProjectRef
+        ? { ...current, value: current.value.map((item) => ({ ...item, isCurrent: item.versionRef === candidate.versionRef })) }
+        : current)
+    },
+  })
 
   useEffect(() => {
     const requestedProjectRef = projectRef.trim() || previewProject.projectRef
+    const currentVersionConfirmationEpoch = currentVersionConfirmationEpochsRef.current.get(requestedProjectRef) ?? 0
     let disposed = false
 
     void overviewApi.getProject(requestedProjectRef).then((projectResponse) => {
-      if (!disposed) setProjectState({ projectRef: requestedProjectRef, value: toDomainProject(projectResponse.data) })
+      if (disposed) return
+      const nextProject = toDomainProject(projectResponse.data)
+      setProjectState((current) => {
+        if (current.projectRef !== requestedProjectRef) return current
+        return {
+          projectRef: requestedProjectRef,
+          value: (currentVersionConfirmationEpochsRef.current.get(requestedProjectRef) ?? 0) === currentVersionConfirmationEpoch
+            ? nextProject
+            : { ...nextProject, currentVersionRef: current.value.currentVersionRef },
+        }
+      })
     }).catch(() => {
       // Keep the deterministic preview or neutral project shell visible while the BFF is unavailable.
     })
@@ -72,7 +102,7 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
     return () => {
       disposed = true
     }
-  }, [candidateRequestVersion, overviewApi, projectRef])
+  }, [candidateRequestVersion, currentVersionConfirmationEpochsRef, overviewApi, projectRef])
 
   function playCandidate(candidate: (typeof previewCandidates)[number]) {
     if (playerCandidate?.versionRef === candidate.versionRef) {
@@ -105,53 +135,24 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
       </div>
 
       <div className={styles.projectOverviewWorkspace} role="group" aria-label="Project workspace">
-        <section className={`${styles.overviewSection} ${styles.overviewDirections}`} aria-labelledby="directions-heading">
-          <div className={styles.overviewSectionHeader}>
-            <div><h2 id="directions-heading">Latest directions</h2><p>Listen and compare before choosing what to change next.</p></div>
-            <span>{candidateStatus === "loading"
-              ? "Loading"
-              : candidateStatus === "unavailable"
-                ? `${requestedProject.candidateCount} saved`
-                : `${candidates.length} ${candidates.length === 1 ? "candidate" : "candidates"}`}</span>
-          </div>
-          {candidateStatus === "loading" ? <div className={styles.overviewProjectionState} role="status">
-            <span className={styles.overviewProjectionStateIcon} aria-hidden="true"><AudioWaveform size={17} /></span>
-            <div><strong>Loading directions</strong><p>Bringing this Project&apos;s latest Versions into view.</p></div>
-          </div> : candidateStatus === "unavailable" ? <div className={styles.overviewProjectionState} role="status">
-            <span className={styles.overviewProjectionStateIcon} aria-hidden="true"><AudioWaveform size={17} /></span>
-            <div><strong>Directions temporarily unavailable</strong><p>Your saved directions are still part of this Project. Retry to compare them here.</p></div>
-            <button type="button" onClick={() => {
-              setCandidateState({ projectRef: initialProjectRef, value: [], status: "loading" })
-              setCandidateRequestVersion((version) => version + 1)
-            }} aria-label="Retry directions"><RotateCcw size={13} /> Retry</button>
-          </div> : candidates.length > 0 ? <div className={styles.overviewCandidateList}>
-              {candidates.map((candidate, index) => {
-                const isCurrent = candidate.versionRef === requestedProject.currentVersionRef
-                return <article
-                  aria-current={isCurrent ? "true" : undefined}
-                  aria-label={`${candidate.title}${isCurrent ? ", current version" : ""}`}
-                  className={`${styles.overviewCandidate} ${isCurrent ? styles.overviewCandidateCurrent : ""}`}
-                  key={candidate.candidateRef}
-                >
-                <button className={`${styles.candidateArtwork} ${styles.overviewCandidateArtwork} ${index === 1 ? styles.candidateArtworkAlt : ""}`} type="button" onClick={() => playCandidate(candidate)} aria-label={`${playerCandidate?.versionRef === candidate.versionRef && playing ? "Pause" : "Play"} ${candidate.title}`}>
-                  <Play size={14} fill={playerCandidate?.versionRef === candidate.versionRef && playing ? "currentColor" : "none"} />
-                </button>
-                <div className={styles.overviewCandidateInfo}>
-                  <div className={styles.overviewCandidateTitle}><strong>{candidate.title}</strong>{isCurrent ? <span className={styles.overviewCurrentBadge}>Current</span> : null}</div>
-                  <span>{candidate.subtitle}</span>
-                </div>
-                <div className={styles.overviewCandidateWave}><Waveform seed={candidate.waveformSeed} compact progress={index === 0 ? 0.8 : 0.48} /></div>
-                <span className={styles.candidateDuration}>{Math.floor(candidate.durationSeconds / 60)}:{String(candidate.durationSeconds % 60).padStart(2, "0")}</span>
-                <Link className={styles.overviewOpenLink} href={`/projects/${requestedProject.projectRef}/studio/${candidate.versionRef}`} aria-label={`Open Studio for ${candidate.title}`}><ArrowUpRight size={15} /></Link>
-              </article>
-              })}
-          </div> : <div className={styles.libraryEmpty}>
-            <div className={styles.libraryEmptyIcon}><Sparkles size={18} /></div>
-            <strong>No directions yet</strong>
-            <p>Shape the first direction for this project, then compare versions here.</p>
-            <Link className={styles.ghostButton} href={`/create?project_ref=${encodeURIComponent(requestedProject.projectRef)}`}>Create a direction</Link>
-          </div>}
-        </section>
+        <ProjectOverviewDirections
+          projectRef={requestedProject.projectRef}
+          candidateCount={requestedProject.candidateCount}
+          candidates={candidates}
+          candidateStatus={candidateStatus}
+          currentVersionRef={requestedProject.currentVersionRef}
+          currentVersionCommitRun={currentVersionCommitRun}
+          playerCandidate={playerCandidate}
+          playing={playing}
+          onPlayCandidate={playCandidate}
+          onCommitCurrentVersion={commitCurrentVersion}
+          onRetryCurrentVersion={retryCurrentVersionCommit}
+          onDismissCurrentVersion={dismissCurrentVersionCommit}
+          onRetryCandidates={() => {
+            setCandidateState({ projectRef: initialProjectRef, value: [], status: "loading" })
+            setCandidateRequestVersion((version) => version + 1)
+          }}
+        />
 
         {studioBaseHref ? (
           <section className={`${styles.overviewSection} ${styles.continueMaking}`} aria-labelledby="continue-making-heading">

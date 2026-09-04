@@ -64,6 +64,9 @@ Project Overview 不再把统计、候选和五张等权功能卡纵向堆成 da
 **Remix & edit、Cover、Lyrics、Voice & stems、Remaster & release**，同时标明 Arrangement、New takes、Review before apply、
 Non-destructive 与 No auto-publish 等结果约束。Remix & edit 与 Cover 虽然都进入 Arrangement，但前者预选 Restyle，后者预选
 Cover，并分别使用对应深链；这样吸收 Tad 的任务可辨识度，又保留 Suno 的同一 Version 连续制作上下文，入口仍然属于当前 Project / Version；
+非 Current Candidate 的 `Set as current` 位于同一试听行：操作先以 Project-scoped CAS 发送 Candidate、Version 与
+`expected_current_version_ref`，仅在 owner 精确确认后才更新 Current、`Open Studio` 与 Continue making；保存中旧 Current
+继续可用，网络故障可重试，冲突要求刷新 Project。试听、选择或提交方向都不接管 Global Player。
 Song Plan 保持独立事实区，Project 状态不再重复展示 Mood。
 
 ### Create 的创意来源模型
@@ -135,7 +138,7 @@ Take Lanes 中的 **Open Version、Playing、Selected Take、Current Version** �
 前端本地切换：它通过 Project-scoped、带幂等键和期望旧 Current 的 compare-and-set 命令提交。等待期间旧 Current
 继续保持；成功响应必须精确确认 Project、Candidate、Version 与 previous Current，界面才更新 Project Current 并
 打开该 Take。瞬时失败保留原 Current 和 Retry，重试复用原幂等键；并发冲突要求刷新，不用旧页面覆盖新选择。
-Create 的 Generation Queue 中 `Set as current` 复用完全相同的命令和确认规则；进入既有 Project 时先读取其
+Create 的 Generation Queue 与 Project Overview 中的 `Set as current` 复用完全相同的命令和确认规则；进入既有 Project 时先读取其
 `current_version_ref` 作为并发条件。Queue 与 Studio 因此只是同一作品提交能力的两个界面，不再出现 Queue 看似成功、
 刷新后却回到旧 Current 的前端假状态。
 

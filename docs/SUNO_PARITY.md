@@ -62,7 +62,7 @@ Prompt / Upload
 | 上传 / 录制音频并跨项目复用 | 部分对齐 | 文件类型与大小校验、Audio Source UI；当前仍写固定 preview asset ref | **P0：正式 Creative Source Ingest** |
 | Cover / Extend / Replace / Remaster | 浏览器已对齐 | Arrangement Change Plan、typed snapshot、Take Lanes、Finish Remaster | 补真实执行验收；Mori 的 Balanced / Bold 是自有语言，不冒充 Suno 原词 |
 | Add vocals / Add instrumental / Lyrics revision | 浏览器已对齐 | Voice & stems、Lyrics Revision、非破坏式 Generation | Lyrics 最终草稿改为耐久提交，不再只保存在浏览器 |
-| Take audition / Commit / Current Version | 浏览器已对齐 | Open、Playing、Selected、Current 分离；Project-scoped CAS | **P0：URL、Version 与持久 Revision 必须一致** |
+| Take audition / Commit / Current Version | 浏览器已对齐 | Open、Playing、Selected、Current 分离；Project-scoped CAS | **P0：Durable Project Memory 的 Version / Revision 一致性** |
 | 保存版本、刷新或跨设备继续 | 部分对齐 | Current/Mix/Release 有契约；历史仍由 Candidate feed 投影，Lyrics 仅 localStorage | **P0 首项：Durable Project Memory** |
 | Library / Workspace 搜索与素材复用 | 部分对齐 | Projects、Versions、Audio/Voice/Inspiration Sources、cursor/search/filter | 接入真实 Source 生命周期；Studio 内 Asset Dock 放入 P1 |
 | Song Editor 的 Split / Crop / Fade / Move | 缺失 | 当前时间线只支持段落/时间范围选择和生成式 Change | P1 多轨 Composition 的确定性命令，不伪装成 AI prompt |
@@ -131,9 +131,9 @@ ProjectWorkspaceProjection
   -> revision cursor
 ```
 
-在契约进入实现前，先修完两个现有连续性问题：
+以下两个浏览器侧连续性问题已修完：
 
-1. Project Candidate 必须能在 Overview 明确 `Set as current`，成功后才开放 Continue making。
+1. Project Candidate 可在 Overview 明确 `Set as current`，仅在 CAS 精确确认后开放或重定向 Continue making。**已完成。**
 2. Studio 选择或提交 Take 后，canonical URL、Open Version、刷新恢复和 Copy link 必须指向同一 Version。**已完成。**
 
 这两项是 Durable Project Memory 的入口一致性，不是额外功能。

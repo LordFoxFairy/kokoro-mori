@@ -59,27 +59,29 @@ export function currentVersionSelectionMatchesCommand(
     && selection.previous_version_ref === command.input.expected_current_version_ref
 }
 
-export function currentVersionCommitFailure(error: unknown, subject: "Take" | "direction"): { message: string; retryable: boolean } {
+export function currentVersionCommitFailure(error: unknown, subject: "Take" | "direction" | "Project direction"): { message: string; retryable: boolean } {
+  const directionSubject = subject === "Take" ? "Take" : "direction"
+  const refreshSurface = subject === "Take" ? "Studio" : subject === "direction" ? "Create" : "Project"
   if (error instanceof Error && error.message === "current_version_confirmation_mismatch") {
     return {
-      message: `The confirmation did not match this ${subject}. Your previous Current is unchanged.`,
+      message: `The confirmation did not match this ${directionSubject}. Your previous Current is unchanged.`,
       retryable: false,
     }
   }
   if (error instanceof MoriApiRequestError && error.code === "current_version_conflict") {
     return {
-      message: `Current Version changed elsewhere. Refresh ${subject === "Take" ? "Studio" : "Create"} before choosing again.`,
+      message: `Current Version changed elsewhere. Refresh ${refreshSurface} before choosing again.`,
       retryable: false,
     }
   }
   if (error instanceof MoriApiRequestError && !error.retryable) {
     return {
-      message: `This ${subject} is no longer eligible to become Current. Your previous Current is unchanged.`,
+      message: `This ${directionSubject} is no longer eligible to become Current. Your previous Current is unchanged.`,
       retryable: false,
     }
   }
   return {
-    message: `Mori couldn't make this ${subject} Current. Your previous Current is unchanged.`,
+    message: `Mori couldn't make this ${directionSubject} Current. Your previous Current is unchanged.`,
     retryable: true,
   }
 }

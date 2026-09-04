@@ -20,6 +20,8 @@ src/features/mori/               Mori 页面、组件、交互状态与 fixture 
   studio-recovery.ts              从服务端 Generation snapshot 恢复 Studio Change 工作上下文
   generation-recovery.ts          Generation snapshot 恢复请求的网络错误归一边界
   generation-queue-storage.ts    Generation queue 的浏览器持久化边界与跨 surface 通知
+  project-current-version.ts      Project Overview 的 Current Version CAS、确认、重试与并发保护
+  project-overview-directions.tsx Project Candidate 列表、试听、明确提交与可用性状态
   *-page.tsx / *-workspace.tsx    页面级组合和 API 状态编排
 src/lib/mori-api.ts              Mori wire type、Library/Creative Source projection、请求 builder 与同源 client seam
 contract/openapi/                本仓 Studio / release 等机器契约事实源

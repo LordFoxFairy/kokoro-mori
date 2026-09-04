@@ -196,9 +196,10 @@ Workspace nav    内容随项目上下文变化                     跨页面保
 - 已落地第一版：Projects 目录只保留页首一个 New project 主入口，不再用同尺寸的空卡重复抢占注意力；每张作品卡
   整体都是唯一续作入口，并使用可扩展的紧凑网格承载更多工作区。卡片仍明确显示 Project 状态、Current Version 与
   下一步动作，吸收成熟音乐产品的可扫描密度，但不把 Projects 降格为一次性歌曲封面墙。
-- 已落地第一版：Create 的 Generation Queue 不再本地伪造 `Set as current`。它与 Studio Take Lanes 复用同一个
+- 已落地第一版：Create 的 Generation Queue 与 Project Overview 不再本地伪造 `Set as current`。它们与 Studio Take Lanes 复用同一个
   Project-scoped Current Version command、期望旧 Current、幂等重试和完整响应核对；提交确认前保留原 Current，
-  失败提供可解释的重试/冲突状态。既有 Project 的 `current_version_ref` 会先从 projection 恢复为并发条件。
+  失败提供可解释的重试/冲突状态。Overview 只在确认后才更新 `Open Studio` 与 Continue making，既有 Project 的
+  `current_version_ref` 会先从 projection 恢复为并发条件。
 - 后续：Song Plan 的服务端版本历史、正式音频上传、版本自动保存，以及建立在真实时间选区和多轨交付模型上的
   更多导出 scope；AI MV 与真正的 Publish command 保持为完成歌曲后的后置流程。
 
