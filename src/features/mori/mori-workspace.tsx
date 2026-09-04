@@ -26,6 +26,7 @@ import styles from "./mori-workspace.module.css"
 
 type MoriWorkspaceProps = {
   projectRef?: string
+  initialPrompt?: string
   initialCreativeSource?: MoriCreativeSourceSelection
   api?: Pick<MoriApi, "createSongPlan" | "createGeneration" | "getGeneration" | "getGenerationEvents" | "listCandidates" | "cancelGeneration"> & Partial<Pick<MoriApi, "createProject" | "getProject" | "putCurrentVersion">>
 }
@@ -41,7 +42,7 @@ type ProjectCreationAttempt = {
   request: Promise<MoriProject> | null
 }
 
-export function MoriWorkspace({ projectRef: requestedProjectRef, initialCreativeSource, api: injectedApi }: MoriWorkspaceProps = {}) {
+export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, initialCreativeSource, api: injectedApi }: MoriWorkspaceProps = {}) {
   const initialProjectRef = requestedProjectRef?.trim() || null
   const initialCandidates = initialProjectRef === previewProject.projectRef ? previewCandidates : []
   const { playing, playerCandidate, replacePlayerCandidates, setPlaying, togglePlaying, selectPlayerCandidate, preferences } = useMoriApp()
@@ -399,7 +400,7 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialCreative
               </div>
             </header>
             <div className={styles.canvasBody}>
-              <CreateCanvas projectRef={workspaceProjectRef ?? "project_pending"} mode={mode} initialCreativeSource={initialCreativeSource} onModeChange={setModeOverride} onGenerate={handleGenerate} />
+              <CreateCanvas projectRef={workspaceProjectRef ?? "project_pending"} mode={mode} initialPrompt={initialPrompt} initialCreativeSource={initialCreativeSource} onModeChange={setModeOverride} onGenerate={handleGenerate} />
             </div>
           </section>
 
@@ -473,6 +474,7 @@ function replaceCreateLocation(projectRef: string): void {
   const search = window.location.pathname === "/create"
     ? new URLSearchParams(window.location.search)
     : new URLSearchParams()
+  search.delete("idea")
   search.set("project_ref", projectRef)
   window.history.replaceState(window.history.state, "", `/create?${search.toString()}`)
 }

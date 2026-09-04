@@ -24,6 +24,8 @@ Studio 还自动保存版本。这个模式说明：生成不是一次性结果�
 Mori 的落地：
 
 - Create 负责快速起意，Queue 负责承接生成状态和候选。
+- Home 的一句话 Quick start 通过可分享的 GET seam 把想法带入 Create；Create 只预填草稿，仍先让用户检查
+  可编辑 Song Plan。Project 建立后会从地址中移除原始想法，避免长期保留用户输入。
 - Global Player 在页面切换时保持不变，不把试听变成一次性弹窗。
 - Global Player 的播放队列跨页面可用，并与 Create 中展示生成任务的 Generation Queue 明确分离。
 - Studio 只在 Project + Version 上下文内出现。

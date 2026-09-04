@@ -67,6 +67,7 @@ describe("Mori workspace", () => {
 
   it("creates a Project from the first idea before starting an unscoped generation", async () => {
     const originalUrl = window.location.href
+    window.history.replaceState({}, "", "/create?idea=A+quiet+piano+song")
     const createProject = vi.fn<MoriApi["createProject"]>(async (input) => ({
       data: {
         project_ref: "project_quiet_train",

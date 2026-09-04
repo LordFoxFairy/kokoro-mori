@@ -6,6 +6,22 @@ import { MoriCatalogShell } from "./components/mori-catalog-shell"
 import { HomePageContent } from "./home-page"
 
 describe("Mori home page", () => {
+  it("carries a one-sentence idea into Create through a real form contract", () => {
+    render(
+      <MoriAppProvider>
+        <MoriCatalogShell activeKey="home" ariaLabel="Home">
+          <HomePageContent />
+        </MoriCatalogShell>
+      </MoriAppProvider>,
+    )
+
+    const quickStart = screen.getByRole("form", { name: "Start a new song" })
+    expect(quickStart).toHaveAttribute("action", "/create")
+    expect(quickStart).toHaveAttribute("method", "get")
+    expect(within(quickStart).getByRole("textbox", { name: "Start with an idea" })).toHaveAttribute("name", "idea")
+    expect(within(quickStart).getByRole("button", { name: "Shape this idea" })).toHaveAttribute("type", "submit")
+  })
+
   it("uses the global player when a recent direction is played", () => {
     render(
       <MoriAppProvider>

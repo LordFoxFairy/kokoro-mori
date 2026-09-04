@@ -4388,7 +4388,7 @@
   align-items: flex-end;
   justify-content: space-between;
   gap: 32px;
-  margin-bottom: 38px;
+  margin-bottom: 20px;
 }
 
 .homeWelcome .catalogDescription {
@@ -4399,6 +4399,77 @@
 .homeWelcome em {
   color: var(--mori-primary);
   font-style: italic;
+}
+
+.homeQuickStart {
+  display: grid;
+  grid-template-columns: 154px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px 22px;
+  margin-bottom: 28px;
+  padding: 16px 18px;
+  border: 1px solid rgba(109, 92, 231, 0.16);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 8% 0, rgba(145, 118, 237, 0.1), transparent 31%),
+    linear-gradient(112deg, rgba(255, 255, 255, 0.98), rgba(255, 249, 245, 0.88));
+  box-shadow: 0 12px 28px rgba(72, 58, 107, 0.055);
+}
+
+.homeQuickStart label {
+  display: grid;
+  gap: 4px;
+  align-self: center;
+}
+
+.homeQuickStart label strong {
+  color: var(--mori-text);
+  font-size: 14px;
+  letter-spacing: -0.02em;
+}
+
+.homeQuickStartInput {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.homeQuickStartInput input {
+  width: 100%;
+  min-width: 0;
+  height: 42px;
+  padding: 0 14px;
+  border: 1px solid rgba(96, 82, 130, 0.16);
+  border-radius: 11px;
+  outline: none;
+  color: var(--mori-text);
+  font: inherit;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.88);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.homeQuickStartInput input::placeholder {
+  color: rgba(98, 91, 111, 0.58);
+}
+
+.homeQuickStartInput input:focus {
+  border-color: rgba(109, 92, 231, 0.48);
+  box-shadow: 0 0 0 3px rgba(109, 92, 231, 0.09);
+}
+
+.homeQuickStartInput .generateButton {
+  flex: 0 0 auto;
+  height: 42px;
+  white-space: nowrap;
+}
+
+.homeQuickStart > p {
+  grid-column: 2;
+  margin: 0;
+  color: var(--mori-muted);
+  font-size: 10px;
 }
 
 .homeFeature {
@@ -5219,6 +5290,26 @@
     align-items: flex-start;
     flex-direction: column;
     gap: 20px;
+  }
+
+  .homeQuickStart {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .homeQuickStartInput {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .homeQuickStartInput .generateButton {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .homeQuickStart > p {
+    grid-column: 1;
   }
 
   .homeFeature {

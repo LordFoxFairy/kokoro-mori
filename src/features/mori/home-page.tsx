@@ -86,8 +86,25 @@ export function HomePageContent({ api }: HomePageContentProps = {}) {
           <h1 className={styles.catalogTitle}>Make something<br /><em>you can feel.</em></h1>
           <p className={styles.catalogDescription}>Keep the spark moving. Start a new direction or return to the song already taking shape.</p>
         </div>
-        <Link className={styles.generateButton} href="/create"><Sparkles size={15} /> New creation</Link>
       </header>
+
+      <form className={styles.homeQuickStart} action="/create" method="get" aria-label="Start a new song">
+        <label htmlFor="mori-home-idea">
+          <span className={styles.featureKicker}>Quick start</span>
+          <strong>Start with an idea</strong>
+        </label>
+        <div className={styles.homeQuickStartInput}>
+          <input
+            id="mori-home-idea"
+            name="idea"
+            maxLength={1000}
+            placeholder="A soulful piano song that opens like the first train home…"
+            aria-label="Start with an idea"
+          />
+          <button className={styles.generateButton} type="submit">Shape this idea <ArrowRight size={15} /></button>
+        </div>
+        <p>Mori opens an editable Song Plan before generating any music.</p>
+      </form>
 
       {featuredProject === null ? <section className={styles.homeStartFeature} aria-labelledby="start-heading">
         <span className={styles.homeStartMark} aria-hidden="true"><Music2 size={24} /></span>

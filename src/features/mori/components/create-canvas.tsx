@@ -17,6 +17,8 @@ import { CreativeSourceDock } from "./creative-source-dock"
 import { useMoriApp } from "./mori-app-provider"
 import styles from "../mori-workspace.module.css"
 
+const DEFAULT_PROMPT = "A warm, late-night track for the drive home, slowly opening into sunrise."
+
 export type CreationDraft = {
   prompt: string
   lyricsMode: LyricsMode
@@ -32,12 +34,13 @@ export type CreationDraft = {
 type CreateCanvasProps = {
   projectRef: string
   mode: CreationMode
+  initialPrompt?: string
   initialCreativeSource?: MoriCreativeSourceSelection
   onModeChange: (mode: CreationMode) => void
   onGenerate: (draft: CreationDraft) => void
 }
 
-export function CreateCanvas({ projectRef, mode, initialCreativeSource, onModeChange, onGenerate }: CreateCanvasProps) {
+export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeSource, onModeChange, onGenerate }: CreateCanvasProps) {
   const { preferences } = useMoriApp()
   const initialVoiceProfile = initialCreativeSource?.kind === "voice"
     ? previewVoiceProfiles.find((profile) => profile.ref === initialCreativeSource.ref) ?? null
@@ -52,7 +55,7 @@ export function CreateCanvas({ projectRef, mode, initialCreativeSource, onModeCh
   const customTabRef = useRef<HTMLButtonElement>(null)
   const referenceInputRef = useRef<HTMLInputElement>(null)
   const planPreviewRef = useRef<HTMLElement>(null)
-  const [prompt, setPrompt] = useState("A warm, late-night track for the drive home, slowly opening into sunrise.")
+  const [prompt, setPrompt] = useState(() => initialPrompt?.trim() || DEFAULT_PROMPT)
   const [lyrics, setLyrics] = useState("")
   const [lyricsModeOverride, setLyricsModeOverride] = useState<LyricsMode | null>(initialVoiceProfile === null ? null : "lyrics")
   const [style, setStyle] = useState(initialInspiration?.style ?? "Dream pop · intimate · organic")
@@ -231,6 +234,7 @@ export function CreateCanvas({ projectRef, mode, initialCreativeSource, onModeCh
           onChange={(event) => { setPrompt(event.target.value); clearPlanPreview() }}
           placeholder={t("promptPlaceholder")}
           aria-label="Song idea"
+          maxLength={1000}
         />
 
         <CreativeSourceDock
