@@ -42,6 +42,8 @@ type ProjectCreationAttempt = {
   request: Promise<MoriProject> | null
 }
 
+type QueuePresentation = "drawer" | "pane"
+
 export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, initialCreativeSource, api: injectedApi }: MoriWorkspaceProps = {}) {
   const initialProjectRef = requestedProjectRef?.trim() || null
   const initialCandidates = initialProjectRef === previewProject.projectRef ? previewCandidates : []
@@ -49,6 +51,7 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
   const [workspaceProjectRef, setWorkspaceProjectRef] = useState<string | null>(initialProjectRef)
   const [modeOverride, setModeOverride] = useState<CreationMode | null>(null)
   const [queueOpen, setQueueOpen] = useState(false)
+  const [queuePresentation, setQueuePresentation] = useState<QueuePresentation>("drawer")
   const [candidates, setCandidates] = useState(initialCandidates)
   const [songPlan, setSongPlan] = useState<SongPlan | null>(initialProjectRef === previewProject.projectRef ? previewSongPlan : null)
   const [currentVersionRef, setCurrentVersionRef] = useState<string>(initialProjectRef === previewProject.projectRef ? previewProject.currentVersionRef ?? "" : "")
@@ -77,6 +80,13 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
     progress,
     candidateRefs: candidates.map((candidate) => candidate.candidateRef),
   } : null, [candidates, generationLabel, generationStatus, hasGeneration, progress, songPlan?.songPlanRef, workspaceProjectRef])
+
+  useEffect(() => {
+    const syncQueuePresentation = () => setQueuePresentation(window.innerWidth > 1120 ? "pane" : "drawer")
+    syncQueuePresentation()
+    window.addEventListener("resize", syncQueuePresentation)
+    return () => window.removeEventListener("resize", syncQueuePresentation)
+  }, [])
 
   useEffect(() => {
     if (workspaceProjectRef === null || workspaceProjectRef === previewProject.projectRef || api.getProject === undefined) return
@@ -266,7 +276,7 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
   }, [api, generationRef, preferences.autoplay, replacePlayerCandidates, selectPlayerCandidate, setPlaying])
 
   useEffect(() => {
-    if (!queueOpen) return
+    if (!queueOpen || queuePresentation !== "drawer") return
     const previousOverflow = document.body.style.overflow
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") setQueueOpen(false)
@@ -277,7 +287,7 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
       window.removeEventListener("keydown", closeOnEscape)
       document.body.style.overflow = previousOverflow
     }
-  }, [queueOpen])
+  }, [queueOpen, queuePresentation])
 
   const commitCurrentVersion = useCallback(async (candidate: Candidate, retryCommand?: PendingCurrentVersionCommand) => {
     const projectRef = workspaceProjectRefMirror.current
@@ -376,6 +386,31 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
 
   const currentCandidates = candidates.map((candidate) => ({ ...candidate, isCurrent: candidate.versionRef === currentVersionRef }))
 
+  const renderQueue = (presentation: QueuePresentation) => (
+    <InspectorPanel
+      presentation={presentation}
+      projectRef={workspaceProjectRef}
+      generation={generation}
+      candidates={currentCandidates}
+      songPlan={songPlan}
+      selectedCandidateRef={selectedCandidateRef}
+      playing={playing}
+      onSelect={(candidate) => { setSelectedCandidateRef(candidate.candidateRef); selectPlayerCandidate(candidate); setPlaying(false) }}
+      currentVersionCommitRun={currentVersionCommitRun}
+      onPromote={(candidate) => { void commitCurrentVersion(candidate) }}
+      onRetryCurrentVersion={retryCurrentVersionCommit}
+      onDismissCurrentVersion={dismissCurrentVersionCommit}
+      onCancel={() => { void handleCancel() }}
+      onRetry={retryLastGeneration}
+      onPlay={(candidate) => {
+        setSelectedCandidateRef(candidate.candidateRef)
+        if (playerCandidate?.candidateRef === candidate.candidateRef) togglePlaying()
+        else { selectPlayerCandidate(candidate); setPlaying(true) }
+      }}
+      onClose={() => setQueueOpen(false)}
+    />
+  )
+
   return (
     <main className={styles.app}>
       <MoriAppShell
@@ -383,7 +418,7 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
         ariaLabel="Create workspace"
         projectRef={workspaceProjectRef}
       >
-        <div className={`${styles.workspaceLayout} ${queueOpen ? styles.workspaceLayoutWithDrawer : ""}`}>
+        <div className={`${styles.workspaceLayout} ${queueOpen && queuePresentation === "pane" ? styles.workspaceLayoutWithQueue : ""}`}>
           <section className={styles.createSurface} aria-label="Create canvas">
             <header className={styles.canvasHeader}>
               <div className={styles.breadcrumb}>
@@ -403,33 +438,13 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
               <CreateCanvas projectRef={workspaceProjectRef ?? "project_pending"} mode={mode} initialPrompt={initialPrompt} initialCreativeSource={initialCreativeSource} onModeChange={setModeOverride} onGenerate={handleGenerate} />
             </div>
           </section>
-
+          {queueOpen && queuePresentation === "pane" ? renderQueue("pane") : null}
         </div>
       </MoriAppShell>
-      {queueOpen && typeof document !== "undefined" ? createPortal(
+      {queueOpen && queuePresentation === "drawer" && typeof document !== "undefined" ? createPortal(
         <div className={styles.drawerLayer}>
           <button className={styles.drawerBackdrop} type="button" aria-label="Dismiss generation queue" onClick={() => setQueueOpen(false)} />
-          <InspectorPanel
-            projectRef={workspaceProjectRef}
-            generation={generation}
-            candidates={currentCandidates}
-            songPlan={songPlan}
-            selectedCandidateRef={selectedCandidateRef}
-            playing={playing}
-            onSelect={(candidate) => { setSelectedCandidateRef(candidate.candidateRef); selectPlayerCandidate(candidate); setPlaying(false) }}
-            currentVersionCommitRun={currentVersionCommitRun}
-            onPromote={(candidate) => { void commitCurrentVersion(candidate) }}
-            onRetryCurrentVersion={retryCurrentVersionCommit}
-            onDismissCurrentVersion={dismissCurrentVersionCommit}
-            onCancel={() => { void handleCancel() }}
-            onRetry={retryLastGeneration}
-            onPlay={(candidate) => {
-              setSelectedCandidateRef(candidate.candidateRef)
-              if (playerCandidate?.candidateRef === candidate.candidateRef) togglePlaying()
-              else { selectPlayerCandidate(candidate); setPlaying(true) }
-            }}
-            onClose={() => setQueueOpen(false)}
-          />
+          {renderQueue("drawer")}
         </div>,
         document.body,
       ) : null}

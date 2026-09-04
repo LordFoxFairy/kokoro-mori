@@ -40,6 +40,39 @@ function ModalShortcutHarness() {
 }
 
 describe("Mori workspace", () => {
+  it("keeps the desktop Generation queue beside the editable Create canvas", () => {
+    const originalWidth = window.innerWidth
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 1280 })
+
+    try {
+      renderWorkspace()
+      fireEvent.click(screen.getByRole("button", { name: "Open generation queue" }))
+
+      expect(screen.getByRole("complementary", { name: "Generation queue" })).toBeInTheDocument()
+      expect(screen.queryByRole("dialog", { name: "Generation queue" })).not.toBeInTheDocument()
+      expect(screen.getByRole("textbox", { name: "Song idea" })).toBeEnabled()
+      expect(document.body.style.overflow).toBe("")
+    } finally {
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: originalWidth })
+    }
+  })
+
+  it("uses a modal Generation queue drawer on compact screens", () => {
+    const originalWidth = window.innerWidth
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 900 })
+
+    try {
+      renderWorkspace()
+      fireEvent.click(screen.getByRole("button", { name: "Open generation queue" }))
+
+      expect(screen.getByRole("dialog", { name: "Generation queue" })).toHaveAttribute("aria-modal", "true")
+      expect(screen.queryByRole("complementary", { name: "Generation queue" })).not.toBeInTheDocument()
+      expect(screen.getByRole("button", { name: "Dismiss generation queue" })).toBeInTheDocument()
+    } finally {
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: originalWidth })
+    }
+  })
+
   it("does not trigger global playback shortcuts from an active modal", () => {
     render(<MoriAppProvider><ModalShortcutHarness /></MoriAppProvider>)
     fireEvent.click(screen.getByRole("button", { name: "Load player" }))

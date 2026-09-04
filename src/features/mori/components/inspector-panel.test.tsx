@@ -4,6 +4,33 @@ import { previewCandidates, previewGeneration, previewSongPlan } from "../previe
 import { InspectorPanel } from "./inspector-panel"
 
 describe("Mori generation queue", () => {
+  it("stays non-modal and leaves focus in Create when used as a desktop pane", () => {
+    const createInput = document.createElement("textarea")
+    document.body.appendChild(createInput)
+    createInput.focus()
+
+    const { unmount } = render(
+      <InspectorPanel
+        presentation="pane"
+        projectRef={null}
+        generation={null}
+        candidates={[]}
+        songPlan={null}
+        selectedCandidateRef=""
+        playing={false}
+        onSelect={vi.fn()}
+        onPromote={vi.fn()}
+        onPlay={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole("complementary", { name: "Generation queue" })).not.toHaveAttribute("aria-modal")
+    expect(createInput).toHaveFocus()
+
+    unmount()
+    createInput.remove()
+  })
+
   it("keeps every generated direction connected to its Studio context", () => {
     render(
       <InspectorPanel

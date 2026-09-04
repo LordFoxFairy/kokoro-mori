@@ -4274,12 +4274,15 @@
   min-height: 100%;
 }
 
-.workspaceLayoutWithDrawer {
-  grid-template-columns: minmax(0, 1fr);
+.workspaceLayoutWithQueue {
+  grid-template-columns: minmax(0, 1fr) minmax(310px, 350px);
 }
 
 .workspaceLayout .inspector {
-  min-height: 100%;
+  position: sticky;
+  top: 0;
+  height: calc(100dvh - 92px);
+  min-height: 0;
   border: 0;
   border-left: 1px solid var(--mori-border);
   border-radius: 0;
@@ -5089,6 +5092,10 @@
 
   .appShellWithPlayer .surface {
     padding-bottom: 102px;
+  }
+
+  .workspaceLayoutWithQueue {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .canvasHeader {

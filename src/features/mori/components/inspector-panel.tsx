@@ -7,6 +7,7 @@ import { Waveform } from "./waveform"
 import styles from "../mori-workspace.module.css"
 
 type InspectorPanelProps = {
+  presentation?: "drawer" | "pane"
   projectRef: string | null
   generation: Generation | null
   candidates: Candidate[]
@@ -30,13 +31,15 @@ function formatDuration(seconds: number): string {
   return `${minutes}:${remaining}`
 }
 
-export function InspectorPanel({ projectRef, generation, candidates, songPlan, selectedCandidateRef, playing, currentVersionCommitRun = idleCurrentVersionCommitRun, onSelect, onPromote, onRetryCurrentVersion, onDismissCurrentVersion, onPlay, onCancel, onRetry, onClose }: InspectorPanelProps) {
+export function InspectorPanel({ presentation = "drawer", projectRef, generation, candidates, songPlan, selectedCandidateRef, playing, currentVersionCommitRun = idleCurrentVersionCommitRun, onSelect, onPromote, onRetryCurrentVersion, onDismissCurrentVersion, onPlay, onCancel, onRetry, onClose }: InspectorPanelProps) {
   const generationActive = generation !== null && ["queued", "preparing", "generating", "post_processing"].includes(generation.status)
   const generationFailed = generation !== null && (generation.status === "failed" || generation.status === "expired")
   const generationEmpty = generation?.status === "succeeded" && candidates.length === 0
+  const modal = presentation === "drawer"
   const panelRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
+    if (!modal) return
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
     panelRef.current?.focus()
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -66,10 +69,10 @@ export function InspectorPanel({ projectRef, generation, candidates, songPlan, s
       window.removeEventListener("keydown", handleKeyDown)
       if (previousFocus?.isConnected) previousFocus.focus()
     }
-  }, [])
+  }, [modal])
 
   return (
-    <aside ref={panelRef} className={styles.inspector} role="dialog" aria-modal="true" aria-labelledby="generation-queue-title" tabIndex={-1}>
+    <aside ref={panelRef} className={styles.inspector} role={modal ? "dialog" : "complementary"} aria-modal={modal ? true : undefined} aria-labelledby="generation-queue-title" tabIndex={modal ? -1 : undefined}>
       <header className={styles.inspectorHeader}>
         <div>
           <h2 className={styles.sectionTitle} id="generation-queue-title">Generation queue</h2>
