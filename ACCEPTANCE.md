@@ -78,7 +78,9 @@ Finish 的 Release 页签把发布准备保留在当前 Version：标题、说�
 style 与 palette 都是 provider-neutral 枚举，创建、snapshot、SSE、取消、失败重试和候选挂接均核对当前 Version 与完整计划。
 选中的图片只进入 Release draft，图片资产通过同源 media seam 读取，不进入音频 Take Lanes；音乐 Cover / Restyle 仍属于
 Studio Transform。关闭并重新打开 Finish、切换 Remaster / Release 都保留草稿和运行态，切换 Version 则清除旧上下文。
-Release 已在 1280×720 桌面视口验证固定 Finish 标题/页签、内部滚动、底部保存动作与 Global Player 分层；在 390×844
+Release 已在 1280×720 桌面视口验证固定 Finish 标题/页签、内部滚动、底部保存动作与 Global Player 分层；全局 shell
+在短桌面视口用统一的 Player height / safe-space contract 缩减 dock 到 72px，Studio 的 AI Changes 与 Take Lanes
+仍可通过内容面滚动完整到达；在 390×844
 移动视口验证单栏堆叠、无横向溢出、底部字段可达、保存动作位于 Player 上方，并验证 Rail 展开/收起不移动工作区语义。
 Project Overview 的 `Continue making` 已将 Remix & edit、Cover、Lyrics、Voice & stems、Remaster & release 分成五个明确的
 Current Version 动作；Remix & edit 深链预选 Arrangement / Restyle，Cover 深链预选 Arrangement / Cover，并明确区分

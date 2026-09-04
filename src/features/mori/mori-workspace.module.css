@@ -3845,7 +3845,7 @@
 }
 
 .appShellWithPlayer .surface {
-  padding-bottom: 92px;
+  padding-bottom: var(--mori-player-safe-space);
 }
 
 .appShell[data-reduce-motion="true"] *,
@@ -3863,6 +3863,7 @@
   bottom: 0;
   left: 0;
   z-index: 20;
+  min-height: var(--mori-player-height);
   pointer-events: none;
 }
 
@@ -3877,7 +3878,7 @@
   align-items: center;
   gap: 24px;
   width: 100%;
-  min-height: 90px;
+  min-height: var(--mori-player-height);
   padding: 10px clamp(18px, 3vw, 40px);
   border: 0;
   border-top: 1px solid rgba(222, 217, 213, 0.9);
@@ -3885,6 +3886,11 @@
   background: rgba(255, 255, 255, 0.93);
   box-shadow: 0 -12px 32px rgba(62, 45, 86, 0.08);
   backdrop-filter: blur(22px);
+}
+
+.appShellWithPlayer {
+  --mori-player-height: 90px;
+  --mori-player-safe-space: 92px;
 }
 
 .playerTrack {
@@ -4970,7 +4976,53 @@
   }
 }
 
+/*
+ * Keep the transport dock viewport-anchored without making short desktop
+ * windows feel like the editor is hidden behind it. The surface still scrolls
+ * under the dock, but the reserved space and the dock's controls share one
+ * explicit height contract.
+ */
+@media (min-width: 701px) and (max-height: 780px) {
+  .appShellWithPlayer {
+    --mori-player-height: 72px;
+    --mori-player-safe-space: 76px;
+  }
+
+  .player {
+    gap: 16px;
+    padding-block: 6px;
+  }
+
+  .playerArtwork {
+    width: 40px;
+    height: 40px;
+  }
+
+  .playerCenter {
+    gap: 2px;
+  }
+
+  .playerControls {
+    gap: 4px;
+  }
+
+  .playerButtonPrimary {
+    width: 36px;
+    height: 36px;
+  }
+
+  .playerSeek,
+  .playerSeekInput {
+    height: 18px;
+  }
+}
+
 @media (max-width: 700px) {
+  .appShellWithPlayer {
+    --mori-player-height: 70px;
+    --mori-player-safe-space: 102px;
+  }
+
   .studioPage {
     width: 100%;
     min-width: 0;
@@ -5184,7 +5236,7 @@
   }
 
   .appShellWithPlayer .surface {
-    padding-bottom: 102px;
+    padding-bottom: var(--mori-player-safe-space);
   }
 
   .workspaceLayoutWithQueue {
@@ -5293,7 +5345,7 @@
   .player {
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 10px;
-    min-height: 70px;
+    min-height: var(--mori-player-height);
     padding: 8px 14px max(8px, env(safe-area-inset-bottom));
   }
 
@@ -5363,7 +5415,7 @@
   }
 
   .playbackQueueLayer {
-    inset: 0 0 70px;
+    inset: 0 0 var(--mori-player-height);
   }
 
   .playbackQueuePanel {
