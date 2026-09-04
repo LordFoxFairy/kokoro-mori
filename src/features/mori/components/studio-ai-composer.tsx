@@ -30,6 +30,7 @@ import styles from "./studio-ai-composer.module.css"
 type StudioAiOperationConfig = {
   id: StudioChangeOperation
   label: string
+  description: string
   placeholder: string
   Icon: LucideIcon
 }
@@ -56,24 +57,28 @@ const operations: readonly StudioAiOperationConfig[] = [
   {
     id: "add_part",
     label: "Add part",
+    description: "Add a new layer after the selected section.",
     placeholder: "Describe what should enter after the selected section…",
     Icon: Plus,
   },
   {
     id: "replace_section",
     label: "Replace section",
+    description: "Rework only the selected section as a fresh take.",
     placeholder: "Describe how the selected section should feel…",
     Icon: Scissors,
   },
   {
     id: "extend",
     label: "Extend",
+    description: "Continue from the selected section into new music.",
     placeholder: "Describe how Mori should continue from this section…",
     Icon: ArrowRight,
   },
   {
     id: "transform",
     label: "Transform",
+    description: "Change the expression while preserving the parts you choose.",
     placeholder: "Restyle the selected section while preserving its melody…",
     Icon: Sparkles,
   },
@@ -300,7 +305,15 @@ export function StudioAiComposer({ selectedSection, run, initialOperation, initi
             <Icon size={14} />
             {label}
           </button>
-        ))}
+          ))}
+      </div>
+
+      <div className={styles.studioAiOperationSummary} aria-live="polite">
+        <span className={styles.studioAiOperationSummaryIcon} aria-hidden="true"><activeOperation.Icon size={14} /></span>
+        <div>
+          <strong>{activeOperation.label}</strong>
+          <span>{activeOperation.description}</span>
+        </div>
       </div>
 
       {operation === "transform" ? (
@@ -374,8 +387,8 @@ export function StudioAiComposer({ selectedSection, run, initialOperation, initi
 
       {!isCover ? <details className={styles.studioAiControls}>
         <summary>
-          <span><SlidersHorizontal size={13} /> Direction controls</span>
-          <span>{preserve.length} anchors · {takeCountLabel(outputCount)}</span>
+          <span><SlidersHorizontal size={13} /> Keep &amp; compare</span>
+          <span>{preserve.length} kept · {takeCountLabel(outputCount)}</span>
         </summary>
         <div className={styles.studioAiControlsBody}>
           <div className={styles.studioAiControlGroup} role="group" aria-label="Keep stable">

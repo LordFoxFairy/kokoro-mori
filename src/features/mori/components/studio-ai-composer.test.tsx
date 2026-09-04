@@ -33,6 +33,15 @@ function renderComposer(onGenerate = vi.fn<(plan: StudioChangePlan) => void>()) 
 }
 
 describe("Studio AI composer", () => {
+  it("explains what each AI task does before the user writes an instruction", () => {
+    renderComposer()
+
+    expect(screen.getByText("Add a new layer after the selected section.")).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole("button", { name: "Transform" }))
+    expect(screen.getByText("Change the expression while preserving the parts you choose.")).toBeInTheDocument()
+  })
+
   it("offers operation-aware prompt starters without skipping plan review", () => {
     const onGenerate = renderComposer()
 

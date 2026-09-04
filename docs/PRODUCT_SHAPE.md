@@ -45,7 +45,8 @@ Mori 的落地：
 - Finish 仍绑定当前 Version：Remaster 的音频结果回到 Take Lanes，Release 的视觉与元数据只进入 draft，
   两条路径都不会绕过用户确认或偷偷发布。
 - Studio 的自然语言协作留在当前时间线选区；每种命名操作提供少量可编辑 prompt starter，降低空白输入成本，
-  但点击 starter 不会生成，仍必须先复核结构化 Change Plan。
+  但点击 starter 不会生成，仍必须先复核结构化 Change Plan。任务切换后先用一句结果导向说明解释当前能力，
+  高级控制统一收在 `Keep & compare`，不要求用户理解 anchor 等内部术语。
 
 ### 2. Figma First Draft：AI 先给可编辑的第一稿
 

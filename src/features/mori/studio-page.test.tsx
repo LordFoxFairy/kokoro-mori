@@ -446,7 +446,7 @@ describe("Mori studio page", () => {
 
     const aiChanges = screen.getByRole("region", { name: "Mori AI changes" })
     fireEvent.click(within(aiChanges).getByRole("button", { name: "Transform" }))
-    fireEvent.click(within(aiChanges).getByText("Direction controls"))
+    fireEvent.click(within(aiChanges).getByText("Keep & compare"))
 
     const anchors = within(aiChanges).getByRole("group", { name: "Keep stable" })
     fireEvent.click(within(anchors).getByRole("button", { name: "Keep lyrics" }))
@@ -606,7 +606,7 @@ describe("Mori studio page", () => {
 
     const aiChanges = screen.getByRole("region", { name: "Mori AI changes" })
     fireEvent.click(within(aiChanges).getByRole("button", { name: "Transform" }))
-    fireEvent.click(within(aiChanges).getByText("Direction controls"))
+    fireEvent.click(within(aiChanges).getByText("Keep & compare"))
     fireEvent.click(within(aiChanges).getByRole("button", { name: "Keep lyrics" }))
     fireEvent.click(within(aiChanges).getByRole("button", { name: "Keep tempo" }))
     fireEvent.click(within(aiChanges).getByRole("button", { name: "4 takes" }))

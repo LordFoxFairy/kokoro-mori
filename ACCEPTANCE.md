@@ -18,7 +18,7 @@ pnpm build
 
 - `pnpm lint`：通过，`--max-warnings=0`
 - `pnpm typecheck`：通过
-- `pnpm test`：通过，39 个测试文件、281 个测试
+- `pnpm test`：通过，41 个测试文件、319 个测试
 - `pnpm build`：通过，生成 `/`、`/create`、`/projects`、`/library`、`/settings`、`/help`、Project Overview 和 Studio 路由
 
 ## 页面巡检
@@ -96,7 +96,8 @@ Arrangement 现在提供与时间线连在一起的 Mori AI Changes：Add part�
 始终可见；时间标尺按当前 Version 时长生成，时间线播放头与 Global Player 的 seek 状态同步，并实时标记
 播放头所在段落；用户可拖动 Selection start / end 形成 Custom range，界面持续显示精确起止时间，
 Replace/Transform 会把它原样映射为毫秒级 `time_range`，调整范围后旧的 Review Plan 自动失效；
-Direction controls 默认收起，展开后可选择保留 Melody、Lyrics、Voice、Tempo、Structure，
+每个一层任务在用户输入前都会显示一句结果导向说明，避免只凭术语猜测 Add、Replace、Extend、Transform 的差别；
+`Keep & compare` 默认收起，摘要使用“kept / takes”而不是内部 anchor 术语，展开后可选择保留 Melody、Lyrics、Voice、Tempo、Structure，
 可请求 1 / 2 / 4 个 alternatives；选择 Transform 后先出现 Restyle / Cover 两个命名意图，而不是继续堆叠高级参数。
 Restyle 可作用于 Selected section 或 Whole song，保留用户选择的 anchors、references 与输出数量；Cover 固定使用
 当前 open Version 的 Whole song，不要求重新上传，并明确声明 “Audio cover, not release artwork.”。Vocal Cover 可选
