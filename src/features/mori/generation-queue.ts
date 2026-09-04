@@ -137,11 +137,80 @@ export function mergeGenerationQueueItems(
     throw new RangeError("generation_ref is immutable during queue merge")
   }
 
+  const lifecycle = mergeGenerationLifecycle(current, incoming)
   return normalizeGenerationQueueItem({
     ...current,
     ...incoming,
+    project_ref: current.project_ref,
+    source_version_ref: current.source_version_ref,
+    kind: current.kind,
+    created_at: current.created_at,
+    status: lifecycle.status,
+    progress: lifecycle.progress,
     candidate_refs: uniqueStrings([...current.candidate_refs, ...incoming.candidate_refs]),
+    last_event_id: mergeEventCursor(current.last_event_id, incoming.last_event_id),
   })
+}
+
+function mergeGenerationLifecycle(
+  current: GenerationQueueItem,
+  incoming: GenerationQueueItem,
+): Pick<GenerationQueueItem, "status" | "progress"> {
+  const currentTerminal = isTerminalGenerationQueueStatus(current.status)
+  const incomingTerminal = isTerminalGenerationQueueStatus(incoming.status)
+  const progress = Math.max(current.progress, incoming.progress)
+  if (currentTerminal && !incomingTerminal) return { status: current.status, progress }
+  if (!currentTerminal && incomingTerminal) return { status: incoming.status, progress }
+  if (currentTerminal && incomingTerminal) {
+    return {
+      status: terminalStatusRank(incoming.status) > terminalStatusRank(current.status) ? incoming.status : current.status,
+      progress,
+    }
+  }
+
+  const currentRank = activeStatusRank(current.status)
+  const incomingRank = activeStatusRank(incoming.status)
+  return {
+    status: incomingRank >= currentRank ? incoming.status : current.status,
+    progress,
+  }
+}
+
+function isTerminalGenerationQueueStatus(status: GenerationQueueServerStatus): boolean {
+  return status === "succeeded" || status === "failed" || status === "cancelled" || status === "expired"
+}
+
+function activeStatusRank(status: GenerationQueueServerStatus): number {
+  switch (status) {
+    case "queued": return 0
+    case "preparing": return 1
+    case "generating": return 2
+    case "post_processing": return 3
+    case "succeeded":
+    case "failed":
+    case "cancelled":
+    case "expired": return 4
+  }
+}
+
+function terminalStatusRank(status: GenerationQueueServerStatus): number {
+  switch (status) {
+    case "expired": return 0
+    case "failed": return 1
+    case "cancelled": return 2
+    case "succeeded": return 3
+    case "queued":
+    case "preparing":
+    case "generating":
+    case "post_processing": return -1
+  }
+}
+
+function mergeEventCursor(current: string | null, incoming: string | null): string | null {
+  if (current === incoming) return current
+  if (current === null) return incoming
+  if (incoming === null) return current
+  return null
 }
 
 /** Upsert by generation_ref; duplicate items are merged instead of appended. */
@@ -176,14 +245,35 @@ export function updateGenerationQueueItem(
   const existing = state.items.find((item) => item.generation_ref === generationRef)
   if (existing === undefined) return state
 
-  const updated: GenerationQueueItem = {
+  const incoming: GenerationQueueItem = {
     ...existing,
     ...patch,
     generation_ref: existing.generation_ref,
     candidate_refs: patch.candidate_refs === undefined ? existing.candidate_refs : patch.candidate_refs,
   }
-  const items = state.items.map((item) => item.generation_ref === generationRef ? normalizeGenerationQueueItem(updated) : item)
+  const normalizedIncoming = normalizeGenerationQueueItem(incoming)
+  const merged = mergeGenerationQueueItems(existing, normalizedIncoming)
+  const updated = patch.last_event_id === undefined
+    ? merged
+    : normalizeGenerationQueueItem({
+        ...merged,
+        last_event_id: incomingLifecycleAccepted(existing, normalizedIncoming, merged)
+          ? patch.last_event_id
+          : merged.last_event_id,
+      })
+  const items = state.items.map((item) => item.generation_ref === generationRef ? updated : item)
   return { ...state, items: sortQueueItems(items) }
+}
+
+function incomingLifecycleAccepted(
+  current: GenerationQueueItem,
+  incoming: GenerationQueueItem,
+  merged: GenerationQueueItem,
+): boolean {
+  if (merged.status !== incoming.status) return false
+  if (isTerminalGenerationQueueStatus(incoming.status)) return true
+  return !isTerminalGenerationQueueStatus(current.status)
+    && activeStatusRank(incoming.status) >= activeStatusRank(current.status)
 }
 
 export function removeGenerationQueueItem(state: GenerationQueueState, generationRef: string): GenerationQueueState {
@@ -345,7 +435,7 @@ function normalizeGenerationQueueItem(item: GenerationQueueItem): GenerationQueu
   assertGenerationQueueItem(item)
   return {
     ...item,
-    candidate_refs: uniqueStrings(item.candidate_refs),
+    candidate_refs: uniqueStrings(item.candidate_refs).sort(),
   }
 }
 

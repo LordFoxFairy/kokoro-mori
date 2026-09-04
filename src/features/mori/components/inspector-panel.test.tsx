@@ -87,7 +87,7 @@ describe("Mori generation queue", () => {
     )
 
     const studioLink = screen.getByRole("link", { name: "Open Studio run Restyle · Whole song" })
-    expect(studioLink).toHaveAttribute("href", "/projects/project_queue_1/studio/version_queue_1")
+    expect(studioLink).toHaveAttribute("href", "/projects/project_queue_1/studio/version_queue_1?generation_ref=generation_studio_queue")
     expect(onSelectGeneration).not.toHaveBeenCalled()
   })
 

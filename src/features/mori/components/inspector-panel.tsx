@@ -263,5 +263,5 @@ function queueStatusLabel(status: GenerationQueueItem["status"]): string {
 function studioQueueDestination(item: GenerationQueueItem): string {
   return item.source_version_ref === null
     ? `/projects/${encodeURIComponent(item.project_ref)}`
-    : `/projects/${encodeURIComponent(item.project_ref)}/studio/${encodeURIComponent(item.source_version_ref)}`
+    : `/projects/${encodeURIComponent(item.project_ref)}/studio/${encodeURIComponent(item.source_version_ref)}?generation_ref=${encodeURIComponent(item.generation_ref)}`
 }

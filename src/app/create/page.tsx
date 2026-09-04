@@ -8,10 +8,11 @@ type CreatePageProps = {
 export default async function CreatePage({ searchParams }: CreatePageProps = {}) {
   const params = searchParams === undefined ? {} : await searchParams
   const projectRef = normalizeProjectRef(params.project_ref)
+  const generationRef = normalizeProjectRef(params.generation_ref)
   const initialPrompt = normalizeIdea(params.idea)
   const initialCreativeSource = resolveCreativeSourceSelection(normalizeScalar(params.source_kind), normalizeScalar(params.source_ref))
 
-  return <MoriWorkspace projectRef={projectRef} initialPrompt={initialPrompt} initialCreativeSource={initialCreativeSource} />
+  return <MoriWorkspace projectRef={projectRef} generationRef={generationRef} initialPrompt={initialPrompt} initialCreativeSource={initialCreativeSource} />
 }
 
 function normalizeProjectRef(value: string | string[] | undefined): string | undefined {

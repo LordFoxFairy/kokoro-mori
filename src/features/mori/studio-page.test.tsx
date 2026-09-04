@@ -86,6 +86,229 @@ describe("Mori studio page", () => {
     localStorage.clear()
   })
 
+  it("restores the Studio run named by the route when another tab changed the global active run", async () => {
+    const snapshot: StudioRestyleGenerationSnapshot = {
+      generation_ref: "generation_route_studio",
+      generation_kind: "studio_change",
+      project_ref: "project_preview_first_light",
+      song_plan_ref: null,
+      mode: null,
+      source_version_ref: "version_preview_first_light_a",
+      operation: "transform",
+      intent: "restyle",
+      scope: { type: "whole_version" },
+      instruction: "Keep this exact route-selected Studio run.",
+      preserve: ["melody"],
+      reference_asset_refs: [],
+      output_count: 2,
+      status: "generating",
+      progress: 58,
+      candidate_refs: [],
+      created_at: "2026-09-04T12:00:00.000Z",
+    }
+    const { writeGenerationQueueState } = await import("./generation-queue-storage")
+    writeGenerationQueueState({
+      version: 1,
+      active_generation_ref: "generation_other_studio_tab",
+      items: [{
+        generation_ref: "generation_other_studio_tab",
+        project_ref: snapshot.project_ref,
+        source_version_ref: snapshot.source_version_ref,
+        kind: "studio_change",
+        label: "Other tab run",
+        created_at: "2026-09-04T12:01:00.000Z",
+        status: "generating",
+        progress: 20,
+        candidate_refs: [],
+        last_event_id: null,
+      }, {
+        generation_ref: snapshot.generation_ref,
+        project_ref: snapshot.project_ref,
+        source_version_ref: snapshot.source_version_ref,
+        kind: "studio_change",
+        label: "Route-selected run",
+        created_at: snapshot.created_at,
+        status: snapshot.status,
+        progress: snapshot.progress,
+        candidate_refs: [],
+        last_event_id: null,
+      }],
+    })
+    const getGeneration = vi.fn<MoriApi["getGeneration"]>(async () => ({
+      data: snapshot,
+      meta: { request_id: "request_route_studio" },
+    }))
+
+    render(
+      <MoriAppProvider>
+        <StudioPageContent
+          candidate={previewCandidates[0]}
+          projectRef={snapshot.project_ref}
+          versionRef={snapshot.source_version_ref}
+          initialGenerationRef={snapshot.generation_ref}
+          api={{ getGeneration, getGenerationEvents: async () => [] }}
+          stemPlaybackFactory={createTestStemPlaybackController}
+        />
+      </MoriAppProvider>,
+    )
+
+    await waitFor(() => expect(getGeneration).toHaveBeenCalledWith(snapshot.generation_ref))
+    expect(screen.getByText("Keep this exact route-selected Studio run.")).toBeInTheDocument()
+  })
+
+  it("switches Studio recovery when only the route generation changes", async () => {
+    const snapshot = (generationRef: string, instruction: string): StudioRestyleGenerationSnapshot => ({
+      generation_ref: generationRef,
+      generation_kind: "studio_change",
+      project_ref: "project_preview_first_light",
+      song_plan_ref: null,
+      mode: null,
+      source_version_ref: "version_preview_first_light_a",
+      operation: "transform",
+      intent: "restyle",
+      scope: { type: "whole_version" },
+      instruction,
+      preserve: ["melody"],
+      reference_asset_refs: [],
+      output_count: 2,
+      status: "generating",
+      progress: 50,
+      candidate_refs: [],
+      created_at: "2026-09-04T12:00:00.000Z",
+    })
+    const first = snapshot("generation_route_first", "First route-selected Studio run.")
+    const second = snapshot("generation_route_second", "Second route-selected Studio run.")
+    const { writeGenerationQueueState } = await import("./generation-queue-storage")
+    writeGenerationQueueState({
+      version: 1,
+      active_generation_ref: first.generation_ref,
+      items: [first, second].map((item) => ({
+        generation_ref: item.generation_ref,
+        project_ref: item.project_ref,
+        source_version_ref: item.source_version_ref,
+        kind: "studio_change" as const,
+        label: item.instruction,
+        created_at: item.created_at,
+        status: item.status,
+        progress: item.progress,
+        candidate_refs: [],
+        last_event_id: null,
+      })),
+    })
+    const getGeneration = vi.fn<MoriApi["getGeneration"]>(async (generationRef) => ({
+      data: generationRef === second.generation_ref ? second : first,
+      meta: { request_id: `request_${generationRef}` },
+    }))
+    const renderView = (generationRef: string) => (
+      <MoriAppProvider>
+        <StudioPageContent
+          candidate={previewCandidates[0]}
+          projectRef={first.project_ref}
+          versionRef={first.source_version_ref}
+          initialGenerationRef={generationRef}
+          api={{ getGeneration, getGenerationEvents: async () => [] }}
+          stemPlaybackFactory={createTestStemPlaybackController}
+        />
+      </MoriAppProvider>
+    )
+    const view = render(renderView(first.generation_ref))
+    await waitFor(() => expect(getGeneration).toHaveBeenCalledWith(first.generation_ref))
+    expect(screen.getByText(first.instruction)).toBeInTheDocument()
+
+    view.rerender(renderView(second.generation_ref))
+
+    await waitFor(() => expect(getGeneration).toHaveBeenCalledWith(second.generation_ref))
+    expect(screen.getByText(second.instruction)).toBeInTheDocument()
+  })
+
+  it("keeps a terminal Studio snapshot visible when replay returns an older active event", async () => {
+    const snapshot: StudioRestyleGenerationSnapshot = {
+      generation_ref: "generation_terminal_studio",
+      generation_kind: "studio_change",
+      project_ref: "project_preview_first_light",
+      song_plan_ref: null,
+      mode: null,
+      source_version_ref: "version_preview_first_light_a",
+      operation: "transform",
+      intent: "restyle",
+      scope: { type: "whole_version" },
+      instruction: "Keep the completed Studio result terminal.",
+      preserve: ["melody"],
+      reference_asset_refs: [],
+      output_count: 2,
+      status: "succeeded",
+      progress: 100,
+      candidate_refs: [],
+      created_at: "2026-09-04T12:00:00.000Z",
+    }
+    const { writeGenerationQueueState } = await import("./generation-queue-storage")
+    writeGenerationQueueState({
+      version: 1,
+      active_generation_ref: snapshot.generation_ref,
+      items: [{
+        generation_ref: snapshot.generation_ref,
+        project_ref: snapshot.project_ref,
+        source_version_ref: snapshot.source_version_ref,
+        kind: "studio_change",
+        label: "Terminal Studio run",
+        created_at: snapshot.created_at,
+        status: snapshot.status,
+        progress: snapshot.progress,
+        candidate_refs: [],
+        last_event_id: "event-terminal",
+      }],
+    })
+    const getGenerationEvents = vi.fn<MoriApi["getGenerationEvents"]>(async () => [{
+      id: "event-stale",
+      event: "generation.progress",
+      data: {
+        generation_ref: snapshot.generation_ref,
+        project_ref: snapshot.project_ref,
+        status: "generating",
+        progress: 72,
+        candidate_refs: [],
+      },
+    }])
+
+    render(
+      <MoriAppProvider>
+        <StudioPageContent
+          candidate={previewCandidates[0]}
+          projectRef={snapshot.project_ref}
+          versionRef={snapshot.source_version_ref}
+          initialGenerationRef={snapshot.generation_ref}
+          api={{
+            getGeneration: async () => ({ data: snapshot, meta: { request_id: "request_terminal_studio" } }),
+            getGenerationEvents,
+            listCandidates: async () => ({
+              data: {
+                candidates: [{
+                  candidate_ref: previewCandidates[0].candidateRef,
+                  generation_ref: "generation_preview_first_light",
+                  version_ref: previewCandidates[0].versionRef,
+                  project_ref: snapshot.project_ref,
+                  title: previewCandidates[0].title,
+                  duration_seconds: previewCandidates[0].durationSeconds,
+                  audio_asset_ref: "asset_terminal_studio",
+                  waveform_asset_ref: "waveform_terminal_studio",
+                  style_tags: ["gentle pulse", "intimate vocal"],
+                  created_at: "2026-09-03T12:00:00.000Z",
+                }],
+                next_cursor: null,
+              },
+              meta: { request_id: "request_terminal_studio_candidates" },
+            }),
+          }}
+          stemPlaybackFactory={createTestStemPlaybackController}
+        />
+      </MoriAppProvider>,
+    )
+
+    await waitFor(() => expect(getGenerationEvents).toHaveBeenCalled())
+    await waitFor(() => expect(screen.queryByRole("progressbar", { name: "Studio change progress" })).not.toBeInTheDocument())
+    expect(screen.getByRole("button", { name: "Retry change" })).toBeInTheDocument()
+  })
+
   it("keeps mobile Studio actions discoverable by preserving action roles and labels", () => {
     renderStudio()
 
@@ -895,7 +1118,7 @@ describe("Mori studio page", () => {
 
     expect(await within(aiChanges).findByText("The returned Restyle did not match this scope or direction. Nothing was applied.")).toBeInTheDocument()
     expect(within(screen.getByRole("region", { name: "Take lanes" })).queryByText(/wrong/u)).not.toBeInTheDocument()
-    expect(readGenerationQueueState().items.find((item) => item.generation_ref === "generation_restyle_wrong")?.status).toBe("failed")
+    expect(readGenerationQueueState().items.find((item) => item.generation_ref === "generation_restyle_wrong")?.status).toBe("queued")
   })
 
   it("rejects a Cover snapshot whose Voice differs from the reviewed plan", async () => {
@@ -1078,6 +1301,70 @@ describe("Mori studio page", () => {
       status: "cancelled",
       progress: 42,
     })
+  })
+
+  it("keeps observing a Studio change when cancellation is only acknowledged", async () => {
+    let cancellationAcknowledged = false
+    renderStudio({
+      createStudioChange: async () => ({
+        data: { generation_ref: "generation_change_cancel_pending", status: "queued" },
+        meta: { request_id: "request_change_cancel_pending" },
+      }),
+      getGeneration: async () => ({
+        data: {
+          generation_ref: "generation_change_cancel_pending",
+          generation_kind: "studio_change",
+          project_ref: "project_preview_first_light",
+          song_plan_ref: null,
+          mode: null,
+          source_version_ref: "version_preview_first_light_a",
+          operation: "add_part",
+          status: cancellationAcknowledged ? "succeeded" : "generating",
+          progress: cancellationAcknowledged ? 100 : 42,
+          candidate_refs: [],
+          created_at: "2026-09-03T12:00:00.000Z",
+        },
+        meta: { request_id: "request_change_cancel_pending_status" },
+      }),
+      getGenerationEvents: async () => [],
+      cancelGeneration: async (generationRef) => {
+        cancellationAcknowledged = true
+        return {
+          data: { generation_ref: generationRef, status: "preparing" },
+          meta: { request_id: "request_change_cancel_pending_ack" },
+        }
+      },
+      listCandidates: async () => ({
+        data: {
+          candidates: [{
+            candidate_ref: previewCandidates[0].candidateRef,
+            generation_ref: "generation_preview_first_light",
+            version_ref: previewCandidates[0].versionRef,
+            project_ref: "project_preview_first_light",
+            title: previewCandidates[0].title,
+            duration_seconds: previewCandidates[0].durationSeconds,
+            audio_asset_ref: "asset_change_cancel_pending",
+            waveform_asset_ref: "waveform_change_cancel_pending",
+            style_tags: ["gentle pulse", "intimate vocal"],
+            created_at: "2026-09-03T12:00:00.000Z",
+          }],
+          next_cursor: null,
+        },
+        meta: { request_id: "request_change_cancel_pending_candidates" },
+      }),
+    })
+
+    const aiChanges = screen.getByRole("region", { name: "Mori AI changes" })
+    fireEvent.change(within(aiChanges).getByRole("textbox", { name: "Tell Mori what to change" }), {
+      target: { value: "Add a short guitar answer." },
+    })
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Review change" }))
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Generate 2 takes" }))
+    const cancel = await within(aiChanges).findByRole("button", { name: "Cancel change" })
+    fireEvent.click(cancel)
+
+    await waitFor(() => expect(within(aiChanges).getByRole("button", { name: "Retry change" })).toBeInTheDocument())
+    expect(within(aiChanges).queryByRole("progressbar", { name: "Studio change progress" })).not.toBeInTheDocument()
   })
 
   it("keeps an in-flight change context when moving between Studio tools", async () => {

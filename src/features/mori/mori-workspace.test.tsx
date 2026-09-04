@@ -4,9 +4,10 @@ import { describe, expect, it, vi } from "vitest"
 import type { GenerationCreateInput, MoriApi } from "@/lib/mori-api"
 import { MoriAppProvider, useMoriApp } from "./components/mori-app-provider"
 import { CreateCanvas, type CreationDraft } from "./components/create-canvas"
+import { createGenerationQueueState } from "./generation-queue"
 import { MoriWorkspace } from "./mori-workspace"
 import { previewCandidates, previewProject } from "./preview-data"
-import { readGenerationQueueState } from "./generation-queue-storage"
+import { readGenerationQueueState, writeGenerationQueueState } from "./generation-queue-storage"
 
 type WorkspaceApi = Pick<MoriApi, "createSongPlan" | "createGeneration" | "getGeneration" | "getGenerationEvents" | "listCandidates" | "cancelGeneration">
   & Partial<Pick<MoriApi, "createProject" | "getProject" | "putCurrentVersion">>
@@ -143,6 +144,142 @@ describe("Mori workspace", () => {
     expect(localStorage.getItem("mori-generation-queue-v1")).not.toContain("prompt")
   })
 
+  it("restores the generation selected by the route instead of another tab's global active task", async () => {
+    const item = (generationRef: string, createdAt: string) => ({
+      generation_ref: generationRef,
+      project_ref: "project_route_queue",
+      source_version_ref: null,
+      kind: "create",
+      label: generationRef,
+      created_at: createdAt,
+      status: "generating",
+      progress: 40,
+      candidate_refs: [],
+      last_event_id: null,
+    })
+    localStorage.setItem("mori-generation-queue-v1", JSON.stringify({
+      version: 1,
+      active_generation_ref: "generation_other_tab",
+      items: [
+        item("generation_other_tab", "2026-09-04T12:01:00.000Z"),
+        item("generation_route_selected", "2026-09-04T12:00:00.000Z"),
+      ],
+    }))
+    const getGeneration = vi.fn<MoriApi["getGeneration"]>(async (generationRef) => ({
+      data: {
+        generation_ref: generationRef,
+        generation_kind: "new_song",
+        project_ref: "project_route_queue",
+        song_plan_ref: null,
+        mode: "custom",
+        source_version_ref: null,
+        operation: null,
+        status: "generating",
+        progress: 40,
+        candidate_refs: [],
+        created_at: "2026-09-04T12:00:00.000Z",
+      },
+      meta: { request_id: `request_${generationRef}` },
+    }))
+
+    render(<MoriAppProvider><MoriWorkspace projectRef="project_route_queue" generationRef="generation_route_selected" api={createWorkspaceApi({ getGeneration })} /></MoriAppProvider>)
+
+    await waitFor(() => expect(getGeneration).toHaveBeenCalledWith("generation_route_selected"))
+    fireEvent.click(screen.getByRole("button", { name: "Open generation queue" }))
+    expect(screen.getByRole("button", { name: /generation_route_selected.*Generating/u })).toHaveAttribute("aria-current", "true")
+  })
+
+  it("restores the user's active task before another newer task when the route has no generation", async () => {
+    const item = (generationRef: string, createdAt: string) => ({
+      generation_ref: generationRef,
+      project_ref: "project_active_queue",
+      source_version_ref: null,
+      kind: "create",
+      label: generationRef,
+      created_at: createdAt,
+      status: "generating",
+      progress: 40,
+      candidate_refs: [],
+      last_event_id: null,
+    })
+    localStorage.setItem("mori-generation-queue-v1", JSON.stringify({
+      version: 1,
+      active_generation_ref: "generation_user_active",
+      items: [
+        item("generation_newer_background", "2026-09-04T12:02:00.000Z"),
+        item("generation_user_active", "2026-09-04T12:01:00.000Z"),
+      ],
+    }))
+    const getGeneration = vi.fn<MoriApi["getGeneration"]>(async (generationRef) => ({
+      data: {
+        generation_ref: generationRef,
+        generation_kind: "new_song",
+        project_ref: "project_active_queue",
+        song_plan_ref: null,
+        mode: "custom",
+        source_version_ref: null,
+        operation: null,
+        status: "generating",
+        progress: 40,
+        candidate_refs: [],
+        created_at: "2026-09-04T12:01:00.000Z",
+      },
+      meta: { request_id: `request_${generationRef}` },
+    }))
+
+    render(<MoriAppProvider><MoriWorkspace projectRef="project_active_queue" api={createWorkspaceApi({ getGeneration })} /></MoriAppProvider>)
+
+    await waitFor(() => expect(getGeneration).toHaveBeenCalled())
+    fireEvent.click(screen.getByRole("button", { name: "Open generation queue" }))
+    expect(screen.getByRole("button", { name: /generation_user_active.*Generating/u })).toHaveAttribute("aria-current", "true")
+  })
+
+  it("does not substitute another active task when an explicit generation route is missing", async () => {
+    const fallbackGenerationRef = "generation_wrong_fallback"
+    writeGenerationQueueState(createGenerationQueueState({
+      items: [{
+        generation_ref: fallbackGenerationRef,
+        project_ref: "project_strict_route",
+        source_version_ref: null,
+        kind: "create",
+        label: "Another active direction",
+        created_at: "2026-09-04T12:00:00.000Z",
+        status: "generating",
+        progress: 44,
+        candidate_refs: [],
+        last_event_id: null,
+      }],
+      active_generation_ref: fallbackGenerationRef,
+    }))
+    const getGeneration = vi.fn<MoriApi["getGeneration"]>(async (generationRef) => ({
+      data: {
+        generation_ref: generationRef,
+        generation_kind: "new_song",
+        project_ref: "project_strict_route",
+        song_plan_ref: null,
+        mode: "custom",
+        source_version_ref: null,
+        operation: null,
+        status: "generating",
+        progress: 44,
+        candidate_refs: [],
+        created_at: "2026-09-04T12:00:00.000Z",
+      },
+      meta: { request_id: `request_${generationRef}` },
+    }))
+
+    render(<MoriAppProvider><MoriWorkspace
+      projectRef="project_strict_route"
+      generationRef="generation_missing_route"
+      api={createWorkspaceApi({ getGeneration })}
+    /></MoriAppProvider>)
+
+    await waitFor(() => expect(getGeneration).toHaveBeenCalledWith(fallbackGenerationRef))
+    expect(screen.getByRole("button", { name: "Open generation queue" })).toHaveAttribute("data-generation-feedback", "idle")
+    fireEvent.click(screen.getByRole("button", { name: "Open generation queue" }))
+    expect(screen.getByRole("button", { name: /Another active direction.*Generating/u })).not.toHaveAttribute("aria-current")
+  })
+
   it("keeps multiple generation tasks selectable while polling background work", async () => {
     const queueItem = (generationRef: string, label: string, status: "generating" | "succeeded", progress: number) => ({
       generation_ref: generationRef,
@@ -189,6 +326,110 @@ describe("Mori workspace", () => {
     expect(screen.getByText("2 tasks")).toBeInTheDocument()
     fireEvent.click(screen.getByRole("button", { name: /Ready direction.*Ready.*100%/u }))
     await waitFor(() => expect(getGeneration).toHaveBeenCalledWith("generation_multi_ready"))
+  })
+
+  it("starts background recovery when another tab adds an active task", async () => {
+    const queueItem = (generationRef: string, createdAt: string) => ({
+      generation_ref: generationRef,
+      project_ref: "project_cross_tab_queue",
+      source_version_ref: null,
+      kind: "create" as const,
+      label: generationRef,
+      created_at: createdAt,
+      status: "generating" as const,
+      progress: 35,
+      candidate_refs: [],
+      last_event_id: null,
+    })
+    const foreground = queueItem("generation_foreground", "2026-09-04T12:00:00.000Z")
+    const background = queueItem("generation_new_tab", "2026-09-04T12:01:00.000Z")
+    writeGenerationQueueState(createGenerationQueueState({
+      items: [foreground],
+      active_generation_ref: foreground.generation_ref,
+    }))
+    const getGeneration = vi.fn<MoriApi["getGeneration"]>(async (generationRef) => ({
+      data: {
+        generation_ref: generationRef,
+        generation_kind: "new_song",
+        project_ref: "project_cross_tab_queue",
+        song_plan_ref: null,
+        mode: "custom",
+        source_version_ref: null,
+        operation: null,
+        status: "generating",
+        progress: 35,
+        candidate_refs: [],
+        created_at: "2026-09-04T12:00:00.000Z",
+      },
+      meta: { request_id: `request_${generationRef}` },
+    }))
+
+    render(<MoriAppProvider><MoriWorkspace projectRef="project_cross_tab_queue" api={createWorkspaceApi({ getGeneration })} /></MoriAppProvider>)
+    await waitFor(() => expect(getGeneration).toHaveBeenCalledWith(foreground.generation_ref))
+
+    writeGenerationQueueState(createGenerationQueueState({
+      items: [background, foreground],
+      active_generation_ref: foreground.generation_ref,
+    }))
+
+    await waitFor(() => expect(getGeneration).toHaveBeenCalledWith(background.generation_ref))
+  })
+
+  it("does not let stale event replay move the visible generation back from a terminal snapshot", async () => {
+    const generationRef = "generation_terminal_snapshot"
+    writeGenerationQueueState(createGenerationQueueState({
+      items: [{
+        generation_ref: generationRef,
+        project_ref: "project_terminal_snapshot",
+        source_version_ref: null,
+        kind: "create",
+        label: "Finished direction",
+        created_at: "2026-09-04T12:00:00.000Z",
+        status: "succeeded",
+        progress: 100,
+        candidate_refs: [],
+        last_event_id: "event-terminal",
+      }],
+      active_generation_ref: generationRef,
+    }))
+    const getGenerationEvents = vi.fn<MoriApi["getGenerationEvents"]>(async () => [{
+      id: "event-stale",
+      event: "generation.progress",
+      data: {
+        generation_ref: generationRef,
+        project_ref: "project_terminal_snapshot",
+        status: "generating",
+        progress: 76,
+        candidate_refs: [],
+      },
+    }])
+
+    render(<MoriAppProvider><MoriWorkspace
+      projectRef="project_terminal_snapshot"
+      generationRef={generationRef}
+      api={createWorkspaceApi({
+        getGeneration: async () => ({
+          data: {
+            generation_ref: generationRef,
+            generation_kind: "new_song",
+            project_ref: "project_terminal_snapshot",
+            song_plan_ref: null,
+            mode: "custom",
+            source_version_ref: null,
+            operation: null,
+            status: "succeeded",
+            progress: 100,
+            candidate_refs: [],
+            created_at: "2026-09-04T12:00:00.000Z",
+          },
+          meta: { request_id: "request_terminal_snapshot" },
+        }),
+        getGenerationEvents,
+      })}
+    /></MoriAppProvider>)
+
+    await waitFor(() => expect(getGenerationEvents).toHaveBeenCalled())
+    expect(screen.getByRole("button", { name: "Open generation queue" })).toHaveAttribute("data-generation-feedback", "ready")
   })
 
   it("creates a Project from the first idea before starting an unscoped generation", async () => {
@@ -264,9 +505,9 @@ describe("Mori workspace", () => {
     fireEvent.click(activeTrigger)
     expect(screen.getByRole("button", { name: "Open generation queue" })).toHaveAttribute("data-generation-feedback", "active")
     expect(screen.getByRole("link", { name: "Quiet piano song for the first train home" })).toHaveAttribute("href", "/projects/project_quiet_train")
-    expect(window.location.pathname + window.location.search).toBe("/create?project_ref=project_quiet_train")
+    expect(window.location.pathname + window.location.search).toBe("/create?project_ref=project_quiet_train&generation_ref=generation_quiet_train")
     await waitFor(() => expect(screen.getByRole("link", { name: "New creation" })).toHaveAttribute("href", "/create?project_ref=project_quiet_train"))
-    expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/settings?return_to=%2Fcreate%3Fproject_ref%3Dproject_quiet_train")
+    expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/settings?return_to=%2Fcreate%3Fproject_ref%3Dproject_quiet_train%26generation_ref%3Dgeneration_quiet_train")
     window.history.replaceState({}, "", originalUrl)
   })
 
@@ -1221,6 +1462,52 @@ describe("Mori workspace", () => {
     await waitFor(() => expect(screen.getByText("Generation cancelled")).toBeInTheDocument())
   })
 
+  it("keeps observing when cancellation is acknowledged before the generation reaches a terminal state", async () => {
+    let cancellationAcknowledged = false
+    const api = createWorkspaceApi({
+      createSongPlan: async (projectRef, input) => ({
+        data: { ...input, song_plan_ref: "song_plan_cancel_pending", project_ref: projectRef, created_at: "2026-09-04T12:00:00.000Z" },
+        meta: { request_id: "request_cancel_pending_plan" },
+      }),
+      createGeneration: async () => ({
+        data: { generation_ref: "generation_cancel_pending", status: "queued" },
+        meta: { request_id: "request_cancel_pending_create" },
+      }),
+      getGeneration: async () => ({
+        data: {
+          generation_ref: "generation_cancel_pending",
+          generation_kind: "new_song",
+          project_ref: previewProject.projectRef,
+          song_plan_ref: "song_plan_cancel_pending",
+          mode: "custom",
+          source_version_ref: null,
+          operation: null,
+          status: cancellationAcknowledged ? "succeeded" : "generating",
+          progress: cancellationAcknowledged ? 100 : 42,
+          candidate_refs: [],
+          created_at: "2026-09-04T12:00:00.000Z",
+        },
+        meta: { request_id: "request_cancel_pending_status" },
+      }),
+      cancelGeneration: async (generationRef) => {
+        cancellationAcknowledged = true
+        return {
+          data: { generation_ref: generationRef, status: "preparing" },
+          meta: { request_id: "request_cancel_pending_ack" },
+        }
+      },
+    })
+
+    render(<MoriAppProvider><MoriWorkspace projectRef={previewProject.projectRef} api={api} /></MoriAppProvider>)
+    fireEvent.click(screen.getByRole("tab", { name: /custom/i }))
+    fireEvent.submit(screen.getByRole("textbox", { name: "Song idea" }).closest("form") as HTMLFormElement)
+    await waitFor(() => expect(screen.getByRole("button", { name: "Cancel generation" })).toBeInTheDocument())
+    fireEvent.click(screen.getByRole("button", { name: "Cancel generation" }))
+
+    await waitFor(() => expect(screen.getByText("No playable directions yet")).toBeInTheDocument())
+    expect(screen.getByRole("button", { name: "Hide generation queue" })).toHaveAttribute("data-generation-feedback", "ready")
+  })
+
   it("offers a human retry path when generation fails", async () => {
     const createGeneration = vi.fn<MoriApi["createGeneration"]>(async () => {
       throw new Error("provider unavailable")
@@ -1273,7 +1560,7 @@ describe("Mori workspace", () => {
     await waitFor(() => expect(createGeneration).toHaveBeenCalledTimes(2))
   })
 
-  it("marks a queued generation as failed when status recovery stops", async () => {
+  it("keeps the server queue state intact while status observation reconnects", async () => {
     const api = createWorkspaceApi({
       createSongPlan: async (projectRef, input) => ({
         data: {
@@ -1300,8 +1587,9 @@ describe("Mori workspace", () => {
     fireEvent.click(screen.getByRole("tab", { name: /custom/i }))
     fireEvent.submit(screen.getByRole("textbox", { name: "Song idea" }).closest("form") as HTMLFormElement)
 
-    await waitFor(() => expect(screen.getByRole("button", { name: "Hide generation queue" })).toHaveAttribute("data-generation-feedback", "attention"))
-    expect(readGenerationQueueState().items.find((item) => item.generation_ref === "generation_status_failure")?.status).toBe("failed")
+    await waitFor(() => expect(screen.getByText("Mori status is unavailable. Retrying…")).toBeInTheDocument())
+    expect(screen.getByRole("button", { name: "Hide generation queue" })).toHaveAttribute("data-generation-feedback", "active")
+    expect(readGenerationQueueState().items.find((item) => item.generation_ref === "generation_status_failure")?.status).toBe("queued")
   })
 
   it("clears preview directions when a completed generation has no candidates", async () => {

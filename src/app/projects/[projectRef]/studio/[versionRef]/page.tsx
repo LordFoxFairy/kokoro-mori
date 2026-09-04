@@ -21,6 +21,7 @@ export default async function StudioPage({ params, searchParams }: StudioPagePro
         versionRef={versionRef}
         initialSurface={studioEntry.surface}
         initialIntent={studioEntry.intent}
+        initialGenerationRef={studioEntry.generationRef}
       />
     </main>
   )

@@ -10,8 +10,8 @@ import {
   type GenerationQueueServerStatus,
 } from "../generation-queue"
 import {
-  generationQueueStorageEvent,
   readGenerationQueueState,
+  subscribeGenerationQueueState,
 } from "../generation-queue-storage"
 import styles from "./studio-generation-queue.module.css"
 
@@ -42,13 +42,12 @@ export function StudioGenerationQueue({ projectRef, activeVersionRef }: StudioGe
     queueMicrotask(() => {
       if (!disposed) refresh()
     })
-    const handleStorageUpdate = () => refresh()
-    window.addEventListener("storage", handleStorageUpdate)
-    window.addEventListener(generationQueueStorageEvent, handleStorageUpdate)
+    const unsubscribe = subscribeGenerationQueueState((state) => {
+      if (!disposed) setQueueState(state)
+    })
     return () => {
       disposed = true
-      window.removeEventListener("storage", handleStorageUpdate)
-      window.removeEventListener(generationQueueStorageEvent, handleStorageUpdate)
+      unsubscribe()
     }
   }, [refresh])
 
@@ -177,9 +176,9 @@ function StudioQueueItem({ item, activeGenerationRef, activeVersionRef, onNaviga
 
 function queueDestination(item: GenerationQueueItem): string {
   if (item.kind === "studio_change" && item.source_version_ref !== null) {
-    return `/projects/${encodeURIComponent(item.project_ref)}/studio/${encodeURIComponent(item.source_version_ref)}`
+    return `/projects/${encodeURIComponent(item.project_ref)}/studio/${encodeURIComponent(item.source_version_ref)}?generation_ref=${encodeURIComponent(item.generation_ref)}`
   }
-  return `/create?project_ref=${encodeURIComponent(item.project_ref)}`
+  return `/create?project_ref=${encodeURIComponent(item.project_ref)}&generation_ref=${encodeURIComponent(item.generation_ref)}`
 }
 
 function isActiveQueueStatus(status: GenerationQueueServerStatus): boolean {

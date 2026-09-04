@@ -74,7 +74,7 @@ describe("generation queue domain", () => {
       label: "A finished direction",
       status: "succeeded",
       progress: 100,
-      candidate_refs: ["candidate-b", "candidate-a"],
+      candidate_refs: ["candidate-a", "candidate-b"],
       last_event_id: "event-4",
     })
     expect(state.active_generation_ref).toBe("generation-b")
@@ -171,6 +171,69 @@ describe("generation queue domain", () => {
       items: [item({ generation_ref: "generation-a" })],
       active_generation_ref: null,
     })).active_generation_ref).toBeNull()
+  })
+
+  it("does not let a stale active snapshot regress a completed queue item", () => {
+    const completed = item({
+      status: "succeeded",
+      progress: 100,
+      candidate_refs: ["candidate-finished"],
+      last_event_id: "event-finished",
+    })
+    const stale = item({
+      project_ref: "project-stale",
+      kind: "studio_change",
+      status: "generating",
+      progress: 48,
+      candidate_refs: [],
+      last_event_id: null,
+    })
+
+    expect(mergeGenerationQueueItems(completed, stale)).toMatchObject({
+      project_ref: "project-a",
+      kind: "create",
+      status: "succeeded",
+      progress: 100,
+      candidate_refs: ["candidate-finished"],
+      last_event_id: "event-finished",
+    })
+  })
+
+  it("keeps active lifecycle progress monotonic while queue surfaces reconcile", () => {
+    const current = item({ status: "post_processing", progress: 84 })
+    const stale = item({ status: "preparing", progress: 20 })
+
+    expect(mergeGenerationQueueItems(current, stale)).toMatchObject({
+      status: "post_processing",
+      progress: 84,
+    })
+  })
+
+  it("converges conflicting terminal observations without losing known progress", () => {
+    const failed = item({
+      status: "failed",
+      progress: 10,
+      candidate_refs: ["candidate-b", "candidate-a"],
+      last_event_id: "event-failed",
+    })
+    const cancelled = item({
+      status: "cancelled",
+      progress: 90,
+      candidate_refs: ["candidate-a", "candidate-c"],
+      last_event_id: "event-cancelled",
+    })
+
+    expect(mergeGenerationQueueItems(failed, cancelled)).toEqual(mergeGenerationQueueItems(cancelled, failed))
+    expect(mergeGenerationQueueItems(failed, cancelled)).toMatchObject({
+      status: "cancelled",
+      progress: 90,
+      candidate_refs: ["candidate-a", "candidate-b", "candidate-c"],
+      last_event_id: null,
+    })
+    expect(mergeGenerationQueueItems(item({ status: "generating", progress: 90 }), failed)).toMatchObject({
+      status: "failed",
+      progress: 90,
+    })
   })
 
   it("serializes only the non-sensitive allow-list and round-trips in stable order", () => {

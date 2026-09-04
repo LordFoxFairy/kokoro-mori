@@ -51,11 +51,11 @@ describe("Studio generation queue", () => {
     expect(queue).not.toHaveTextContent("generation_other_project")
     expect(screen.getByRole("link", { name: "Open Studio" })).toHaveAttribute(
       "href",
-      "/projects/project_queue_studio/studio/version_queue_studio",
+      "/projects/project_queue_studio/studio/version_queue_studio?generation_ref=generation_queue_studio",
     )
     expect(screen.getByRole("link", { name: "Open Create" })).toHaveAttribute(
       "href",
-      "/create?project_ref=project_queue_studio",
+      "/create?project_ref=project_queue_studio&generation_ref=generation_queue_create",
     )
   })
 

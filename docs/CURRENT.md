@@ -32,7 +32,9 @@
   Create 与 Studio Change 共用这份队列；Create 不会接管 Studio Change，Studio 路由会从 active generation ref 拉回 snapshot 并恢复工作上下文，
   网络瞬时错误按退避重试而非立即伪装成失败，在切换任务时保持其他进行中任务的后台轮询。
   Generation SSE 支持 AbortSignal，页面卸载时停止长连接；Create / Studio Change 的生成与取消命令带 epoch/context guard，
-  重复点击会进入 Stopping 状态，过期响应不会覆盖用户当前查看的任务。
+  重复点击会进入 Stopping 状态，过期响应不会覆盖用户当前查看的任务。队列更新在支持 Web Locks 的浏览器中使用跨标签页互斥，
+  并通过 storage event 的 old/new value 单调合并修复并发追加；终态、进度和候选引用不会被旧快照回退，冲突的 opaque event cursor 会安全回退至完整 replay。
+  Create / Studio deep link 现在携带显式 `generation_ref`，同一项目的多个进行中任务可以各自恢复，不再依赖全局 active 指针。
 - Settings 继续采用 Kokoro 的浮动窗口信息架构：搜索、键盘 tab 切换、Escape、焦点循环和背景 `inert` 隔离均保持可逆，
   只保留 Mori 的外观、播放、创作与账户设置。
 - Studio 时间线在窄屏提供横向滚动、键盘焦点和明确的 Swipe hint；短桌面视口的 Export dialog 会避开固定 Player safe area。
@@ -47,7 +49,7 @@
 ```text
 pnpm lint                         passed
 pnpm typecheck                    passed
-pnpm test --maxWorkers=1          passed: 51 files / 390 tests
+pnpm test                         passed: 51 files / 407 tests
 pnpm build                        passed
 ```
 

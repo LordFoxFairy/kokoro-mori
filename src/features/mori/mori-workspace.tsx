@@ -17,7 +17,11 @@ import {
   type GenerationQueueServerStatus,
   type GenerationQueueState,
 } from "./generation-queue"
-import { readGenerationQueueState, writeGenerationQueueState } from "./generation-queue-storage"
+import {
+  readGenerationQueueState,
+  subscribeGenerationQueueState,
+  updateStoredGenerationQueueState,
+} from "./generation-queue-storage"
 import { previewCandidates, previewGeneration, previewProject, previewSongPlan } from "./preview-data"
 import { buildSongPlan, toSongPlanCreateInput } from "./song-plan"
 import {
@@ -36,6 +40,7 @@ import styles from "./mori-workspace.module.css"
 
 type MoriWorkspaceProps = {
   projectRef?: string
+  generationRef?: string
   initialPrompt?: string
   initialCreativeSource?: MoriCreativeSourceSelection
   api?: Pick<MoriApi, "createSongPlan" | "createGeneration" | "getGeneration" | "getGenerationEvents" | "listCandidates" | "cancelGeneration"> & Partial<Pick<MoriApi, "createProject" | "getProject" | "putCurrentVersion" | "listCreativeSources" | "getCreativeSource">>
@@ -55,8 +60,9 @@ type ProjectCreationAttempt = {
 type QueuePresentation = "drawer" | "pane"
 type GenerationFeedback = "idle" | "active" | "ready" | "attention"
 
-export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, initialCreativeSource, api: injectedApi }: MoriWorkspaceProps = {}) {
+export function MoriWorkspace({ projectRef: requestedProjectRef, generationRef: requestedGenerationRef, initialPrompt, initialCreativeSource, api: injectedApi }: MoriWorkspaceProps = {}) {
   const initialProjectRef = requestedProjectRef?.trim() || null
+  const initialGenerationRef = requestedGenerationRef?.trim() || null
   const initialCandidates = initialProjectRef === previewProject.projectRef ? previewCandidates : []
   const { playing, playerCandidate, replacePlayerCandidates, setPlaying, togglePlaying, selectPlayerCandidate, preferences } = useMoriApp()
   const [workspaceProjectRef, setWorkspaceProjectRef] = useState<string | null>(initialProjectRef)
@@ -84,17 +90,17 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
   const generationQueueRef = useRef<GenerationQueueState>(emptyGenerationQueueState())
   const pendingCurrentVersionCommandRef = useRef<PendingCurrentVersionCommand | null>(null)
   const generationCommandEpochRef = useRef(0)
+  const generationObservationEpochRef = useRef(0)
   const cancelGenerationRequestRef = useRef<string | null>(null)
   const defaultApi = useMemo(() => createMoriApiClient(), [])
   const api = injectedApi ?? defaultApi
   const mode = modeOverride ?? preferences.defaultMode
 
-  const updateQueue = useCallback((transform: (current: GenerationQueueState) => GenerationQueueState) => {
-    setGenerationQueue((current) => {
-      const next = transform(current)
-      generationQueueRef.current = next
-      return next
-    })
+  const updateQueue = useCallback(async (transform: (current: GenerationQueueState) => GenerationQueueState) => {
+    const next = await updateStoredGenerationQueueState(transform)
+    generationQueueRef.current = next
+    setGenerationQueue(next)
+    return next
   }, [])
 
   useEffect(() => {
@@ -105,10 +111,19 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
       generationQueueRef.current = restored
       setGenerationQueue(restored)
 
-      const activeRef = restored.active_generation_ref
-      const activeItem = activeRef === null ? undefined : restored.items.find((item) => item.generation_ref === activeRef)
-      const belongsToRoute = activeItem !== undefined && (initialProjectRef === null || activeItem.project_ref === initialProjectRef)
-      if (belongsToRoute && activeItem?.kind === "create") {
+      const createItemsForRoute = restored.items.filter((item) => (
+        item.kind === "create" && (initialProjectRef === null || item.project_ref === initialProjectRef)
+      ))
+      const requestedItem = initialGenerationRef === null
+        ? undefined
+        : createItemsForRoute.find((item) => item.generation_ref === initialGenerationRef)
+      const globallyActiveItem = restored.active_generation_ref === null
+        ? undefined
+        : createItemsForRoute.find((item) => item.generation_ref === restored.active_generation_ref)
+      const activeItem = initialGenerationRef === null
+        ? globallyActiveItem ?? createItemsForRoute.find((item) => isActiveQueueStatus(item.status))
+        : requestedItem
+      if (activeItem !== undefined) {
         setGenerationRef(activeItem.generation_ref)
         setHasGeneration(true)
         setGenerationStatus(activeItem.status)
@@ -126,12 +141,12 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
     return () => {
       disposed = true
     }
-  }, [initialProjectRef])
+  }, [initialGenerationRef, initialProjectRef])
 
-  useEffect(() => {
-    if (!generationQueueHydrated) return
-    writeGenerationQueueState(generationQueue)
-  }, [generationQueue, generationQueueHydrated])
+  useEffect(() => subscribeGenerationQueueState((next) => {
+    generationQueueRef.current = next
+    setGenerationQueue(next)
+  }), [])
 
   useEffect(() => {
     const getCreativeSource = api.getCreativeSource
@@ -167,6 +182,11 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
     progress,
     candidateRefs: candidates.map((candidate) => candidate.candidateRef),
   } : null, [candidates, generationLabel, generationStatus, hasGeneration, progress, songPlan?.songPlanRef, workspaceProjectRef])
+  const backgroundQueueSignature = generationQueue.items
+    .filter((item) => item.generation_ref !== generationRef && isActiveQueueStatus(item.status))
+    .map((item) => item.generation_ref)
+    .sort()
+    .join("\u001f")
 
   useEffect(() => {
     const syncQueuePresentation = () => setQueuePresentation(window.innerWidth > 1120 ? "pane" : "drawer")
@@ -234,6 +254,7 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
   const handleGenerate = useCallback(async (draft: CreationDraft, generationMode = mode) => {
     const commandEpoch = generationCommandEpochRef.current + 1
     generationCommandEpochRef.current = commandEpoch
+    generationObservationEpochRef.current += 1
     cancelGenerationRequestRef.current = null
     setCancelPendingGenerationRef(null)
     setLastGenerationAttempt({ mode: generationMode, draft })
@@ -293,10 +314,12 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
         candidate_refs: [],
         last_event_id: null,
       }
-      updateQueue((current) => ({
+      await updateQueue((current) => ({
         ...upsertGenerationQueueItem(current, queueItem),
         active_generation_ref: queueItem.generation_ref,
       }))
+      if (generationCommandEpochRef.current !== commandEpoch) return
+      replaceCreateLocation(targetProjectRef, queueItem.generation_ref)
       setGenerationRef(response.data.generation_ref)
       setGenerationStatus(response.data.status)
       setGenerationLabel("Queued for your workspace")
@@ -324,47 +347,54 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
     let lastEventId: string | null = generationQueueRef.current.items.find((item) => item.generation_ref === generationRef)?.last_event_id ?? null
     let retryDelayMs = 900
     const eventController = new AbortController()
+    const observationEpoch = generationObservationEpochRef.current
 
     const sync = async () => {
       try {
         const snapshot = await getGeneration(generationRef)
-        if (disposed) return
+        if (disposed || generationObservationEpochRef.current !== observationEpoch) return
         retryDelayMs = 900
         let status = snapshot.data.status
         let progressValue = snapshot.data.progress
         let candidateRefs = snapshot.data.candidate_refs
-        setGenerationStatus(status)
-        setProgress(progressValue)
-        setGenerationLabel(generationLabelFor(status))
 
         if (getGenerationEvents !== undefined) {
           try {
             const events = await getGenerationEvents(generationRef, lastEventId, eventController.signal)
+            if (disposed || generationObservationEpochRef.current !== observationEpoch) return
             const latest = events.at(-1)
             if (latest !== undefined) {
               lastEventId = latest.id
               status = latest.data.status
               progressValue = latest.data.progress
               candidateRefs = latest.data.candidate_refs
-              setGenerationStatus(status)
-              setProgress(progressValue)
-              setGenerationLabel(generationLabelFor(status))
             }
           } catch {
             // Snapshot polling remains the recovery path when event replay is unavailable.
           }
         }
 
-        updateQueue((current) => updateGenerationQueueItem(current, generationRef, {
+        const reconciledQueue = await updateQueue((current) => updateGenerationQueueItem(current, generationRef, {
           status,
           progress: progressValue,
           candidate_refs: candidateRefs,
           last_event_id: lastEventId,
         }))
+        if (disposed || generationObservationEpochRef.current !== observationEpoch) return
+        const reconciledItem = reconciledQueue.items.find((item) => item.generation_ref === generationRef)
+        if (reconciledItem !== undefined) {
+          status = reconciledItem.status
+          progressValue = reconciledItem.progress
+          candidateRefs = [...reconciledItem.candidate_refs]
+          lastEventId = reconciledItem.last_event_id
+        }
+        setGenerationStatus(status)
+        setProgress(progressValue)
+        setGenerationLabel(generationLabelFor(status))
 
         if (status === "succeeded") {
           const candidateResponse = await listAllMoriCandidates({ listCandidates }, snapshot.data.project_ref)
-          if (disposed) return
+          if (disposed || generationObservationEpochRef.current !== observationEpoch) return
           const generated = candidateResponse.filter((candidate) => candidateRefs.includes(candidate.candidate_ref))
           const generatedCandidates = generated.map(toDomainCandidate)
           setCandidates(generatedCandidates)
@@ -382,25 +412,15 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
         if (["failed", "cancelled", "expired"].includes(status)) return
         timer = window.setTimeout(() => { void sync() }, 220)
       } catch (error) {
-        if (!disposed) {
+        if (!disposed && generationObservationEpochRef.current === observationEpoch) {
           const item = generationQueueRef.current.items.find((candidate) => candidate.generation_ref === generationRef)
-          if (item !== undefined && isActiveQueueStatus(item.status) && isRetryableGenerationStatusError(error)) {
-            setGenerationLabel("Reconnecting to Mori…")
+          if (item !== undefined && isActiveQueueStatus(item.status)) {
+            setGenerationLabel(isRetryableGenerationStatusError(error) ? "Reconnecting to Mori…" : "Mori status is unavailable. Retrying…")
             timer = window.setTimeout(() => { void sync() }, retryDelayMs)
             retryDelayMs = Math.min(retryDelayMs * 2, 4_000)
             return
           }
-          setGenerationStatus("failed")
           setGenerationLabel("Generation status unavailable")
-          updateQueue((current) => {
-            const item = current.items.find((candidate) => candidate.generation_ref === generationRef)
-            return item === undefined || !isActiveQueueStatus(item.status)
-              ? current
-              : updateGenerationQueueItem(current, generationRef, {
-                  status: "failed",
-                  progress: Math.min(item.progress, 99),
-                })
-          })
         }
       }
     }
@@ -431,7 +451,7 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
         const snapshot = await api.getGeneration(ref)
         if (disposed) return
         const item = snapshot.data
-        updateQueue((current) => updateGenerationQueueItem(current, ref, {
+        void updateQueue((current) => updateGenerationQueueItem(current, ref, {
           status: item.status,
           progress: item.progress,
           candidate_refs: item.candidate_refs,
@@ -447,7 +467,7 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
       disposed = true
       for (const timer of timers.values()) window.clearTimeout(timer)
     }
-  }, [api, generationQueueHydrated, generationRef, updateQueue])
+  }, [api, backgroundQueueSignature, generationQueueHydrated, generationRef, updateQueue])
 
   useEffect(() => {
     if (!queueOpen || queuePresentation !== "drawer") return
@@ -550,18 +570,24 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
       )
       if (generationCommandEpochRef.current !== commandEpoch) return
       if (response.data.generation_ref !== requestedGenerationRef) throw new Error("generation_cancel_context_mismatch")
-      setGenerationStatus(response.data.status)
-      setGenerationLabel(generationLabelFor(response.data.status))
-      setProgress((value) => Math.min(value, 99))
-      updateQueue((current) => {
+      const reconciledQueue = await updateQueue((current) => {
         const item = current.items.find((candidate) => candidate.generation_ref === requestedGenerationRef)
         return item === undefined
           ? current
           : updateGenerationQueueItem(current, requestedGenerationRef, {
             status: response.data.status,
-            progress: Math.min(item.progress, 99),
+            progress: item.progress,
           })
       })
+      if (generationCommandEpochRef.current !== commandEpoch) return
+      const reconciledItem = reconciledQueue.items.find((item) => item.generation_ref === requestedGenerationRef)
+      const reconciledStatus = reconciledItem?.status ?? response.data.status
+      if (reconciledStatus === "cancelled" || reconciledStatus === "failed" || reconciledStatus === "expired") {
+        generationObservationEpochRef.current += 1
+      }
+      setGenerationStatus(reconciledStatus)
+      setGenerationLabel(generationLabelFor(reconciledStatus))
+      if (reconciledItem !== undefined) setProgress(reconciledItem.progress)
     } catch {
       if (generationCommandEpochRef.current === commandEpoch) setGenerationLabel("Cancellation failed")
     } finally {
@@ -582,9 +608,11 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
     const item = generationQueueRef.current.items.find((candidate) => candidate.generation_ref === nextGenerationRef)
     if (item === undefined || item.kind !== "create") return
     generationCommandEpochRef.current += 1
+    generationObservationEpochRef.current += 1
     cancelGenerationRequestRef.current = null
     setCancelPendingGenerationRef(null)
-    updateQueue((current) => ({ ...current, active_generation_ref: item.generation_ref }))
+    void updateQueue((current) => ({ ...current, active_generation_ref: item.generation_ref }))
+    replaceCreateLocation(item.project_ref, item.generation_ref)
     setGenerationRef(item.generation_ref)
     setHasGeneration(true)
     setGenerationStatus(item.status)
@@ -735,12 +763,14 @@ function creationProjectInput(prompt: string): MoriProjectCreateInput {
   }
 }
 
-function replaceCreateLocation(projectRef: string): void {
+function replaceCreateLocation(projectRef: string, generationRef?: string): void {
   const search = window.location.pathname === "/create"
     ? new URLSearchParams(window.location.search)
     : new URLSearchParams()
   search.delete("idea")
   search.set("project_ref", projectRef)
+  if (generationRef === undefined) search.delete("generation_ref")
+  else search.set("generation_ref", generationRef)
   window.history.replaceState(window.history.state, "", `/create?${search.toString()}`)
 }
 
