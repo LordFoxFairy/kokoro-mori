@@ -144,8 +144,8 @@ describe("Mori global player media integration", () => {
     harness.callbacks.onEnded()
 
     await waitFor(() => expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("Live second"))
-    expect(harness.controller.setSource).toHaveBeenLastCalledWith(secondCandidate)
-    expect(harness.controller.play).toHaveBeenCalledTimes(2)
+    await waitFor(() => expect(harness.controller.setSource).toHaveBeenLastCalledWith(secondCandidate))
+    await waitFor(() => expect(harness.controller.play).toHaveBeenCalledTimes(2))
     expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument()
   })
 })
