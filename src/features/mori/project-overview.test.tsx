@@ -125,6 +125,8 @@ describe("Mori project overview", () => {
       "href",
       "/projects/project_live_current/studio/version_live_b",
     ))
+    expect(screen.getByRole("article", { name: "Window Seat · Wide, current version" })).toHaveTextContent("Current")
+    expect(screen.getByRole("article", { name: "Window Seat · First draft" })).not.toHaveTextContent("Current")
   })
 
   it("shows an empty state when a project has no directions", async () => {

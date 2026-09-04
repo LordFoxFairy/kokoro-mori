@@ -1723,10 +1723,27 @@
   box-shadow: var(--mori-shadow-sm);
 }
 
+.overviewCandidateCurrent {
+  border-color: rgba(109, 92, 231, 0.24);
+  background: linear-gradient(105deg, rgba(240, 237, 255, 0.72), rgba(255, 255, 255, 0.92) 42%);
+  box-shadow: inset 3px 0 0 var(--mori-primary);
+}
+
 .overviewCandidateInfo {
   display: grid;
   min-width: 0;
   gap: 4px;
+}
+
+.overviewCandidateTitle {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+}
+
+.overviewCandidateTitle strong {
+  min-width: 0;
 }
 
 .overviewCandidateInfo strong,
@@ -1743,6 +1760,19 @@
 .overviewCandidateInfo span {
   color: var(--mori-muted);
   font-size: 10px;
+}
+
+.overviewCandidateInfo .overviewCurrentBadge {
+  flex: 0 0 auto;
+  padding: 3px 6px;
+  border-radius: 999px;
+  color: var(--mori-primary-deep);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-transform: uppercase;
+  background: rgba(224, 218, 255, 0.72);
 }
 
 .overviewCandidateWave {
