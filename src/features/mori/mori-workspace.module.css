@@ -1701,6 +1701,98 @@
   color: var(--mori-faint);
 }
 
+.continueMaking {
+  margin-top: 30px;
+}
+
+.continueMakingGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.continueMakingCard {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 148px;
+  grid-template-rows: auto 1fr;
+  gap: 14px;
+  padding: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(109, 92, 231, 0.14);
+  border-radius: 14px;
+  color: var(--mori-foreground);
+  background: linear-gradient(145deg, rgba(247, 244, 255, 0.92), rgba(255, 251, 247, 0.9));
+  transition: border-color var(--mori-motion-fast) ease, box-shadow var(--mori-motion-fast) ease, transform var(--mori-motion-fast) ease;
+}
+
+.continueMakingCard:nth-child(2) {
+  background: linear-gradient(145deg, rgba(255, 248, 244, 0.94), rgba(251, 247, 255, 0.88));
+}
+
+.continueMakingCard:nth-child(3) {
+  background: linear-gradient(145deg, rgba(242, 250, 247, 0.94), rgba(248, 246, 255, 0.88));
+}
+
+.continueMakingCard:nth-child(4) {
+  background: linear-gradient(145deg, rgba(248, 246, 255, 0.94), rgba(255, 247, 241, 0.9));
+}
+
+.continueMakingCard:hover {
+  border-color: rgba(109, 92, 231, 0.3);
+  box-shadow: 0 12px 28px rgba(71, 54, 104, 0.09);
+  transform: translateY(-1px);
+}
+
+.continueMakingCard:focus-visible {
+  outline: 3px solid rgba(109, 92, 231, 0.22);
+  outline-offset: 2px;
+}
+
+.continueMakingIcon {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 1px solid rgba(109, 92, 231, 0.12);
+  border-radius: 10px;
+  color: var(--mori-primary);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.continueMakingCopy {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: 5px;
+}
+
+.continueMakingCopy strong {
+  padding-right: 18px;
+  font-size: 12px;
+}
+
+.continueMakingCopy > span {
+  color: var(--mori-muted);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.continueMakingCopy small {
+  margin-top: 3px;
+  color: var(--mori-primary-deep);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.continueMakingArrow {
+  position: absolute;
+  top: 17px;
+  right: 15px;
+  color: var(--mori-faint);
+}
+
 .overviewCandidateList {
   display: grid;
   gap: 8px;
@@ -2935,6 +3027,10 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .continueMakingGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .studioLayout {
     grid-template-columns: 170px minmax(0, 1fr);
   }
@@ -2996,6 +3092,17 @@
 
   .overviewStats {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .continueMakingGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .continueMakingCard {
+    min-height: 0;
+    grid-template-columns: 32px minmax(0, 1fr);
+    grid-template-rows: auto;
+    gap: 12px;
   }
 
   .overviewCandidate {

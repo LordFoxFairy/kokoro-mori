@@ -1,10 +1,38 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 import { MoriAppProvider } from "./components/mori-app-provider"
 import { MoriCatalogShell } from "./components/mori-catalog-shell"
 import { ProjectOverviewPageContent } from "./project-overview"
 
 describe("Mori project overview", () => {
+  it("continues the confirmed Current Version through project-scoped AI intents", () => {
+    render(
+      <MoriAppProvider>
+        <MoriCatalogShell activeKey="projects" ariaLabel="Project overview">
+          <ProjectOverviewPageContent />
+        </MoriCatalogShell>
+      </MoriAppProvider>,
+    )
+
+    const continuation = screen.getByRole("region", { name: "Continue making" })
+    expect(within(continuation).getByRole("link", { name: "Transform song" })).toHaveAttribute(
+      "href",
+      "/projects/project_preview_first_light/studio/version_preview_first_light_a?surface=arrangement&intent=transform",
+    )
+    expect(within(continuation).getByRole("link", { name: "Write lyrics" })).toHaveAttribute(
+      "href",
+      "/projects/project_preview_first_light/studio/version_preview_first_light_a?surface=lyrics",
+    )
+    expect(within(continuation).getByRole("link", { name: "Voice and stems" })).toHaveAttribute(
+      "href",
+      "/projects/project_preview_first_light/studio/version_preview_first_light_a?surface=stems",
+    )
+    expect(within(continuation).getByRole("link", { name: "Finish song" })).toHaveAttribute(
+      "href",
+      "/projects/project_preview_first_light/studio/version_preview_first_light_a?surface=finish",
+    )
+  })
+
   it("uses the global player when a candidate is played", () => {
     render(
       <MoriAppProvider>
@@ -160,6 +188,56 @@ describe("Mori project overview", () => {
     expect(screen.getByText("No directions yet")).toBeInTheDocument()
     expect(screen.getByRole("link", { name: "Create a direction" })).toHaveAttribute("href", "/create?project_ref=project_empty_1")
     expect(screen.queryByRole("link", { name: "Open Studio" })).not.toBeInTheDocument()
+  })
+
+  it("does not guess a continuation Version when candidates exist without a confirmed Current", async () => {
+    const api = {
+      getProject: async () => ({
+        data: {
+          project_ref: "project_unconfirmed_1",
+          title: "Loose Ends",
+          description: "Promising directions waiting for a decision.",
+          current_version_ref: null,
+          candidate_count: 1,
+          last_activity_at: "2026-09-04T12:00:00.000Z",
+        },
+        meta: { request_id: "request_project_unconfirmed" },
+      }),
+      listCandidates: async () => ({
+        data: {
+          candidates: [{
+            candidate_ref: "candidate_unconfirmed_1",
+            generation_ref: "generation_unconfirmed_1",
+            version_ref: "version_unconfirmed_1",
+            project_ref: "project_unconfirmed_1",
+            title: "Loose Ends · Draft",
+            duration_seconds: 156,
+            audio_asset_ref: "asset_unconfirmed_1",
+            waveform_asset_ref: "waveform_unconfirmed_1",
+            style_tags: ["patient", "open"],
+            created_at: "2026-09-04T11:59:00.000Z",
+          }],
+          next_cursor: null,
+        },
+        meta: { request_id: "request_candidates_unconfirmed" },
+      }),
+    }
+
+    render(
+      <MoriAppProvider>
+        <MoriCatalogShell activeKey="projects" ariaLabel="Project overview">
+          <ProjectOverviewPageContent projectRef="project_unconfirmed_1" api={api} />
+        </MoriCatalogShell>
+      </MoriAppProvider>,
+    )
+
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Loose Ends" })).toBeInTheDocument())
+    expect(screen.queryByRole("region", { name: "Continue making" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("link", { name: "Open Studio" })).not.toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "Open Studio for Loose Ends · Draft" })).toHaveAttribute(
+      "href",
+      "/projects/project_unconfirmed_1/studio/version_unconfirmed_1",
+    )
   })
 
   it("keeps the live project when its candidate projection is temporarily unavailable", async () => {

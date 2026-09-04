@@ -45,6 +45,8 @@ export type StudioAiRunState = {
 type StudioAiComposerProps = {
   selectedSection: StudioTimelineSection
   run: StudioAiRunState
+  initialOperation?: StudioChangeOperation | undefined
+  initialTransformScope?: StudioTransformScope | undefined
   onGenerate: (plan: StudioChangePlan) => void
   onCancel: () => void
   onReset: () => void
@@ -105,9 +107,9 @@ const transformIntents: readonly {
   },
 ]
 
-export function StudioAiComposer({ selectedSection, run, onGenerate, onCancel, onReset }: StudioAiComposerProps) {
+export function StudioAiComposer({ selectedSection, run, initialOperation, initialTransformScope, onGenerate, onCancel, onReset }: StudioAiComposerProps) {
   const promptId = useId()
-  const [operation, setOperation] = useState<StudioChangeOperation>(() => run.plan?.operation ?? "add_part")
+  const [operation, setOperation] = useState<StudioChangeOperation>(() => run.plan?.operation ?? initialOperation ?? "add_part")
   const [instruction, setInstruction] = useState(() => run.plan?.instruction ?? "")
   const [preserve, setPreserve] = useState<StudioChangePreserve[]>(() => [...(run.plan?.preserve ?? defaultStudioChangePreserve)])
   const [outputCount, setOutputCount] = useState<StudioChangeOutputCount>(() => run.plan?.outputCount ?? 2)
@@ -115,7 +117,7 @@ export function StudioAiComposer({ selectedSection, run, onGenerate, onCancel, o
   const [transformScope, setTransformScope] = useState<StudioTransformScope>(() => (
     run.plan?.draft.operation === "transform" && run.plan.draft.scope.type === "whole_version"
       ? "whole_version"
-      : "selected_section"
+      : initialTransformScope ?? "selected_section"
   ))
   const [coverMode, setCoverMode] = useState<StudioCoverMode>(() => coverModeFromPlan(run.plan))
   const [coverVoiceRef, setCoverVoiceRef] = useState<string>(() => coverVoiceFromPlan(run.plan))

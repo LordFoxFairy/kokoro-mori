@@ -37,6 +37,7 @@ import { StudioVersionHistoryDrawer, StudioVersionHistoryRail } from "./componen
 import { useMoriApp } from "./components/mori-app-provider"
 import { Waveform } from "./components/waveform"
 import { previewCandidates, previewProject, previewSongPlan } from "./preview-data"
+import type { StudioEntryIntent, StudioEntrySurface } from "./studio-entry"
 import { buildStudioTimelineSections, isActiveStudioChangeStatus, type StudioChangePlan, type StudioTimelineSection } from "./studio-change"
 import { createStudioLyricsRevisionDraft, isActiveLyricsRevisionStatus, studioLyricsScopeLabel, type StudioLyricsPlan } from "./studio-lyrics"
 import { isStudioRemasterPlan, isStudioRemasterSnapshot } from "./studio-remaster"
@@ -53,6 +54,8 @@ type StudioPageContentProps = {
   candidate: Candidate
   projectRef?: string
   versionRef?: string
+  initialSurface?: StudioEntrySurface
+  initialIntent?: StudioEntryIntent
   api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "putCurrentVersion" | "listCandidates" | "createStudioChange" | "getGeneration" | "getGenerationEvents" | "cancelGeneration" | "createLyricsRevision" | "getLyricsRevision" | "getLyricsRevisionEvents" | "cancelLyricsRevision" | "createStemSeparation" | "getStemSeparation" | "getStemSeparationEvents" | "cancelStemSeparation" | "createArtworkGeneration" | "getArtworkGeneration" | "getArtworkGenerationEvents" | "cancelArtworkGeneration" | "getReleaseDraft" | "putReleaseDraft" | "createMixRevision">>
   stemPlaybackFactory?: StemPlaybackFactory
 }
@@ -141,7 +144,7 @@ const idleCurrentVersionCommitRun: CurrentVersionCommitRun = {
 
 const versionHistoryDrawerId = "studio-version-history-drawer"
 
-export function StudioPageContent({ candidate, projectRef, versionRef, api, stemPlaybackFactory = createHtmlStemPlaybackController }: StudioPageContentProps) {
+export function StudioPageContent({ candidate, projectRef, versionRef, initialSurface = "arrangement", initialIntent = null, api, stemPlaybackFactory = createHtmlStemPlaybackController }: StudioPageContentProps) {
   const { playerCandidate, playing, positionSeconds, seekPlayer, selectPlayerCandidate, setPlaying } = useMoriApp()
   const exportStatusDescriptionId = useId()
   const finishStatusDescriptionId = useId()
@@ -154,7 +157,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api, stem
   const [currentVersionRef, setCurrentVersionRef] = useState(() => previewCandidates.find((item) => item.isCurrent)?.versionRef ?? candidate.versionRef)
   const [currentVersionCommitRun, setCurrentVersionCommitRun] = useState<CurrentVersionCommitRun>(idleCurrentVersionCommitRun)
   const [projectTitle, setProjectTitle] = useState<string | null>(null)
-  const [activeTool, setActiveTool] = useState<StudioTool>("arrangement")
+  const [activeTool, setActiveTool] = useState<StudioTool>(() => studioToolFromEntrySurface(initialSurface))
   const [shareFeedback, setShareFeedback] = useState(false)
   const [versionHistoryOpen, setVersionHistoryOpen] = useState(false)
   const [finishDialogOpen, setFinishDialogOpen] = useState(false)
@@ -186,10 +189,15 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api, stem
   const stemSeparationCommandEpochRef = useRef(0)
   const ignoredStemSeparationsRef = useRef(new Set<string>())
   const activeStemEventRequestRef = useRef<{ stemSeparationRef: string; controller: AbortController } | null>(null)
+  const preserveInitialFinishEntryRef = useRef(initialSurface === "finish")
+  const previousStudioContextRef = useRef({ projectRef: activeProjectRef, versionRef: activeVersionRef })
   activeVersionRefRef.current = activeVersionRef
   activeProjectRefRef.current = activeProjectRef
 
   useEffect(() => {
+    const previousContext = previousStudioContextRef.current
+    const contextChanged = previousContext.projectRef !== activeProjectRef || previousContext.versionRef !== activeVersionRef
+    previousStudioContextRef.current = { projectRef: activeProjectRef, versionRef: activeVersionRef }
     stemSeparationCommandEpochRef.current += 1
     exportCommandEpochRef.current += 1
     pendingExportCommandRef.current = null
@@ -212,7 +220,14 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api, stem
     setExportInput(null)
     setExportSnapshot(null)
     setExportMessage(null)
-    setFinishDialogOpen(false)
+    if (preserveInitialFinishEntryRef.current) {
+      if (activeVersionRef !== null) {
+        preserveInitialFinishEntryRef.current = false
+        setFinishDialogOpen(true)
+      }
+    } else if (contextChanged) {
+      setFinishDialogOpen(false)
+    }
     setExportDialogOpen(false)
     setVersionHistoryOpen(false)
   }, [activeProjectRef, activeVersionRef])
@@ -1101,7 +1116,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api, stem
         <section className={styles.studioCanvas} aria-label="Studio editor">
           <div className={styles.studioCanvasTop}><div><span className={styles.eyebrow}><span className={styles.eyebrowDot} />Editing with intention</span><h2>Shape the feeling.</h2></div><button className={`${styles.generateButton} ${styles.studioPreviewButton}`} type="button" aria-label={isActiveVersionPlaying ? "Pause" : "Preview"} onClick={preview}>{isActiveVersionPlaying ? <Pause size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" />}<span>{isActiveVersionPlaying ? "Pause" : "Preview"}</span></button></div>
           <div id="mori-studio-panel-arrangement" role="tabpanel" aria-labelledby="mori-studio-tool-arrangement" hidden={activeTool !== "arrangement"}>
-            {activeTool === "arrangement" ? <ArrangementEditor candidate={activeCandidate} takes={studioCandidates} currentVersionRef={currentVersionRef} playerVersionRef={playerCandidate?.versionRef ?? ""} positionSeconds={playerCandidate?.versionRef === activeCandidate.versionRef ? positionSeconds : 0} playing={playerCandidate?.versionRef === activeCandidate.versionRef && playing} studioChangeRun={studioChangeRun} currentVersionCommitRun={currentVersionCommitRun} onSeekTimeline={(nextPositionSeconds) => seekTimeline(activeCandidate, nextPositionSeconds)} onGenerateStudioChange={(plan) => { void generateStudioChange(plan) }} onCancelStudioChange={() => { void cancelStudioChange() }} onResetStudioChange={resetStudioChange} onSelectTake={selectTake} onPreviewTake={previewTake} onPromoteTake={(take) => { void commitCurrentVersion(take) }} onRetryCurrentVersion={retryCurrentVersionCommit} onDismissCurrentVersion={dismissCurrentVersionCommit} /> : null}
+            {activeTool === "arrangement" ? <ArrangementEditor candidate={activeCandidate} takes={studioCandidates} currentVersionRef={currentVersionRef} playerVersionRef={playerCandidate?.versionRef ?? ""} positionSeconds={playerCandidate?.versionRef === activeCandidate.versionRef ? positionSeconds : 0} playing={playerCandidate?.versionRef === activeCandidate.versionRef && playing} initialIntent={initialIntent} studioChangeRun={studioChangeRun} currentVersionCommitRun={currentVersionCommitRun} onSeekTimeline={(nextPositionSeconds) => seekTimeline(activeCandidate, nextPositionSeconds)} onGenerateStudioChange={(plan) => { void generateStudioChange(plan) }} onCancelStudioChange={() => { void cancelStudioChange() }} onResetStudioChange={resetStudioChange} onSelectTake={selectTake} onPreviewTake={previewTake} onPromoteTake={(take) => { void commitCurrentVersion(take) }} onRetryCurrentVersion={retryCurrentVersionCommit} onDismissCurrentVersion={dismissCurrentVersionCommit} /> : null}
           </div>
           <div id="mori-studio-panel-lyrics" role="tabpanel" aria-labelledby="mori-studio-tool-lyrics" hidden={activeTool !== "lyrics"}>
             {activeTool === "lyrics" ? <StudioLyricsEditor key={activeCandidate.versionRef} versionRef={activeCandidate.versionRef} run={lyricsRevisionRun} onGenerate={(plan) => { void generateLyricsRevision(plan) }} onCancel={() => { void cancelLyricsRevision() }} onReset={resetLyricsRevision} /> : null}
@@ -1188,6 +1203,10 @@ function studioToolForKey(key: string, currentTool: StudioTool): StudioTool | nu
   const currentIndex = studioToolOrder.indexOf(currentTool)
   const direction = key === "ArrowRight" || key === "ArrowDown" ? 1 : -1
   return studioToolOrder[(currentIndex + direction + studioToolOrder.length) % studioToolOrder.length] ?? null
+}
+
+function studioToolFromEntrySurface(surface: StudioEntrySurface): StudioTool {
+  return surface === "lyrics" || surface === "stems" ? surface : "arrangement"
 }
 
 function toDomainCandidate(candidate: MoriCandidate, index: number): Candidate {
@@ -1446,6 +1465,7 @@ type ArrangementEditorProps = {
   playerVersionRef: string
   positionSeconds: number
   playing: boolean
+  initialIntent: StudioEntryIntent
   studioChangeRun: StudioAiRunState
   currentVersionCommitRun: CurrentVersionCommitRun
   onSeekTimeline: (positionSeconds: number) => void
@@ -1459,7 +1479,7 @@ type ArrangementEditorProps = {
   onDismissCurrentVersion: () => void
 }
 
-function ArrangementEditor({ candidate, takes, currentVersionRef, playerVersionRef, positionSeconds, playing, studioChangeRun, currentVersionCommitRun, onSeekTimeline, onGenerateStudioChange, onCancelStudioChange, onResetStudioChange, onSelectTake, onPreviewTake, onPromoteTake, onRetryCurrentVersion, onDismissCurrentVersion }: ArrangementEditorProps) {
+function ArrangementEditor({ candidate, takes, currentVersionRef, playerVersionRef, positionSeconds, playing, initialIntent, studioChangeRun, currentVersionCommitRun, onSeekTimeline, onGenerateStudioChange, onCancelStudioChange, onResetStudioChange, onSelectTake, onPreviewTake, onPromoteTake, onRetryCurrentVersion, onDismissCurrentVersion }: ArrangementEditorProps) {
   const timelineSections = useMemo(() => buildStudioTimelineSections(previewSongPlan.structure, candidate.durationSeconds), [candidate.durationSeconds])
   const defaultSection = studioChangeRun.plan?.selection
     ?? timelineSections.find((item) => item.label.toLowerCase() === "chorus")
@@ -1482,7 +1502,15 @@ function ArrangementEditor({ candidate, takes, currentVersionRef, playerVersionR
   return (
     <section aria-label="Arrangement editor">
       <StudioTimeline candidate={candidate} sections={timelineSections} selection={selection} positionSeconds={positionSeconds} playing={playing} disabled={changeActive} onSeek={onSeekTimeline} onSelect={selectTimelineRange} />
-      <StudioAiComposer selectedSection={selection} run={studioChangeRun} onGenerate={onGenerateStudioChange} onCancel={onCancelStudioChange} onReset={onResetStudioChange} />
+      <StudioAiComposer
+        selectedSection={selection}
+        run={studioChangeRun}
+        initialOperation={initialIntent === "transform" ? "transform" : undefined}
+        initialTransformScope={initialIntent === "transform" ? "whole_version" : undefined}
+        onGenerate={onGenerateStudioChange}
+        onCancel={onCancelStudioChange}
+        onReset={onResetStudioChange}
+      />
       <section className={styles.takeLanes} id="mori-take-lanes" aria-label="Take lanes">
         <div className={styles.takeLanesHeader}>
           <div><span>Compare before committing</span><h3>Take lanes</h3></div>

@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
+import { StrictMode } from "react"
 import { describe, expect, it, vi } from "vitest"
 import type { ArtworkGenerationInput, MoriApi, MoriExportInput, ReleaseDraftInput, StudioChangeGenerationInput } from "@/lib/mori-api"
 import { MoriApiRequestError } from "@/lib/mori-api-client"
@@ -47,6 +48,47 @@ describe("Mori studio page", () => {
     expect(stemsTab).toHaveAttribute("aria-selected", "true")
     expect(stemsTab).toHaveFocus()
     expect(screen.getByRole("region", { name: "Stems editor" })).toBeInTheDocument()
+  })
+
+  it("opens the Studio workspace selected by a project continuation", () => {
+    render(
+      <MoriAppProvider>
+        <StudioPageContent candidate={previewCandidates[0]} initialSurface="lyrics" stemPlaybackFactory={createTestStemPlaybackController} />
+      </MoriAppProvider>,
+    )
+
+    expect(screen.getByRole("tab", { name: "Lyrics" })).toHaveAttribute("aria-selected", "true")
+    expect(screen.getByRole("region", { name: "Lyrics editor" })).toBeInTheDocument()
+  })
+
+  it("opens Transform as a whole-song Studio intent", () => {
+    render(
+      <MoriAppProvider>
+        <StudioPageContent
+          candidate={previewCandidates[0]}
+          initialSurface="arrangement"
+          initialIntent="transform"
+          stemPlaybackFactory={createTestStemPlaybackController}
+        />
+      </MoriAppProvider>,
+    )
+
+    const aiChanges = screen.getByRole("region", { name: "Mori AI changes" })
+    expect(within(aiChanges).getByRole("button", { name: "Transform" })).toHaveAttribute("aria-pressed", "true")
+    expect(within(aiChanges).getByRole("button", { name: "Whole song" })).toHaveAttribute("aria-pressed", "true")
+    expect(within(aiChanges).getByLabelText("Change context")).toHaveTextContent("Whole song")
+  })
+
+  it("opens Finish directly from a project continuation", () => {
+    render(
+      <StrictMode>
+        <MoriAppProvider>
+          <StudioPageContent candidate={previewCandidates[0]} initialSurface="finish" stemPlaybackFactory={createTestStemPlaybackController} />
+        </MoriAppProvider>
+      </StrictMode>,
+    )
+
+    expect(screen.getByRole("dialog", { name: "Finish First Light" })).toBeInTheDocument()
   })
 
   it("opens projected Versions in a contextual drawer and restores its trigger on close", async () => {

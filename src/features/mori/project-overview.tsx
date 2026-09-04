@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowLeft, ArrowUpRight, Clock3, Play, Sparkles } from "lucide-react"
+import { ArrowLeft, ArrowUpRight, AudioWaveform, Clock3, FileText, Play, SlidersHorizontal, Sparkles } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import type { MoriApi, MoriCandidate, MoriProject } from "@/lib/mori-api"
@@ -32,7 +32,7 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
   const requestedProject = projectState.projectRef === initialProjectRef ? projectState.value : createUnavailableProject(initialProjectRef)
   const candidates = candidateState.projectRef === initialProjectRef ? candidateState.value : []
   const studioCandidate = requestedProject.currentVersionRef === null
-    ? candidates[0]
+    ? undefined
     : candidates.find((candidate) => candidate.versionRef === requestedProject.currentVersionRef)
 
   useEffect(() => {
@@ -93,6 +93,48 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
         <div><span>Plan mood</span><strong>{previewSongPlan.mood}</strong></div>
       </div>
 
+      {studioCandidate ? (
+        <section className={`${styles.overviewSection} ${styles.continueMaking}`} aria-labelledby="continue-making-heading">
+          <div className={styles.overviewSectionHeader}>
+            <div>
+              <h2 id="continue-making-heading">Continue making</h2>
+              <p>Choose what you want to do next. Mori keeps this Project and Current Version in place.</p>
+            </div>
+            <span>Current · {studioCandidate.title}</span>
+          </div>
+          <div className={styles.continueMakingGrid}>
+            <ProjectContinuationLink
+              href={`/projects/${requestedProject.projectRef}/studio/${studioCandidate.versionRef}?surface=arrangement&intent=transform`}
+              label="Transform song"
+              description="Restyle, cover, or remix this Version."
+              destination="Arrangement · Take lanes"
+              icon={Sparkles}
+            />
+            <ProjectContinuationLink
+              href={`/projects/${requestedProject.projectRef}/studio/${studioCandidate.versionRef}?surface=lyrics`}
+              label="Write lyrics"
+              description="Draft or revise words with the song in view."
+              destination="Lyrics · Review first"
+              icon={FileText}
+            />
+            <ProjectContinuationLink
+              href={`/projects/${requestedProject.projectRef}/studio/${studioCandidate.versionRef}?surface=stems`}
+              label="Voice and stems"
+              description="Separate, layer, and rebalance the performance."
+              destination="Stems · Mix revision"
+              icon={AudioWaveform}
+            />
+            <ProjectContinuationLink
+              href={`/projects/${requestedProject.projectRef}/studio/${studioCandidate.versionRef}?surface=finish`}
+              label="Finish song"
+              description="Remaster, shape artwork, and prepare release details."
+              destination="Finish · Release draft"
+              icon={SlidersHorizontal}
+            />
+          </div>
+        </section>
+      ) : null}
+
       <section className={styles.overviewSection} aria-labelledby="directions-heading">
         <div className={styles.overviewSectionHeader}><div><h2 id="directions-heading">Latest directions</h2><p>Compare the shape of the song before you commit to a version.</p></div><span>{candidates.length} {candidates.length === 1 ? "candidate" : "candidates"}</span></div>
         {candidates.length > 0 ? <div className={styles.overviewCandidateList}>
@@ -133,6 +175,26 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
         </div>
       </section>
     </div>
+  )
+}
+
+function ProjectContinuationLink({ href, label, description, destination, icon: Icon }: {
+  href: string
+  label: string
+  description: string
+  destination: string
+  icon: typeof Sparkles
+}) {
+  return (
+    <Link className={styles.continueMakingCard} href={href} aria-label={label}>
+      <span className={styles.continueMakingIcon} aria-hidden="true"><Icon size={17} /></span>
+      <span className={styles.continueMakingCopy}>
+        <strong>{label}</strong>
+        <span>{description}</span>
+        <small>{destination}</small>
+      </span>
+      <ArrowUpRight className={styles.continueMakingArrow} size={15} aria-hidden="true" />
+    </Link>
   )
 }
 
