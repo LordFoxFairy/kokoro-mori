@@ -31,6 +31,9 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
   }))
   const requestedProject = projectState.projectRef === initialProjectRef ? projectState.value : createUnavailableProject(initialProjectRef)
   const candidates = candidateState.projectRef === initialProjectRef ? candidateState.value : []
+  const studioCandidate = requestedProject.currentVersionRef === null
+    ? candidates[0]
+    : candidates.find((candidate) => candidate.versionRef === requestedProject.currentVersionRef)
 
   useEffect(() => {
     const requestedProjectRef = projectRef.trim() || previewProject.projectRef
@@ -77,7 +80,7 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
             <h1 className={styles.catalogTitle}>{requestedProject.title}</h1>
           <p>{requestedProject.description}</p>
           <div className={styles.projectOverviewActions}>
-            {candidates[0] ? <Link className={styles.generateButton} href={`/projects/${requestedProject.projectRef}/studio/${candidates[0].versionRef}`}><Play size={14} fill="currentColor" /> Open Studio</Link> : null}
+            {studioCandidate ? <Link className={styles.generateButton} href={`/projects/${requestedProject.projectRef}/studio/${studioCandidate.versionRef}`}><Play size={14} fill="currentColor" /> Open Studio</Link> : null}
             <Link className={styles.ghostButton} href={`/create?project_ref=${encodeURIComponent(requestedProject.projectRef)}`}><Sparkles size={14} /> New direction</Link>
           </div>
         </div>

@@ -66,6 +66,67 @@ describe("Mori project overview", () => {
     expect(screen.getByRole("link", { name: "Open Studio" })).toHaveAttribute("href", "/projects/project_live_1/studio/version_live_1")
   })
 
+  it("continues from the confirmed Current Version instead of the first projected direction", async () => {
+    const api = {
+      getProject: async () => ({
+        data: {
+          project_ref: "project_live_current",
+          title: "Window Seat",
+          description: "Two directions with one confirmed Current.",
+          current_version_ref: "version_live_b",
+          candidate_count: 2,
+          last_activity_at: "2026-09-04T10:00:00.000Z",
+        },
+        meta: { request_id: "request_project_current" },
+      }),
+      listCandidates: async () => ({
+        data: {
+          candidates: [
+            {
+              candidate_ref: "candidate_live_a",
+              generation_ref: "generation_live",
+              version_ref: "version_live_a",
+              project_ref: "project_live_current",
+              title: "Window Seat · First draft",
+              duration_seconds: 140,
+              audio_asset_ref: "asset_live_a",
+              waveform_asset_ref: "waveform_live_a",
+              style_tags: ["quiet"],
+              created_at: "2026-09-04T09:58:00.000Z",
+            },
+            {
+              candidate_ref: "candidate_live_b",
+              generation_ref: "generation_live",
+              version_ref: "version_live_b",
+              project_ref: "project_live_current",
+              title: "Window Seat · Wide",
+              duration_seconds: 146,
+              audio_asset_ref: "asset_live_b",
+              waveform_asset_ref: "waveform_live_b",
+              style_tags: ["wide"],
+              created_at: "2026-09-04T09:59:00.000Z",
+            },
+          ],
+          next_cursor: null,
+        },
+        meta: { request_id: "request_candidates_current" },
+      }),
+    }
+
+    render(
+      <MoriAppProvider>
+        <MoriCatalogShell activeKey="projects" ariaLabel="Project overview">
+          <ProjectOverviewPageContent projectRef="project_live_current" api={api} />
+        </MoriCatalogShell>
+      </MoriAppProvider>,
+    )
+
+    await waitFor(() => expect(screen.getByRole("link", { name: "Open Studio" })).toHaveAttribute(
+      "href",
+      "/projects/project_live_current/studio/version_live_b",
+    ))
+  })
+
   it("shows an empty state when a project has no directions", async () => {
     const api = {
       getProject: async () => ({
