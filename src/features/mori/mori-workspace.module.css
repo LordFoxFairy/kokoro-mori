@@ -101,11 +101,32 @@
   line-height: 1.65;
 }
 
-.modeTabs {
+.creationSetup {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.creationChoice {
+  display: grid;
+  gap: 7px;
+}
+
+.creationChoiceLabel {
+  color: var(--mori-faint);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.modeTabs,
+.outputTabs {
   display: inline-flex;
   gap: 4px;
   padding: 4px;
-  margin-bottom: 14px;
   border: 1px solid var(--mori-border);
   border-radius: 12px;
   background: rgba(247, 245, 249, 0.86);
@@ -127,6 +148,32 @@
   color: var(--mori-foreground);
   background: #fff;
   box-shadow: 0 3px 9px rgba(62, 45, 86, 0.08);
+}
+
+.outputTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 8px;
+  color: var(--mori-muted);
+  font-size: 11px;
+  font-weight: 700;
+  background: transparent;
+}
+
+.outputTab[aria-pressed="true"] {
+  color: var(--mori-primary-deep);
+  background: linear-gradient(120deg, rgba(237, 233, 254, 0.96), rgba(255, 240, 232, 0.72));
+  box-shadow: 0 3px 9px rgba(62, 45, 86, 0.07);
+}
+
+.outputTab:focus-visible,
+.modeTab:focus-visible {
+  outline: 3px solid rgba(109, 92, 231, 0.22);
+  outline-offset: 2px;
 }
 
 .composerCard {
@@ -422,38 +469,6 @@
   color: var(--mori-success);
   font-size: 11px;
   font-weight: 750;
-}
-
-.quickChips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 18px;
-}
-
-.quickChip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 29px;
-  padding: 0 10px;
-  border: 1px solid var(--mori-border);
-  border-radius: 999px;
-  color: var(--mori-muted);
-  font-size: 10px;
-  font-weight: 600;
-  background: rgba(255, 255, 255, 0.72);
-}
-
-.quickChip:hover {
-  border-color: rgba(109, 92, 231, 0.25);
-  color: var(--mori-primary);
-  background: var(--mori-primary-soft);
-}
-
-.quickChip svg {
-  width: 13px;
-  height: 13px;
 }
 
 .customFields {
@@ -4926,6 +4941,23 @@
 
   .heroTitle {
     font-size: 42px;
+  }
+
+  .creationSetup {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .modeTabs,
+  .outputTabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .modeTab,
+  .outputTab {
+    justify-content: center;
   }
 
   .composerBottom {

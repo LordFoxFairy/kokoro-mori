@@ -14,6 +14,7 @@ type CreativeSourceDockProps = {
   referenceSource: MoriAudioReferenceSelection | null
   referenceError: string | null
   voiceRef: string | null
+  voiceEnabled: boolean
   inspirationRef: string | null
   onChooseReference: () => void
   onRemoveReference: () => void
@@ -27,6 +28,7 @@ export function CreativeSourceDock({
   referenceSource,
   referenceError,
   voiceRef,
+  voiceEnabled,
   inspirationRef,
   onChooseReference,
   onRemoveReference,
@@ -48,7 +50,7 @@ export function CreativeSourceDock({
         <span className={styles.optionalLabel}>Optional</span>
       </header>
 
-      <div className={styles.sourceGrid}>
+      <div className={`${styles.sourceGrid} ${voiceEnabled ? "" : styles.sourceGridTwo}`}>
         <div className={styles.sourceCell}>
           <button
             className={`${styles.sourceButton} ${referenceSource === null ? "" : `${styles.sourceButtonSelected} ${styles.sourceButtonRemovable}`}`}
@@ -70,7 +72,7 @@ export function CreativeSourceDock({
           ) : null}
         </div>
 
-        <div className={styles.sourceCell}>
+        {voiceEnabled ? <div className={styles.sourceCell}>
           <button
             className={`${styles.sourceButton} ${selectedVoice === null ? "" : styles.sourceButtonSelected}`}
             type="button"
@@ -85,7 +87,7 @@ export function CreativeSourceDock({
             </span>
             <ChevronDown className={styles.sourceChevron} />
           </button>
-        </div>
+        </div> : null}
 
         <div className={styles.sourceCell}>
           <button
@@ -107,7 +109,7 @@ export function CreativeSourceDock({
 
       {referenceError !== null ? <p className={styles.sourceError} role="alert">{referenceError}</p> : null}
 
-      {openPicker === "voice" ? (
+      {voiceEnabled && openPicker === "voice" ? (
         <section className={styles.pickerPanel} aria-label="Voice profiles">
           <header className={styles.pickerHeader}>
             <span className={styles.pickerHeaderCopy}>

@@ -59,6 +59,12 @@ Idea / Reference
 
 ### Create 的创意来源模型
 
+Create 首先把两个不同决策并列说清：**Approach** 决定 Smart（先复核 Song Plan）或 Custom（直接控制参数），
+**Output** 决定 Song with lyrics 或 Instrumental。Output 在两种 Approach 中都持续可见，不再藏在 Custom 下拉框或
+页面底部快捷按钮里。Instrumental 只显示 Audio、Inspiration、Style、Duration 与编曲语义；Voice profile、Lyrics、
+Vocal direction 会从界面和 Generation request 同时移除。由 Library 带入 Voice 时则自动回到 vocal output，避免素材
+已经选中却被偏好设置静默忽略。
+
 Create 不再把 Reference、Voice、Style 拆成互相重复的快捷按钮或全局工具页。主 Prompt 下方固定一层
 轻量 **Creative sources**，Smart 与 Custom 共用同一份选择：
 

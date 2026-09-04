@@ -186,6 +186,20 @@ describe("Mori same-origin API client", () => {
     expect(response.meta.request_id).toBe("request_1")
   })
 
+  it("drops vocal-only fields from an instrumental generation request", () => {
+    expect(createGenerationRequest({
+      mode: "custom",
+      prompt: "A patient string arrangement",
+      lyricsMode: "instrumental",
+      lyrics: "A stale vocal draft",
+      voiceRef: "voice_preview_mira",
+    })).toMatchObject({
+      lyrics_mode: "instrumental",
+      lyrics: null,
+      voice_ref: null,
+    })
+  })
+
   it("posts a version-bound studio change through the shared generation lifecycle", async () => {
     let capturedUrl = ""
     let capturedInit: RequestInit | undefined

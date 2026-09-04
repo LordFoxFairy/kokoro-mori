@@ -222,9 +222,13 @@ describe("Mori workspace", () => {
 
   it("reveals Custom controls without leaving Create", () => {
     renderWorkspace()
+    const outputType = screen.getByRole("group", { name: "Output type" })
+    expect(within(outputType).getByRole("button", { name: "Song with lyrics" })).toHaveAttribute("aria-pressed", "true")
     fireEvent.click(screen.getByRole("tab", { name: /custom/i }))
-    expect(screen.getByLabelText(/lyrics or instrumental/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/style/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/duration/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/^lyrics$/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/vocal direction/i)).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Add audio reference" })).toBeInTheDocument()
   })
 
@@ -366,7 +370,7 @@ describe("Mori workspace", () => {
     fireEvent.click(screen.getByRole("button", { name: "Open customized Create" }))
 
     expect(screen.getByRole("tab", { name: /custom/i })).toHaveAttribute("aria-selected", "true")
-    expect(screen.getByLabelText("Lyrics or instrumental")).toHaveValue("instrumental")
+    expect(screen.getByRole("button", { name: "Instrumental" })).toHaveAttribute("aria-pressed", "true")
     expect(screen.getByLabelText("Duration")).toHaveValue("240")
   })
 
@@ -384,31 +388,70 @@ describe("Mori workspace", () => {
       renderWorkspace()
 
       await waitFor(() => expect(screen.getByRole("tab", { name: /custom/i })).toHaveAttribute("aria-selected", "true"))
-      expect(screen.getByLabelText("Lyrics or instrumental")).toHaveValue("instrumental")
+      expect(screen.getByRole("button", { name: "Instrumental" })).toHaveAttribute("aria-pressed", "true")
       expect(screen.getByLabelText("Duration")).toHaveValue("240")
     } finally {
       window.localStorage.removeItem("mori.preferences.v1")
     }
   })
 
-  it("turns creative shortcuts into visible draft actions", () => {
+  it("keeps output type explicit and hides vocal-only controls for instrumental work", () => {
     renderWorkspace()
+    fireEvent.click(screen.getByRole("button", { name: "Choose voice profile" }))
+    fireEvent.click(screen.getByRole("button", { name: "Use Mira voice" }))
+    fireEvent.click(screen.getByRole("tab", { name: /custom/i }))
+    fireEvent.click(screen.getByRole("button", { name: "Instrumental" }))
 
-    fireEvent.click(screen.getByRole("button", { name: "Start with lyrics" }))
-    expect(screen.getByRole("tab", { name: /custom/i })).toHaveAttribute("aria-selected", "true")
-    expect(screen.getByLabelText("Lyrics or instrumental")).toHaveValue("lyrics")
+    expect(screen.getByRole("button", { name: "Instrumental" })).toHaveAttribute("aria-pressed", "true")
+    expect(screen.queryByRole("button", { name: /voice profile/i })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/^lyrics$/i)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/vocal direction/i)).not.toBeInTheDocument()
+    expect(screen.getByLabelText("Style")).toBeInTheDocument()
+    expect(screen.getByLabelText("Duration")).toBeInTheDocument()
+    expect(screen.getByRole("note")).toHaveTextContent("arrangement direction")
 
-    const referenceInput = screen.getByLabelText("Reference audio file")
-    const openPicker = vi.spyOn(referenceInput, "click")
-    fireEvent.click(screen.getByRole("button", { name: "Add audio reference" }))
-    expect(openPicker).toHaveBeenCalledOnce()
+    fireEvent.click(screen.getByRole("button", { name: "Song with lyrics" }))
+    expect(screen.getByRole("button", { name: "Change voice profile Mira" })).toBeInTheDocument()
+    expect(screen.getByLabelText(/^lyrics$/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/vocal direction/i)).toBeInTheDocument()
+  })
 
-    fireEvent.change(referenceInput, { target: { files: [new File([new Uint8Array(2048)], "night-drive.wav", { type: "audio/wav" })] } })
-    expect(screen.getByRole("button", { name: "Replace reference audio night-drive.wav" })).toBeInTheDocument()
-    expect(screen.getByText("2 KB · selected for this direction")).toBeInTheDocument()
+  it("does not send a stale Voice or Lyrics with an instrumental direction", () => {
+    const onGenerate = vi.fn<(draft: CreationDraft) => void>()
 
-    fireEvent.click(screen.getByRole("button", { name: "Start instrumental" }))
-    expect(screen.getByLabelText("Lyrics or instrumental")).toHaveValue("instrumental")
+    render(
+      <MoriAppProvider>
+        <CreateCanvas projectRef="project_preview_first_light" mode="custom" onModeChange={() => undefined} onGenerate={onGenerate} />
+      </MoriAppProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Choose voice profile" }))
+    fireEvent.click(screen.getByRole("button", { name: "Use Mira voice" }))
+    fireEvent.change(screen.getByRole("textbox", { name: "Lyrics" }), { target: { value: "Keep this draft for later." } })
+    fireEvent.click(screen.getByRole("button", { name: "Instrumental" }))
+    fireEvent.submit(screen.getByRole("textbox", { name: "Song idea" }).closest("form") as HTMLFormElement)
+
+    expect(onGenerate).toHaveBeenCalledOnce()
+    expect(onGenerate.mock.calls[0]?.[0]).toMatchObject({ lyricsMode: "instrumental" })
+    expect(onGenerate.mock.calls[0]?.[0]).not.toHaveProperty("voiceRef")
+    expect(onGenerate.mock.calls[0]?.[0]).not.toHaveProperty("lyrics")
+  })
+
+  it("reviews an instrumental Song Plan with arrangement language", () => {
+    render(
+      <MoriAppProvider>
+        <CreateCanvas projectRef="project_preview_first_light" mode="smart" onModeChange={() => undefined} onGenerate={() => undefined} />
+      </MoriAppProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Instrumental" }))
+    fireEvent.submit(screen.getByRole("textbox", { name: "Song idea" }).closest("form") as HTMLFormElement)
+    fireEvent.click(screen.getByRole("button", { name: "Edit plan" }))
+
+    expect(screen.getByRole("textbox", { name: "Arrangement direction" })).toBeInTheDocument()
+    expect(screen.getByRole("textbox", { name: "Creative intent" })).toBeInTheDocument()
+    expect(screen.queryByRole("textbox", { name: "Vocal direction" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("textbox", { name: "Lyrics intent" })).not.toBeInTheDocument()
   })
 
   it("keeps stable asset refs separate from human-readable creative direction", () => {
@@ -434,20 +477,34 @@ describe("Mori workspace", () => {
     })
   })
 
-  it("hydrates a reusable voice selected from Library", () => {
-    render(
-      <MoriAppProvider>
-        <CreateCanvas
-          projectRef="project_preview_first_light"
-          mode="smart"
-          initialCreativeSource={{ kind: "voice", ref: "voice_preview_mira" }}
-          onModeChange={() => undefined}
-          onGenerate={() => undefined}
-        />
-      </MoriAppProvider>,
-    )
+  it("hydrates a reusable voice selected from Library into a vocal output", async () => {
+    window.localStorage.setItem("mori.preferences.v1", JSON.stringify({
+      reduceMotion: false,
+      autoplay: false,
+      endBehavior: "stop",
+      defaultMode: "smart",
+      lyricsMode: "instrumental",
+      durationSeconds: 180,
+    }))
 
-    expect(screen.getByRole("button", { name: "Change voice profile Mira" })).toBeInTheDocument()
+    try {
+      render(
+        <MoriAppProvider>
+          <CreateCanvas
+            projectRef="project_preview_first_light"
+            mode="smart"
+            initialCreativeSource={{ kind: "voice", ref: "voice_preview_mira" }}
+            onModeChange={() => undefined}
+            onGenerate={() => undefined}
+          />
+        </MoriAppProvider>,
+      )
+
+      await waitFor(() => expect(screen.getByRole("button", { name: "Song with lyrics" })).toHaveAttribute("aria-pressed", "true"))
+      expect(screen.getByRole("button", { name: "Change voice profile Mira" })).toBeInTheDocument()
+    } finally {
+      window.localStorage.removeItem("mori.preferences.v1")
+    }
   })
 
   it("hydrates editable inspiration selected from Library", () => {

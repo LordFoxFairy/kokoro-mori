@@ -54,7 +54,7 @@ export function CreateCanvas({ projectRef, mode, initialCreativeSource, onModeCh
   const planPreviewRef = useRef<HTMLElement>(null)
   const [prompt, setPrompt] = useState("A warm, late-night track for the drive home, slowly opening into sunrise.")
   const [lyrics, setLyrics] = useState("")
-  const [lyricsModeOverride, setLyricsModeOverride] = useState<LyricsMode | null>(null)
+  const [lyricsModeOverride, setLyricsModeOverride] = useState<LyricsMode | null>(initialVoiceProfile === null ? null : "lyrics")
   const [style, setStyle] = useState(initialInspiration?.style ?? "Dream pop · intimate · organic")
   const [voice, setVoice] = useState("Natural lead")
   const [voiceProfileRef, setVoiceProfileRef] = useState<string | null>(initialVoiceProfile?.ref ?? null)
@@ -110,15 +110,8 @@ export function CreateCanvas({ projectRef, mode, initialCreativeSource, onModeCh
     setPlanPreview((current) => current === null ? current : { ...current, ...patch })
   }
 
-  function startWithLyrics() {
-    onModeChange("custom")
-    setLyricsModeOverride("lyrics")
-    clearPlanPreview()
-  }
-
-  function startInstrumental() {
-    onModeChange("custom")
-    setLyricsModeOverride("instrumental")
+  function chooseOutput(nextLyricsMode: LyricsMode) {
+    setLyricsModeOverride(nextLyricsMode)
     clearPlanPreview()
   }
 
@@ -168,11 +161,26 @@ export function CreateCanvas({ projectRef, mode, initialCreativeSource, onModeCh
       setPlanPreview(buildSongPlan(projectRef, { prompt, lyricsMode, style, voice, durationSeconds }))
       return
     }
-    onGenerate({ prompt, lyricsMode, lyrics: lyrics.trim() || undefined, style, referenceAssetRefs: referenceSource === null ? [] : [referenceSource.ref], voice, voiceRef: voiceProfileRef ?? undefined, durationSeconds })
+    onGenerate(toCreationDraft())
   }
 
   function confirmPlan() {
-    onGenerate({ prompt, lyricsMode, lyrics: lyrics.trim() || undefined, style, referenceAssetRefs: referenceSource === null ? [] : [referenceSource.ref], voice, voiceRef: voiceProfileRef ?? undefined, durationSeconds, songPlan: planPreview ?? undefined })
+    if (planPreview !== null) onGenerate(toCreationDraft(planPreview))
+  }
+
+  function toCreationDraft(songPlan?: SongPlan): CreationDraft {
+    const normalizedLyrics = lyrics.trim()
+    return {
+      prompt,
+      lyricsMode,
+      style,
+      referenceAssetRefs: referenceSource === null ? [] : [referenceSource.ref],
+      voice,
+      durationSeconds,
+      ...(lyricsMode === "lyrics" && normalizedLyrics !== "" ? { lyrics: normalizedLyrics } : {}),
+      ...(lyricsMode === "lyrics" && voiceProfileRef !== null ? { voiceRef: voiceProfileRef } : {}),
+      ...(songPlan === undefined ? {} : { songPlan }),
+    }
   }
 
   function navigateMode(event: KeyboardEvent<HTMLButtonElement>, currentMode: CreationMode) {
@@ -191,13 +199,29 @@ export function CreateCanvas({ projectRef, mode, initialCreativeSource, onModeCh
       <h1 className={styles.heroTitle} id="mori-create-title">{t("heroTitle")}</h1>
       <p className={styles.heroDescription}>{t("heroDescription")}</p>
 
-      <div className={styles.modeTabs} role="tablist" aria-label="Creation mode">
-        <button ref={smartTabRef} className={styles.modeTab} id="mori-mode-smart" type="button" role="tab" aria-selected={mode === "smart"} aria-controls="mori-create-panel" tabIndex={mode === "smart" ? 0 : -1} onKeyDown={(event) => navigateMode(event, "smart")} onClick={() => { onModeChange("smart"); clearPlanPreview() }}>
-          <Sparkles size={13} /> {t("smartLabel")}
-        </button>
-        <button ref={customTabRef} className={styles.modeTab} id="mori-mode-custom" type="button" role="tab" aria-selected={mode === "custom"} aria-controls="mori-create-panel" tabIndex={mode === "custom" ? 0 : -1} onKeyDown={(event) => navigateMode(event, "custom")} onClick={() => { onModeChange("custom"); clearPlanPreview() }}>
-          <SlidersHorizontal size={13} /> {t("customLabel")}
-        </button>
+      <div className={styles.creationSetup}>
+        <div className={styles.creationChoice}>
+          <span className={styles.creationChoiceLabel}>Approach</span>
+          <div className={styles.modeTabs} role="tablist" aria-label="Creation mode">
+            <button ref={smartTabRef} className={styles.modeTab} id="mori-mode-smart" type="button" role="tab" aria-selected={mode === "smart"} aria-controls="mori-create-panel" tabIndex={mode === "smart" ? 0 : -1} onKeyDown={(event) => navigateMode(event, "smart")} onClick={() => { onModeChange("smart"); clearPlanPreview() }}>
+              <Sparkles size={13} /> {t("smartLabel")}
+            </button>
+            <button ref={customTabRef} className={styles.modeTab} id="mori-mode-custom" type="button" role="tab" aria-selected={mode === "custom"} aria-controls="mori-create-panel" tabIndex={mode === "custom" ? 0 : -1} onKeyDown={(event) => navigateMode(event, "custom")} onClick={() => { onModeChange("custom"); clearPlanPreview() }}>
+              <SlidersHorizontal size={13} /> {t("customLabel")}
+            </button>
+          </div>
+        </div>
+        <div className={styles.creationChoice}>
+          <span className={styles.creationChoiceLabel}>Output</span>
+          <div className={styles.outputTabs} role="group" aria-label="Output type">
+            <button className={styles.outputTab} type="button" aria-pressed={lyricsMode === "lyrics"} onClick={() => chooseOutput("lyrics")}>
+              <Mic2 size={13} /> Song with lyrics
+            </button>
+            <button className={styles.outputTab} type="button" aria-pressed={lyricsMode === "instrumental"} onClick={() => chooseOutput("instrumental")}>
+              <Disc3 size={13} /> Instrumental
+            </button>
+          </div>
+        </div>
       </div>
 
       <form className={styles.composerCard} id="mori-create-panel" role="tabpanel" aria-labelledby={mode === "smart" ? "mori-mode-smart" : "mori-mode-custom"} onSubmit={submit}>
@@ -210,9 +234,11 @@ export function CreateCanvas({ projectRef, mode, initialCreativeSource, onModeCh
         />
 
         <CreativeSourceDock
+          key={lyricsMode}
           referenceSource={referenceSource}
           referenceError={referenceError}
           voiceRef={voiceProfileRef}
+          voiceEnabled={lyricsMode === "lyrics"}
           inspirationRef={inspirationRef}
           onChooseReference={addReference}
           onRemoveReference={removeReference}
@@ -224,31 +250,8 @@ export function CreateCanvas({ projectRef, mode, initialCreativeSource, onModeCh
           <div className={styles.customFields}>
             <div className={styles.fieldRow}>
               <div className={styles.field}>
-                <label htmlFor="lyrics-mode">Lyrics or instrumental</label>
-                <select className={styles.selectInput} id="lyrics-mode" value={lyricsMode} onChange={(event) => { setLyricsModeOverride(event.target.value as LyricsMode); clearPlanPreview() }}>
-                  <option value="lyrics">Lyrics</option>
-                  <option value="instrumental">Instrumental</option>
-                </select>
-              </div>
-              <div className={styles.field}>
                 <label htmlFor="mori-style">Style</label>
                 <input className={styles.textInput} id="mori-style" value={style} onChange={(event) => { setStyle(event.target.value); setInspirationRef(null); clearPlanPreview() }} />
-              </div>
-            </div>
-            {lyricsMode === "lyrics" ? <div className={styles.fieldRow}>
-              <div className={`${styles.field} ${styles.fieldWide}`}>
-                <label htmlFor="mori-lyrics">Lyrics</label>
-                <textarea className={styles.lyricsInput} id="mori-lyrics" value={lyrics} onChange={(event) => { setLyrics(event.target.value); clearPlanPreview() }} placeholder="Add your words, or leave this empty for Mori to write them." />
-              </div>
-            </div> : null}
-            <div className={styles.fieldRow}>
-              <div className={styles.field}>
-                <label htmlFor="mori-voice">Vocal direction</label>
-                <select className={styles.selectInput} id="mori-voice" value={voice} onChange={(event) => { setVoice(event.target.value); clearPlanPreview() }}>
-                  <option>Natural lead</option>
-                  <option>Airy alto</option>
-                  <option>Warm tenor</option>
-                </select>
               </div>
               <div className={styles.field}>
                 <label htmlFor="mori-duration">Duration</label>
@@ -260,6 +263,22 @@ export function CreateCanvas({ projectRef, mode, initialCreativeSource, onModeCh
                 </select>
               </div>
             </div>
+            {lyricsMode === "lyrics" ? <div className={styles.fieldRow}>
+              <div className={`${styles.field} ${styles.fieldWide}`}>
+                <label htmlFor="mori-lyrics">Lyrics</label>
+                <textarea className={styles.lyricsInput} id="mori-lyrics" value={lyrics} onChange={(event) => { setLyrics(event.target.value); clearPlanPreview() }} placeholder="Add your words, or leave this empty for Mori to write them." />
+              </div>
+            </div> : null}
+            {lyricsMode === "lyrics" ? <div className={styles.fieldRow}>
+              <div className={`${styles.field} ${styles.fieldWide}`}>
+                <label htmlFor="mori-voice">Vocal direction</label>
+                <select className={styles.selectInput} id="mori-voice" value={voice} onChange={(event) => { setVoice(event.target.value); clearPlanPreview() }}>
+                  <option>Natural lead</option>
+                  <option>Airy alto</option>
+                  <option>Warm tenor</option>
+                </select>
+              </div>
+            </div> : null}
           </div>
         ) : null}
 
@@ -298,12 +317,12 @@ export function CreateCanvas({ projectRef, mode, initialCreativeSource, onModeCh
                   <input aria-label="Plan palette" className={styles.textInput} value={planPreview.instruments.join(", ")} onChange={(event) => updatePlan({ instruments: parsePlanList(event.target.value, planPreview.instruments) })} />
                 </label>
                 <label className={`${styles.songPlanEditField} ${styles.songPlanEditFieldWide}`}>
-                  <span>Vocal direction</span>
-                  <textarea aria-label="Vocal direction" className={styles.planEditArea} value={planPreview.vocalDirection} onChange={(event) => updatePlan({ vocalDirection: event.target.value })} />
+                  <span>{lyricsMode === "instrumental" ? "Arrangement direction" : "Vocal direction"}</span>
+                  <textarea aria-label={lyricsMode === "instrumental" ? "Arrangement direction" : "Vocal direction"} className={styles.planEditArea} value={planPreview.vocalDirection} onChange={(event) => updatePlan({ vocalDirection: event.target.value })} />
                 </label>
                 <label className={`${styles.songPlanEditField} ${styles.songPlanEditFieldWide}`}>
-                  <span>Lyrics intent</span>
-                  <textarea aria-label="Lyrics intent" className={styles.planEditArea} value={planPreview.lyricsIntent} onChange={(event) => updatePlan({ lyricsIntent: event.target.value })} />
+                  <span>{lyricsMode === "instrumental" ? "Creative intent" : "Lyrics intent"}</span>
+                  <textarea aria-label={lyricsMode === "instrumental" ? "Creative intent" : "Lyrics intent"} className={styles.planEditArea} value={planPreview.lyricsIntent} onChange={(event) => updatePlan({ lyricsIntent: event.target.value })} />
                 </label>
               </div>
             ) : (
@@ -335,13 +354,9 @@ export function CreateCanvas({ projectRef, mode, initialCreativeSource, onModeCh
 
       <div className={styles.planHint} role="note">
         <WandSparkles size={16} />
-        <span><strong>Song Plan</strong> will map the mood, tempo, structure, and vocal direction before any version is made.</span>
+        <span><strong>Song Plan</strong> will map the mood, tempo, structure, and {lyricsMode === "instrumental" ? "arrangement direction" : "vocal direction"} before any version is made.</span>
       </div>
 
-      <div className={styles.quickChips} aria-label="Creative shortcuts">
-        <button className={styles.quickChip} type="button" onClick={startWithLyrics}><Mic2 /> Start with lyrics</button>
-        <button className={styles.quickChip} type="button" onClick={startInstrumental}><Disc3 /> Start instrumental</button>
-      </div>
       <input ref={referenceInputRef} className={styles.srOnly} type="file" accept="audio/*,.mp3,.wav,.m4a,.flac,.aac,.ogg" onChange={changeReference} aria-label="Reference audio file" />
     </section>
   )

@@ -157,6 +157,10 @@ Workspace nav    内容随项目上下文变化                     跨页面保
   Style。Library 的 All 视图已经将作品与素材分区，Sources 视图按 Audio / Voices / Inspiration 渐进筛选；
   `Use in Create` 会通过经校验的 provider-neutral source ref 恢复同一个创作上下文。当前素材为确定性 preview，
   正式资产引用与 projection 继续由 storage/music owner adapter 承接。
+- 已落地第一版：Create 把 Approach（Smart / Custom）和 Output（Song with lyrics / Instrumental）作为两个独立、
+  始终可见的选择，不再把作品类型藏在 Custom 参数或底部快捷入口。Instrumental 会同步移除 Voice、Lyrics、
+  Vocal direction 与请求中的 `voice_ref`，Song Plan 改用 Arrangement / Creative intent 文案；从 Library 带入 Voice
+  则明确进入 vocal output，避免界面、计划和契约表达不同的作品类型。
 - 已落地第一版：Library 只展示已有投影支持的 All / Projects / Versions / Sources；Lyrics 继续属于 Project/Studio，
   Export 继续属于打开 Version 的 Studio，不用永远为空的筛选器伪装成全局能力。Projects 与 Versions 两个投影统一结算：
   任一真实投影成功后都不会再混入另一侧的示例数据，部分失败显示明确可用性提示；Current Version 标签只依据对应

@@ -725,7 +725,7 @@ export function createGenerationRequest(draft: MoriGenerationDraft): GenerationC
     lyrics: draft.lyricsMode === "lyrics" ? draft.lyrics?.trim() || null : null,
     style: draft.style?.trim() || null,
     reference_asset_refs: draft.referenceAssetRefs ?? [],
-    voice_ref: draft.voiceRef?.trim() || null,
+    voice_ref: draft.lyricsMode === "lyrics" ? draft.voiceRef?.trim() || null : null,
     duration_seconds: draft.durationSeconds ?? null,
     lyrics_mode: draft.lyricsMode,
   }
