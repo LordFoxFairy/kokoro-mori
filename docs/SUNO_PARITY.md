@@ -117,9 +117,11 @@ Prompt / Upload
 3. **Creative Identity**：Voice、Style Persona、Custom Model 的 consent、验证、版本与删除生命周期。
 4. **Collaboration / Remix Graph**：成员权限、Release permission、Fork lineage 与 attribution 分开建模。
 
-## 5. 下一项实现门槛
+## 5. P0.1 当前实现门槛
 
-下一项产品实现固定为 **P0.1 Durable Project Memory**，先做浏览器契约和状态机，不越界实现 BFF：
+P0.1 先固定浏览器契约与状态机，不越界实现 BFF。当前已完成 Workspace projection、Song Plan / Lyrics Draft /
+Open Version 三项 revisioned 写入的浏览器类型、严格 response parser、原幂等键 retry 状态机，以及 Project
+Overview 对真实 Song Plan 的只读呈现：
 
 ```text
 ProjectWorkspaceProjection
@@ -130,6 +132,11 @@ ProjectWorkspaceProjection
   -> active durable task refs
   -> revision cursor
 ```
+
+当前只算 **P0.1 foundation**，不是 Runtime 完成：Studio 仍须将 Lyrics editor 的本地保存替换为 owner-confirmed
+`Saving / Saved / Retry`，Create 的 Smart Song Plan 也须在生成前后写入同一条 revisioned 事实；真实 BFF owner
+随后需实现 projection 组合、revision 存储、幂等 receipt 与 recovery smoke。preview Project 会明确标记
+`Preview plan`，不以 `saved` 假装为用户的持久化事实。
 
 以下两个浏览器侧连续性问题已修完：
 

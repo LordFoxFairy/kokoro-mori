@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowLeft, ArrowUpRight, AudioLines, AudioWaveform, Clock3, FileText, Play, SlidersHorizontal, Sparkles } from "lucide-react"
+import { ArrowLeft, ArrowUpRight, AudioLines, AudioWaveform, FileText, Play, SlidersHorizontal, Sparkles } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import type { MoriApi, MoriCandidate, MoriProject } from "@/lib/mori-api"
@@ -8,14 +8,17 @@ import { createMoriApiClient } from "@/lib/mori-api-client"
 import type { Candidate, Project } from "./domain"
 import { listAllMoriCandidates } from "./candidate-pagination"
 import { useMoriApp } from "./components/mori-app-provider"
-import { previewCandidates, previewProject, previewSongPlan } from "./preview-data"
+import { previewCandidates, previewProject } from "./preview-data"
 import { useProjectCurrentVersionCommit } from "./project-current-version"
 import { ProjectOverviewDirections, type CandidateProjectionStatus } from "./project-overview-directions"
+import { ProjectOverviewSongPlan } from "./project-overview-song-plan"
+import { previewCurrentSongPlanRevision } from "./project-overview-song-plan-preview"
+import { useProjectWorkspaceProjection } from "./use-project-workspace-projection"
 import styles from "./mori-workspace.module.css"
 
 type ProjectOverviewPageContentProps = {
   projectRef?: string
-  api?: Pick<MoriApi, "getProject" | "listCandidates"> & Partial<Pick<MoriApi, "putCurrentVersion">>
+  api?: Pick<MoriApi, "getProject" | "listCandidates"> & Partial<Pick<MoriApi, "getProjectWorkspace" | "putCurrentVersion">>
 }
 
 export function ProjectOverviewPageContent({ projectRef = previewProject.projectRef, api }: ProjectOverviewPageContentProps = {}) {
@@ -39,7 +42,13 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
     : { projectRef: initialProjectRef, value: [], status: "loading" as const }
   const candidates = currentCandidateState.value
   const candidateStatus = currentCandidateState.status
-  const hasPlanProjection = initialProjectRef === previewProject.projectRef
+  const workspaceProjection = useProjectWorkspaceProjection(
+    initialProjectRef,
+    initialProjectRef === previewProject.projectRef ? undefined : overviewApi.getProjectWorkspace,
+  )
+  const songPlan = workspaceProjection.projection?.current_song_plan
+    ?? (initialProjectRef === previewProject.projectRef ? previewCurrentSongPlanRevision : null)
+  const songPlanStatus = initialProjectRef === previewProject.projectRef ? "ready" : workspaceProjection.status
   const currentCandidate = requestedProject.currentVersionRef === null
     ? undefined
     : candidates.find((candidate) => candidate.versionRef === requestedProject.currentVersionRef)
@@ -204,18 +213,13 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
         ) : null}
       </div>
 
-      <section className={styles.overviewSection} aria-labelledby="plan-overview-heading">
-        <div className={styles.overviewSectionHeader}><div><h2 id="plan-overview-heading">Song plan</h2><p>The intention behind this project, kept visible as you refine it.</p></div></div>
-        {hasPlanProjection ? <div className={styles.overviewPlanCard}>
-          <div className={styles.overviewPlanStats}><span><b>Mood</b>{previewSongPlan.mood}</span><span><b>Tempo</b>{previewSongPlan.tempoBpm} BPM</span><span><b>Voice</b>Intimate lead</span></div>
-          <div className={styles.tagRow}>{previewSongPlan.structure.map((item) => <span className={`${styles.tag} ${styles.tagSelected}`} key={item}>{item}</span>)}</div>
-          <p><Clock3 size={14} /> {previewSongPlan.vocalDirection}</p>
-        </div> : <div className={styles.overviewPlanUnavailable}>
-          <span className={styles.overviewPlanUnavailableIcon} aria-hidden="true"><Sparkles size={17} /></span>
-          <div><strong>Plan details not available</strong><p>Start a new direction to shape an editable mood, structure, palette, and voice before generating.</p></div>
-          <Link href={`/create?project_ref=${encodeURIComponent(requestedProject.projectRef)}`}>Create with a plan <ArrowUpRight size={13} /></Link>
-        </div>}
-      </section>
+      <ProjectOverviewSongPlan
+        projectRef={requestedProject.projectRef}
+        plan={songPlan}
+        isPreview={initialProjectRef === previewProject.projectRef}
+        status={songPlanStatus}
+        onRetry={workspaceProjection.retry}
+      />
     </div>
   )
 }

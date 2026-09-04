@@ -1,0 +1,281 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Mori Project Workspace API",
+    "version": "0.1.0",
+    "description": "Browser-private, BFF-composed recovery projection for one Mori Project. Project Current is a shared Project fact; Open Version is an authenticated user's workspace preference. Saving a Song Plan or Lyrics Draft creates a new revision rather than overwriting a prior creative fact."
+  },
+  "paths": {
+    "/api/v1/mori/projects/{project_ref}/workspace": {
+      "get": {
+        "operationId": "getProjectWorkspace",
+        "summary": "Read one coherent Project workspace recovery projection",
+        "x-kokoro-owner": "kokoro-bff",
+        "x-kokoro-visibility": "browser-private",
+        "x-kokoro-stability": "experimental",
+        "x-kokoro-idempotency": "not-applicable",
+        "parameters": [
+          { "name": "project_ref", "in": "path", "required": true, "schema": { "type": "string", "minLength": 1 } }
+        ],
+        "responses": {
+          "200": { "description": "The recovered Project workspace", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiProjectWorkspaceProjection" } } } },
+          "404": { "description": "The Project is not available to this workspace", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiErrorResponse" } } } }
+        }
+      }
+    },
+    "/api/v1/mori/projects/{project_ref}/song_plan": {
+      "put": {
+        "operationId": "putCurrentSongPlan",
+        "summary": "Create the next immutable Song Plan revision for a Project",
+        "x-kokoro-owner": "kokoro-bff",
+        "x-kokoro-visibility": "browser-private",
+        "x-kokoro-stability": "experimental",
+        "x-kokoro-idempotency": "required",
+        "parameters": [
+          { "name": "project_ref", "in": "path", "required": true, "schema": { "type": "string", "minLength": 1 } },
+          { "name": "Idempotency-Key", "in": "header", "required": true, "schema": { "type": "string", "minLength": 1, "maxLength": 200 } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CurrentSongPlanInput" } } }
+        },
+        "responses": {
+          "200": { "description": "The new Song Plan revision and reconciled workspace, or the original idempotent result", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiProjectWorkspaceProjection" } } } },
+          "400": { "description": "The request is malformed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiErrorResponse" } } } },
+          "404": { "description": "The Project is not available to this workspace", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiErrorResponse" } } } },
+          "409": { "description": "The expected Song Plan revision or idempotency key conflicts", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiErrorResponse" } } } },
+          "422": { "description": "The Song Plan is not valid for this Project", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiErrorResponse" } } } }
+        }
+      }
+    },
+    "/api/v1/mori/versions/{version_ref}/lyrics_draft": {
+      "put": {
+        "operationId": "putLyricsDraft",
+        "summary": "Create the next immutable Lyrics Draft revision for a Version",
+        "x-kokoro-owner": "kokoro-bff",
+        "x-kokoro-visibility": "browser-private",
+        "x-kokoro-stability": "experimental",
+        "x-kokoro-idempotency": "required",
+        "parameters": [
+          { "name": "version_ref", "in": "path", "required": true, "schema": { "type": "string", "minLength": 1 } },
+          { "name": "Idempotency-Key", "in": "header", "required": true, "schema": { "type": "string", "minLength": 1, "maxLength": 200 } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LyricsDraftInput" } } }
+        },
+        "responses": {
+          "200": { "description": "The new Lyrics Draft revision and reconciled workspace, or the original idempotent result", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiProjectWorkspaceProjection" } } } },
+          "400": { "description": "The request is malformed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiErrorResponse" } } } },
+          "404": { "description": "The Version is not available to this workspace", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiErrorResponse" } } } },
+          "409": { "description": "The expected Lyrics Draft revision or idempotency key conflicts", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiErrorResponse" } } } },
+          "422": { "description": "The Lyrics Draft is not valid for this Version", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiErrorResponse" } } } }
+        }
+      }
+    },
+    "/api/v1/mori/projects/{project_ref}/workspace/open_version": {
+      "put": {
+        "operationId": "putProjectWorkspaceOpenVersion",
+        "summary": "Persist the authenticated user's last Open Version for a Project workspace",
+        "x-kokoro-owner": "kokoro-bff",
+        "x-kokoro-visibility": "browser-private",
+        "x-kokoro-stability": "experimental",
+        "x-kokoro-idempotency": "required",
+        "parameters": [
+          { "name": "project_ref", "in": "path", "required": true, "schema": { "type": "string", "minLength": 1 } },
+          { "name": "Idempotency-Key", "in": "header", "required": true, "schema": { "type": "string", "minLength": 1, "maxLength": 200 } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProjectWorkspaceOpenVersionInput" } } }
+        },
+        "responses": {
+          "200": { "description": "The saved workspace preference and reconciled workspace, or the original idempotent result", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiProjectWorkspaceProjection" } } } },
+          "400": { "description": "The request is malformed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiErrorResponse" } } } },
+          "404": { "description": "The Project or Version is not available to this workspace", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiErrorResponse" } } } },
+          "409": { "description": "The expected Open Version preference revision or idempotency key conflicts", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiErrorResponse" } } } },
+          "422": { "description": "The Version does not belong to this Project", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiErrorResponse" } } } }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ProjectWorkspaceProject": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["project_ref", "title", "description", "current_version_ref", "candidate_count", "last_activity_at"],
+        "properties": {
+          "project_ref": { "type": "string", "minLength": 1 },
+          "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "description": { "type": "string", "maxLength": 500 },
+          "current_version_ref": { "oneOf": [{ "type": "null" }, { "type": "string", "minLength": 1 }] },
+          "candidate_count": { "type": "integer", "minimum": 0 },
+          "last_activity_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "CurrentSongPlanInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["prompt", "mood", "tempo_bpm", "structure", "instruments", "vocal_direction", "lyrics_intent", "expected_revision"],
+        "properties": {
+          "prompt": { "type": "string", "minLength": 1, "maxLength": 2000 },
+          "mood": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "tempo_bpm": { "type": "integer", "minimum": 40, "maximum": 240 },
+          "structure": { "type": "array", "minItems": 1, "maxItems": 16, "items": { "type": "string", "minLength": 1, "maxLength": 80 } },
+          "instruments": { "type": "array", "maxItems": 16, "items": { "type": "string", "minLength": 1, "maxLength": 80 } },
+          "vocal_direction": { "type": "string", "minLength": 1, "maxLength": 500 },
+          "lyrics_intent": { "type": "string", "minLength": 1, "maxLength": 1000 },
+          "expected_revision": { "oneOf": [{ "type": "null" }, { "type": "integer", "minimum": 1 }] }
+        }
+      },
+      "CurrentSongPlanRevision": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["song_plan_ref", "project_ref", "revision", "prompt", "mood", "tempo_bpm", "structure", "instruments", "vocal_direction", "lyrics_intent", "created_at"],
+        "properties": {
+          "song_plan_ref": { "type": "string", "minLength": 1 },
+          "project_ref": { "type": "string", "minLength": 1 },
+          "revision": { "type": "integer", "minimum": 1 },
+          "prompt": { "type": "string", "minLength": 1, "maxLength": 2000 },
+          "mood": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "tempo_bpm": { "type": "integer", "minimum": 40, "maximum": 240 },
+          "structure": { "type": "array", "minItems": 1, "maxItems": 16, "items": { "type": "string", "minLength": 1, "maxLength": 80 } },
+          "instruments": { "type": "array", "maxItems": 16, "items": { "type": "string", "minLength": 1, "maxLength": 80 } },
+          "vocal_direction": { "type": "string", "minLength": 1, "maxLength": 500 },
+          "lyrics_intent": { "type": "string", "minLength": 1, "maxLength": 1000 },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "LyricsDraftInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["text", "expected_revision"],
+        "properties": {
+          "text": { "type": "string", "maxLength": 20000 },
+          "expected_revision": { "oneOf": [{ "type": "null" }, { "type": "integer", "minimum": 1 }] }
+        }
+      },
+      "LyricsDraftRevision": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["lyrics_draft_ref", "project_ref", "version_ref", "revision", "text", "source_digest", "updated_at"],
+        "properties": {
+          "lyrics_draft_ref": { "type": "string", "minLength": 1 },
+          "project_ref": { "type": "string", "minLength": 1 },
+          "version_ref": { "type": "string", "minLength": 1 },
+          "revision": { "type": "integer", "minimum": 1 },
+          "text": { "type": "string", "maxLength": 20000 },
+          "source_digest": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ProjectWorkspaceOpenVersionInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["version_ref", "expected_revision"],
+        "properties": {
+          "version_ref": { "type": "string", "minLength": 1 },
+          "expected_revision": { "oneOf": [{ "type": "null" }, { "type": "integer", "minimum": 1 }] }
+        }
+      },
+      "ProjectWorkspaceOpenVersion": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["project_ref", "version_ref", "revision", "updated_at"],
+        "properties": {
+          "project_ref": { "type": "string", "minLength": 1 },
+          "version_ref": { "type": "string", "minLength": 1 },
+          "revision": { "type": "integer", "minimum": 1 },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ProjectWorkspaceMixRevision": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["mix_revision_ref", "version_ref", "revision", "name", "track_count", "created_at"],
+        "properties": {
+          "mix_revision_ref": { "type": "string", "minLength": 1 },
+          "version_ref": { "type": "string", "minLength": 1 },
+          "revision": { "type": "integer", "minimum": 1 },
+          "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "track_count": { "type": "integer", "minimum": 1, "maximum": 12 },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ProjectWorkspaceActiveTask": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["task_ref", "kind", "project_ref", "version_ref", "status", "progress", "updated_at"],
+        "properties": {
+          "task_ref": { "type": "string", "minLength": 1 },
+          "kind": { "type": "string", "enum": ["generation", "lyrics_revision", "stem_separation", "artwork_generation", "export"] },
+          "project_ref": { "type": "string", "minLength": 1 },
+          "version_ref": { "oneOf": [{ "type": "null" }, { "type": "string", "minLength": 1 }] },
+          "status": { "type": "string", "enum": ["queued", "running"] },
+          "progress": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ProjectWorkspaceProjection": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["project", "current_song_plan", "open_version", "latest_lyrics_draft", "latest_mix_revision", "active_tasks", "revision_cursor", "observed_at"],
+        "properties": {
+          "project": { "$ref": "#/components/schemas/ProjectWorkspaceProject" },
+          "current_song_plan": { "oneOf": [{ "type": "null" }, { "$ref": "#/components/schemas/CurrentSongPlanRevision" }] },
+          "open_version": { "oneOf": [{ "type": "null" }, { "$ref": "#/components/schemas/ProjectWorkspaceOpenVersion" }] },
+          "latest_lyrics_draft": { "oneOf": [{ "type": "null" }, { "$ref": "#/components/schemas/LyricsDraftRevision" }] },
+          "latest_mix_revision": { "oneOf": [{ "type": "null" }, { "$ref": "#/components/schemas/ProjectWorkspaceMixRevision" }] },
+          "active_tasks": { "type": "array", "maxItems": 32, "items": { "$ref": "#/components/schemas/ProjectWorkspaceActiveTask" } },
+          "revision_cursor": { "type": "string", "minLength": 1, "maxLength": 500 },
+          "observed_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ApiProjectWorkspaceProjection": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["data", "meta"],
+        "properties": {
+          "data": { "$ref": "#/components/schemas/ProjectWorkspaceProjection" },
+          "meta": { "$ref": "#/components/schemas/ApiMeta" }
+        }
+      },
+      "ApiMeta": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["request_id"],
+        "properties": { "request_id": { "type": "string", "minLength": 1 } }
+      },
+      "ApiErrorDetail": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["field", "reason"],
+        "properties": {
+          "field": { "type": ["string", "null"] },
+          "reason": { "type": "string", "minLength": 1 }
+        }
+      },
+      "ApiError": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "message", "retryable", "details"],
+        "properties": {
+          "code": { "type": "string", "minLength": 1 },
+          "message": { "type": "string", "minLength": 1 },
+          "retryable": { "type": "boolean" },
+          "details": { "oneOf": [{ "type": "null" }, { "type": "array", "items": { "$ref": "#/components/schemas/ApiErrorDetail" } }] }
+        }
+      },
+      "ApiErrorResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["error", "meta"],
+        "properties": {
+          "error": { "$ref": "#/components/schemas/ApiError" },
+          "meta": { "$ref": "#/components/schemas/ApiMeta" }
+        }
+      }
+    }
+  }
+}

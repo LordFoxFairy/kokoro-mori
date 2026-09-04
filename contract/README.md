@@ -28,6 +28,13 @@ music owner、BFF 或其他 Kokoro 子仓的内部模型。
   防止旧 Studio 窗口静默覆盖新选择。
 - [`tests/mori-current-version.contract.test.ts`](./tests/mori-current-version.contract.test.ts)：检查 `PUT`、
   `Idempotency-Key`、精确响应、`409` 并发冲突、`422` 关系错误、`snake_case` 与受信身份边界。
+- [`openapi/mori-project-workspace.v1.json`](./openapi/mori-project-workspace.v1.json)：一个 Project 的
+  browser-private 恢复投影与三项 revisioned 写入：Current Song Plan、Version-bound Lyrics Draft、用户的
+  Open Version 偏好。每个 `PUT` 使用自己的 `expected_revision` 与 `Idempotency-Key`，并返回完整的
+  reconciled workspace，而不把 Open Version 误作 Project Current。
+- [`tests/mori-project-workspace.contract.test.ts`](./tests/mori-project-workspace.contract.test.ts)：检查完整
+  projection 形状、四条资源路径、写入幂等与 `409`、Current/Open 区分，以及 `snake_case` /
+  provider-neutral 边界。
 - [`openapi/mori-lyrics-revision.v1.json`](./openapi/mori-lyrics-revision.v1.json)：Lyrics 中
   Rewrite、Continue、Find rhyme、Restructure 的 version-scoped 异步文本 Revision，以及 snapshot、
   SSE replay 与 cancel。
@@ -92,6 +99,14 @@ Remaster 仍属于稳定一层操作 `transform`，但使用严格的 `intent: r
 和 `expected_current_version_ref`；owner 必须验证 Candidate/Version/Project 关系并原子比较旧 Current。成功后返回
 确认的 Current、来源 Candidate、旧 Current 与选择时间；浏览器逐字段核对后才更新界面。提交期间旧 Current 保持
 不变，失败也不做乐观回滚；可重试故障复用同一 `Idempotency-Key`，`409` 冲突要求刷新 Studio 后重新选择。
+
+Project Workspace 不取代 Current Version commit，也不另建浏览器 localStorage 事实源。它是由 BFF 对一个
+Project 组合出的 browser-private 读取模型：`project.current_version_ref` 仍是共享 Project 事实；`open_version`
+只表示已认证用户在该 Project 中最后打开的 Version。`current_song_plan`、`latest_lyrics_draft` 和
+`latest_mix_revision` 是各自的不可变 revision 摘要，`active_tasks` 只投影仍需恢复的 provider-neutral 任务引用。
+Song Plan、Lyrics Draft 与 Open Version 的写入分别使用自己的 `expected_revision`，因此一个旧标签页不能以
+Lyrics 或 Open Version 更新覆盖另一个资源的事实。每次成功 `PUT` 都返回完整的 workspace projection；浏览器只在
+返回值精确确认本次输入与下一 revision 后才显示 `Saved`，瞬时故障重试原 `Idempotency-Key`，`409` 要求刷新后重新决策。
 
 Lyrics Revision 不混入音频 Generation：它输出可编辑的文本 Suggestion，而不是 Candidate/Take。
 `POST /api/v1/mori/versions/{version_ref}/lyrics_revisions` 接收当前完整 `lyrics_context`、显式 section

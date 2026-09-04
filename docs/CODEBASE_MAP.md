@@ -22,9 +22,15 @@ src/features/mori/               Mori 页面、组件、交互状态与 fixture 
   generation-queue-storage.ts    Generation queue 的浏览器持久化边界与跨 surface 通知
   project-current-version.ts      Project Overview 的 Current Version CAS、确认、重试与并发保护
   project-overview-directions.tsx Project Candidate 列表、试听、明确提交与可用性状态
+  project-workspace-memory.ts     Song Plan / Lyrics Draft / Open Version 的 revisioned 保存确认、冲突与原幂等键重试
+  use-project-workspace-projection.ts
+                                  browser-private Project Workspace projection 的读取、上下文核对与重试
+  project-overview-song-plan.tsx  Project Overview 的真实/Preview Song Plan 呈现与不可用状态
+  project-overview-song-plan-preview.ts
+                                  preview Song Plan 到 browser projection 的显式 fixture 适配
   *-page.tsx / *-workspace.tsx    页面级组合和 API 状态编排
 src/lib/mori-api.ts              Mori wire type、Library/Creative Source projection、请求 builder 与同源 client seam
-contract/openapi/                本仓 Studio / release 等机器契约事实源
+contract/openapi/                本仓 Studio / release / Project Workspace 等机器契约事实源
 test/                             跨组件与契约测试（若新增独立测试目录则按 unit/contract 归类）
 ```
 

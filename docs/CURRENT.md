@@ -39,6 +39,10 @@
 - Project Overview 的非 Current Candidate 提供明确 `Set as current`：它复用 Project-scoped、带幂等键与
   `expected_current_version_ref` 的 CAS command，等待 owner 精确确认后才更新 Current、`Open Studio` 与
   `Continue making`；瞬时失败允许重试，冲突引导刷新 Project，过程中不抢占 Global Player。
+- P0.1 Durable Project Memory 已落地浏览器 foundation：Project Workspace 以同源、完整 projection 恢复
+  Current Song Plan、用户 Open Version、该 Version 的 Lyrics Draft、最新 Mix 摘要与活动任务；Song Plan、Lyrics
+  Draft、Open Version 的写入分别携带 revision 与 `Idempotency-Key`，只在完整返回投影精确确认下一 revision 后
+  才可显示保存成功。Project Overview 已读取真实 Song Plan；本地 fixture 则明确标为 `Preview plan`，不冒充持久化结果。
 - Generation 生命周期已补齐 Create、snapshot、SSE replay、cancel 与 Project Candidate list 的本仓 OpenAPI；Candidate
   list 使用 opaque cursor/limit/generation filter，页面投影统一消费全部分页并按 `candidate_ref` 去重。Generation queue
   以显式字段白名单保存多任务摘要、状态、进度、候选引用和 event cursor，不保存 prompt、lyrics、provider payload 或音频字节；
@@ -80,5 +84,8 @@ pnpm build                        passed
 
 - 当前页面仍保留 preview fallback；真实 provider 适配、持久化 Project/Version/Source 和公开 Product API
   由后续 owner contract 驱动，不在组件内伪造。Library 的浏览器契约已先固定投影形状，供后续同源 owner 接入。
+- Durable Project Memory 仍处于 browser foundation：Studio Lyrics editor 尚未接入 owner-confirmed Draft save，
+  Create Smart Song Plan 也尚未通过 Workspace command 落入 owner；因此当前不把本地歌词或 preview Workspace
+  计为跨刷新、跨设备的 Runtime 恢复证据。
 - `mori-workspace.module.css` 与部分历史组件仍有较大的聚合文件，后续按 shell、Studio surface、responsive responsibility 拆分，避免一次性重写导致视觉回归。
 - 新能力必须先补 component / request-builder / contract test，再接入真实同源 API；不要把 `reference`、`voice` 或 `provider` 私有字段扩散到 UI。

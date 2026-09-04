@@ -434,6 +434,83 @@ export type MoriSongPlan = SongPlanCreateInput & {
   created_at: string
 }
 
+export type CurrentSongPlanInput = SongPlanCreateInput & {
+  expected_revision: number | null
+}
+
+export type MoriCurrentSongPlanRevision = Omit<CurrentSongPlanInput, "expected_revision"> & {
+  song_plan_ref: MoriRef
+  project_ref: MoriRef
+  revision: number
+  created_at: string
+}
+
+export type LyricsDraftInput = {
+  text: string
+  expected_revision: number | null
+}
+
+export type MoriLyricsDraftRevision = Omit<LyricsDraftInput, "expected_revision"> & {
+  lyrics_draft_ref: MoriRef
+  project_ref: MoriRef
+  version_ref: MoriRef
+  revision: number
+  source_digest: string
+  updated_at: string
+}
+
+export type ProjectWorkspaceOpenVersionInput = {
+  version_ref: MoriRef
+  expected_revision: number | null
+}
+
+export type MoriProjectWorkspaceOpenVersion = {
+  project_ref: MoriRef
+  version_ref: MoriRef
+  revision: number
+  updated_at: string
+}
+
+export type MoriProjectWorkspaceMixRevision = {
+  mix_revision_ref: MoriRef
+  version_ref: MoriRef
+  revision: number
+  name: string
+  track_count: number
+  created_at: string
+}
+
+export const projectWorkspaceActiveTaskKinds = [
+  "generation",
+  "lyrics_revision",
+  "stem_separation",
+  "artwork_generation",
+  "export",
+] as const
+
+export type ProjectWorkspaceActiveTaskKind = typeof projectWorkspaceActiveTaskKinds[number]
+
+export type MoriProjectWorkspaceActiveTask = {
+  task_ref: MoriRef
+  kind: ProjectWorkspaceActiveTaskKind
+  project_ref: MoriRef
+  version_ref: MoriRef | null
+  status: "queued" | "running"
+  progress: number
+  updated_at: string
+}
+
+export type MoriProjectWorkspaceProjection = {
+  project: MoriProject
+  current_song_plan: MoriCurrentSongPlanRevision | null
+  open_version: MoriProjectWorkspaceOpenVersion | null
+  latest_lyrics_draft: MoriLyricsDraftRevision | null
+  latest_mix_revision: MoriProjectWorkspaceMixRevision | null
+  active_tasks: MoriProjectWorkspaceActiveTask[]
+  revision_cursor: string
+  observed_at: string
+}
+
 export type MoriProjectListOptions = {
   cursor?: string | null
   limit?: number
@@ -638,8 +715,12 @@ export type MoriApi = {
   listProjects: (options?: MoriProjectListOptions) => Promise<ApiSuccess<MoriProjectPage>>
   createProject: (input: MoriProjectCreateInput, idempotencyKey: string) => Promise<ApiSuccess<MoriProject>>
   getProject: (projectRef: MoriRef) => Promise<ApiSuccess<MoriProject>>
+  getProjectWorkspace: (projectRef: MoriRef) => Promise<ApiSuccess<MoriProjectWorkspaceProjection>>
   putCurrentVersion: (projectRef: MoriRef, input: CurrentVersionInput, idempotencyKey: string) => Promise<ApiSuccess<MoriCurrentVersionSelection>>
   createSongPlan: (projectRef: MoriRef, input: SongPlanCreateInput, idempotencyKey: string) => Promise<ApiSuccess<MoriSongPlan>>
+  putCurrentSongPlan: (projectRef: MoriRef, input: CurrentSongPlanInput, idempotencyKey: string) => Promise<ApiSuccess<MoriProjectWorkspaceProjection>>
+  putLyricsDraft: (versionRef: MoriRef, input: LyricsDraftInput, idempotencyKey: string) => Promise<ApiSuccess<MoriProjectWorkspaceProjection>>
+  putProjectWorkspaceOpenVersion: (projectRef: MoriRef, input: ProjectWorkspaceOpenVersionInput, idempotencyKey: string) => Promise<ApiSuccess<MoriProjectWorkspaceProjection>>
   createGeneration: (projectRef: MoriRef, input: GenerationCreateInput, idempotencyKey: string) => Promise<ApiSuccess<GenerationReceipt>>
   createStudioChange: (versionRef: MoriRef, input: StudioChangeGenerationInput, idempotencyKey: string) => Promise<ApiSuccess<GenerationReceipt>>
   createLyricsRevision: (versionRef: MoriRef, input: LyricsRevisionInput, idempotencyKey: string) => Promise<ApiSuccess<LyricsRevisionReceipt>>

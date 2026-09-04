@@ -1,5 +1,5 @@
 import type { GenerationStatus } from "./domain"
-import { createGenerationRequest, type ArtworkGenerationInput, type CurrentVersionInput, type GenerationCreateInput, type GenerationReceipt, type LyricsRevisionInput, type MixRevisionInput, type MoriApi, type MoriExportInput, type MoriGenerationDraft, type MoriProjectCreateInput, type MoriReleaseDraft, type ReleaseDraftInput, type SongPlanCreateInput, type StemSeparationInput, type StudioChangeGenerationInput } from "@/lib/mori-api"
+import { createGenerationRequest, type ArtworkGenerationInput, type CurrentSongPlanInput, type CurrentVersionInput, type GenerationCreateInput, type GenerationReceipt, type LyricsDraftInput, type LyricsRevisionInput, type MixRevisionInput, type MoriApi, type MoriExportInput, type MoriGenerationDraft, type MoriProjectCreateInput, type MoriProjectWorkspaceOpenVersion, type MoriProjectWorkspaceProjection, type MoriReleaseDraft, type ProjectWorkspaceOpenVersionInput, type ReleaseDraftInput, type SongPlanCreateInput, type StemSeparationInput, type StudioChangeGenerationInput } from "@/lib/mori-api"
 import type { MoriRef } from "./domain"
 
 export type GenerationControllerState = {
@@ -51,6 +51,9 @@ function receiptState(receipt: GenerationReceipt, requestId: string): Generation
 const previewExports = new Map<MoriRef, { versionRef: MoriRef; input: MoriExportInput }>()
 const previewArtworkGenerations = new Map<MoriRef, { versionRef: MoriRef; input: ArtworkGenerationInput }>()
 const previewReleaseDrafts = new Map<MoriRef, MoriReleaseDraft>()
+const previewCurrentSongPlans = new Map<MoriRef, MoriProjectWorkspaceProjection["current_song_plan"]>()
+const previewLyricsDrafts = new Map<MoriRef, MoriProjectWorkspaceProjection["latest_lyrics_draft"]>()
+const previewOpenVersions = new Map<MoriRef, MoriProjectWorkspaceOpenVersion>()
 
 export const previewMoriApi: MoriApi = {
   async listProjects() {
@@ -94,6 +97,12 @@ export const previewMoriApi: MoriApi = {
       },
     }
   },
+  async getProjectWorkspace(projectRef: MoriRef) {
+    return {
+      data: previewProjectWorkspace(projectRef),
+      meta: { request_id: `preview-project-workspace-request-${projectRef}` },
+    }
+  },
   async putCurrentVersion(projectRef: MoriRef, input: CurrentVersionInput, idempotencyKey: string) {
     return {
       data: {
@@ -120,6 +129,42 @@ export const previewMoriApi: MoriApi = {
         request_id: `preview-song-plan-request-${idempotencyKey}`,
       },
     }
+  },
+  async putCurrentSongPlan(projectRef: MoriRef, input: CurrentSongPlanInput, idempotencyKey: string) {
+    const previous = previewCurrentSongPlans.get(projectRef)
+    previewCurrentSongPlans.set(projectRef, {
+      song_plan_ref: previous?.song_plan_ref ?? `song_plan_preview_${projectRef}`,
+      project_ref: projectRef,
+      revision: (previous?.revision ?? 0) + 1,
+      prompt: input.prompt,
+      mood: input.mood,
+      tempo_bpm: input.tempo_bpm,
+      structure: input.structure,
+      instruments: input.instruments,
+      vocal_direction: input.vocal_direction,
+      lyrics_intent: input.lyrics_intent,
+      created_at: "2026-09-04T18:10:00.000Z",
+    })
+    return { data: previewProjectWorkspace(projectRef), meta: { request_id: `preview-song-plan-save-request-${idempotencyKey}` } }
+  },
+  async putLyricsDraft(versionRef: MoriRef, input: LyricsDraftInput, idempotencyKey: string) {
+    const projectRef = "project_preview_first_light"
+    const previous = previewLyricsDrafts.get(versionRef)
+    previewLyricsDrafts.set(versionRef, {
+      lyrics_draft_ref: previous?.lyrics_draft_ref ?? `lyrics_draft_preview_${versionRef}`,
+      project_ref: projectRef,
+      version_ref: versionRef,
+      revision: (previous?.revision ?? 0) + 1,
+      text: input.text,
+      source_digest: `preview-lyrics-digest-${(previous?.revision ?? 0) + 1}`,
+      updated_at: "2026-09-04T18:11:00.000Z",
+    })
+    previewOpenVersions.set(projectRef, previewOpenVersion(projectRef, versionRef))
+    return { data: previewProjectWorkspace(projectRef), meta: { request_id: `preview-lyrics-draft-save-request-${idempotencyKey}` } }
+  },
+  async putProjectWorkspaceOpenVersion(projectRef: MoriRef, input: ProjectWorkspaceOpenVersionInput, idempotencyKey: string) {
+    previewOpenVersions.set(projectRef, previewOpenVersion(projectRef, input.version_ref))
+    return { data: previewProjectWorkspace(projectRef), meta: { request_id: `preview-open-version-save-request-${idempotencyKey}` } }
   },
   async createGeneration(_projectRef: MoriRef, _input: GenerationCreateInput, idempotencyKey: string) {
     return {
@@ -464,4 +509,71 @@ export const previewMoriApi: MoriApi = {
       },
     }
   },
+}
+
+function previewProjectWorkspace(projectRef: MoriRef): MoriProjectWorkspaceProjection {
+  const knownProject = projectRef === "project_preview_first_light"
+  const openVersion = previewOpenVersions.get(projectRef) ?? (knownProject ? previewOpenVersion(projectRef, "version_preview_first_light_a") : null)
+  const currentSongPlan = previewCurrentSongPlans.get(projectRef) ?? (knownProject
+    ? {
+        song_plan_ref: "song_plan_preview_first_light",
+        project_ref: projectRef,
+        revision: 1,
+        prompt: "A warm, late-night track for the drive home, slowly opening into sunrise.",
+        mood: "Warm · hopeful",
+        tempo_bpm: 102,
+        structure: ["Intro", "Verse", "Lift", "Chorus", "Outro"],
+        instruments: ["Soft synth", "Muted guitar", "Brush drums"],
+        vocal_direction: "Intimate lead vocal with a gentle lift in the chorus",
+        lyrics_intent: "Small moments becoming a reason to keep going",
+        created_at: "2026-09-04T18:00:00.000Z",
+      }
+    : null)
+  const latestLyricsDraft = openVersion === null ? null : previewLyricsDrafts.get(openVersion.version_ref) ?? (knownProject && openVersion.version_ref === "version_preview_first_light_a"
+    ? {
+        lyrics_draft_ref: "lyrics_draft_preview_first_light_a",
+        project_ref: projectRef,
+        version_ref: openVersion.version_ref,
+        revision: 1,
+        text: "Meet me where the streetlights fade\nWe can carry daylight home",
+        source_digest: "preview-lyrics-digest-first-light-a-1",
+        updated_at: "2026-09-04T18:01:00.000Z",
+      }
+    : null)
+  return {
+    project: {
+      project_ref: projectRef,
+      title: knownProject ? "First Light" : "Project",
+      description: knownProject ? "A bright, patient song about finding your way home." : "Project workspace preview.",
+      current_version_ref: knownProject ? "version_preview_first_light_a" : null,
+      candidate_count: knownProject ? 2 : 0,
+      last_activity_at: "2026-09-04T18:12:00.000Z",
+    },
+    current_song_plan: currentSongPlan,
+    open_version: openVersion,
+    latest_lyrics_draft: latestLyricsDraft,
+    latest_mix_revision: openVersion?.version_ref === "version_preview_first_light_a"
+      ? {
+          mix_revision_ref: "mix_revision_preview_first_light_a",
+          version_ref: openVersion.version_ref,
+          revision: 1,
+          name: "First Light · base mix",
+          track_count: 5,
+          created_at: "2026-09-04T18:02:00.000Z",
+        }
+      : null,
+    active_tasks: [],
+    revision_cursor: `preview-workspace-${projectRef}-${openVersion?.revision ?? 0}-${currentSongPlan?.revision ?? 0}`,
+    observed_at: "2026-09-04T18:12:00.000Z",
+  }
+}
+
+function previewOpenVersion(projectRef: MoriRef, versionRef: MoriRef): MoriProjectWorkspaceOpenVersion {
+  const previous = previewOpenVersions.get(projectRef)
+  return {
+    project_ref: projectRef,
+    version_ref: versionRef,
+    revision: (previous?.revision ?? 0) + 1,
+    updated_at: "2026-09-04T18:12:00.000Z",
+  }
 }

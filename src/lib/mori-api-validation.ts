@@ -21,7 +21,9 @@ import type {
   GenerationCancelReceipt,
   GenerationReceipt,
   GenerationSnapshot,
+  MoriCurrentSongPlanRevision,
   LyricsRevisionCancelReceipt,
+  MoriLyricsDraftRevision,
   LyricsRevisionConstraint,
   LyricsRevisionDirection,
   LyricsRevisionReceipt,
@@ -45,6 +47,10 @@ import type {
   MoriMixRevision,
   MoriMixTrack,
   MoriProject,
+  MoriProjectWorkspaceActiveTask,
+  MoriProjectWorkspaceMixRevision,
+  MoriProjectWorkspaceOpenVersion,
+  MoriProjectWorkspaceProjection,
   MoriProjectPage,
   MoriReleaseDraft,
   MoriSongPlan,
@@ -341,6 +347,136 @@ export function parseMoriSongPlan(value: unknown): MoriSongPlan | null {
     vocal_direction: value.vocal_direction,
     lyrics_intent: value.lyrics_intent,
     created_at: value.created_at,
+  }
+}
+
+export function parseMoriCurrentSongPlanRevision(value: unknown): MoriCurrentSongPlanRevision | null {
+  if (
+    !isRecord(value)
+    || !nonEmptyString(value.song_plan_ref)
+    || !nonEmptyString(value.project_ref)
+    || !integer(value.revision, 1)
+    || !nonEmptyString(value.prompt)
+    || !nonEmptyString(value.mood)
+    || !integer(value.tempo_bpm, 40, 240)
+    || !stringArray(value.structure)
+    || value.structure.length === 0
+    || !stringArray(value.instruments)
+    || !nonEmptyString(value.vocal_direction)
+    || !nonEmptyString(value.lyrics_intent)
+    || !dateString(value.created_at)
+  ) return null
+  return {
+    song_plan_ref: value.song_plan_ref,
+    project_ref: value.project_ref,
+    revision: value.revision,
+    prompt: value.prompt,
+    mood: value.mood,
+    tempo_bpm: value.tempo_bpm,
+    structure: value.structure,
+    instruments: value.instruments,
+    vocal_direction: value.vocal_direction,
+    lyrics_intent: value.lyrics_intent,
+    created_at: value.created_at,
+  }
+}
+
+export function parseMoriLyricsDraftRevision(value: unknown): MoriLyricsDraftRevision | null {
+  if (
+    !isRecord(value)
+    || !nonEmptyString(value.lyrics_draft_ref)
+    || !nonEmptyString(value.project_ref)
+    || !nonEmptyString(value.version_ref)
+    || !integer(value.revision, 1)
+    || typeof value.text !== "string"
+    || value.text.length > 20_000
+    || !nonEmptyString(value.source_digest)
+    || !dateString(value.updated_at)
+  ) return null
+  return {
+    lyrics_draft_ref: value.lyrics_draft_ref,
+    project_ref: value.project_ref,
+    version_ref: value.version_ref,
+    revision: value.revision,
+    text: value.text,
+    source_digest: value.source_digest,
+    updated_at: value.updated_at,
+  }
+}
+
+export function parseMoriProjectWorkspaceOpenVersion(value: unknown): MoriProjectWorkspaceOpenVersion | null {
+  if (!isRecord(value) || !nonEmptyString(value.project_ref) || !nonEmptyString(value.version_ref) || !integer(value.revision, 1) || !dateString(value.updated_at)) return null
+  return {
+    project_ref: value.project_ref,
+    version_ref: value.version_ref,
+    revision: value.revision,
+    updated_at: value.updated_at,
+  }
+}
+
+export function parseMoriProjectWorkspaceMixRevision(value: unknown): MoriProjectWorkspaceMixRevision | null {
+  if (!isRecord(value) || !nonEmptyString(value.mix_revision_ref) || !nonEmptyString(value.version_ref) || !integer(value.revision, 1) || !nonEmptyString(value.name) || value.name.length > 120 || !integer(value.track_count, 1, 12) || !dateString(value.created_at)) return null
+  return {
+    mix_revision_ref: value.mix_revision_ref,
+    version_ref: value.version_ref,
+    revision: value.revision,
+    name: value.name,
+    track_count: value.track_count,
+    created_at: value.created_at,
+  }
+}
+
+function projectWorkspaceActiveTaskKind(value: unknown): MoriProjectWorkspaceActiveTask["kind"] | null {
+  if (value === "generation" || value === "lyrics_revision" || value === "stem_separation" || value === "artwork_generation" || value === "export") return value
+  return null
+}
+
+export function parseMoriProjectWorkspaceActiveTask(value: unknown): MoriProjectWorkspaceActiveTask | null {
+  if (!isRecord(value) || !nonEmptyString(value.task_ref) || !nonEmptyString(value.project_ref) || !nullableString(value.version_ref) || (value.status !== "queued" && value.status !== "running") || !integer(value.progress, 0, 100) || !dateString(value.updated_at)) return null
+  const kind = projectWorkspaceActiveTaskKind(value.kind)
+  if (kind === null) return null
+  return {
+    task_ref: value.task_ref,
+    kind,
+    project_ref: value.project_ref,
+    version_ref: value.version_ref,
+    status: value.status,
+    progress: value.progress,
+    updated_at: value.updated_at,
+  }
+}
+
+export function parseMoriProjectWorkspaceProjection(value: unknown): MoriProjectWorkspaceProjection | null {
+  if (!isRecord(value) || !Array.isArray(value.active_tasks) || !nonEmptyString(value.revision_cursor) || !dateString(value.observed_at)) return null
+  const project = parseMoriProject(value.project)
+  const currentSongPlan = value.current_song_plan === null ? null : parseMoriCurrentSongPlanRevision(value.current_song_plan)
+  const openVersion = value.open_version === null ? null : parseMoriProjectWorkspaceOpenVersion(value.open_version)
+  const latestLyricsDraft = value.latest_lyrics_draft === null ? null : parseMoriLyricsDraftRevision(value.latest_lyrics_draft)
+  const latestMixRevision = value.latest_mix_revision === null ? null : parseMoriProjectWorkspaceMixRevision(value.latest_mix_revision)
+  const activeTasks = value.active_tasks.map(parseMoriProjectWorkspaceActiveTask)
+  if (
+    project === null
+    || currentSongPlan === null && value.current_song_plan !== null
+    || openVersion === null && value.open_version !== null
+    || latestLyricsDraft === null && value.latest_lyrics_draft !== null
+    || latestMixRevision === null && value.latest_mix_revision !== null
+    || !activeTasks.every(present)
+    || new Set(activeTasks.map((task) => task.task_ref)).size !== activeTasks.length
+  ) return null
+  if (currentSongPlan?.project_ref !== undefined && currentSongPlan.project_ref !== project.project_ref) return null
+  if (openVersion?.project_ref !== undefined && openVersion.project_ref !== project.project_ref) return null
+  if (latestLyricsDraft !== null && (openVersion === null || latestLyricsDraft.project_ref !== project.project_ref || latestLyricsDraft.version_ref !== openVersion.version_ref)) return null
+  if (latestMixRevision !== null && (openVersion === null || latestMixRevision.version_ref !== openVersion.version_ref)) return null
+  if (activeTasks.some((task) => task.project_ref !== project.project_ref)) return null
+  return {
+    project,
+    current_song_plan: currentSongPlan,
+    open_version: openVersion,
+    latest_lyrics_draft: latestLyricsDraft,
+    latest_mix_revision: latestMixRevision,
+    active_tasks: activeTasks,
+    revision_cursor: value.revision_cursor,
+    observed_at: value.observed_at,
   }
 }
 

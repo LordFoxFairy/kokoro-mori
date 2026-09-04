@@ -38,6 +38,7 @@ import {
   parseMoriCreativeSource,
   parseMoriCreativeSourcePage,
   parseMoriCurrentVersionSelection,
+  parseMoriProjectWorkspaceProjection,
   parseMoriExportReceipt,
   parseMoriExportSnapshot,
   parseMoriLibraryPage,
@@ -110,6 +111,11 @@ export function createMoriApiClient(options: MoriApiClientOptions = {}): MoriApi
       const payload = await readJson(response)
       return parseSuccessResponse(response, payload, parseMoriProject)
     },
+    async getProjectWorkspace(projectRef: MoriRef) {
+      const response = await fetchImpl(`${apiBasePath}/projects/${encodeURIComponent(projectRef)}/workspace`)
+      const payload = await readJson(response)
+      return parseSuccessResponse(response, payload, parseMoriProjectWorkspaceProjection)
+    },
     async putCurrentVersion(projectRef: MoriRef, input: CurrentVersionInput, idempotencyKey: string) {
       const response = await fetchImpl(`${apiBasePath}/projects/${encodeURIComponent(projectRef)}/current_version`, {
         method: "PUT",
@@ -130,6 +136,33 @@ export function createMoriApiClient(options: MoriApiClientOptions = {}): MoriApi
       )
       const payload = await readJson(response)
       return parseSuccessResponse(response, payload, parseMoriSongPlan)
+    },
+    async putCurrentSongPlan(projectRef, input, idempotencyKey) {
+      const response = await fetchImpl(`${apiBasePath}/projects/${encodeURIComponent(projectRef)}/song_plan`, {
+        method: "PUT",
+        headers: createMutationHeaders(idempotencyKey),
+        body: JSON.stringify(input),
+      })
+      const payload = await readJson(response)
+      return parseSuccessResponse(response, payload, parseMoriProjectWorkspaceProjection)
+    },
+    async putLyricsDraft(versionRef, input, idempotencyKey) {
+      const response = await fetchImpl(`${apiBasePath}/versions/${encodeURIComponent(versionRef)}/lyrics_draft`, {
+        method: "PUT",
+        headers: createMutationHeaders(idempotencyKey),
+        body: JSON.stringify(input),
+      })
+      const payload = await readJson(response)
+      return parseSuccessResponse(response, payload, parseMoriProjectWorkspaceProjection)
+    },
+    async putProjectWorkspaceOpenVersion(projectRef, input, idempotencyKey) {
+      const response = await fetchImpl(`${apiBasePath}/projects/${encodeURIComponent(projectRef)}/workspace/open_version`, {
+        method: "PUT",
+        headers: createMutationHeaders(idempotencyKey),
+        body: JSON.stringify(input),
+      })
+      const payload = await readJson(response)
+      return parseSuccessResponse(response, payload, parseMoriProjectWorkspaceProjection)
     },
     async createGeneration(projectRef: MoriRef, input: GenerationCreateInput, idempotencyKey: string) {
       const response = await fetchImpl(

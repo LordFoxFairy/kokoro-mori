@@ -17,6 +17,10 @@ Idea / Reference
   -> Mix / Export / Release draft / Publish
 ```
 
+> 交付优先级以 [`SUNO_PARITY.md`](./SUNO_PARITY.md) 为准：先完成 Suno 核心闭环的 P0.1 Durable Project
+> Memory、P0.2 Creative Source Ingest、P0.3 Finish / Share / Publish；本文件第 5 节的 P0–P3 是能力分层与
+> 既有浏览器实现分层，不改变当前推进顺序。
+
 - **Suno 值得吸收的部分**：Create 与 Studio 连续、时间线范围成为 AI 上下文、生成结果进入
   Take Lanes、版本自动保留、分轨与导出都围绕当前作品发生。参考
   [Suno Studio](https://help.suno.com/en/articles/7940161)、
@@ -404,6 +408,37 @@ owner 原子验证 Project/Candidate/Version 关系与 expected Current；旧值
 关系不成立返回 `422`。消费者只在响应与完整命令上下文一致时更新 Current；网络不确定时使用同一幂等键重放，
 不生成第二次选择。机器事实源见
 [`contract/openapi/mori-current-version.v1.json`](../contract/openapi/mori-current-version.v1.json)。
+
+### Project Workspace Memory API
+
+Project 的 Current Version、用户的 Open Version、Song Plan 与 Lyrics Draft 不能靠浏览器内存或 localStorage
+拼成“看似保存”的状态。P0.1 使用一个 BFF-composed、browser-private projection 让 Studio 与 Project Overview
+从同一份已确认的工作区恢复：
+
+```http
+GET /api/v1/mori/projects/{project_ref}/workspace
+PUT /api/v1/mori/projects/{project_ref}/song_plan
+PUT /api/v1/mori/versions/{version_ref}/lyrics_draft
+PUT /api/v1/mori/projects/{project_ref}/workspace/open_version
+Idempotency-Key: <opaque command identity>   # 每个 PUT
+```
+
+```text
+ProjectWorkspaceProjection
+  project.current_version_ref       Project 共享事实；不因打开 Studio 而改变
+  current_song_plan                 当前不可变 Song Plan revision 或 null
+  open_version                      当前用户的 Project 内 Open Version 偏好或 null
+  latest_lyrics_draft               仅属于 open_version 的不可变 Draft revision 或 null
+  latest_mix_revision               仅摘要，不携带音轨资产
+  active_tasks[]                    generation / lyrics_revision / stem_separation / artwork_generation / export
+  revision_cursor + observed_at     恢复时使用的 opaque 观察位置
+```
+
+Song Plan、Lyrics Draft 与 Open Version 各自带自己的 `expected_revision`，成功后均返回完整的 reconciled
+`ProjectWorkspaceProjection`。浏览器精确核对 Project / Version、输入内容与下一 revision 后才显示 `Saved`；临时
+网络失败保留原 command 和原 `Idempotency-Key` 重试，`409` 则保留用户文字并要求刷新/rebase。显式 Studio URL
+优先于保存的 Open Version；Open、Playing、Selected 与 Current 永远不合并。机器事实源见
+[`contract/openapi/mori-project-workspace.v1.json`](../contract/openapi/mori-project-workspace.v1.json)。
 
 ### Lyrics Revision API
 

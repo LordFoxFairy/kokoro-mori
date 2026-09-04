@@ -75,6 +75,9 @@ describe("Mori project overview", () => {
       "/projects/project_preview_first_light/studio/version_preview_first_light_a?surface=finish",
     )
     expect(screen.getAllByText("Warm · hopeful")).toHaveLength(1)
+    const songPlan = screen.getByRole("region", { name: "Song plan" })
+    expect(within(songPlan).getByText("Preview plan")).toBeInTheDocument()
+    expect(within(songPlan).queryByText("Revision 1 · saved")).not.toBeInTheDocument()
   })
 
   it("shows the global player availability when a preview candidate is selected", () => {
