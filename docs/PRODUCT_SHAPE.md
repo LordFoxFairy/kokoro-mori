@@ -85,7 +85,8 @@ Workspace nav    内容随项目上下文变化                     跨页面保
 ```
 
 - Rail 是应用骨架，不是悬浮卡片；展开/收起不改变内容的语义位置。
-- Create 的第一主操作只有一个：Smart 先 Review plan、Custom 直接 Generate；Queue 是当前任务的上下文入口。
+- Create 的第一主操作只有一个：Smart 先 Review plan、Custom 直接 Generate；Smart 复核时用 Song Plan 替换原始输入面，
+  `Back to idea` 再恢复草稿，不让输入、复核和重复说明同时堆叠；Queue 是当前任务的上下文入口。
 - Studio 的工具和版本历史属于项目，不提升到全局 Rail。
 - Studio 只保留全局 Player 这一套 Transport，不在画布标题旁复制 Preview；左侧用可读的 Current / Open take
   状态代替内部 Version ref，并将承载 Add Vocals 的工作区明确命名为 Voice & stems。

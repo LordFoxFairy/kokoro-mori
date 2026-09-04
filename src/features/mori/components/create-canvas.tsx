@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent, type KeyboardEvent } from "react"
-import { AudioLines, Check, Disc3, Mic2, SlidersHorizontal, Sparkles, WandSparkles } from "lucide-react"
+import { AudioLines, Check, Disc3, Mic2, SlidersHorizontal, Sparkles } from "lucide-react"
 import type { CreationMode, LyricsMode, SongPlan } from "../domain"
 import { t } from "../copy"
 import {
@@ -53,6 +53,7 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
     : null
   const smartTabRef = useRef<HTMLButtonElement>(null)
   const customTabRef = useRef<HTMLButtonElement>(null)
+  const promptRef = useRef<HTMLTextAreaElement>(null)
   const referenceInputRef = useRef<HTMLInputElement>(null)
   const planPreviewRef = useRef<HTMLElement>(null)
   const [prompt, setPrompt] = useState(() => initialPrompt?.trim() || DEFAULT_PROMPT)
@@ -101,6 +102,11 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
     if (planPreview === null) return
     setPlanBackup(planPreview)
     setPlanEditing(true)
+  }
+
+  function returnToIdea() {
+    clearPlanPreview()
+    window.requestAnimationFrame(() => promptRef.current?.focus())
   }
 
   function discardPlanEdits() {
@@ -228,63 +234,71 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
       </div>
 
       <form className={styles.composerCard} id="mori-create-panel" role="tabpanel" aria-labelledby={mode === "smart" ? "mori-mode-smart" : "mori-mode-custom"} onSubmit={submit}>
-        <textarea
-          className={styles.promptArea}
-          value={prompt}
-          onChange={(event) => { setPrompt(event.target.value); clearPlanPreview() }}
-          placeholder={t("promptPlaceholder")}
-          aria-label="Song idea"
-          maxLength={1000}
-        />
+        {planPreview === null ? <>
+          <textarea
+            ref={promptRef}
+            className={styles.promptArea}
+            value={prompt}
+            onChange={(event) => { setPrompt(event.target.value); clearPlanPreview() }}
+            placeholder={t("promptPlaceholder")}
+            aria-label="Song idea"
+            maxLength={1000}
+          />
 
-        <CreativeSourceDock
-          key={lyricsMode}
-          referenceSource={referenceSource}
-          referenceError={referenceError}
-          voiceRef={voiceProfileRef}
-          voiceEnabled={lyricsMode === "lyrics"}
-          inspirationRef={inspirationRef}
-          onChooseReference={addReference}
-          onRemoveReference={removeReference}
-          onVoiceChange={(nextVoiceRef) => { setVoiceProfileRef(nextVoiceRef); clearPlanPreview() }}
-          onInspirationChange={chooseInspiration}
-        />
+          <CreativeSourceDock
+            key={lyricsMode}
+            referenceSource={referenceSource}
+            referenceError={referenceError}
+            voiceRef={voiceProfileRef}
+            voiceEnabled={lyricsMode === "lyrics"}
+            inspirationRef={inspirationRef}
+            onChooseReference={addReference}
+            onRemoveReference={removeReference}
+            onVoiceChange={(nextVoiceRef) => { setVoiceProfileRef(nextVoiceRef); clearPlanPreview() }}
+            onInspirationChange={chooseInspiration}
+          />
 
-        {mode === "custom" ? (
-          <div className={styles.customFields}>
-            <div className={styles.fieldRow}>
-              <div className={styles.field}>
-                <label htmlFor="mori-style">Style</label>
-                <input className={styles.textInput} id="mori-style" value={style} onChange={(event) => { setStyle(event.target.value); setInspirationRef(null); clearPlanPreview() }} />
+          {mode === "custom" ? (
+            <div className={styles.customFields}>
+              <div className={styles.fieldRow}>
+                <div className={styles.field}>
+                  <label htmlFor="mori-style">Style</label>
+                  <input className={styles.textInput} id="mori-style" value={style} onChange={(event) => { setStyle(event.target.value); setInspirationRef(null); clearPlanPreview() }} />
+                </div>
+                <div className={styles.field}>
+                  <label htmlFor="mori-duration">Duration</label>
+                  <select className={styles.selectInput} id="mori-duration" value={durationSeconds} onChange={(event) => { setDurationOverride(Number(event.target.value)); clearPlanPreview() }}>
+                    <option value={120}>2:00</option>
+                    <option value={180}>3:00</option>
+                    <option value={240}>4:00</option>
+                    <option value={300}>5:00</option>
+                  </select>
+                </div>
               </div>
-              <div className={styles.field}>
-                <label htmlFor="mori-duration">Duration</label>
-                <select className={styles.selectInput} id="mori-duration" value={durationSeconds} onChange={(event) => { setDurationOverride(Number(event.target.value)); clearPlanPreview() }}>
-                  <option value={120}>2:00</option>
-                  <option value={180}>3:00</option>
-                  <option value={240}>4:00</option>
-                  <option value={300}>5:00</option>
-                </select>
-              </div>
+              {lyricsMode === "lyrics" ? <div className={styles.fieldRow}>
+                <div className={`${styles.field} ${styles.fieldWide}`}>
+                  <label htmlFor="mori-lyrics">Lyrics</label>
+                  <textarea className={styles.lyricsInput} id="mori-lyrics" value={lyrics} onChange={(event) => { setLyrics(event.target.value); clearPlanPreview() }} placeholder="Add your words, or leave this empty for Mori to write them." />
+                </div>
+              </div> : null}
+              {lyricsMode === "lyrics" ? <div className={styles.fieldRow}>
+                <div className={`${styles.field} ${styles.fieldWide}`}>
+                  <label htmlFor="mori-voice">Vocal direction</label>
+                  <select className={styles.selectInput} id="mori-voice" value={voice} onChange={(event) => { setVoice(event.target.value); clearPlanPreview() }}>
+                    <option>Natural lead</option>
+                    <option>Airy alto</option>
+                    <option>Warm tenor</option>
+                  </select>
+                </div>
+              </div> : null}
             </div>
-            {lyricsMode === "lyrics" ? <div className={styles.fieldRow}>
-              <div className={`${styles.field} ${styles.fieldWide}`}>
-                <label htmlFor="mori-lyrics">Lyrics</label>
-                <textarea className={styles.lyricsInput} id="mori-lyrics" value={lyrics} onChange={(event) => { setLyrics(event.target.value); clearPlanPreview() }} placeholder="Add your words, or leave this empty for Mori to write them." />
-              </div>
-            </div> : null}
-            {lyricsMode === "lyrics" ? <div className={styles.fieldRow}>
-              <div className={`${styles.field} ${styles.fieldWide}`}>
-                <label htmlFor="mori-voice">Vocal direction</label>
-                <select className={styles.selectInput} id="mori-voice" value={voice} onChange={(event) => { setVoice(event.target.value); clearPlanPreview() }}>
-                  <option>Natural lead</option>
-                  <option>Airy alto</option>
-                  <option>Warm tenor</option>
-                </select>
-              </div>
-            </div> : null}
+          ) : null}
+
+          <div className={styles.composerBottom}>
+            <div className={styles.promptHint}><AudioLines /> <span>{mode === "smart" ? "Review an editable plan before creating." : "Your controls go straight to the generation queue."}</span></div>
+            <button className={styles.generateButton} type="submit"><Sparkles /> {mode === "smart" ? "Review plan" : t("generateLabel")}</button>
           </div>
-        ) : null}
+        </> : null}
 
         {planPreview !== null ? (
           <section ref={planPreviewRef} className={styles.songPlanPreview} role="region" aria-label="Song plan preview" tabIndex={-1}>
@@ -295,6 +309,7 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
               </div>
               <div className={styles.songPlanHeaderActions}>
                 <span className={styles.songPlanReady}><Check size={13} /> {planEditing ? "Editing" : "Ready to review"}</span>
+                <button className={styles.planEditButton} type="button" onClick={returnToIdea}>Back to idea</button>
                 <button className={styles.planEditButton} type="button" onClick={planEditing ? discardPlanEdits : openPlanEditor}>
                   {planEditing ? "Cancel edits" : "Edit plan"}
                 </button>
@@ -349,17 +364,7 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
             </footer>
           </section>
         ) : null}
-
-        <div className={styles.composerBottom}>
-          <div className={styles.promptHint}><AudioLines /> <span>{planPreview === null ? "We'll turn this into an editable song plan first." : "Your plan is ready for one last look."}</span></div>
-          {planPreview === null ? <button className={styles.generateButton} type="submit"><Sparkles /> {mode === "smart" ? "Review plan" : t("generateLabel")}</button> : <span className={styles.planReadyLabel}><Check size={14} /> Plan ready</span>}
-        </div>
       </form>
-
-      <div className={styles.planHint} role="note">
-        <WandSparkles size={16} />
-        <span><strong>Song Plan</strong> will map the mood, tempo, structure, and {lyricsMode === "instrumental" ? "arrangement direction" : "vocal direction"} before any version is made.</span>
-      </div>
 
       <input ref={referenceInputRef} className={styles.srOnly} type="file" accept="audio/*,.mp3,.wav,.m4a,.flac,.aac,.ogg" onChange={changeReference} aria-label="Reference audio file" />
     </section>

@@ -69,7 +69,9 @@ Song Plan 保持独立事实区，Project 状态不再重复展示 Mood。
 
 Create 首先把两个不同决策并列说清：**Approach** 决定 Smart（先复核 Song Plan）或 Custom（直接控制参数），
 **Output** 决定 Song with lyrics 或 Instrumental。Output 在两种 Approach 中都持续可见，不再藏在 Custom 下拉框或
-页面底部快捷按钮里。Instrumental 只显示 Audio、Inspiration、Style、Duration 与编曲语义；Voice profile、Lyrics、
+页面底部快捷按钮里。Smart 进入 Review 后，Idea 与 Creative sources 会让位给单一 Song Plan；`Back to idea`
+恢复原输入，`Edit plan` 只修改本次结构化计划。Custom 则明确说明参数会直接进入 Generation Queue，不再错误暗示
+仍会生成 Song Plan，也不在主卡下重复解释相同概念。Instrumental 只显示 Audio、Inspiration、Style、Duration 与编曲语义；Voice profile、Lyrics、
 Vocal direction 会从界面和 Generation request 同时移除。由 Library 带入 Voice 时则自动回到 vocal output，避免素材
 已经选中却被偏好设置静默忽略。
 

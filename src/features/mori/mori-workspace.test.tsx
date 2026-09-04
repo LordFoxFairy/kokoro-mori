@@ -279,6 +279,8 @@ describe("Mori workspace", () => {
     expect(screen.getByLabelText(/^lyrics$/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/vocal direction/i)).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Add audio reference" })).toBeInTheDocument()
+    expect(screen.getByText("Your controls go straight to the generation queue.")).toBeInTheDocument()
+    expect(screen.queryByText(/Song Plan will map the mood/u)).not.toBeInTheDocument()
   })
 
   it("keeps audio, voice, and inspiration as optional contextual sources", () => {
@@ -374,6 +376,16 @@ describe("Mori workspace", () => {
     expect(within(planPreview).getByText("A quiet piano song for the first train home.")).toBeInTheDocument()
     expect(createGeneration).not.toHaveBeenCalled()
     expect(screen.getByRole("button", { name: "Create from this plan" })).toBeInTheDocument()
+    expect(screen.queryByRole("textbox", { name: "Song idea" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("region", { name: "Creative sources" })).not.toBeInTheDocument()
+    expect(screen.queryByText(/Song Plan will map the mood/u)).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole("button", { name: "Back to idea" }))
+    expect(screen.getByRole("textbox", { name: "Song idea" })).toHaveValue("A quiet piano song for the first train home.")
+    await waitFor(() => expect(screen.getByRole("textbox", { name: "Song idea" })).toHaveFocus())
+    expect(screen.queryByRole("region", { name: "Song plan preview" })).not.toBeInTheDocument()
+
+    fireEvent.submit(screen.getByRole("textbox", { name: "Song idea" }).closest("form") as HTMLFormElement)
 
     fireEvent.click(screen.getByRole("button", { name: "Edit plan" }))
     fireEvent.change(screen.getByRole("textbox", { name: "Plan mood" }), { target: { value: "Quiet folk" } })
@@ -457,7 +469,7 @@ describe("Mori workspace", () => {
     expect(screen.queryByLabelText(/vocal direction/i)).not.toBeInTheDocument()
     expect(screen.getByLabelText("Style")).toBeInTheDocument()
     expect(screen.getByLabelText("Duration")).toBeInTheDocument()
-    expect(screen.getByRole("note")).toHaveTextContent("arrangement direction")
+    expect(screen.getByText("Your controls go straight to the generation queue.")).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole("button", { name: "Song with lyrics" }))
     expect(screen.getByRole("button", { name: "Change voice profile Mira" })).toBeInTheDocument()
