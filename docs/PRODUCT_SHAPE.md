@@ -99,6 +99,8 @@ Workspace nav    内容随项目上下文变化                     跨页面保
   状态代替内部 Version ref，并将承载 Add Vocals 的工作区明确命名为 Voice & stems。
 - Finish 与 Export 的来源选择同样只显示歌曲名、时长、保存的混音名称与轨道数；opaque ref 留在契约核对中，
   不再泄露到用户需要理解的界面。
+- Export 是可恢复的后台任务而不是一次性弹窗：窗口关闭后，顶栏入口持续显示 Exporting、Ready 或 Needs attention，
+  紧凑布局用同色状态图标表达相同信息；点击原入口即可回到进度、下载或重试。
 - Studio 在大于 1360px 时使用工具 / 画布 / Version history 三栏；在 1360px 及以下保留工具与画布，
   Version history 由标题栏动作打开右侧抽屉，不把主画布继续挤窄。
 - Player 使用独立的全宽 transport dock：左侧当前作品，中部 transport + progress，右侧

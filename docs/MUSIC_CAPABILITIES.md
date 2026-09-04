@@ -557,7 +557,8 @@ BFF 必须按受信会话校验该 asset 与用户可见 Mori 资源的关联，
 
 - 已完成浏览器侧第一刀：显式选择 Studio 当前打开的 Version / 最新 Mix Revision、Full song、MP3/WAV；异步 render snapshot
   回显完整 Project/Version/source/scope/format 上下文，创建不确定时复用幂等键，瞬时读取失败继续跟踪原任务，失败保留选择，
-  成功后下载。界面只呈现真实已发布能力，不放选区/多轨死入口。
+  成功后下载。关闭窗口后顶栏仍持续显示 Exporting / Ready / Needs attention，移动端以加载、成功、失败图标保留反馈；
+  界面只呈现真实已发布能力，不放选区/多轨死入口。
 - 已完成浏览器侧第二刀：Studio 顶部 Finish 提供 Version / 最新 Mix Revision 来源与 Subtle / Balanced / Bold
   Remaster strength；先 Review 再复用 typed `transform + intent: remaster` Generation，snapshot 严格回显来源与强度，
   结果固定为两个非破坏式 Takes。关闭窗口不丢运行态，也不自动替换 Current。

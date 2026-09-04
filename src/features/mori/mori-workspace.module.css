@@ -85,6 +85,36 @@
   animation: linkCopySpin 780ms linear infinite;
 }
 
+.exportButton[data-export-status="queued"],
+.exportButton[data-export-status="processing"] {
+  border-color: rgba(109, 92, 231, 0.26);
+  color: var(--mori-primary);
+  background: var(--mori-primary-soft);
+}
+
+.exportButton[data-export-status="succeeded"] {
+  border-color: rgba(61, 155, 114, 0.26);
+  color: var(--mori-success);
+  background: rgba(231, 246, 239, 0.82);
+}
+
+.exportButton[data-export-status="failed"] {
+  border-color: rgba(201, 85, 85, 0.24);
+  color: var(--mori-error);
+  background: rgba(255, 241, 239, 0.86);
+}
+
+.exportStatusIcon {
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+}
+
+.exportStatusIcon[data-export-icon="queued"] svg,
+.exportStatusIcon[data-export-icon="processing"] svg {
+  animation: linkCopySpin 780ms linear infinite;
+}
+
 @keyframes linkCopySpin {
   to { transform: rotate(360deg); }
 }
@@ -2780,7 +2810,6 @@
   color: var(--mori-foreground);
 }
 
-.exportActivity,
 .studioActionActivity {
   width: 6px;
   height: 6px;
@@ -5482,7 +5511,7 @@
   .navItem,
   .playerButton,
   .playerTool,
-  .exportActivity,
+  .exportStatusIcon svg,
   .linkCopyIcon svg {
     transition: none;
     animation: none;

@@ -54,6 +54,7 @@ import styles from "./mori-workspace.module.css"
 
 type StudioTool = "arrangement" | "lyrics" | "stems"
 type StudioLinkCopyStatus = "idle" | "copying" | "copied" | "failed"
+type StudioExportFeedback = "idle" | MoriExportStatus
 
 const studioToolOrder: readonly StudioTool[] = ["arrangement", "lyrics", "stems"]
 
@@ -152,6 +153,27 @@ function StudioLinkCopyIcon({ status }: { status: StudioLinkCopyStatus }) {
   return <span className={styles.linkCopyIcon} data-link-copy-icon={status} aria-hidden="true">{icon}</span>
 }
 
+function studioExportButtonLabel(status: StudioExportFeedback) {
+  switch (status) {
+    case "queued":
+    case "processing": return "Exporting"
+    case "succeeded": return "Export ready"
+    case "failed": return "Export needs attention"
+    default: return "Export"
+  }
+}
+
+function StudioExportIcon({ status }: { status: StudioExportFeedback }) {
+  const icon = status === "queued" || status === "processing"
+    ? <LoaderCircle size={14} />
+    : status === "succeeded"
+      ? <Check size={14} />
+      : status === "failed"
+        ? <AlertCircle size={14} />
+        : <Download size={14} />
+  return <span className={styles.exportStatusIcon} data-export-icon={status} aria-hidden="true">{icon}</span>
+}
+
 export function StudioPageContent({ candidate, projectRef, versionRef, initialSurface = "arrangement", initialIntent = null, api, stemPlaybackFactory = createHtmlStemPlaybackController }: StudioPageContentProps) {
   const { playerCandidate, playing, positionSeconds, seekPlayer, selectPlayerCandidate, setPlaying } = useMoriApp()
   const exportStatusDescriptionId = useId()
@@ -170,7 +192,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
   const [versionHistoryOpen, setVersionHistoryOpen] = useState(false)
   const [finishDialogOpen, setFinishDialogOpen] = useState(false)
   const [exportDialogOpen, setExportDialogOpen] = useState(false)
-  const [exportFeedback, setExportFeedback] = useState<"idle" | MoriExportStatus>("idle")
+  const [exportFeedback, setExportFeedback] = useState<StudioExportFeedback>("idle")
   const [exportInput, setExportInput] = useState<MoriExportInput | null>(null)
   const [exportSnapshot, setExportSnapshot] = useState<MoriExportSnapshot | null>(null)
   const [exportMessage, setExportMessage] = useState<string | null>(null)
@@ -191,7 +213,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
   const activeVersionRefRef = useRef(activeVersionRef)
   const activeProjectRefRef = useRef(activeProjectRef)
   const exportCommandEpochRef = useRef(0)
-  const exportFeedbackRef = useRef<"idle" | MoriExportStatus>("idle")
+  const exportFeedbackRef = useRef<StudioExportFeedback>("idle")
   const pendingExportCommandRef = useRef<PendingExportCommand | null>(null)
   const pendingCurrentVersionCommandRef = useRef<PendingCurrentVersionCommand | null>(null)
   const stemSeparationCommandEpochRef = useRef(0)
@@ -1117,7 +1139,15 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
               {finishActive ? <span className={styles.studioActionActivity} aria-hidden="true" /> : null}
             </button>
             <span className={styles.srOnly} id={finishStatusDescriptionId} aria-live="polite">{finishStatusDescription(studioChangeRun, releaseWorkflow.activityDescription)}</span>
-            <button className={styles.ghostButton} type="button" aria-label="Export" aria-describedby={exportStatusDescriptionId} data-export-status={exportFeedback} onClick={() => setExportDialogOpen(true)}><Download size={14} /> Export{exportFeedback === "queued" || exportFeedback === "processing" ? <span className={styles.exportActivity} aria-hidden="true" /> : null}</button>
+            <button
+              className={`${styles.ghostButton} ${styles.exportButton}`}
+              type="button"
+              aria-label={studioExportButtonLabel(exportFeedback)}
+              aria-describedby={exportStatusDescriptionId}
+              title={exportStatusDescription(exportFeedback)}
+              data-export-status={exportFeedback}
+              onClick={() => setExportDialogOpen(true)}
+            ><StudioExportIcon status={exportFeedback} /> <span>{studioExportButtonLabel(exportFeedback)}</span></button>
             <span className={styles.srOnly} id={exportStatusDescriptionId} aria-live="polite">{exportStatusDescription(exportFeedback)}</span>
           </> : null}
         </div>
@@ -1287,7 +1317,7 @@ function exportInputsMatch(left: MoriExportInput, right: MoriExportInput): boole
     || (right.source.type === "mix_revision" && left.source.mix_revision_ref === right.source.mix_revision_ref)
 }
 
-function exportStatusDescription(status: "idle" | MoriExportStatus): string {
+function exportStatusDescription(status: StudioExportFeedback): string {
   switch (status) {
     case "idle": return "Export options"
     case "queued": return "Export queued"

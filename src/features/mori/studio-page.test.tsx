@@ -1392,7 +1392,7 @@ describe("Mori studio page", () => {
     fireEvent.click(within(stemTracks).getByRole("button", { name: "Save mix" }))
     await waitFor(() => expect(submittedMixVersionRef).toBe("version_preview_first_light_a"))
     releaseExportStatus()
-    await waitFor(() => expect(screen.getByRole("button", { name: "Export" })).toHaveAttribute("data-export-status", "failed"))
+    await waitFor(() => expect(screen.getByRole("button", { name: "Export needs attention" })).toHaveAttribute("data-export-status", "failed"))
     releaseMixSave()
     expect(submittedMixInputs[0]).toMatchObject({
       source_stem_separation_ref: "stem_separation_ui_1",
@@ -2103,6 +2103,9 @@ describe("Mori studio page", () => {
     expect(exportedVersion).toBe("version_preview_first_light_a")
     expect(exportedInput).toEqual({ source: { type: "version" }, scope: { type: "full_song" }, format: "mp3" })
     expect(await within(dialog).findByRole("status")).toHaveTextContent("Waiting to render MP3")
+    const exportingButton = screen.getByRole("button", { name: "Exporting" })
+    expect(exportingButton).toHaveAttribute("data-export-status", "queued")
+    expect(exportingButton.querySelector('[data-export-icon="queued"]')).toBeInTheDocument()
   })
 
   it("exports the open Take without implying that it was promoted to Current", async () => {
@@ -2149,7 +2152,9 @@ describe("Mori studio page", () => {
 
     const download = await within(dialog).findByRole("link", { name: "Download WAV" })
     expect(download).toHaveAttribute("href", "https://download.kokoro.invalid/export_1.wav")
-    const exportButton = screen.getByRole("button", { name: "Export" })
+    const exportButton = screen.getByRole("button", { name: "Export ready" })
+    expect(exportButton).toHaveAttribute("data-export-status", "succeeded")
+    expect(exportButton.querySelector('[data-export-icon="succeeded"]')).toBeInTheDocument()
     const statusDescriptionId = exportButton.getAttribute("aria-describedby")
     expect(statusDescriptionId).not.toBeNull()
     expect(document.getElementById(statusDescriptionId ?? "missing-export-status")).toHaveTextContent("Export ready to download")
@@ -2172,6 +2177,9 @@ describe("Mori studio page", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: "Start export" }))
 
     expect(await within(dialog).findByRole("alert")).toHaveTextContent("Retry will safely resume the same request.")
+    const failedExportButton = screen.getByRole("button", { name: "Export needs attention" })
+    expect(failedExportButton).toHaveAttribute("data-export-status", "failed")
+    expect(failedExportButton.querySelector('[data-export-icon="failed"]')).toBeInTheDocument()
     expect(within(dialog).getByRole("radio", { name: "WAV" })).toBeChecked()
     fireEvent.click(within(dialog).getByRole("button", { name: "Retry export" }))
     await waitFor(() => expect(submitted).toHaveLength(2))
