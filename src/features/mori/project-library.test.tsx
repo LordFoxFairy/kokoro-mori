@@ -4,6 +4,7 @@ import type { MoriLibraryItem, MoriProject } from "@/lib/mori-api"
 import { MoriAppProvider } from "./components/mori-app-provider"
 import { MoriCatalogShell } from "./components/mori-catalog-shell"
 import { LibraryPageContent } from "./library-list"
+import type { PlayerMediaFactory } from "./player-media"
 import { ProjectsPageContent } from "./project-list"
 
 describe("Mori catalog surfaces", () => {
@@ -257,6 +258,44 @@ describe("Mori catalog surfaces", () => {
 
     await waitFor(() => expect(screen.getByText("First Light · Sunrise")).toBeInTheDocument())
     expect(screen.getByRole("link", { name: "Open First Light · Sunrise studio" })).toHaveAttribute("href", "/projects/project_preview_first_light/studio/version_mori_1")
+  })
+
+  it("keeps a live library audio reference when handing a Version to the global player", async () => {
+    const libraryItem: MoriLibraryItem = {
+      library_item_ref: "library_version_mori_audio",
+      kind: "version",
+      project_ref: "project_preview_first_light",
+      project_title: "First Light",
+      version_ref: "version_mori_audio",
+      title: "First Light · Live audio",
+      duration_seconds: 205,
+      audio_asset_ref: "asset_mori_audio",
+      waveform_asset_ref: "waveform_mori_audio",
+      created_at: "2026-09-02T12:00:00.000Z",
+    }
+    let selectedAudioAssetRef: string | null = null
+    const mediaFactory: PlayerMediaFactory = (callbacks) => ({
+      setSource: (candidate) => { selectedAudioAssetRef = candidate?.audioAssetRef ?? null },
+      play: async () => { callbacks.onTimeUpdate(1) },
+      pause: () => {},
+      seek: () => {},
+      setMuted: () => {},
+      dispose: () => {},
+    })
+    const api = {
+      listLibrary: async () => ({ data: { items: [libraryItem], next_cursor: null }, meta: { request_id: "request_library_audio" } }),
+    }
+
+    render(
+      <MoriAppProvider mediaFactory={mediaFactory}>
+        <LibraryPageContent api={api} />
+      </MoriAppProvider>,
+    )
+
+    await waitFor(() => expect(screen.getByText("First Light · Live audio")).toBeInTheDocument())
+    fireEvent.click(screen.getByRole("button", { name: "Play First Light · Live audio" }))
+
+    await waitFor(() => expect(selectedAudioAssetRef).toBe("asset_mori_audio"))
   })
 
   it("hydrates reusable creative sources from the live library projection", async () => {

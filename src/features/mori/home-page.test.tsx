@@ -33,9 +33,11 @@ describe("Mori home page", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Play First Light" }))
 
-    expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("First Light")
-    expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("Preview audio is unavailable")
-    expect(screen.getByRole("button", { name: "Play" })).toBeDisabled()
+    const player = screen.getByRole("region", { name: "Global player" })
+    expect(player).toHaveAttribute("data-player-state", "unavailable")
+    expect(player).toHaveTextContent("First Light")
+    expect(player).toHaveTextContent("Preview audio is unavailable")
+    expect(screen.queryByRole("button", { name: "Play" })).not.toBeInTheDocument()
   })
 
   it("continues the latest live project from its confirmed Current Version", async () => {

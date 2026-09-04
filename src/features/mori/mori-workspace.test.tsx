@@ -296,6 +296,15 @@ describe("Mori workspace", () => {
     expect(screen.queryByText(/Song Plan will map the mood/u)).not.toBeInTheDocument()
   })
 
+  it("puts required Custom controls before optional creative sources", () => {
+    renderWorkspace()
+    fireEvent.click(screen.getByRole("tab", { name: /custom/i }))
+
+    const style = screen.getByLabelText("Style")
+    const sources = screen.getByRole("region", { name: "Creative sources" })
+    expect(style.compareDocumentPosition(sources) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
   it("keeps audio, voice, and inspiration as optional contextual sources", () => {
     renderWorkspace()
 
@@ -889,7 +898,7 @@ describe("Mori workspace", () => {
 
     await waitFor(() => expect(putCurrentVersion).toHaveBeenCalledTimes(2))
     expect(idempotencyKeys[0]).toBe(idempotencyKeys[1])
-    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Current Version updated"))
+    await waitFor(() => expect(screen.getByText("Current Version updated")).toBeInTheDocument())
   })
 
   it("uses the Project projection as the queue command's expected Current", async () => {

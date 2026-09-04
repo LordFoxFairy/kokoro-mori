@@ -98,7 +98,11 @@ export function MoriAppShell({ activeKey, ariaLabel, projectRef, children }: Mor
     }
   }, [handleRailToggle, mobileRailOpen])
 
-  const shellStyle = { "--mori-rail-width": railCollapsed ? "64px" : "256px" } as CSSProperties
+  const compactPlayer = playerCandidate === null || playerMediaStatus === "unavailable"
+  const shellStyle = {
+    "--mori-rail-width": railCollapsed ? "64px" : "256px",
+    ...(compactPlayer ? { "--mori-player-height": "64px", "--mori-player-safe-space": "66px" } : {}),
+  } as CSSProperties
   const className = `${styles.appShell} ${styles.appShellWithPlayer}`
 
   return (

@@ -60,7 +60,10 @@ export function MoriAppProvider({ children, mediaFactory = createHtmlPlayerMedia
   const [railLoaded, setRailLoaded] = useState(false)
   const [preferences, setPreferences] = useState<MoriPreferences>(defaultPreferences)
   const [preferencesLoaded, setPreferencesLoaded] = useState(false)
-  const [playerCandidate, setPlayerCandidate] = useState<Candidate | null>(previewCandidates[0])
+  // Keep the global transport neutral until a user chooses a Version. The
+  // preview queue remains available, but an unavailable fixture should not
+  // become the first thing every surface shows.
+  const [playerCandidate, setPlayerCandidate] = useState<Candidate | null>(null)
   const [playerCandidates, setPlayerCandidates] = useState(previewCandidates)
   const [playing, setPlayingState] = useState(false)
   const [playerMediaStatus, setPlayerMediaStatus] = useState<PlayerMediaStatus>(isPlayableCandidate(playerCandidate) ? "ready" : "unavailable")

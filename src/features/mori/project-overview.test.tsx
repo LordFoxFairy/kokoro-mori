@@ -56,7 +56,7 @@ describe("Mori project overview", () => {
 
     expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("First Light")
     expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("Preview audio is unavailable")
-    expect(screen.getByRole("button", { name: "Play" })).toBeDisabled()
+    expect(screen.queryByRole("button", { name: "Play" })).not.toBeInTheDocument()
   })
 
   it("hydrates the requested project and its latest candidates", async () => {
@@ -286,8 +286,8 @@ describe("Mori project overview", () => {
     expect(screen.getByText("No directions yet")).toBeInTheDocument()
     expect(screen.queryByRole("link", { name: "Open Studio" })).not.toBeInTheDocument()
     const player = screen.getByRole("region", { name: "Global player" })
-    expect(player).toHaveTextContent("Nothing playing")
-    expect(player).toHaveTextContent("No version selected")
+    expect(player).toHaveTextContent("Choose a version")
+    expect(player).toHaveTextContent("Your next listen starts here")
   })
 
   it("keeps the confirmed Current Version actionable when the candidate projection is unavailable", async () => {
@@ -331,6 +331,6 @@ describe("Mori project overview", () => {
       "href",
       "/projects/project_live_current_partial/studio/version_live_current?surface=arrangement&intent=cover",
     )
-    expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("Nothing playing")
+    expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("Choose a version")
   })
 })

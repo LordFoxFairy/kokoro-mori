@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Check, Headphones, Palette, Search, Sparkles, UserRound, X } from "lucide-react"
+import { AudioLines, Check, Headphones, Palette, Search, Sparkles, UserRound, X } from "lucide-react"
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react"
 import { createPortal } from "react-dom"
 import { useMoriApp } from "./components/mori-app-provider"
@@ -114,7 +114,7 @@ export function MoriSettingsPage({ returnTo = "/" }: MoriSettingsPageProps = {})
       <section ref={settingsDialogRef} className={styles.settingsWindow} role="dialog" aria-modal="true" aria-labelledby="mori-settings-title">
         <nav className={styles.settingsNav} aria-label="Settings navigation">
           <div className={styles.settingsNavBrand}>
-            <div className={styles.settingsNavBrandMark} aria-hidden="true">M</div>
+            <div className={styles.settingsNavBrandMark} aria-hidden="true"><AudioLines size={18} strokeWidth={1.9} /></div>
             <div className={styles.settingsNavBrandCopy}>
               <strong>Mori</strong>
               <span>Music workspace</span>

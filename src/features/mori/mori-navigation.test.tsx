@@ -34,7 +34,7 @@ describe("Mori application navigation", () => {
     expect(screen.getByRole("link", { name: "Library" })).toHaveAttribute("href", "/library")
   })
 
-  it("shows an honest unavailable state below catalog content", () => {
+  it("keeps the empty global player quiet until a Version is chosen", () => {
     render(
       <MoriAppProvider>
         <MoriCatalogShell activeKey="library" ariaLabel="Library">
@@ -44,10 +44,11 @@ describe("Mori application navigation", () => {
     )
 
     expect(screen.getByRole("region", { name: "Global player" })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole("button", { name: "Play" }))
-    expect(screen.getByRole("button", { name: "Play" })).toBeDisabled()
-    expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("Preview audio is unavailable")
-    expect(screen.getByRole("button", { name: "Mute" })).toBeDisabled()
+    const player = screen.getByRole("region", { name: "Global player" })
+    expect(player).toHaveAttribute("data-player-state", "empty")
+    expect(player).toHaveTextContent("Choose a version")
+    expect(screen.queryByRole("button", { name: "Play" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Mute" })).not.toBeInTheDocument()
   })
 
   it("supports a spacebar playback shortcut without hijacking text entry", () => {
@@ -61,10 +62,10 @@ describe("Mori application navigation", () => {
     )
 
     fireEvent.keyDown(window, { code: "Space", key: " " })
-    expect(screen.getByRole("button", { name: "Play" })).toBeDisabled()
+    expect(screen.queryByRole("button", { name: "Play" })).not.toBeInTheDocument()
 
     fireEvent.keyDown(screen.getByRole("textbox", { name: "Search" }), { code: "Space", key: " " })
-    expect(screen.getByRole("button", { name: "Play" })).toBeDisabled()
+    expect(screen.queryByRole("button", { name: "Play" })).not.toBeInTheDocument()
   })
 
   it("presents the player as one global dock with an explicit control group", () => {
@@ -77,8 +78,8 @@ describe("Mori application navigation", () => {
     )
 
     expect(screen.getByRole("region", { name: "Global player" })).toHaveAttribute("data-player-surface", "global-dock")
-    expect(screen.getByRole("group", { name: "Playback controls" })).toBeInTheDocument()
-    expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("01")
+    expect(screen.queryByRole("group", { name: "Playback controls" })).not.toBeInTheDocument()
+    expect(screen.getByRole("region", { name: "Global player" })).toHaveAttribute("data-player-state", "empty")
   })
 
   it("opens a playback queue from the shared global player and plays a chosen version", async () => {
@@ -92,7 +93,6 @@ describe("Mori application navigation", () => {
 
     const trigger = screen.getByRole("button", { name: "Open playback queue" })
     expect(trigger).toHaveTextContent("Up next")
-    fireEvent.click(screen.getByRole("button", { name: "Play" }))
     trigger.focus()
     expect(trigger).toHaveAttribute("aria-expanded", "false")
     fireEvent.click(trigger)
@@ -104,14 +104,15 @@ describe("Mori application navigation", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Play First Light · Afterglow from queue" }))
     expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("First Light · Afterglow")
-    expect(screen.getByRole("button", { name: "Play First Light · Afterglow from queue" })).toBeInTheDocument()
+    expect(screen.getByRole("region", { name: "Global player" })).toHaveAttribute("data-player-state", "unavailable")
+    expect(screen.queryByRole("button", { name: "Play" })).not.toBeInTheDocument()
 
     fireEvent.keyDown(window, { key: "Escape" })
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Up next" })).not.toBeInTheDocument())
     expect(trigger).toHaveFocus()
   })
 
-  it("lets a listener seek through the current version", () => {
+  it("does not expose seek controls before a Version is chosen", () => {
     render(
       <MoriAppProvider>
         <MoriCatalogShell activeKey="library" ariaLabel="Library">
@@ -120,12 +121,7 @@ describe("Mori application navigation", () => {
       </MoriAppProvider>,
     )
 
-    const seek = screen.getByRole("slider", { name: "Seek through current version" })
-    fireEvent.change(seek, { target: { value: "90" } })
-    expect(seek).toHaveValue("90")
-
-    fireEvent.change(seek, { target: { value: "999" } })
-    expect(seek).toHaveValue("182")
+    expect(screen.queryByRole("slider", { name: "Seek through current version" })).not.toBeInTheDocument()
   })
 
   it("starts with a compact rail on narrow viewports", async () => {
@@ -519,9 +515,11 @@ describe("Mori application navigation", () => {
   it("keeps the active track playing while moving between product surfaces", () => {
     function PlayerSurfaceHarness() {
       const [surface, setSurface] = useState<"home" | "library">("home")
+      const { selectPlayerCandidate } = useMoriApp()
 
       return (
         <>
+          <button type="button" onClick={() => selectPlayerCandidate(previewCandidates[0])}>Select current version</button>
           <button type="button" onClick={() => setSurface((value) => value === "home" ? "library" : "home")}>Switch surface</button>
           <MoriCatalogShell activeKey={surface} ariaLabel={surface}>
             <div>{surface} content</div>
@@ -536,22 +534,37 @@ describe("Mori application navigation", () => {
       </MoriAppProvider>,
     )
 
-    fireEvent.click(screen.getByRole("button", { name: "Play" }))
+    fireEvent.click(screen.getByRole("button", { name: "Select current version" }))
     fireEvent.click(screen.getByRole("button", { name: "Switch surface" }))
 
-    expect(screen.getByRole("button", { name: "Play" })).toBeDisabled()
+    expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("First Light")
+    expect(screen.getByRole("region", { name: "Global player" })).toHaveAttribute("data-player-state", "unavailable")
   })
 
   it("moves between preview versions from the global player", () => {
+    function PreviewPlayerHarness() {
+      const { nextPlayerCandidate, previousPlayerCandidate, selectPlayerCandidate } = useMoriApp()
+
+      return (
+        <>
+          <button type="button" onClick={() => selectPlayerCandidate(previewCandidates[0])}>Select first version</button>
+          <button type="button" onClick={nextPlayerCandidate}>Next version</button>
+          <button type="button" onClick={previousPlayerCandidate}>Previous version</button>
+          <MoriCatalogShell activeKey="home" ariaLabel="Home">
+            <div>Home content</div>
+          </MoriCatalogShell>
+        </>
+      )
+    }
+
     render(
       <MoriAppProvider>
-        <MoriCatalogShell activeKey="home" ariaLabel="Home">
-          <div>Home content</div>
-        </MoriCatalogShell>
+        <PreviewPlayerHarness />
       </MoriAppProvider>,
     )
 
     const player = screen.getByRole("region", { name: "Global player" })
+    fireEvent.click(screen.getByRole("button", { name: "Select first version" }))
     expect(player).toHaveTextContent("First Light")
     fireEvent.click(screen.getByRole("button", { name: "Next version" }))
     expect(player).toHaveTextContent("First Light · Afterglow")
@@ -620,7 +633,7 @@ describe("Mori application navigation", () => {
 
       fireEvent.click(screen.getByRole("button", { name: "Play next at end" }))
       fireEvent.click(screen.getByRole("button", { name: "Use short preview" }))
-      expect(screen.getByRole("button", { name: "Play" })).toBeDisabled()
+      expect(screen.queryByRole("button", { name: "Play" })).not.toBeInTheDocument()
 
       act(() => vi.advanceTimersByTime(2_000))
 

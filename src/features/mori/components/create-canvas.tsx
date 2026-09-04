@@ -268,20 +268,6 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
             maxLength={1000}
           />
 
-          <CreativeSourceDock
-            key={lyricsMode}
-            referenceSource={referenceSource}
-            referenceError={referenceError}
-            voiceRef={voiceProfileRef}
-            voiceEnabled={lyricsMode === "lyrics"}
-            inspirationRef={inspirationRef}
-            onChooseReference={addReference}
-            onRemoveReference={removeReference}
-            onVoiceChange={(nextVoiceRef) => { setVoiceProfileRef(nextVoiceRef); clearPlanPreview() }}
-            onInspirationChange={chooseInspiration}
-            creativeSources={sourceCatalog}
-          />
-
           {mode === "custom" ? (
             <div className={styles.customFields}>
               <div className={styles.fieldRow}>
@@ -317,6 +303,20 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
               </div> : null}
             </div>
           ) : null}
+
+          <CreativeSourceDock
+            key={lyricsMode}
+            referenceSource={referenceSource}
+            referenceError={referenceError}
+            voiceRef={voiceProfileRef}
+            voiceEnabled={lyricsMode === "lyrics"}
+            inspirationRef={inspirationRef}
+            onChooseReference={addReference}
+            onRemoveReference={removeReference}
+            onVoiceChange={(nextVoiceRef) => { setVoiceProfileRef(nextVoiceRef); clearPlanPreview() }}
+            onInspirationChange={chooseInspiration}
+            creativeSources={sourceCatalog}
+          />
 
           <div className={styles.composerBottom}>
             <div className={styles.promptHint}><AudioLines /> <span>{mode === "smart" ? "Review an editable plan before creating." : "Your controls go straight to the generation queue."}</span></div>

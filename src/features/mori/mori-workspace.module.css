@@ -3926,6 +3926,29 @@
   min-width: 0;
 }
 
+.playerEmptyState {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  color: var(--mori-muted);
+  font-size: 10px;
+  text-align: center;
+}
+
+.playerEmptyState strong {
+  color: var(--mori-foreground);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.playerEmptyState span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .playerSeek {
   position: relative;
   min-width: 0;
@@ -5083,6 +5106,18 @@
     font-size: 0;
   }
 
+  /* Keep the two outcome-changing actions understandable on touch screens.
+     Copy and Versions remain compact icon actions; Finish and Export keep
+     their labels because they change the project or produce a file. */
+  .studioPage .studioHeaderActions .ghostButton[data-action="finish"],
+  .studioPage .studioHeaderActions .ghostButton[data-action="export"] {
+    width: auto;
+    min-width: 0;
+    padding-inline: 9px;
+    font-size: 10px;
+    white-space: nowrap;
+  }
+
   .studioPage .studioHeaderActions .ghostButton svg {
     width: 15px;
     height: 15px;
@@ -5441,6 +5476,20 @@
     top: 50%;
     right: 12px;
     transform: translateY(-50%);
+  }
+
+  .player[data-player-state="empty"] .playerCenter,
+  .player[data-player-state="unavailable"] .playerCenter {
+    display: none;
+  }
+
+  .player[data-player-state="empty"] .playerTrack,
+  .player[data-player-state="unavailable"] .playerTrack {
+    padding-right: 38px;
+  }
+
+  .playerEmptyState {
+    display: none;
   }
 
   .playerTool span {

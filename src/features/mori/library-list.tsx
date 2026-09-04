@@ -108,7 +108,7 @@ export function LibraryPageContent({ api }: LibraryPageContentProps = {}) {
 
   const playerLibraryCandidates = useMemo(() => libraryItems
     .filter((item): item is Extract<LibraryItem, { kind: "version" }> => item.kind === "version")
-    .map((item) => previewCandidates.find((candidate) => candidate.versionRef === item.ref) ?? toPlayerCandidate(item)), [libraryItems])
+    .map(toPlayerCandidate), [libraryItems])
 
   useEffect(() => {
     if (libraryStatus === "ready") replacePlayerCandidates(playerLibraryCandidates)
@@ -327,6 +327,8 @@ function toDomainLibrary(items: MoriLibraryItem[]): LibraryItem[] {
       subtitle: `Version · ${item.project_title}`,
       durationSeconds: item.duration_seconds,
       accent: index % 2 === 0 ? "lavender" as const : "peach" as const,
+      audioAssetRef: item.audio_asset_ref,
+      waveformAssetRef: item.waveform_asset_ref,
     })),
   ]
 }
@@ -376,5 +378,6 @@ function toPlayerCandidate(item: Extract<LibraryItem, { kind: "version" }>): Can
     mood: "Saved",
     waveformSeed: item.ref.length,
     isCurrent: item.ref === previewProject.currentVersionRef,
+    audioAssetRef: item.audioAssetRef,
   }
 }

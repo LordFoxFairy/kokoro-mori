@@ -76,10 +76,12 @@ describe("Mori global player media integration", () => {
       </MoriAppProvider>,
     )
 
-    expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("Preview audio is unavailable")
-    expect(screen.getByRole("button", { name: "Play" })).toBeDisabled()
+    const player = screen.getByRole("region", { name: "Global player" })
+    expect(player).toHaveAttribute("data-player-state", "empty")
+    expect(player).toHaveTextContent("Choose a version")
+    expect(screen.queryByRole("button", { name: "Play" })).not.toBeInTheDocument()
     fireEvent.keyDown(window, { code: "Space", key: " " })
-    expect(screen.getByRole("button", { name: "Play" })).toBeInTheDocument()
+    expect(player).toHaveAttribute("data-player-state", "empty")
   })
 
   it("clears Playing when the media play promise rejects and exposes retry", async () => {

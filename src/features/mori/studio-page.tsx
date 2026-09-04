@@ -1113,6 +1113,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
               type="button"
               title={studioLinkCopyLabel(linkCopyStatus)}
               data-link-copy-status={linkCopyStatus}
+              data-action="copy"
               disabled={linkCopyStatus === "copying"}
               onClick={() => { void copyStudioLink() }}
             >
@@ -1125,6 +1126,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
               aria-label="Open version history"
               aria-expanded={versionHistoryOpen}
               aria-controls={versionHistoryDrawerId}
+              data-action="versions"
               onClick={() => setVersionHistoryOpen(true)}
             ><History size={14} /> Versions</button>
             <button
@@ -1133,6 +1135,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
               aria-label="Finish"
               aria-describedby={finishStatusDescriptionId}
               data-finish-status={studioChangeRun.status}
+              data-action="finish"
               onClick={() => setFinishDialogOpen(true)}
             >
               <Sparkles size={14} /> Finish
@@ -1146,6 +1149,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
               aria-describedby={exportStatusDescriptionId}
               title={exportStatusDescription(exportFeedback)}
               data-export-status={exportFeedback}
+              data-action="export"
               onClick={() => setExportDialogOpen(true)}
             ><StudioExportIcon status={exportFeedback} /> <span>{studioExportButtonLabel(exportFeedback)}</span></button>
             <span className={styles.srOnly} id={exportStatusDescriptionId} aria-live="polite">{exportStatusDescription(exportFeedback)}</span>

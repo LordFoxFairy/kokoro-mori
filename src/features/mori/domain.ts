@@ -78,6 +78,10 @@ export type LibraryItem =
       subtitle: string
       durationSeconds: number
       accent: Project["coverAccent"]
+      /** Opaque storage reference used by the same-origin player seam. */
+      audioAssetRef?: string | null
+      /** Opaque waveform reference reserved for visual waveform projections. */
+      waveformAssetRef?: string | null
     }
 
 export type PlayerState = {

@@ -18,13 +18,22 @@ const createTestStemPlaybackController: StemPlaybackFactory = () => ({
 })
 
 describe("Mori studio page", () => {
-  function renderStudio(api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "putCurrentVersion" | "listCandidates" | "createStudioChange" | "getGeneration" | "getGenerationEvents" | "cancelGeneration" | "createLyricsRevision" | "getLyricsRevision" | "getLyricsRevisionEvents" | "cancelLyricsRevision" | "createStemSeparation" | "getStemSeparation" | "getStemSeparationEvents" | "cancelStemSeparation" | "createArtworkGeneration" | "getArtworkGeneration" | "getArtworkGenerationEvents" | "cancelArtworkGeneration" | "getReleaseDraft" | "putReleaseDraft" | "createMixRevision">>) {
+  function renderStudio(api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "putCurrentVersion" | "listCandidates" | "createStudioChange" | "getGeneration" | "getGenerationEvents" | "cancelGeneration" | "createLyricsRevision" | "getLyricsRevision" | "getLyricsRevisionEvents" | "cancelLyricsRevision" | "createStemSeparation" | "getStemSeparation" | "getStemSeparationEvents" | "cancelStemSeparation" | "createArtworkGeneration" | "getArtworkGeneration" | "getArtworkGenerationEvents" | "cancelArtworkGeneration" | "getReleaseDraft" | "putReleaseDraft" | "createMixRevision">>, studioCandidate = previewCandidates[0]) {
     return render(
       <MoriAppProvider>
-        <StudioPageContent candidate={previewCandidates[0]} api={api} stemPlaybackFactory={createTestStemPlaybackController} />
+        <StudioPageContent candidate={studioCandidate} api={api} stemPlaybackFactory={createTestStemPlaybackController} />
       </MoriAppProvider>,
     )
   }
+
+  it("keeps mobile Studio actions discoverable by preserving action roles and labels", () => {
+    renderStudio()
+
+    expect(screen.getByRole("button", { name: "Copy link" })).toHaveAttribute("data-action", "copy")
+    expect(screen.getByRole("button", { name: "Open version history" })).toHaveAttribute("data-action", "versions")
+    expect(screen.getByRole("button", { name: "Finish" })).toHaveAttribute("data-action", "finish")
+    expect(screen.getByRole("button", { name: "Export" })).toHaveAttribute("data-action", "export")
+  })
 
   it("switches between arrangement, lyrics, and stems as one keyboard-accessible workspace", () => {
     renderStudio()
@@ -345,7 +354,7 @@ describe("Mori studio page", () => {
   })
 
   it("links the Studio playhead to the global player and current timeline section", () => {
-    renderStudio()
+    renderStudio(undefined, { ...previewCandidates[0], audioAssetRef: "asset_studio_playhead" })
 
     const timeline = within(screen.getByRole("region", { name: "Arrangement editor" })).getByRole("region", { name: "Version timeline" })
     const playhead = within(timeline).getByRole("slider", { name: "Timeline playhead" })
@@ -1786,9 +1795,10 @@ describe("Mori studio page", () => {
     renderStudio()
 
     const player = screen.getByRole("region", { name: "Global player" })
-    fireEvent.click(within(player).getByRole("button", { name: "Play" }))
-    expect(within(player).getByRole("button", { name: "Play" })).toBeDisabled()
-    expect(player).toHaveTextContent("Preview audio is unavailable")
+    expect(player).toHaveAttribute("data-player-state", "empty")
+    expect(within(player).queryByRole("button", { name: "Play" })).not.toBeInTheDocument()
+    expect(player).toHaveTextContent("Choose a version")
+    expect(player).toHaveTextContent("Ready when you are")
   })
 
   it("confirms the Studio deep link only after the clipboard write succeeds", async () => {
