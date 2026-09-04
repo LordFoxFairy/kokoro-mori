@@ -303,6 +303,8 @@ describe("Mori workspace", () => {
     expect(within(sources).getByRole("button", { name: "Add audio reference" })).toBeInTheDocument()
     expect(within(sources).getByRole("button", { name: "Choose voice profile" })).toBeInTheDocument()
     expect(within(sources).getByRole("button", { name: "Choose inspiration" })).toBeInTheDocument()
+    expect(within(sources).getByText("Audio reference")).toBeInTheDocument()
+    expect(within(sources).getByText("Voice profile")).toBeInTheDocument()
     expect(screen.queryByRole("region", { name: "Voice profiles" })).not.toBeInTheDocument()
 
     fireEvent.click(within(sources).getByRole("button", { name: "Choose voice profile" }))

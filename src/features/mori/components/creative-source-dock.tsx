@@ -60,7 +60,7 @@ export function CreativeSourceDock({
           >
             <span className={styles.sourceIcon}><FileAudio /></span>
             <span className={styles.sourceCopy}>
-              <strong>{referenceSource?.name ?? "Audio"}</strong>
+              <strong>{referenceSource?.name ?? "Audio reference"}</strong>
               <small>{referenceSource?.detail ?? "Guide rhythm, melody, or texture"}</small>
             </span>
             {referenceSource === null ? <Plus className={styles.sourceChevron} /> : null}
@@ -82,7 +82,7 @@ export function CreativeSourceDock({
           >
             <span className={styles.sourceIcon}><Mic2 /></span>
             <span className={styles.sourceCopy}>
-              <strong>{selectedVoice?.name ?? "Voice"}</strong>
+              <strong>{selectedVoice?.name ?? "Voice profile"}</strong>
               <small>{selectedVoice?.description ?? "Reuse a consistent vocal identity"}</small>
             </span>
             <ChevronDown className={styles.sourceChevron} />
