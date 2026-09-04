@@ -7,6 +7,7 @@ import {
   generationQueueClientPhaseForStatus,
   mergeGenerationQueueItems,
   mergeGenerationQueueStates,
+  reconcileGenerationQueueItemFromSnapshot,
   removeGenerationQueueItem,
   serializeGenerationQueueState,
   updateGenerationQueueItem,
@@ -97,6 +98,37 @@ describe("generation queue domain", () => {
       last_event_id: "event-2",
     }])
     expect(updateGenerationQueueItem(state, "missing-generation", { progress: 20 })).toBe(state)
+  })
+
+  it("replaces conflicting local context with an owner snapshot for the same generation ref", () => {
+    const state = createGenerationQueueState({
+      items: [item({
+        generation_ref: "generation-conflict",
+        project_ref: "project-stale",
+        source_version_ref: null,
+        kind: "create",
+        status: "generating",
+        progress: 70,
+      })],
+      active_generation_ref: "generation-conflict",
+    })
+    const reconciled = reconcileGenerationQueueItemFromSnapshot(state, item({
+      generation_ref: "generation-conflict",
+      project_ref: "project-owner",
+      source_version_ref: "version-owner",
+      kind: "studio_change",
+      status: "generating",
+      progress: 42,
+    }))
+
+    expect(reconciled.items).toContainEqual(expect.objectContaining({
+      generation_ref: "generation-conflict",
+      project_ref: "project-owner",
+      source_version_ref: "version-owner",
+      kind: "studio_change",
+      progress: 42,
+    }))
+    expect(reconciled.active_generation_ref).toBe("generation-conflict")
   })
 
   it("removes one task and clears an active ref only when that task is removed", () => {

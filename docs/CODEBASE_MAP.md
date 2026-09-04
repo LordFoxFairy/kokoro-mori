@@ -18,6 +18,7 @@ src/features/mori/               Mori 页面、组件、交互状态与 fixture 
   creative-assets.ts              本地 preview Creative source projection 与 UI 映射类型
   studio-change.ts                Studio Change 领域计划与 scope 计算
   studio-recovery.ts              从服务端 Generation snapshot 恢复 Studio Change 工作上下文
+  generation-recovery.ts          Generation snapshot 恢复请求的网络错误归一边界
   generation-queue-storage.ts    Generation queue 的浏览器持久化边界与跨 surface 通知
   *-page.tsx / *-workspace.tsx    页面级组合和 API 状态编排
 src/lib/mori-api.ts              Mori wire type、Library/Creative Source projection、请求 builder 与同源 client seam

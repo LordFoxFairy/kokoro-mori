@@ -73,6 +73,16 @@ export class MoriApiRequestError extends Error {
   }
 }
 
+export function moriNetworkRequestError(error: unknown): MoriApiRequestError | null {
+  if (!(error instanceof TypeError)) return null
+  return new MoriApiRequestError({
+    code: "mori_network_error",
+    message: "Mori generation status could not be reached",
+    retryable: true,
+    details: null,
+  }, null, 0)
+}
+
 export function createMoriApiClient(options: MoriApiClientOptions = {}): MoriApi {
   const apiBasePath = (options.apiBasePath ?? "/api/v1/mori").replace(/\/$/, "")
   const fetchImpl = options.fetchImpl ?? fetch
@@ -295,7 +305,7 @@ export function createMoriApiClient(options: MoriApiClientOptions = {}): MoriApi
       return parseSuccessResponse(response, payload, parseMoriMixRevision)
     },
     async getGeneration(generationRef: MoriRef) {
-      const response = await fetchImpl(`${apiBasePath}/generations/${encodeURIComponent(generationRef)}`)
+      const response = await fetchGenerationSnapshot(fetchImpl, `${apiBasePath}/generations/${encodeURIComponent(generationRef)}`)
       const payload = await readJson(response)
       return parseSuccessResponse(response, payload, parseGenerationSnapshot)
     },
@@ -385,6 +395,14 @@ export function createMoriApiClient(options: MoriApiClientOptions = {}): MoriApi
       const payload = await readJson(response)
       return parseSuccessResponse(response, payload, parseMoriExportSnapshot)
     },
+  }
+}
+
+async function fetchGenerationSnapshot(fetchImpl: typeof fetch, url: string): Promise<Response> {
+  try {
+    return await fetchImpl(url)
+  } catch (error) {
+    throw moriNetworkRequestError(error) ?? error
   }
 }
 

@@ -1,8 +1,22 @@
 import { describe, expect, it } from "vitest"
 import { createExportRequest, createGenerationRequest, createLyricsRevisionRequest, createMixRevisionRequest, createStemSeparationRequest, createStudioChangeRequest } from "./mori-api"
-import { createMoriApiClient } from "./mori-api-client"
+import { createMoriApiClient, MoriApiRequestError } from "./mori-api-client"
 
 describe("Mori same-origin API client", () => {
+  it("normalizes a generation snapshot network failure as retryable", async () => {
+    const api = createMoriApiClient({
+      fetchImpl: async () => { throw new TypeError("Failed to fetch") },
+    })
+
+    await expect(api.getGeneration("generation_network_failure")).rejects.toEqual(expect.objectContaining({
+      name: "MoriApiRequestError",
+      code: "mori_network_error",
+      retryable: true,
+      status: 0,
+    }))
+    await expect(api.getGeneration("generation_network_failure")).rejects.toBeInstanceOf(MoriApiRequestError)
+  })
+
   it("commits a Take as Current with exact CAS context and idempotency", async () => {
     let capturedUrl = ""
     let capturedInit: RequestInit | undefined

@@ -25,8 +25,9 @@ import {
 import { createMoriApiClient, MoriApiRequestError } from "@/lib/mori-api-client"
 import type { Candidate } from "./domain"
 import { listAllMoriCandidates } from "./candidate-pagination"
-import { updateGenerationQueueItem, upsertGenerationQueueItem, type GenerationQueueItem } from "./generation-queue"
+import { reconcileGenerationQueueItemFromSnapshot, updateGenerationQueueItem, upsertGenerationQueueItem, type GenerationQueueItem } from "./generation-queue"
 import { readGenerationQueueState, updateStoredGenerationQueueState } from "./generation-queue-storage"
+import { getGenerationForRecovery } from "./generation-recovery"
 import { MoriStudioShell } from "./components/mori-studio-shell"
 import { StudioAiComposer, type StudioAiRunState } from "./components/studio-ai-composer"
 import { StudioExportDialog } from "./components/studio-export-dialog"
@@ -77,6 +78,7 @@ type StudioPageContentProps = {
 
 type TrackedStudioChange = {
   generationRef: string
+  projectRef: string
   sourceVersionRef: string
   plan: StudioChangePlan
 }
@@ -241,6 +243,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
   const studioChangeObservationEpochRef = useRef(0)
   const studioChangeCancelRequestRef = useRef<string | null>(null)
   const previousStudioRecoveryRouteRef = useRef(initialGenerationRef)
+  const recoveredStudioGenerationSnapshotRef = useRef<StudioChangeGenerationSnapshot | null>(null)
   const ignoredStemSeparationsRef = useRef(new Set<string>())
   const activeStemEventRequestRef = useRef<{ stemSeparationRef: string; controller: AbortController } | null>(null)
   const preserveInitialFinishEntryRef = useRef(initialSurface === "finish")
@@ -288,6 +291,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
     setExportMessage(null)
     if (contextChanged) {
       studioRecoveryGenerationRef.current = null
+      recoveredStudioGenerationSnapshotRef.current = null
       setTrackedStudioChange(null)
       setStudioChangeRun(idleStudioChangeRun)
       setTrackedLyricsRevision(null)
@@ -364,52 +368,114 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
   }, [initialCandidate, projectRef, studioApi, versionLoadAttempt, versionRef])
 
   useEffect(() => {
+    if (previousStudioRecoveryRouteRef.current === initialGenerationRef) return
+    previousStudioRecoveryRouteRef.current = initialGenerationRef
+    studioChangeCommandEpochRef.current += 1
+    studioChangeObservationEpochRef.current += 1
+    studioChangeCancelRequestRef.current = null
+    studioRecoveryGenerationRef.current = null
+    recoveredStudioGenerationSnapshotRef.current = null
+    setTrackedStudioChange(null)
+    setStudioChangeRun(idleStudioChangeRun)
+  }, [initialGenerationRef])
+
+  useEffect(() => {
     const requestedProjectRef = projectRef?.trim()
     const requestedVersionRef = versionRef?.trim()
     const candidateToRecover = activeCandidate
-    const sourceVersionRef = candidateToRecover?.versionRef
-    if (requestedProjectRef === undefined || requestedProjectRef === "" || requestedVersionRef === undefined || requestedVersionRef === "" || candidateToRecover === null || sourceVersionRef === undefined || trackedStudioChange !== null || studioRecoveryGenerationRef.current !== null) return
+    if (
+      requestedProjectRef === undefined
+      || requestedProjectRef === ""
+      || requestedVersionRef === undefined
+      || requestedVersionRef === ""
+      || candidateToRecover === null
+      || candidateToRecover.versionRef !== requestedVersionRef
+      || trackedStudioChange !== null
+      || studioRecoveryGenerationRef.current !== null
+    ) return
     const queue = readGenerationQueueState()
     const matchingItems = queue.items.filter((item) => (
       item.kind === "studio_change"
       && item.project_ref === requestedProjectRef
-      && item.source_version_ref === sourceVersionRef
+      && item.source_version_ref === requestedVersionRef
     ))
     const queuedItem = initialGenerationRef === null
       ? matchingItems.find((item) => isActiveGenerationQueueStatus(item.status))
-      : matchingItems.find((item) => item.generation_ref === initialGenerationRef)
-    if (queuedItem === undefined) return
+      : queue.items.find((item) => item.generation_ref === initialGenerationRef)
+    const generationRefToRecover = initialGenerationRef ?? queuedItem?.generation_ref
+    if (generationRefToRecover === undefined) return
 
-    studioRecoveryGenerationRef.current = queuedItem.generation_ref
+    studioRecoveryGenerationRef.current = generationRefToRecover
     let disposed = false
+    let retryTimer: number | undefined
+    let retryDelayMs = 900
     const observationEpoch = studioChangeObservationEpochRef.current
-    void studioApi.getGeneration(queuedItem.generation_ref).then((snapshot) => {
-      if (
-        disposed
-        || studioChangeObservationEpochRef.current !== observationEpoch
-        || snapshot.data.generation_ref !== queuedItem.generation_ref
-        || snapshot.data.generation_kind !== "studio_change"
-        || snapshot.data.project_ref !== requestedProjectRef
-        || snapshot.data.source_version_ref !== sourceVersionRef
-      ) return
-      const plan = studioChangePlanFromSnapshot(snapshot.data, candidateToRecover.durationSeconds)
-      setStudioChangeRun({
-        status: snapshot.data.status,
-        progress: snapshot.data.progress,
-        resultCount: snapshot.data.candidate_refs.length,
-        plan,
-        message: null,
-      })
-      setTrackedStudioChange({
-        generationRef: queuedItem.generation_ref,
-        sourceVersionRef,
-        plan,
-      })
-    }).catch(() => {
-      if (!disposed) studioRecoveryGenerationRef.current = null
+
+    const recoverRouteGeneration = async () => {
+      try {
+        const response = await getGenerationForRecovery(studioApi, generationRefToRecover)
+        if (
+          disposed
+          || studioChangeObservationEpochRef.current !== observationEpoch
+          || response.data.generation_ref !== generationRefToRecover
+          || response.data.generation_kind !== "studio_change"
+          || response.data.project_ref !== requestedProjectRef
+          || response.data.source_version_ref !== requestedVersionRef
+        ) return
+        const plan = studioChangePlanFromSnapshot(response.data, candidateToRecover.durationSeconds)
+        const storedContextMatches = queuedItem?.kind === "studio_change"
+          && queuedItem.project_ref === response.data.project_ref
+          && queuedItem.source_version_ref === response.data.source_version_ref
+        const recoveredItem: GenerationQueueItem = {
+          generation_ref: response.data.generation_ref,
+          project_ref: response.data.project_ref,
+          source_version_ref: response.data.source_version_ref,
+          kind: "studio_change",
+          label: storedContextMatches ? queuedItem.label : studioGenerationQueueLabel(plan),
+          created_at: response.data.created_at,
+          status: response.data.status,
+          progress: response.data.progress,
+          candidate_refs: response.data.candidate_refs,
+          last_event_id: storedContextMatches ? queuedItem.last_event_id : null,
+        }
+        await updateStoredGenerationQueueState((current) => ({
+          ...reconcileGenerationQueueItemFromSnapshot(current, recoveredItem),
+          active_generation_ref: initialGenerationRef === null ? current.active_generation_ref : recoveredItem.generation_ref,
+        }))
+        if (disposed || studioChangeObservationEpochRef.current !== observationEpoch) return
+        retryDelayMs = 900
+        setStudioChangeRun({
+          status: response.data.status,
+          progress: response.data.progress,
+          resultCount: response.data.candidate_refs.length,
+          plan,
+          message: null,
+        })
+        setTrackedStudioChange({
+          generationRef: generationRefToRecover,
+          projectRef: requestedProjectRef,
+          sourceVersionRef: requestedVersionRef,
+          plan,
+        })
+        recoveredStudioGenerationSnapshotRef.current = response.data
+      } catch (error) {
+        if (disposed || studioChangeObservationEpochRef.current !== observationEpoch) return
+        if (isRetryableGenerationStatusError(error)) {
+          retryTimer = window.setTimeout(() => { void recoverRouteGeneration() }, retryDelayMs)
+          retryDelayMs = Math.min(retryDelayMs * 2, 4_000)
+          return
+        }
+        studioRecoveryGenerationRef.current = null
+      }
+    }
+
+    queueMicrotask(() => {
+      if (!disposed) void recoverRouteGeneration()
     })
     return () => {
       disposed = true
+      if (retryTimer !== undefined) window.clearTimeout(retryTimer)
+      if (studioRecoveryGenerationRef.current === generationRefToRecover) studioRecoveryGenerationRef.current = null
     }
   }, [activeCandidate, activeProjectRef, initialGenerationRef, projectRef, studioApi, trackedStudioChange, versionRef])
 
@@ -417,17 +483,6 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
     pendingCurrentVersionCommandRef.current = null
     setCurrentVersionCommitRun(idleCurrentVersionCommitRun)
   }, [activeProjectRef])
-
-  useEffect(() => {
-    if (previousStudioRecoveryRouteRef.current === initialGenerationRef) return
-    previousStudioRecoveryRouteRef.current = initialGenerationRef
-    studioChangeCommandEpochRef.current += 1
-    studioChangeObservationEpochRef.current += 1
-    studioChangeCancelRequestRef.current = null
-    studioRecoveryGenerationRef.current = null
-    setTrackedStudioChange(null)
-    setStudioChangeRun(idleStudioChangeRun)
-  }, [initialGenerationRef])
 
   const generateStudioChange = async (plan: StudioChangePlan) => {
     if (activeCandidate === null || isActiveStudioChangeStatus(studioChangeRun.status)) return
@@ -472,6 +527,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
       if (studioChangeCommandEpochRef.current !== commandEpoch) return
       setTrackedStudioChange({
         generationRef: response.data.generation_ref,
+        projectRef: activeProjectRef,
         sourceVersionRef,
         plan,
       })
@@ -499,24 +555,35 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
 
     const sync = async () => {
       try {
-        const snapshot = await studioApi.getGeneration(trackedStudioChange.generationRef)
+        const recoveredSnapshot = recoveredStudioGenerationSnapshotRef.current?.generation_ref === trackedStudioChange.generationRef
+          ? recoveredStudioGenerationSnapshotRef.current
+          : null
+        if (recoveredSnapshot !== null) recoveredStudioGenerationSnapshotRef.current = null
+        const snapshot = recoveredSnapshot ?? (await studioApi.getGeneration(trackedStudioChange.generationRef)).data
         if (disposed || studioChangeObservationEpochRef.current !== observationEpoch) return
-        if (snapshot.data.generation_kind !== "studio_change") throw new Error("studio_change_snapshot_context_mismatch")
-        if (!studioChangeSnapshotMatchesPlan(snapshot.data, trackedStudioChange)) {
+        if (
+          snapshot.generation_kind !== "studio_change"
+          || snapshot.project_ref !== trackedStudioChange.projectRef
+        ) throw new Error("studio_change_snapshot_context_mismatch")
+        if (!studioChangeSnapshotMatchesPlan(snapshot, trackedStudioChange)) {
           throw new Error(studioChangeSnapshotMismatchCode(trackedStudioChange.plan))
         }
         retryDelayMs = 900
 
-        let status = snapshot.data.status
-        let progress = snapshot.data.progress
-        let candidateRefs = snapshot.data.candidate_refs
+        let status = snapshot.status
+        let progress = snapshot.progress
+        let candidateRefs = snapshot.candidate_refs
 
         if (studioApi.getGenerationEvents !== undefined) {
           try {
             const events = await studioApi.getGenerationEvents(trackedStudioChange.generationRef, lastEventId, eventController.signal)
             if (disposed || studioChangeObservationEpochRef.current !== observationEpoch) return
             const latest = events.at(-1)
-            if (latest !== undefined) {
+            if (
+              latest !== undefined
+              && latest.data.generation_ref === trackedStudioChange.generationRef
+              && latest.data.project_ref === trackedStudioChange.projectRef
+            ) {
               lastEventId = latest.id
               status = latest.data.status
               progress = latest.data.progress
@@ -544,7 +611,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
         setStudioChangeRun((current) => ({ ...current, status, progress, message: null, cancelPending: current.cancelPending }))
 
         if (status === "succeeded") {
-          const candidateResponse = await listAllMoriCandidates(studioApi, snapshot.data.project_ref)
+          const candidateResponse = await listAllMoriCandidates(studioApi, snapshot.project_ref)
           if (disposed || studioChangeObservationEpochRef.current !== observationEpoch) return
           const generatedCandidates = candidateResponse
             .filter((item) => candidateRefs.includes(item.candidate_ref))

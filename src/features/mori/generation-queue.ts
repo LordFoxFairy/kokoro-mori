@@ -234,6 +234,32 @@ export function upsertGenerationQueueItem(
   }
 }
 
+/**
+ * Reconcile a validated owner snapshot. Matching browser context keeps the
+ * monotonic lifecycle merge; conflicting local context is replaced because
+ * project, source Version, and kind are owner facts rather than preferences.
+ */
+export function reconcileGenerationQueueItemFromSnapshot(
+  state: GenerationQueueState,
+  incoming: GenerationQueueItem,
+): GenerationQueueState {
+  assertGenerationQueueState(state)
+  const normalizedIncoming = normalizeGenerationQueueItem(incoming)
+  const existing = state.items.find((item) => item.generation_ref === normalizedIncoming.generation_ref)
+  const contextMatches = existing !== undefined
+    && existing.project_ref === normalizedIncoming.project_ref
+    && existing.source_version_ref === normalizedIncoming.source_version_ref
+    && existing.kind === normalizedIncoming.kind
+  const item = contextMatches
+    ? mergeGenerationQueueItems(existing, normalizedIncoming)
+    : normalizedIncoming
+  const items = existing === undefined
+    ? [...state.items, item]
+    : state.items.map((candidate) => candidate.generation_ref === item.generation_ref ? item : candidate)
+
+  return { ...state, items: sortQueueItems(items) }
+}
+
 /** Update one item without allowing its generation_ref identity to change. */
 export function updateGenerationQueueItem(
   state: GenerationQueueState,

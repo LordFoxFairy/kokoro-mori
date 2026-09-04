@@ -35,6 +35,8 @@
   重复点击会进入 Stopping 状态，过期响应不会覆盖用户当前查看的任务。队列更新在支持 Web Locks 的浏览器中使用跨标签页互斥，
   并通过 storage event 的 old/new value 单调合并修复并发追加；终态、进度和候选引用不会被旧快照回退，冲突的 opaque event cursor 会安全回退至完整 replay。
   Create / Studio deep link 现在携带显式 `generation_ref`，同一项目的多个进行中任务可以各自恢复，不再依赖全局 active 指针。
+  即使浏览器本地队列为空，Create / Studio 也会以 URL 中的 `generation_ref` 直接恢复 owner snapshot，校验 Project、Version 与 generation kind 后
+  重新建立最小任务摘要；瞬时连接失败按有界退避继续恢复，不会要求用户回到原标签页或依赖同一份 localStorage。
 - Settings 继续采用 Kokoro 的浮动窗口信息架构：侧边栏从当前 surface 原位打开设置层，不卸载 Create / Studio 草稿，`/settings`
   仍保留可直接访问的 fallback。搜索、键盘 tab 切换、Escape、焦点循环和背景 `inert` 隔离均保持可逆；移动端改为全宽搜索与横向 section navigation，
   交互控件使用 44px touch target。Settings 与 New Project 共用可嵌套的 body lock / shell isolation，成功态会把焦点留在弹窗内。
@@ -53,7 +55,7 @@
 ```text
 pnpm lint                         passed
 pnpm typecheck                    passed
-pnpm test                         passed: 54 files / 419 tests
+pnpm test                         passed: 54 files / 430 tests
 pnpm build                        passed
 ```
 

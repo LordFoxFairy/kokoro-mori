@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { useState } from "react"
 import { describe, expect, it, vi } from "vitest"
 import type { GenerationCreateInput, MoriApi } from "@/lib/mori-api"
+import { MoriApiRequestError } from "@/lib/mori-api-client"
 import { MoriAppProvider, useMoriApp } from "./components/mori-app-provider"
 import { CreateCanvas, type CreationDraft } from "./components/create-canvas"
 import { createGenerationQueueState } from "./generation-queue"
@@ -144,6 +145,214 @@ describe("Mori workspace", () => {
     expect(localStorage.getItem("mori-generation-queue-v1")).not.toContain("prompt")
   })
 
+  it("restores an explicit Create generation from its route without a local queue", async () => {
+    localStorage.clear()
+    const generationRef = "generation_route_only_create"
+    const getGeneration = vi.fn<MoriApi["getGeneration"]>(async () => ({
+      data: {
+        generation_ref: generationRef,
+        generation_kind: "new_song",
+        project_ref: "project_route_only_create",
+        song_plan_ref: "song_plan_route_only_create",
+        mode: "smart",
+        source_version_ref: null,
+        operation: null,
+        status: "generating",
+        progress: 47,
+        candidate_refs: [],
+        created_at: "2026-09-04T12:00:00.000Z",
+      },
+      meta: { request_id: "request_route_only_create" },
+    }))
+
+    render(<MoriAppProvider><MoriWorkspace
+      projectRef="project_route_only_create"
+      generationRef={generationRef}
+      api={createWorkspaceApi({ getGeneration })}
+    /></MoriAppProvider>)
+
+    await waitFor(() => expect(getGeneration).toHaveBeenCalledWith(generationRef))
+    expect(screen.getByRole("button", { name: "Open generation queue" })).toHaveAttribute("data-generation-feedback", "active")
+    expect(readGenerationQueueState().items).toContainEqual(expect.objectContaining({
+      generation_ref: generationRef,
+      project_ref: "project_route_only_create",
+      kind: "create",
+      status: "generating",
+      progress: 47,
+    }))
+    expect(localStorage.getItem("mori-generation-queue-v1")).not.toContain("song_plan_route_only_create")
+    expect(getGeneration).toHaveBeenCalledTimes(1)
+    localStorage.clear()
+  })
+
+  it("retries an explicit Create route after a transient recovery failure", async () => {
+    localStorage.clear()
+    const generationRef = "generation_route_retry_create"
+    let attempts = 0
+    const getGeneration = vi.fn<MoriApi["getGeneration"]>(async () => {
+      attempts += 1
+      if (attempts === 1) {
+        throw new TypeError("Failed to fetch")
+      }
+      return {
+        data: {
+          generation_ref: generationRef,
+          generation_kind: "new_song",
+          project_ref: "project_route_retry_create",
+          song_plan_ref: null,
+          mode: "custom",
+          source_version_ref: null,
+          operation: null,
+          status: "generating",
+          progress: 28,
+          candidate_refs: [],
+          created_at: "2026-09-04T12:00:00.000Z",
+        },
+        meta: { request_id: "request_route_retry_create_2" },
+      }
+    })
+
+    render(<MoriAppProvider><MoriWorkspace
+      projectRef="project_route_retry_create"
+      generationRef={generationRef}
+      api={createWorkspaceApi({ getGeneration })}
+    /></MoriAppProvider>)
+
+    await waitFor(() => expect(getGeneration.mock.calls.length).toBeGreaterThanOrEqual(2), { timeout: 2_500 })
+    expect(screen.getByRole("button", { name: "Open generation queue" })).toHaveAttribute("data-generation-feedback", "active")
+    localStorage.clear()
+  })
+
+  it("recovers when the mounted Create surface gains an explicit generation route", async () => {
+    localStorage.clear()
+    const generationRef = "generation_route_transition_create"
+    const getGeneration = vi.fn<MoriApi["getGeneration"]>(async () => ({
+      data: {
+        generation_ref: generationRef,
+        generation_kind: "new_song",
+        project_ref: "project_route_transition_create",
+        song_plan_ref: null,
+        mode: "custom",
+        source_version_ref: null,
+        operation: null,
+        status: "generating",
+        progress: 39,
+        candidate_refs: [],
+        created_at: "2026-09-04T12:00:00.000Z",
+      },
+      meta: { request_id: "request_route_transition_create" },
+    }))
+    const renderView = (routeGenerationRef?: string) => (
+      <MoriAppProvider>
+        <MoriWorkspace
+          projectRef="project_route_transition_create"
+          generationRef={routeGenerationRef}
+          api={createWorkspaceApi({ getGeneration })}
+        />
+      </MoriAppProvider>
+    )
+    const view = render(renderView())
+    await waitFor(() => expect(screen.getByRole("button", { name: "Open generation queue" })).toHaveAttribute("data-generation-feedback", "idle"))
+
+    view.rerender(renderView(generationRef))
+
+    await waitFor(() => expect(getGeneration).toHaveBeenCalledWith(generationRef))
+    await waitFor(() => expect(screen.getByRole("button", { name: "Open generation queue" })).toHaveAttribute("data-generation-feedback", "active"))
+    localStorage.clear()
+  })
+
+  it("clears the previous Project projection before attaching a cross-Project generation route", async () => {
+    localStorage.clear()
+    const generationRef = "generation_cross_project_create"
+    const listCandidates = vi.fn<MoriApi["listCandidates"]>(() => new Promise(() => undefined))
+    const getGeneration = vi.fn<MoriApi["getGeneration"]>(async () => ({
+      data: {
+        generation_ref: generationRef,
+        generation_kind: "new_song",
+        project_ref: "project_cross_project_create",
+        song_plan_ref: null,
+        mode: "custom",
+        source_version_ref: null,
+        operation: null,
+        status: "succeeded",
+        progress: 100,
+        candidate_refs: ["candidate_cross_project_create"],
+        created_at: "2026-09-04T12:00:00.000Z",
+      },
+      meta: { request_id: "request_cross_project_create" },
+    }))
+    const renderView = (projectRef: string, routeGenerationRef?: string) => (
+      <MoriAppProvider>
+        <MoriWorkspace
+          projectRef={projectRef}
+          generationRef={routeGenerationRef}
+          api={createWorkspaceApi({ getGeneration, listCandidates })}
+        />
+      </MoriAppProvider>
+    )
+    const view = render(renderView(previewProject.projectRef))
+    expect(screen.getAllByText(previewCandidates[0].title).length).toBeGreaterThan(0)
+
+    view.rerender(renderView("project_cross_project_create", generationRef))
+
+    await waitFor(() => expect(getGeneration).toHaveBeenCalledWith(generationRef))
+    await waitFor(() => expect(screen.getByRole("button", { name: "Open generation queue" })).toHaveAttribute("data-generation-feedback", "ready"))
+    await waitFor(() => expect(listCandidates).toHaveBeenCalled())
+    fireEvent.click(screen.getByRole("button", { name: "Open generation queue" }))
+    expect(screen.queryByText(previewCandidates[0].title)).not.toBeInTheDocument()
+    localStorage.clear()
+  })
+
+  it("does not attach an explicit Create route when its owner snapshot has the wrong context", async () => {
+    const generationRef = "generation_wrong_context_create"
+    writeGenerationQueueState(createGenerationQueueState({
+      active_generation_ref: generationRef,
+      items: [{
+        generation_ref: generationRef,
+        project_ref: "project_expected_create",
+        source_version_ref: null,
+        kind: "create",
+        label: "Unverified local direction",
+        created_at: "2026-09-04T12:00:00.000Z",
+        status: "generating",
+        progress: 61,
+        candidate_refs: [],
+        last_event_id: null,
+      }],
+    }))
+    const listCandidates = vi.fn<MoriApi["listCandidates"]>(async () => ({
+      data: { candidates: [], next_cursor: null },
+      meta: { request_id: "request_wrong_context_candidates" },
+    }))
+    const getGeneration = vi.fn<MoriApi["getGeneration"]>(async () => ({
+      data: {
+        generation_ref: generationRef,
+        generation_kind: "new_song",
+        project_ref: "project_other_create",
+        song_plan_ref: null,
+        mode: "custom",
+        source_version_ref: null,
+        operation: null,
+        status: "succeeded",
+        progress: 100,
+        candidate_refs: ["candidate_wrong_context_create"],
+        created_at: "2026-09-04T12:00:00.000Z",
+      },
+      meta: { request_id: "request_wrong_context_create" },
+    }))
+
+    render(<MoriAppProvider><MoriWorkspace
+      projectRef="project_expected_create"
+      generationRef={generationRef}
+      api={createWorkspaceApi({ getGeneration, listCandidates })}
+    /></MoriAppProvider>)
+
+    await waitFor(() => expect(getGeneration).toHaveBeenCalledWith(generationRef))
+    expect(screen.getByRole("button", { name: "Open generation queue" })).toHaveAttribute("data-generation-feedback", "idle")
+    expect(listCandidates).not.toHaveBeenCalled()
+    localStorage.clear()
+  })
+
   it("restores the generation selected by the route instead of another tab's global active task", async () => {
     const item = (generationRef: string, createdAt: string) => ({
       generation_ref: generationRef,
@@ -251,22 +460,32 @@ describe("Mori workspace", () => {
       }],
       active_generation_ref: fallbackGenerationRef,
     }))
-    const getGeneration = vi.fn<MoriApi["getGeneration"]>(async (generationRef) => ({
-      data: {
-        generation_ref: generationRef,
-        generation_kind: "new_song",
-        project_ref: "project_strict_route",
-        song_plan_ref: null,
-        mode: "custom",
-        source_version_ref: null,
-        operation: null,
-        status: "generating",
-        progress: 44,
-        candidate_refs: [],
-        created_at: "2026-09-04T12:00:00.000Z",
-      },
-      meta: { request_id: `request_${generationRef}` },
-    }))
+    const getGeneration = vi.fn<MoriApi["getGeneration"]>(async (generationRef) => {
+      if (generationRef === "generation_missing_route") {
+        throw new MoriApiRequestError({
+          code: "generation_not_found",
+          message: "Generation not found",
+          retryable: false,
+          details: null,
+        }, "request_generation_missing_route", 404)
+      }
+      return {
+        data: {
+          generation_ref: generationRef,
+          generation_kind: "new_song",
+          project_ref: "project_strict_route",
+          song_plan_ref: null,
+          mode: "custom",
+          source_version_ref: null,
+          operation: null,
+          status: "generating",
+          progress: 44,
+          candidate_refs: [],
+          created_at: "2026-09-04T12:00:00.000Z",
+        },
+        meta: { request_id: `request_${generationRef}` },
+      }
+    })
 
     render(<MoriAppProvider><MoriWorkspace
       projectRef="project_strict_route"
@@ -274,6 +493,7 @@ describe("Mori workspace", () => {
       api={createWorkspaceApi({ getGeneration })}
     /></MoriAppProvider>)
 
+    await waitFor(() => expect(getGeneration).toHaveBeenCalledWith("generation_missing_route"))
     await waitFor(() => expect(getGeneration).toHaveBeenCalledWith(fallbackGenerationRef))
     expect(screen.getByRole("button", { name: "Open generation queue" })).toHaveAttribute("data-generation-feedback", "idle")
     fireEvent.click(screen.getByRole("button", { name: "Open generation queue" }))

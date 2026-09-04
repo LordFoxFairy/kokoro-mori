@@ -86,6 +86,251 @@ describe("Mori studio page", () => {
     localStorage.clear()
   })
 
+  it("restores an explicit Studio generation from its route without a local queue", async () => {
+    localStorage.clear()
+    const snapshot: StudioRestyleGenerationSnapshot = {
+      generation_ref: "generation_route_only_studio",
+      generation_kind: "studio_change",
+      project_ref: "project_preview_first_light",
+      song_plan_ref: null,
+      mode: null,
+      source_version_ref: "version_preview_first_light_a",
+      operation: "transform",
+      intent: "restyle",
+      scope: { type: "whole_version" },
+      instruction: "Recover this Studio change from the route alone.",
+      preserve: ["melody", "lyrics"],
+      reference_asset_refs: [],
+      output_count: 2,
+      status: "generating",
+      progress: 46,
+      candidate_refs: [],
+      created_at: "2026-09-04T12:00:00.000Z",
+    }
+    const getGeneration = vi.fn<MoriApi["getGeneration"]>(async () => ({
+      data: snapshot,
+      meta: { request_id: "request_route_only_studio" },
+    }))
+
+    render(
+      <StrictMode>
+        <MoriAppProvider>
+          <StudioPageContent
+            candidate={previewCandidates[0]}
+            projectRef={snapshot.project_ref}
+            versionRef={snapshot.source_version_ref}
+            initialGenerationRef={snapshot.generation_ref}
+            api={{ getGeneration, getGenerationEvents: async () => [] }}
+            stemPlaybackFactory={createTestStemPlaybackController}
+          />
+        </MoriAppProvider>
+      </StrictMode>,
+    )
+
+    await waitFor(() => expect(getGeneration).toHaveBeenCalledWith(snapshot.generation_ref))
+    expect(screen.getByText(snapshot.instruction)).toBeInTheDocument()
+    expect(readGenerationQueueState().items).toContainEqual(expect.objectContaining({
+      generation_ref: snapshot.generation_ref,
+      project_ref: snapshot.project_ref,
+      source_version_ref: snapshot.source_version_ref,
+      kind: "studio_change",
+      status: "generating",
+      progress: 46,
+    }))
+    expect(localStorage.getItem("mori-generation-queue-v1")).not.toContain(snapshot.instruction)
+    expect(localStorage.getItem("mori-generation-queue-v1")).not.toContain("preserve")
+    expect(getGeneration).toHaveBeenCalledTimes(1)
+    localStorage.clear()
+  })
+
+  it("retries an explicit Studio route after a transient recovery failure", async () => {
+    localStorage.clear()
+    const snapshot: StudioRestyleGenerationSnapshot = {
+      generation_ref: "generation_route_retry_studio",
+      generation_kind: "studio_change",
+      project_ref: "project_preview_first_light",
+      song_plan_ref: null,
+      mode: null,
+      source_version_ref: "version_preview_first_light_a",
+      operation: "transform",
+      intent: "restyle",
+      scope: { type: "whole_version" },
+      instruction: "Recover this Studio change after reconnecting.",
+      preserve: ["melody"],
+      reference_asset_refs: [],
+      output_count: 2,
+      status: "generating",
+      progress: 31,
+      candidate_refs: [],
+      created_at: "2026-09-04T12:00:00.000Z",
+    }
+    let attempts = 0
+    const getGeneration = vi.fn<MoriApi["getGeneration"]>(async () => {
+      attempts += 1
+      if (attempts === 1) {
+        throw new TypeError("Failed to fetch")
+      }
+      return { data: snapshot, meta: { request_id: "request_route_retry_studio_2" } }
+    })
+
+    render(
+      <MoriAppProvider>
+        <StudioPageContent
+          candidate={previewCandidates[0]}
+          projectRef={snapshot.project_ref}
+          versionRef={snapshot.source_version_ref}
+          initialGenerationRef={snapshot.generation_ref}
+          api={{ getGeneration, getGenerationEvents: async () => [] }}
+          stemPlaybackFactory={createTestStemPlaybackController}
+        />
+      </MoriAppProvider>,
+    )
+
+    await waitFor(() => expect(getGeneration.mock.calls.length).toBeGreaterThanOrEqual(2), { timeout: 2_500 })
+    expect(screen.getByText(snapshot.instruction)).toBeInTheDocument()
+    localStorage.clear()
+  })
+
+  it("recovers when the mounted Studio surface gains an explicit generation route", async () => {
+    localStorage.clear()
+    const snapshot: StudioRestyleGenerationSnapshot = {
+      generation_ref: "generation_route_transition_studio",
+      generation_kind: "studio_change",
+      project_ref: "project_preview_first_light",
+      song_plan_ref: null,
+      mode: null,
+      source_version_ref: "version_preview_first_light_a",
+      operation: "transform",
+      intent: "restyle",
+      scope: { type: "whole_version" },
+      instruction: "Recover after entering the explicit Studio route.",
+      preserve: ["melody"],
+      reference_asset_refs: [],
+      output_count: 2,
+      status: "generating",
+      progress: 37,
+      candidate_refs: [],
+      created_at: "2026-09-04T12:00:00.000Z",
+    }
+    const getGeneration = vi.fn<MoriApi["getGeneration"]>(async () => ({
+      data: snapshot,
+      meta: { request_id: "request_route_transition_studio" },
+    }))
+    const renderView = (generationRef: string | null) => (
+      <MoriAppProvider>
+        <StudioPageContent
+          candidate={previewCandidates[0]}
+          projectRef={snapshot.project_ref}
+          versionRef={snapshot.source_version_ref}
+          initialGenerationRef={generationRef}
+          api={{ getGeneration, getGenerationEvents: async () => [] }}
+          stemPlaybackFactory={createTestStemPlaybackController}
+        />
+      </MoriAppProvider>
+    )
+    const view = render(renderView(null))
+
+    view.rerender(renderView(snapshot.generation_ref))
+
+    await waitFor(() => expect(getGeneration).toHaveBeenCalledWith(snapshot.generation_ref))
+    expect(await screen.findByText(snapshot.instruction)).toBeInTheDocument()
+    localStorage.clear()
+  })
+
+  it("waits for the URL Version candidate before recovering a Studio generation", async () => {
+    localStorage.clear()
+    const nextCandidate = { ...previewCandidates[1], versionRef: "version_route_next" }
+    let resolveNextCandidates: ((value: Awaited<ReturnType<MoriApi["listCandidates"]>>) => void) | undefined
+    const nextCandidates = new Promise<Awaited<ReturnType<MoriApi["listCandidates"]>>>((resolve) => {
+      resolveNextCandidates = resolve
+    })
+    const firstCandidatePage = {
+      data: {
+        candidates: [{
+          candidate_ref: previewCandidates[0].candidateRef,
+          generation_ref: previewCandidates[0].generationRef,
+          version_ref: previewCandidates[0].versionRef,
+          project_ref: "project_preview_first_light",
+          title: previewCandidates[0].title,
+          duration_seconds: previewCandidates[0].durationSeconds,
+          audio_asset_ref: "asset_route_current",
+          waveform_asset_ref: "waveform_route_current",
+          style_tags: ["current"],
+          created_at: "2026-09-04T12:00:00.000Z",
+        }],
+        next_cursor: null,
+      },
+      meta: { request_id: "request_route_current_candidates" },
+    }
+    const listCandidates = vi.fn<MoriApi["listCandidates"]>()
+      .mockResolvedValueOnce(firstCandidatePage)
+      .mockImplementationOnce(async () => nextCandidates)
+    const snapshot: StudioRestyleGenerationSnapshot = {
+      generation_ref: "generation_route_next_studio",
+      generation_kind: "studio_change",
+      project_ref: "project_preview_first_light",
+      song_plan_ref: null,
+      mode: null,
+      source_version_ref: nextCandidate.versionRef,
+      operation: "transform",
+      intent: "restyle",
+      scope: { type: "whole_version" },
+      instruction: "Only recover after the requested Version is active.",
+      preserve: ["melody"],
+      reference_asset_refs: [],
+      output_count: 2,
+      status: "generating",
+      progress: 33,
+      candidate_refs: [],
+      created_at: "2026-09-04T12:00:00.000Z",
+    }
+    const getGeneration = vi.fn<MoriApi["getGeneration"]>(async () => ({
+      data: snapshot,
+      meta: { request_id: "request_route_next_studio" },
+    }))
+    const renderView = (version: string, generationRef: string | null) => (
+      <MoriAppProvider>
+        <StudioPageContent
+          candidate={previewCandidates[0]}
+          projectRef={snapshot.project_ref}
+          versionRef={version}
+          initialGenerationRef={generationRef}
+          api={{ getGeneration, getGenerationEvents: async () => [], listCandidates }}
+          stemPlaybackFactory={createTestStemPlaybackController}
+        />
+      </MoriAppProvider>
+    )
+    const view = render(renderView(previewCandidates[0].versionRef, null))
+    await waitFor(() => expect(listCandidates).toHaveBeenCalledTimes(1))
+
+    view.rerender(renderView(nextCandidate.versionRef, snapshot.generation_ref))
+    await waitFor(() => expect(listCandidates).toHaveBeenCalledTimes(2))
+    expect(getGeneration).not.toHaveBeenCalled()
+
+    resolveNextCandidates?.({
+      data: {
+        candidates: [{
+          candidate_ref: nextCandidate.candidateRef,
+          generation_ref: nextCandidate.generationRef,
+          version_ref: nextCandidate.versionRef,
+          project_ref: snapshot.project_ref,
+          title: nextCandidate.title,
+          duration_seconds: nextCandidate.durationSeconds,
+          audio_asset_ref: "asset_route_next",
+          waveform_asset_ref: "waveform_route_next",
+          style_tags: ["next"],
+          created_at: "2026-09-04T12:00:00.000Z",
+        }],
+        next_cursor: null,
+      },
+      meta: { request_id: "request_route_next_candidates" },
+    })
+
+    await waitFor(() => expect(getGeneration).toHaveBeenCalledWith(snapshot.generation_ref))
+    expect(await screen.findByText(snapshot.instruction)).toBeInTheDocument()
+    localStorage.clear()
+  })
+
   it("restores the Studio run named by the route when another tab changed the global active run", async () => {
     const snapshot: StudioRestyleGenerationSnapshot = {
       generation_ref: "generation_route_studio",
