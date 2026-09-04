@@ -148,6 +148,9 @@ Workspace nav    内容随项目上下文变化                     跨页面保
   当前版本不会被直接覆盖。
 - 已落地第一版：从项目详情、Studio 或项目上下文中的 Rail 进入 Create 时保留 `project_ref`，
   生成命令不再意外落到预览项目；可用时先读取项目 projection 展示项目名称，读取失败保留中性上下文。
+  无 `project_ref` 的全局 Create 明确显示为 New project，首次确认生成时用同一句 idea 自动建立 Project，随后才在
+  该 Project 下创建 Song Plan / Generation；地址与 Rail 上下文同步替换为新 `project_ref`，刷新、设置返回和失败重试
+  都不会重新落回示例 Project 或重复创建 Project。尚未运行过生成时，Queue 显示真实空态，不展示示例 Plan/Candidate。
 - 已落地第一版：Prompt 下方的 Creative sources 把 Audio、Voice、Inspiration 作为 Smart / Custom 共用的
   上下文输入，而不是继续堆全局 AI 工具。Audio 使用真实文件选择与格式/大小校验；Voice 使用稳定 preview
   `voice_ref`，与本次生成的人类可读 Vocal direction 分开；Inspiration 只提供少量策展起点并写入仍可编辑的

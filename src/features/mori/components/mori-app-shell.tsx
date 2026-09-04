@@ -11,10 +11,11 @@ import styles from "../mori-workspace.module.css"
 type MoriAppShellProps = {
   activeKey: MoriNavigationKey
   ariaLabel: string
+  projectRef?: string | null
   children: ReactNode
 }
 
-export function MoriAppShell({ activeKey, ariaLabel, children }: MoriAppShellProps) {
+export function MoriAppShell({ activeKey, ariaLabel, projectRef, children }: MoriAppShellProps) {
   const { railCollapsed, toggleRail, setRailCollapsed, playerCandidate, playerCandidates, playing, muted, positionSeconds, togglePlaying, toggleMuted, setPlaying, seekPlayer, selectPlayerCandidate, previousPlayerCandidate, nextPlayerCandidate, preferences } = useMoriApp()
   const [playbackQueueOpen, setPlaybackQueueOpen] = useState(false)
 
@@ -62,6 +63,7 @@ export function MoriAppShell({ activeKey, ariaLabel, children }: MoriAppShellPro
       <MoriRail
         activeKey={activeKey}
         collapsed={railCollapsed}
+        projectRef={projectRef}
         onNavigate={handleRailNavigation}
         onToggle={toggleRail}
       />

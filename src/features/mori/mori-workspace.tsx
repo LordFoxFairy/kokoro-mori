@@ -3,8 +3,8 @@
 import { PanelRight, Share2 } from "lucide-react"
 import { createPortal } from "react-dom"
 import Link from "next/link"
-import { useCallback, useEffect, useMemo, useState } from "react"
-import { createGenerationRequest, type MoriApi } from "@/lib/mori-api"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { createGenerationRequest, type MoriApi, type MoriProject, type MoriProjectCreateInput } from "@/lib/mori-api"
 import { createMoriApiClient, MoriApiRequestError } from "@/lib/mori-api-client"
 import type { Candidate, CreationMode, GenerationStatus, SongPlan } from "./domain"
 import type { MoriCreativeSourceSelection } from "./creative-assets"
@@ -19,7 +19,7 @@ import styles from "./mori-workspace.module.css"
 type MoriWorkspaceProps = {
   projectRef?: string
   initialCreativeSource?: MoriCreativeSourceSelection
-  api?: Pick<MoriApi, "createSongPlan" | "createGeneration" | "getGeneration" | "getGenerationEvents" | "listCandidates" | "cancelGeneration"> & Partial<Pick<MoriApi, "getProject">>
+  api?: Pick<MoriApi, "createSongPlan" | "createGeneration" | "getGeneration" | "getGenerationEvents" | "listCandidates" | "cancelGeneration"> & Partial<Pick<MoriApi, "createProject" | "getProject">>
 }
 
 type GenerationAttempt = {
@@ -27,36 +27,48 @@ type GenerationAttempt = {
   draft: CreationDraft
 }
 
+type ProjectCreationAttempt = {
+  digest: string
+  idempotencyKey: string
+  request: Promise<MoriProject> | null
+}
+
 export function MoriWorkspace({ projectRef: requestedProjectRef, initialCreativeSource, api: injectedApi }: MoriWorkspaceProps = {}) {
-  const workspaceProjectRef = requestedProjectRef?.trim() || previewProject.projectRef
-  const initialCandidates = workspaceProjectRef === previewProject.projectRef ? previewCandidates : []
+  const initialProjectRef = requestedProjectRef?.trim() || null
+  const initialCandidates = initialProjectRef === previewProject.projectRef ? previewCandidates : []
   const { playing, playerCandidate, replacePlayerCandidates, setPlaying, togglePlaying, selectPlayerCandidate, preferences } = useMoriApp()
+  const [workspaceProjectRef, setWorkspaceProjectRef] = useState<string | null>(initialProjectRef)
   const [modeOverride, setModeOverride] = useState<CreationMode | null>(null)
   const [queueOpen, setQueueOpen] = useState(false)
   const [candidates, setCandidates] = useState(initialCandidates)
-  const [songPlan, setSongPlan] = useState(previewSongPlan)
-  const [currentVersionRef, setCurrentVersionRef] = useState(workspaceProjectRef === previewProject.projectRef ? previewProject.currentVersionRef : "")
+  const [songPlan, setSongPlan] = useState<SongPlan | null>(initialProjectRef === previewProject.projectRef ? previewSongPlan : null)
+  const [currentVersionRef, setCurrentVersionRef] = useState(initialProjectRef === previewProject.projectRef ? previewProject.currentVersionRef : "")
   const [selectedCandidateRef, setSelectedCandidateRef] = useState(initialCandidates[0]?.candidateRef ?? "")
+  const [hasGeneration, setHasGeneration] = useState(initialProjectRef === previewProject.projectRef)
   const [generationStatus, setGenerationStatus] = useState<GenerationStatus>(previewGeneration.status)
   const [generationLabel, setGenerationLabel] = useState(previewGeneration.label)
   const [progress, setProgress] = useState(previewGeneration.progress)
   const [generationRef, setGenerationRef] = useState<string | null>(null)
   const [lastGenerationAttempt, setLastGenerationAttempt] = useState<GenerationAttempt | null>(null)
   const [shareFeedback, setShareFeedback] = useState(false)
-  const [workspaceProjectTitle, setWorkspaceProjectTitle] = useState(workspaceProjectRef === previewProject.projectRef ? previewProject.title : "Project")
+  const [workspaceProjectTitle, setWorkspaceProjectTitle] = useState(initialProjectRef === null ? "New project" : initialProjectRef === previewProject.projectRef ? previewProject.title : "Project")
+  const workspaceProjectRefMirror = useRef<string | null>(initialProjectRef)
+  const projectCreationAttemptRef = useRef<ProjectCreationAttempt | null>(null)
   const defaultApi = useMemo(() => createMoriApiClient(), [])
   const api = injectedApi ?? defaultApi
   const mode = modeOverride ?? preferences.defaultMode
-  const generation = useMemo(() => ({
+  const generation = useMemo(() => hasGeneration ? {
     ...previewGeneration,
+    projectRef: workspaceProjectRef ?? "project_pending",
+    songPlanRef: songPlan?.songPlanRef ?? "song_plan_pending",
     status: generationStatus,
     label: generationLabel,
     progress,
     candidateRefs: candidates.map((candidate) => candidate.candidateRef),
-  }), [candidates, generationLabel, generationStatus, progress])
+  } : null, [candidates, generationLabel, generationStatus, hasGeneration, progress, songPlan?.songPlanRef, workspaceProjectRef])
 
   useEffect(() => {
-    if (workspaceProjectRef === previewProject.projectRef || api.getProject === undefined) return
+    if (workspaceProjectRef === null || workspaceProjectRef === previewProject.projectRef || api.getProject === undefined) return
     let disposed = false
 
     void api.getProject(workspaceProjectRef).then((response) => {
@@ -70,20 +82,64 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialCreative
     }
   }, [api, workspaceProjectRef])
 
+  const ensureWorkspaceProject = useCallback(async (draft: CreationDraft): Promise<string> => {
+    const persistedProjectRef = workspaceProjectRefMirror.current
+    if (persistedProjectRef !== null) return persistedProjectRef
+
+    const createProject = api.createProject
+    if (createProject === undefined) throw new Error("project_creation_unavailable")
+
+    const input = creationProjectInput(draft.prompt)
+    const digest = JSON.stringify(input)
+    const previousAttempt = projectCreationAttemptRef.current
+    if (previousAttempt?.digest === digest && previousAttempt.request !== null) {
+      return (await previousAttempt.request).project_ref
+    }
+
+    const attempt: ProjectCreationAttempt = previousAttempt?.digest === digest
+      ? previousAttempt
+      : {
+          digest,
+          idempotencyKey: `mori-project-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          request: null,
+        }
+    const request = createProject(input, attempt.idempotencyKey).then((response) => response.data)
+    attempt.request = request
+    projectCreationAttemptRef.current = attempt
+
+    try {
+      const project = await request
+      workspaceProjectRefMirror.current = project.project_ref
+      replaceCreateLocation(project.project_ref)
+      setWorkspaceProjectRef(project.project_ref)
+      setWorkspaceProjectTitle(project.title)
+      projectCreationAttemptRef.current = null
+      return project.project_ref
+    } finally {
+      if (projectCreationAttemptRef.current === attempt) attempt.request = null
+    }
+  }, [api])
+
   const handleGenerate = useCallback(async (draft: CreationDraft, generationMode = mode) => {
     setLastGenerationAttempt({ mode: generationMode, draft })
     setGenerationRef(null)
+    setHasGeneration(true)
     setGenerationStatus("preparing")
     setGenerationLabel(draft.prompt.trim() ? "Preparing your next direction" : "Preparing a new direction")
     setProgress(8)
     setPlaying(false)
     setQueueOpen(true)
+    const localPlan = generationMode === "smart"
+      ? draft.songPlan ?? buildSongPlan(workspaceProjectRefMirror.current ?? "project_pending", draft)
+      : null
+    setSongPlan(localPlan)
     try {
+      const targetProjectRef = await ensureWorkspaceProject(draft)
       let songPlanRef: string | undefined
       if (generationMode === "smart") {
-        const draftPlan = draft.songPlan ?? buildSongPlan(workspaceProjectRef, draft)
+        const draftPlan = localPlan ?? buildSongPlan(targetProjectRef, draft)
         const planResponse = await api.createSongPlan(
-          workspaceProjectRef,
+          targetProjectRef,
           toSongPlanCreateInput(draftPlan),
           `mori-plan-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         )
@@ -91,7 +147,7 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialCreative
         setSongPlan(toDomainSongPlan(planResponse.data))
       }
       const response = await api.createGeneration(
-        workspaceProjectRef,
+        targetProjectRef,
         createGenerationRequest({
           mode: generationMode,
           prompt: draft.prompt,
@@ -114,7 +170,7 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialCreative
       setGenerationLabel(generationFailureLabel(error))
       setProgress(0)
     }
-  }, [api, mode, setPlaying, workspaceProjectRef])
+  }, [api, ensureWorkspaceProject, mode, setPlaying])
 
   const retryLastGeneration = useCallback(() => {
     if (lastGenerationAttempt === null) return
@@ -243,11 +299,17 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialCreative
       <MoriAppShell
         activeKey="create"
         ariaLabel="Create workspace"
+        projectRef={workspaceProjectRef}
       >
         <div className={`${styles.workspaceLayout} ${queueOpen ? styles.workspaceLayoutWithDrawer : ""}`}>
           <section className={styles.createSurface} aria-label="Create canvas">
             <header className={styles.canvasHeader}>
-              <div className={styles.breadcrumb}><span>Workspace</span><span>/</span><Link className={styles.breadcrumbLink} href={`/projects/${encodeURIComponent(workspaceProjectRef)}`}>{workspaceProjectTitle}</Link><span>/</span><strong>New creation</strong></div>
+              <div className={styles.breadcrumb}>
+                <span>Workspace</span><span>/</span>
+                {workspaceProjectRef === null
+                  ? <strong>New project</strong>
+                  : <><Link className={styles.breadcrumbLink} href={`/projects/${encodeURIComponent(workspaceProjectRef)}`}>{workspaceProjectTitle}</Link><span>/</span><strong>New direction</strong></>}
+              </div>
               <div className={styles.headerActions}>
                 <button className={styles.queueButton} type="button" onClick={() => setQueueOpen((value) => !value)} aria-expanded={queueOpen} aria-label={queueOpen ? "Hide generation queue" : "Open generation queue"}>
                   <PanelRight size={14} /> <span>Queue</span><b>{currentCandidates.length}</b>
@@ -256,7 +318,7 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialCreative
               </div>
             </header>
             <div className={styles.canvasBody}>
-              <CreateCanvas projectRef={workspaceProjectRef} mode={mode} initialCreativeSource={initialCreativeSource} onModeChange={setModeOverride} onGenerate={handleGenerate} />
+              <CreateCanvas projectRef={workspaceProjectRef ?? "project_pending"} mode={mode} initialCreativeSource={initialCreativeSource} onModeChange={setModeOverride} onGenerate={handleGenerate} />
             </div>
           </section>
 
@@ -306,6 +368,29 @@ function generationLabelFor(status: GenerationStatus): string {
 function generationFailureLabel(error: unknown): string {
   if (error instanceof MoriApiRequestError && error.code === "mori_bff_unavailable") return "Mori is offline right now. Try again."
   return "We couldn't start this direction. Try again."
+}
+
+function creationProjectInput(prompt: string): MoriProjectCreateInput {
+  const description = prompt.trim() || "An open-ended new musical direction."
+  const firstClause = description.split(/[,.!?;，。！？；\n]/u)[0]?.trim() || description
+  const withoutArticle = firstClause.replace(/^(?:a|an|the)\s+/iu, "")
+  const words = withoutArticle.split(/\s+/u).filter((word) => word !== "")
+  const shortened = words.length > 1
+    ? words.slice(0, 8).join(" ")
+    : Array.from(withoutArticle).slice(0, 32).join("")
+  const title = shortened.charAt(0).toLocaleUpperCase() + shortened.slice(1)
+  return {
+    title: title || "Untitled song",
+    description,
+  }
+}
+
+function replaceCreateLocation(projectRef: string): void {
+  const search = window.location.pathname === "/create"
+    ? new URLSearchParams(window.location.search)
+    : new URLSearchParams()
+  search.set("project_ref", projectRef)
+  window.history.replaceState(window.history.state, "", `/create?${search.toString()}`)
 }
 
 function toDomainCandidate(candidate: import("@/lib/mori-api").MoriCandidate, index: number): Candidate {

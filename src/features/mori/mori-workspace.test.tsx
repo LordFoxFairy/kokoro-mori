@@ -5,7 +5,7 @@ import type { GenerationCreateInput, MoriApi } from "@/lib/mori-api"
 import { MoriAppProvider, useMoriApp } from "./components/mori-app-provider"
 import { CreateCanvas, type CreationDraft } from "./components/create-canvas"
 import { MoriWorkspace } from "./mori-workspace"
-import { previewCandidates } from "./preview-data"
+import { previewCandidates, previewProject } from "./preview-data"
 
 function renderWorkspace() {
   return render(
@@ -35,14 +35,132 @@ describe("Mori workspace", () => {
     expect(screen.getByRole("status")).toHaveTextContent("paused")
   })
 
-  it("starts in Smart Create mode without a permanent queue column", () => {
+  it("starts an unscoped creation as a new Project without preview work in its queue", () => {
     renderWorkspace()
     expect(screen.getByRole("navigation", { name: "Mori" })).toBeInTheDocument()
     expect(screen.getByRole("heading", { name: /make something you can feel/i })).toBeInTheDocument()
     expect(screen.getByRole("tab", { name: /smart/i })).toHaveAttribute("aria-selected", "true")
-    expect(screen.getByRole("link", { name: "First Light" })).toHaveAttribute("href", "/projects/project_preview_first_light")
+    expect(screen.getByText("New project", { selector: "strong" })).toBeInTheDocument()
+    expect(screen.queryByRole("link", { name: "First Light" })).not.toBeInTheDocument()
     expect(screen.queryByRole("dialog", { name: /generation queue/i })).not.toBeInTheDocument()
     expect(screen.getByRole("region", { name: /global player/i })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole("button", { name: /open generation queue/i }))
+    expect(screen.getByText("No generations yet")).toBeInTheDocument()
+    expect(screen.queryByRole("heading", { name: "Song plan" })).not.toBeInTheDocument()
+  })
+
+  it("creates a Project from the first idea before starting an unscoped generation", async () => {
+    const originalUrl = window.location.href
+    const createProject = vi.fn<MoriApi["createProject"]>(async (input) => ({
+      data: {
+        project_ref: "project_quiet_train",
+        title: input.title,
+        description: input.description,
+        current_version_ref: null,
+        candidate_count: 0,
+        last_activity_at: "2026-09-04T12:00:00.000Z",
+      },
+      meta: { request_id: "request_project_quiet_train" },
+    }))
+    const createGeneration = vi.fn<MoriApi["createGeneration"]>(async () => ({
+      data: { generation_ref: "generation_quiet_train", status: "queued" as const },
+      meta: { request_id: "request_generation_quiet_train" },
+    }))
+    const api: Pick<MoriApi, "createProject" | "createSongPlan" | "createGeneration" | "getGeneration" | "getGenerationEvents" | "listCandidates" | "cancelGeneration"> = {
+      createProject,
+      createSongPlan: async (projectRef, input) => ({
+        data: { ...input, song_plan_ref: "song_plan_quiet_train", project_ref: projectRef, created_at: "2026-09-04T12:00:00.000Z" },
+        meta: { request_id: "request_plan_quiet_train" },
+      }),
+      createGeneration,
+      getGeneration: async () => ({
+        data: {
+          generation_ref: "generation_quiet_train",
+          generation_kind: "new_song" as const,
+          project_ref: "project_quiet_train",
+          song_plan_ref: null,
+          mode: "custom" as const,
+          source_version_ref: null,
+          operation: null,
+          status: "queued" as const,
+          progress: 0,
+          candidate_refs: [],
+          created_at: "2026-09-04T12:00:00.000Z",
+        },
+        meta: { request_id: "request_generation_quiet_train_status" },
+      }),
+      getGenerationEvents: async () => [],
+      listCandidates: async () => ({ data: { candidates: [], next_cursor: null }, meta: { request_id: "request_quiet_train_candidates" } }),
+      cancelGeneration: async () => ({ data: { generation_ref: "generation_quiet_train", status: "cancelled" as const }, meta: { request_id: "request_quiet_train_cancel" } }),
+    }
+
+    render(
+      <MoriAppProvider>
+        <MoriWorkspace api={api} />
+      </MoriAppProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("tab", { name: /custom/i }))
+    fireEvent.change(screen.getByRole("textbox", { name: "Song idea" }), { target: { value: "A quiet piano song for the first train home." } })
+    fireEvent.submit(screen.getByRole("textbox", { name: "Song idea" }).closest("form") as HTMLFormElement)
+
+    await waitFor(() => expect(createProject).toHaveBeenCalledOnce())
+    expect(createProject).toHaveBeenCalledWith(
+      {
+        title: "Quiet piano song for the first train home",
+        description: "A quiet piano song for the first train home.",
+      },
+      expect.stringMatching(/^mori-project-/u),
+    )
+    await waitFor(() => expect(createGeneration).toHaveBeenCalledOnce())
+    expect(createGeneration).toHaveBeenCalledWith("project_quiet_train", expect.anything(), expect.stringMatching(/^mori-create-/u))
+    expect(screen.getByRole("link", { name: "Quiet piano song for the first train home" })).toHaveAttribute("href", "/projects/project_quiet_train")
+    expect(window.location.pathname + window.location.search).toBe("/create?project_ref=project_quiet_train")
+    await waitFor(() => expect(screen.getByRole("link", { name: "New creation" })).toHaveAttribute("href", "/create?project_ref=project_quiet_train"))
+    expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/settings?return_to=%2Fcreate%3Fproject_ref%3Dproject_quiet_train")
+    window.history.replaceState({}, "", originalUrl)
+  })
+
+  it("reuses the automatically created Project when a generation is retried", async () => {
+    const createProject = vi.fn<MoriApi["createProject"]>(async () => ({
+      data: {
+        project_ref: "project_retry_home",
+        title: "Glasshouse",
+        description: "Glasshouse",
+        current_version_ref: null,
+        candidate_count: 0,
+        last_activity_at: "2026-09-04T12:00:00.000Z",
+      },
+      meta: { request_id: "request_project_retry_home" },
+    }))
+    const createGeneration = vi.fn<MoriApi["createGeneration"]>(async () => {
+      throw new Error("provider unavailable")
+    })
+    const api: Pick<MoriApi, "createProject" | "createSongPlan" | "createGeneration" | "getGeneration" | "getGenerationEvents" | "listCandidates" | "cancelGeneration"> = {
+      createProject,
+      createSongPlan: async (projectRef, input) => ({
+        data: { ...input, song_plan_ref: "song_plan_retry_home", project_ref: projectRef, created_at: "2026-09-04T12:00:00.000Z" },
+        meta: { request_id: "request_plan_retry_home" },
+      }),
+      createGeneration,
+      getGeneration: async () => { throw new Error("not reached") },
+      getGenerationEvents: async () => [],
+      listCandidates: async () => ({ data: { candidates: [], next_cursor: null }, meta: { request_id: "request_retry_home_candidates" } }),
+      cancelGeneration: async () => ({ data: { generation_ref: "generation_retry_home", status: "cancelled" as const }, meta: { request_id: "request_retry_home_cancel" } }),
+    }
+
+    render(<MoriAppProvider><MoriWorkspace api={api} /></MoriAppProvider>)
+    fireEvent.click(screen.getByRole("tab", { name: /custom/i }))
+    fireEvent.change(screen.getByRole("textbox", { name: "Song idea" }), { target: { value: "Glasshouse" } })
+    fireEvent.submit(screen.getByRole("textbox", { name: "Song idea" }).closest("form") as HTMLFormElement)
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument())
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }))
+
+    await waitFor(() => expect(createGeneration).toHaveBeenCalledTimes(2))
+    expect(createProject).toHaveBeenCalledOnce()
+    expect(createGeneration.mock.calls.every(([projectRef]) => projectRef === "project_retry_home")).toBe(true)
   })
 
   it("keeps generation commands inside the requested project", async () => {
@@ -190,7 +308,7 @@ describe("Mori workspace", () => {
 
     render(
       <MoriAppProvider>
-        <MoriWorkspace api={api} />
+        <MoriWorkspace projectRef={previewProject.projectRef} api={api} />
       </MoriAppProvider>,
     )
 
@@ -403,7 +521,7 @@ describe("Mori workspace", () => {
 
     render(
       <MoriAppProvider>
-        <MoriWorkspace api={api} />
+        <MoriWorkspace projectRef={previewProject.projectRef} api={api} />
       </MoriAppProvider>,
     )
 
@@ -542,7 +660,7 @@ describe("Mori workspace", () => {
 
     render(
       <MoriAppProvider>
-        <MoriWorkspace api={api} />
+        <MoriWorkspace projectRef={previewProject.projectRef} api={api} />
       </MoriAppProvider>,
     )
 
@@ -593,7 +711,7 @@ describe("Mori workspace", () => {
 
     render(
       <MoriAppProvider>
-        <MoriWorkspace api={api} />
+        <MoriWorkspace projectRef={previewProject.projectRef} api={api} />
       </MoriAppProvider>,
     )
 
@@ -645,7 +763,7 @@ describe("Mori workspace", () => {
 
     render(
       <MoriAppProvider>
-        <MoriWorkspace api={api} />
+        <MoriWorkspace projectRef={previewProject.projectRef} api={api} />
       </MoriAppProvider>,
     )
 

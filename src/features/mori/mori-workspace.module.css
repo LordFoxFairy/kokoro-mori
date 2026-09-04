@@ -579,6 +579,28 @@
   padding: 18px 16px 24px;
 }
 
+.generationQueueEmpty {
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+  padding: 42px 24px;
+  border: 1px dashed rgba(109, 92, 231, 0.2);
+  border-radius: 14px;
+  text-align: center;
+  background: linear-gradient(145deg, rgba(240, 237, 255, 0.42), rgba(255, 248, 242, 0.46));
+}
+
+.generationQueueEmpty strong {
+  font-size: 12px;
+}
+
+.generationQueueEmpty > span {
+  max-width: 230px;
+  color: var(--mori-muted);
+  font-size: 10px;
+  line-height: 1.55;
+}
+
 .queueCard {
   padding: 14px;
   border: 1px solid var(--mori-border);

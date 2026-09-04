@@ -8,6 +8,7 @@ export type MoriNavigationKey = "home" | "create" | "projects" | "library" | "se
 type MoriRailProps = {
   activeKey?: MoriNavigationKey
   collapsed?: boolean
+  projectRef?: string | null
   onNavigate?: () => void
   onToggle?: () => void
 }
@@ -19,7 +20,7 @@ const navigation = [
   { key: "library" as const, label: "Library", href: "/library", icon: Library },
 ]
 
-export function MoriRail({ activeKey = "create", collapsed = false, onNavigate, onToggle }: MoriRailProps) {
+export function MoriRail({ activeKey = "create", collapsed = false, projectRef, onNavigate, onToggle }: MoriRailProps) {
   const [settingsHref, setSettingsHref] = useState("/settings?return_to=%2F")
   const [createHref, setCreateHref] = useState("/create")
 
@@ -29,14 +30,14 @@ export function MoriRail({ activeKey = "create", collapsed = false, onNavigate, 
       const currentLocation = `${currentPath}${window.location.search}`
       const pathProjectRef = currentPath.match(/^\/projects\/([^/]+)/u)?.[1]
       const queryProjectRef = new URLSearchParams(window.location.search).get("project_ref")
-      const projectRef = pathProjectRef ?? queryProjectRef ?? undefined
+      const activeProjectRef = projectRef === undefined ? pathProjectRef ?? queryProjectRef ?? undefined : projectRef ?? undefined
       if (currentPath !== "/settings" && currentLocation.startsWith("/")) {
         setSettingsHref(`/settings?return_to=${encodeURIComponent(currentLocation)}`)
       }
-      if (projectRef !== undefined) setCreateHref(`/create?project_ref=${encodeURIComponent(projectRef)}`)
+      setCreateHref(activeProjectRef === undefined ? "/create" : `/create?project_ref=${encodeURIComponent(activeProjectRef)}`)
     }, 0)
     return () => window.clearTimeout(timer)
-  }, [])
+  }, [projectRef])
 
   return (
     <nav className={`${styles.rail} ${collapsed ? styles.railCollapsed : ""}`} aria-label="Mori" data-rail-state={collapsed ? "collapsed" : "expanded"}>

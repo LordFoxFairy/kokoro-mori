@@ -6,10 +6,10 @@ import { Waveform } from "./waveform"
 import styles from "../mori-workspace.module.css"
 
 type InspectorPanelProps = {
-  projectRef: string
-  generation: Generation
+  projectRef: string | null
+  generation: Generation | null
   candidates: Candidate[]
-  songPlan: SongPlan
+  songPlan: SongPlan | null
   selectedCandidateRef: string
   playing: boolean
   onSelect: (candidate: Candidate) => void
@@ -27,9 +27,9 @@ function formatDuration(seconds: number): string {
 }
 
 export function InspectorPanel({ projectRef, generation, candidates, songPlan, selectedCandidateRef, playing, onSelect, onPromote, onPlay, onCancel, onRetry, onClose }: InspectorPanelProps) {
-  const generationActive = ["queued", "preparing", "generating", "post_processing"].includes(generation.status)
-  const generationFailed = generation.status === "failed" || generation.status === "expired"
-  const generationEmpty = generation.status === "succeeded" && candidates.length === 0
+  const generationActive = generation !== null && ["queued", "preparing", "generating", "post_processing"].includes(generation.status)
+  const generationFailed = generation !== null && (generation.status === "failed" || generation.status === "expired")
+  const generationEmpty = generation?.status === "succeeded" && candidates.length === 0
   const panelRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
@@ -77,7 +77,12 @@ export function InspectorPanel({ projectRef, generation, candidates, songPlan, s
       </header>
 
       <div className={styles.inspectorBody}>
-        <section className={styles.queueCard} aria-label="Generation status">
+        {generation === null ? <section className={styles.generationQueueEmpty} role="status">
+          <div className={styles.candidateEmptyIcon}><Sparkles size={16} /></div>
+          <strong>No generations yet</strong>
+          <span>Describe the song you want to make. Its progress and directions will stay here.</span>
+        </section> : <>
+          <section className={styles.queueCard} aria-label="Generation status">
           <div className={styles.queueTop}>
             <div className={styles.queueLabel}><Sparkles /> {generation.label}</div>
             <span className={styles.queueTime}>{generation.createdAt}</span>
@@ -88,9 +93,9 @@ export function InspectorPanel({ projectRef, generation, candidates, songPlan, s
           <p className={styles.queueText}>{generationActive ? "Mori is shaping the next direction. You can keep working while it runs." : generationFailed ? "Your idea is still here. Nothing was added to the library." : generationEmpty ? "Mori finished this run without a playable direction. Try again or adjust the idea." : "Ready to compare. Pick a direction and make it yours."}</p>
           {onCancel && generationActive ? <div className={styles.queueActions}><span>Need to change the idea?</span><button className={styles.cancelButton} type="button" onClick={onCancel}>Cancel generation</button></div> : null}
           {onRetry && (generationFailed || generationEmpty) ? <div className={styles.queueActions}><span>Keep the same idea?</span><button className={styles.retryButton} type="button" onClick={onRetry}>Try again</button></div> : null}
-        </section>
+          </section>
 
-        <section className={styles.candidateList} aria-labelledby="candidate-heading">
+          <section className={styles.candidateList} aria-labelledby="candidate-heading">
           <div className={styles.candidatesHeader}>
             <h3 id="candidate-heading">Candidates</h3>
             <span>{candidates.length} directions</span>
@@ -117,14 +122,14 @@ export function InspectorPanel({ projectRef, generation, candidates, songPlan, s
                   <button className={styles.candidatePlay} type="button" onClick={(event) => { event.stopPropagation(); onPlay(candidate) }} aria-label={`${playing && isSelected ? "Pause" : "Play"} ${candidate.title}`}>
                     <Play size={12} fill={playing && isSelected ? "currentColor" : "none"} /> {playing && isSelected ? "Playing" : "Preview"}
                   </button>
-                  <Link
-                    className={styles.candidateStudioLink}
-                    href={`/projects/${encodeURIComponent(projectRef)}/studio/${encodeURIComponent(candidate.versionRef)}`}
-                    aria-label={`Open Studio for ${candidate.title}`}
-                    onClick={(event) => event.stopPropagation()}
-                  >
-                    Studio <ArrowUpRight size={12} />
-                  </Link>
+                  {projectRef === null ? null : <Link
+                      className={styles.candidateStudioLink}
+                      href={`/projects/${encodeURIComponent(projectRef)}/studio/${encodeURIComponent(candidate.versionRef)}`}
+                      aria-label={`Open Studio for ${candidate.title}`}
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      Studio <ArrowUpRight size={12} />
+                    </Link>}
                   {isCurrent ? (
                     <span className={styles.promotedLabel}><Check /> Current version</span>
                   ) : (
@@ -134,23 +139,26 @@ export function InspectorPanel({ projectRef, generation, candidates, songPlan, s
               </article>
             )
           })}
-        </section>
+          </section>
 
-        <div className={styles.inspectorDivider} />
+          {songPlan === null ? null : <>
+            <div className={styles.inspectorDivider} />
 
-        <section className={styles.planDetail} aria-labelledby="plan-heading">
-          <div className={styles.planDetailHeader}>
-            <h3 id="plan-heading">Song plan</h3>
-          </div>
-          <div className={styles.planStats}>
-            <div className={styles.planStat}><span>Mood</span><strong>{songPlan.mood}</strong></div>
-            <div className={styles.planStat}><span>Tempo</span><strong>{songPlan.tempoBpm} BPM</strong></div>
-          </div>
-          <div className={styles.tagRow} aria-label="Song plan structure">
-            {songPlan.structure.map((item) => <span className={`${styles.tag} ${styles.tagSelected}`} key={item}>{item}</span>)}
-          </div>
-          <div className={styles.planMetaLine}><Clock3 size={13} /> <span>{songPlan.vocalDirection}</span></div>
-        </section>
+            <section className={styles.planDetail} aria-labelledby="plan-heading">
+              <div className={styles.planDetailHeader}>
+                <h3 id="plan-heading">Song plan</h3>
+              </div>
+              <div className={styles.planStats}>
+                <div className={styles.planStat}><span>Mood</span><strong>{songPlan.mood}</strong></div>
+                <div className={styles.planStat}><span>Tempo</span><strong>{songPlan.tempoBpm} BPM</strong></div>
+              </div>
+              <div className={styles.tagRow} aria-label="Song plan structure">
+                {songPlan.structure.map((item) => <span className={`${styles.tag} ${styles.tagSelected}`} key={item}>{item}</span>)}
+              </div>
+              <div className={styles.planMetaLine}><Clock3 size={13} /> <span>{songPlan.vocalDirection}</span></div>
+            </section>
+          </>}
+        </>}
       </div>
     </aside>
   )
