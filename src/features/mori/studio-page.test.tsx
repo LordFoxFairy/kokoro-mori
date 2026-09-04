@@ -5,6 +5,7 @@ import type { ArtworkGenerationInput, MoriApi, MoriExportInput, ReleaseDraftInpu
 import { MoriApiRequestError } from "@/lib/mori-api-client"
 import { MoriAppProvider } from "./components/mori-app-provider"
 import { previewCandidates } from "./preview-data"
+import { readGenerationQueueState } from "./generation-queue-storage"
 import type { StemPlaybackFactory } from "./stem-playback"
 import { StudioPageContent } from "./studio-page"
 
@@ -835,6 +836,7 @@ describe("Mori studio page", () => {
 
     expect(await within(aiChanges).findByText("The returned Restyle did not match this scope or direction. Nothing was applied.")).toBeInTheDocument()
     expect(within(screen.getByRole("region", { name: "Take lanes" })).queryByText(/wrong/u)).not.toBeInTheDocument()
+    expect(readGenerationQueueState().items.find((item) => item.generation_ref === "generation_restyle_wrong")?.status).toBe("failed")
   })
 
   it("rejects a Cover snapshot whose Voice differs from the reviewed plan", async () => {

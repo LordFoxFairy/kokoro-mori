@@ -71,6 +71,9 @@ export function StudioGenerationQueue({ projectRef, activeVersionRef }: StudioGe
       if (document.activeElement === panel) {
         event.preventDefault()
         ;(event.shiftKey ? last : first).focus()
+      } else if (!panel.contains(document.activeElement)) {
+        event.preventDefault()
+        ;(event.shiftKey ? last : first).focus()
       } else if (event.shiftKey && document.activeElement === first) {
         event.preventDefault()
         last.focus()

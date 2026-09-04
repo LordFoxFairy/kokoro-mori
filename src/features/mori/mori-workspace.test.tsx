@@ -6,6 +6,7 @@ import { MoriAppProvider, useMoriApp } from "./components/mori-app-provider"
 import { CreateCanvas, type CreationDraft } from "./components/create-canvas"
 import { MoriWorkspace } from "./mori-workspace"
 import { previewCandidates, previewProject } from "./preview-data"
+import { readGenerationQueueState } from "./generation-queue-storage"
 
 type WorkspaceApi = Pick<MoriApi, "createSongPlan" | "createGeneration" | "getGeneration" | "getGenerationEvents" | "listCandidates" | "cancelGeneration">
   & Partial<Pick<MoriApi, "createProject" | "getProject" | "putCurrentVersion">>
@@ -1262,6 +1263,37 @@ describe("Mori workspace", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Try again" }))
     await waitFor(() => expect(createGeneration).toHaveBeenCalledTimes(2))
+  })
+
+  it("marks a queued generation as failed when status recovery stops", async () => {
+    const api = createWorkspaceApi({
+      createSongPlan: async (projectRef, input) => ({
+        data: {
+          ...input,
+          song_plan_ref: "song_plan_status_failure",
+          project_ref: projectRef,
+          created_at: "2026-09-04T12:00:00.000Z",
+        },
+        meta: { request_id: "request_status_failure_plan" },
+      }),
+      createGeneration: async () => ({
+        data: { generation_ref: "generation_status_failure", status: "queued" },
+        meta: { request_id: "request_status_failure_create" },
+      }),
+      getGeneration: async () => { throw new Error("status unavailable") },
+    })
+
+    render(
+      <MoriAppProvider>
+        <MoriWorkspace projectRef={previewProject.projectRef} api={api} />
+      </MoriAppProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("tab", { name: /custom/i }))
+    fireEvent.submit(screen.getByRole("textbox", { name: "Song idea" }).closest("form") as HTMLFormElement)
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Hide generation queue" })).toHaveAttribute("data-generation-feedback", "attention"))
+    expect(readGenerationQueueState().items.find((item) => item.generation_ref === "generation_status_failure")?.status).toBe("failed")
   })
 
   it("clears preview directions when a completed generation has no candidates", async () => {

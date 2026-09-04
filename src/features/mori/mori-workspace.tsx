@@ -372,6 +372,15 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
         if (!disposed) {
           setGenerationStatus("failed")
           setGenerationLabel("Generation status unavailable")
+          updateQueue((current) => {
+            const item = current.items.find((candidate) => candidate.generation_ref === generationRef)
+            return item === undefined || !isActiveQueueStatus(item.status)
+              ? current
+              : updateGenerationQueueItem(current, generationRef, {
+                  status: "failed",
+                  progress: Math.min(item.progress, 99),
+                })
+          })
         }
       }
     }

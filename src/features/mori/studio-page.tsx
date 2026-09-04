@@ -462,6 +462,14 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
             status: "failed",
             message: studioChangeFailureMessage(error),
           }))
+          const queued = readGenerationQueueState()
+          const queuedItem = queued.items.find((item) => item.generation_ref === trackedStudioChange.generationRef)
+          if (queuedItem !== undefined && isActiveGenerationQueueStatus(queuedItem.status)) {
+            writeGenerationQueueState(updateGenerationQueueItem(queued, trackedStudioChange.generationRef, {
+              status: "failed",
+              progress: Math.min(queuedItem.progress, 99),
+            }))
+          }
           setTrackedStudioChange(null)
         }
       }
@@ -1466,6 +1474,10 @@ function studioChangeFailureMessage(error: unknown): string {
     return "The returned Cover did not match this mode or Voice. Nothing was applied."
   }
   return "This change did not finish. Your request is preserved for retry."
+}
+
+function isActiveGenerationQueueStatus(status: GenerationQueueItem["status"]): boolean {
+  return status === "queued" || status === "preparing" || status === "generating" || status === "post_processing"
 }
 
 function lyricsRevisionSnapshotMatches(snapshot: LyricsRevisionSnapshot, tracked: TrackedLyricsRevision): boolean {
