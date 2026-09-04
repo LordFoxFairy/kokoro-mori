@@ -17,6 +17,7 @@ import {
   updateGenerationQueueItem,
   upsertGenerationQueueItem,
   type GenerationQueueItem,
+  type GenerationQueueServerStatus,
   type GenerationQueueState,
 } from "./generation-queue"
 import { previewCandidates, previewGeneration, previewProject, previewSongPlan } from "./preview-data"
@@ -399,6 +400,42 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
   }, [api, generationRef, preferences.autoplay, replacePlayerCandidates, selectPlayerCandidate, setPlaying, updateQueue])
 
   useEffect(() => {
+    if (!generationQueueHydrated) return
+    const backgroundRefs = generationQueueRef.current.items
+      .filter((item) => item.generation_ref !== generationRef && isActiveQueueStatus(item.status))
+      .map((item) => item.generation_ref)
+    if (backgroundRefs.length === 0) return
+
+    let disposed = false
+    const timers = new Map<string, number>()
+    const schedule = (ref: string, delayMs: number) => {
+      if (disposed) return
+      timers.set(ref, window.setTimeout(() => { void syncBackground(ref) }, delayMs))
+    }
+    const syncBackground = async (ref: string): Promise<void> => {
+      try {
+        const snapshot = await api.getGeneration(ref)
+        if (disposed) return
+        const item = snapshot.data
+        updateQueue((current) => updateGenerationQueueItem(current, ref, {
+          status: item.status,
+          progress: item.progress,
+          candidate_refs: item.candidate_refs,
+        }))
+        if (isActiveQueueStatus(item.status)) schedule(ref, 900)
+      } catch {
+        schedule(ref, 1_500)
+      }
+    }
+
+    for (const ref of backgroundRefs) void syncBackground(ref)
+    return () => {
+      disposed = true
+      for (const timer of timers.values()) window.clearTimeout(timer)
+    }
+  }, [api, generationQueueHydrated, generationRef, updateQueue])
+
+  useEffect(() => {
     if (!queueOpen || queuePresentation !== "drawer") return
     const previousOverflow = document.body.style.overflow
     const closeOnEscape = (event: KeyboardEvent) => {
@@ -506,12 +543,34 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
 
   const currentCandidates = candidates.map((candidate) => ({ ...candidate, isCurrent: candidate.versionRef === currentVersionRef }))
   const generationFeedback = generationFeedbackFor(hasGeneration ? generationStatus : null)
+  const visibleGenerationQueueItems = generationQueue.items.filter((item) => workspaceProjectRef === null || item.project_ref === workspaceProjectRef)
+
+  const selectQueuedGeneration = useCallback((nextGenerationRef: string) => {
+    const item = generationQueueRef.current.items.find((candidate) => candidate.generation_ref === nextGenerationRef)
+    if (item === undefined) return
+    updateQueue((current) => ({ ...current, active_generation_ref: item.generation_ref }))
+    setGenerationRef(item.generation_ref)
+    setHasGeneration(true)
+    setGenerationStatus(item.status)
+    setGenerationLabel(item.label)
+    setProgress(item.progress)
+    setSelectedCandidateRef(item.candidate_refs[0] ?? "")
+    setCandidates([])
+    setSongPlan(null)
+    if (workspaceProjectRefMirror.current !== item.project_ref) {
+      workspaceProjectRefMirror.current = item.project_ref
+      setWorkspaceProjectRef(item.project_ref)
+      setWorkspaceProjectTitle("Project")
+    }
+  }, [updateQueue])
 
   const renderQueue = (presentation: QueuePresentation) => (
     <InspectorPanel
       presentation={presentation}
       projectRef={workspaceProjectRef}
       generation={generation}
+      queueItems={visibleGenerationQueueItems}
+      activeGenerationRef={generationRef}
       candidates={currentCandidates}
       songPlan={songPlan}
       selectedCandidateRef={selectedCandidateRef}
@@ -523,6 +582,7 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
       onDismissCurrentVersion={dismissCurrentVersionCommit}
       onCancel={() => { void handleCancel() }}
       onRetry={retryLastGeneration}
+      onSelectGeneration={selectQueuedGeneration}
       onPlay={(candidate) => {
         setSelectedCandidateRef(candidate.candidateRef)
         if (playerCandidate?.candidateRef === candidate.candidateRef) togglePlaying()
@@ -579,6 +639,10 @@ function generationFeedbackFor(status: GenerationStatus | null): GenerationFeedb
   if (["queued", "preparing", "generating", "post_processing"].includes(status)) return "active"
   if (status === "succeeded") return "ready"
   return "attention"
+}
+
+function isActiveQueueStatus(status: GenerationQueueServerStatus): boolean {
+  return status === "queued" || status === "preparing" || status === "generating" || status === "post_processing"
 }
 
 function generationFeedbackLabel(status: GenerationFeedback): string {

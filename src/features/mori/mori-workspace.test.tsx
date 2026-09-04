@@ -142,6 +142,54 @@ describe("Mori workspace", () => {
     expect(localStorage.getItem("mori-generation-queue-v1")).not.toContain("prompt")
   })
 
+  it("keeps multiple generation tasks selectable while polling background work", async () => {
+    const queueItem = (generationRef: string, label: string, status: "generating" | "succeeded", progress: number) => ({
+      generation_ref: generationRef,
+      project_ref: "project_multi_queue",
+      source_version_ref: null,
+      kind: "create",
+      label,
+      created_at: status === "generating" ? "2026-09-04T12:02:00.000Z" : "2026-09-04T12:01:00.000Z",
+      status,
+      progress,
+      candidate_refs: [],
+      last_event_id: null,
+    })
+    localStorage.setItem("mori-generation-queue-v1", JSON.stringify({
+      version: 1,
+      active_generation_ref: "generation_multi_active",
+      items: [
+        queueItem("generation_multi_active", "Active direction", "generating", 30),
+        queueItem("generation_multi_ready", "Ready direction", "succeeded", 100),
+      ],
+    }))
+    const getGeneration = vi.fn<MoriApi["getGeneration"]>(async (generationRef) => ({
+      data: {
+        generation_ref: generationRef,
+        generation_kind: "new_song",
+        project_ref: "project_multi_queue",
+        song_plan_ref: null,
+        mode: "custom",
+        source_version_ref: null,
+        operation: null,
+        status: generationRef === "generation_multi_active" ? "generating" : "succeeded",
+        progress: generationRef === "generation_multi_active" ? 30 : 100,
+        candidate_refs: [],
+        created_at: "2026-09-04T12:02:00.000Z",
+      },
+      meta: { request_id: `request_${generationRef}` },
+    }))
+
+    render(<MoriAppProvider><MoriWorkspace api={createWorkspaceApi({ getGeneration })} /></MoriAppProvider>)
+
+    await waitFor(() => expect(getGeneration).toHaveBeenCalledWith("generation_multi_active"))
+    fireEvent.click(screen.getByRole("button", { name: "Open generation queue" }))
+    expect(screen.getByRole("heading", { name: "Recent runs" })).toBeInTheDocument()
+    expect(screen.getByText("2 tasks")).toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: /Ready direction.*Ready.*100%/u }))
+    await waitFor(() => expect(getGeneration).toHaveBeenCalledWith("generation_multi_ready"))
+  })
+
   it("creates a Project from the first idea before starting an unscoped generation", async () => {
     const originalUrl = window.location.href
     window.history.replaceState({}, "", "/create?idea=A+quiet+piano+song")

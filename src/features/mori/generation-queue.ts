@@ -208,7 +208,7 @@ export function mergeGenerationQueueStates(
     merged = upsertGenerationQueueItem(merged, item)
   }
 
-  const activeGenerationRef = incoming.active_generation_ref ?? current.active_generation_ref
+  const activeGenerationRef = incoming.active_generation_ref
   return {
     ...merged,
     active_generation_ref: activeGenerationRef !== null && merged.items.some((item) => item.generation_ref === activeGenerationRef)

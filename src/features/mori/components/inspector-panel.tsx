@@ -3,6 +3,7 @@ import Link from "next/link"
 import { useEffect, useRef } from "react"
 import type { Candidate, Generation, SongPlan } from "../domain"
 import { idleCurrentVersionCommitRun, type CurrentVersionCommitRun } from "../current-version"
+import { generationQueueClientPhaseForStatus, type GenerationQueueItem } from "../generation-queue"
 import { Waveform } from "./waveform"
 import styles from "../mori-workspace.module.css"
 
@@ -10,6 +11,8 @@ type InspectorPanelProps = {
   presentation?: "drawer" | "pane"
   projectRef: string | null
   generation: Generation | null
+  queueItems?: readonly GenerationQueueItem[]
+  activeGenerationRef?: string | null
   candidates: Candidate[]
   songPlan: SongPlan | null
   selectedCandidateRef: string
@@ -23,6 +26,7 @@ type InspectorPanelProps = {
   onCancel?: () => void
   onRetry?: () => void
   onClose?: () => void
+  onSelectGeneration?: (generationRef: string) => void
 }
 
 function formatDuration(seconds: number): string {
@@ -31,7 +35,7 @@ function formatDuration(seconds: number): string {
   return `${minutes}:${remaining}`
 }
 
-export function InspectorPanel({ presentation = "drawer", projectRef, generation, candidates, songPlan, selectedCandidateRef, playing, currentVersionCommitRun = idleCurrentVersionCommitRun, onSelect, onPromote, onRetryCurrentVersion, onDismissCurrentVersion, onPlay, onCancel, onRetry, onClose }: InspectorPanelProps) {
+export function InspectorPanel({ presentation = "drawer", projectRef, generation, queueItems = [], activeGenerationRef = null, candidates, songPlan, selectedCandidateRef, playing, currentVersionCommitRun = idleCurrentVersionCommitRun, onSelect, onPromote, onRetryCurrentVersion, onDismissCurrentVersion, onPlay, onCancel, onRetry, onClose, onSelectGeneration }: InspectorPanelProps) {
   const generationActive = generation !== null && ["queued", "preparing", "generating", "post_processing"].includes(generation.status)
   const generationFailed = generation !== null && (generation.status === "failed" || generation.status === "expired")
   const generationEmpty = generation?.status === "succeeded" && candidates.length === 0
@@ -84,6 +88,32 @@ export function InspectorPanel({ presentation = "drawer", projectRef, generation
       </header>
 
       <div className={styles.inspectorBody}>
+        {queueItems.length > 1 ? <section className={styles.queueTaskList} aria-labelledby="recent-generations-heading">
+          <div className={styles.candidatesHeader}>
+            <h3 id="recent-generations-heading">Recent runs</h3>
+            <span>{queueItems.length} tasks</span>
+          </div>
+          <div className={styles.queueTaskItems}>
+            {queueItems.map((item) => {
+              const active = activeGenerationRef === item.generation_ref
+              const clientPhase = generationQueueClientPhaseForStatus(item.status)
+              return <button
+                className={`${styles.queueTaskItem} ${active ? styles.queueTaskItemActive : ""}`}
+                type="button"
+                aria-current={active ? "true" : undefined}
+                key={item.generation_ref}
+                onClick={() => onSelectGeneration?.(item.generation_ref)}
+              >
+                <span className={`${styles.queueTaskDot} ${styles[`queueTaskDot${clientPhase}`]}`} aria-hidden="true" />
+                <span className={styles.queueTaskCopy}>
+                  <strong>{item.label}</strong>
+                  <span>{item.kind === "create" ? "Create" : "Studio change"} · {queueStatusLabel(item.status)}</span>
+                </span>
+                <span className={styles.queueTaskProgress}>{item.progress}%</span>
+              </button>
+            })}
+          </div>
+        </section> : null}
         {generation === null ? <section className={styles.generationQueueEmpty} role="status">
           <div className={styles.candidateEmptyIcon}><Sparkles size={16} /></div>
           <strong>No generations yet</strong>
@@ -203,4 +233,17 @@ function getFocusableElements(container: HTMLElement): HTMLElement[] {
     "textarea:not([disabled])",
     "[tabindex]:not([tabindex='-1'])",
   ].join(",")))
+}
+
+function queueStatusLabel(status: GenerationQueueItem["status"]): string {
+  switch (status) {
+    case "queued": return "Queued"
+    case "preparing": return "Preparing"
+    case "generating": return "Generating"
+    case "post_processing": return "Finishing"
+    case "succeeded": return "Ready"
+    case "failed": return "Needs attention"
+    case "cancelled": return "Cancelled"
+    case "expired": return "Expired"
+  }
 }

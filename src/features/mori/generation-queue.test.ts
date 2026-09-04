@@ -167,6 +167,10 @@ describe("generation queue domain", () => {
       status: "succeeded",
       candidate_refs: ["candidate-a", "candidate-b"],
     })
+    expect(mergeGenerationQueueStates(current, createGenerationQueueState({
+      items: [item({ generation_ref: "generation-a" })],
+      active_generation_ref: null,
+    })).active_generation_ref).toBeNull()
   })
 
   it("serializes only the non-sensitive allow-list and round-trips in stable order", () => {
