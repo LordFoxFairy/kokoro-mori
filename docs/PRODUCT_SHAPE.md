@@ -27,6 +27,8 @@ Mori 的落地：
   管理焦点的抽屉，让用户在生成运行时仍能继续调整创作表单。
 - Home 的一句话 Quick start 通过可分享的 GET seam 把想法带入 Create；Create 只预填草稿，仍先让用户检查
   可编辑 Song Plan。Project 建立后会从地址中移除原始想法，避免长期保留用户输入。
+- Create 不是已完成作品，不提供会复制当前表单 URL 的假 Share；Studio 只提供明确的 `Copy link` 深链动作，
+  并在浏览器确认剪贴板写入后才显示成功。真正的分享 / 发布属于具备持久化契约的 Release，而不是顶栏装饰。
 - Global Player 在页面切换时保持不变，不把试听变成一次性弹窗。
 - Global Player 的播放队列跨页面可用，并与 Create 中展示生成任务的 Generation Queue 明确分离。
 - Studio 只在 Project + Version 上下文内出现。

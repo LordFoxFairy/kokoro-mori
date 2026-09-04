@@ -1,6 +1,6 @@
 "use client"
 
-import { AlertCircle, ArrowLeft, ArrowRight, AudioLines, AudioWaveform, Check, Download, FileText, History, LoaderCircle, Play, RotateCcw, Share2, Sparkles, X } from "lucide-react"
+import { AlertCircle, ArrowLeft, ArrowRight, AudioLines, AudioWaveform, Check, Download, FileText, History, Link2, LoaderCircle, Play, RotateCcw, Sparkles, X } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react"
 import {
@@ -53,6 +53,7 @@ import {
 import styles from "./mori-workspace.module.css"
 
 type StudioTool = "arrangement" | "lyrics" | "stems"
+type StudioLinkCopyStatus = "idle" | "copying" | "copied" | "failed"
 
 const studioToolOrder: readonly StudioTool[] = ["arrangement", "lyrics", "stems"]
 
@@ -131,6 +132,15 @@ const idleStemSeparationRun: StudioStemSeparationRunState = {
 const versionHistoryDrawerId = "studio-version-history-drawer"
 const wholeSongStructure = ["Whole song"] as const
 
+function studioLinkCopyLabel(status: StudioLinkCopyStatus) {
+  switch (status) {
+    case "copying": return "Copying…"
+    case "copied": return "Link copied"
+    case "failed": return "Copy failed"
+    default: return "Copy link"
+  }
+}
+
 export function StudioPageContent({ candidate, projectRef, versionRef, initialSurface = "arrangement", initialIntent = null, api, stemPlaybackFactory = createHtmlStemPlaybackController }: StudioPageContentProps) {
   const { playerCandidate, playing, positionSeconds, seekPlayer, selectPlayerCandidate, setPlaying } = useMoriApp()
   const exportStatusDescriptionId = useId()
@@ -145,7 +155,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
   const [currentVersionCommitRun, setCurrentVersionCommitRun] = useState<CurrentVersionCommitRun>(idleCurrentVersionCommitRun)
   const [projectTitle, setProjectTitle] = useState<string | null>(null)
   const [activeTool, setActiveTool] = useState<StudioTool>(() => studioToolFromEntrySurface(initialSurface))
-  const [shareFeedback, setShareFeedback] = useState(false)
+  const [linkCopyStatus, setLinkCopyStatus] = useState<StudioLinkCopyStatus>("idle")
   const [versionHistoryOpen, setVersionHistoryOpen] = useState(false)
   const [finishDialogOpen, setFinishDialogOpen] = useState(false)
   const [exportDialogOpen, setExportDialogOpen] = useState(false)
@@ -178,6 +188,13 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
   const activeStemEventRequestRef = useRef<{ stemSeparationRef: string; controller: AbortController } | null>(null)
   const preserveInitialFinishEntryRef = useRef(initialSurface === "finish")
   const previousStudioContextRef = useRef({ projectRef: activeProjectRef, versionRef: activeVersionRef })
+  const linkCopyResetTimerRef = useRef<number | null>(null)
+  const linkCopyAttemptRef = useRef(0)
+
+  useEffect(() => () => {
+    linkCopyAttemptRef.current += 1
+    if (linkCopyResetTimerRef.current !== null) window.clearTimeout(linkCopyResetTimerRef.current)
+  }, [])
   activeVersionRefRef.current = activeVersionRef
   activeProjectRefRef.current = activeProjectRef
 
@@ -889,11 +906,29 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
     setCurrentVersionCommitRun(idleCurrentVersionCommitRun)
   }
 
-  const share = () => {
-    const clipboardWrite = navigator.clipboard?.writeText(window.location.href)
-    if (clipboardWrite !== undefined) void clipboardWrite.catch(() => undefined)
-    setShareFeedback(true)
-    window.setTimeout(() => setShareFeedback(false), 1800)
+  const copyStudioLink = async () => {
+    if (linkCopyStatus === "copying") return
+    const attempt = linkCopyAttemptRef.current + 1
+    linkCopyAttemptRef.current = attempt
+    if (linkCopyResetTimerRef.current !== null) {
+      window.clearTimeout(linkCopyResetTimerRef.current)
+      linkCopyResetTimerRef.current = null
+    }
+    setLinkCopyStatus("copying")
+    try {
+      if (navigator.clipboard === undefined) throw new Error("Clipboard access is unavailable")
+      await navigator.clipboard.writeText(window.location.href)
+      if (linkCopyAttemptRef.current !== attempt) return
+      setLinkCopyStatus("copied")
+    } catch {
+      if (linkCopyAttemptRef.current !== attempt) return
+      setLinkCopyStatus("failed")
+    }
+    if (linkCopyAttemptRef.current !== attempt) return
+    linkCopyResetTimerRef.current = window.setTimeout(() => {
+      if (linkCopyAttemptRef.current === attempt) setLinkCopyStatus("idle")
+      linkCopyResetTimerRef.current = null
+    }, 2200)
   }
 
   const startExport = async (input: MoriExportInput) => {
@@ -1040,7 +1075,14 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
       <header className={styles.studioHeader}>
           <div className={styles.studioHeaderLeft}><Link className={styles.studioBack} href={`/projects/${activeProjectRef}`}><ArrowLeft size={15} /> {activeProjectTitle}</Link><span>/</span><strong>Studio</strong></div>
           <div className={styles.studioHeaderActions}>
-            <button className={styles.ghostButton} type="button" onClick={share}><Share2 size={14} /> {shareFeedback ? "Link copied" : "Share"}</button>
+            <button
+              className={styles.ghostButton}
+              type="button"
+              disabled={linkCopyStatus === "copying"}
+              onClick={() => { void copyStudioLink() }}
+            >
+              <Link2 size={14} /> <span aria-live="polite">{studioLinkCopyLabel(linkCopyStatus)}</span>
+            </button>
           {activeCandidate !== null ? <>
             <button
               className={`${styles.ghostButton} ${styles.versionHistoryTrigger}`}

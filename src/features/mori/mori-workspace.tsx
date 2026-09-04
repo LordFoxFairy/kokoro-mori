@@ -1,6 +1,6 @@
 "use client"
 
-import { PanelRight, Share2 } from "lucide-react"
+import { PanelRight } from "lucide-react"
 import { createPortal } from "react-dom"
 import Link from "next/link"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
@@ -63,7 +63,6 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
   const [generationRef, setGenerationRef] = useState<string | null>(null)
   const [lastGenerationAttempt, setLastGenerationAttempt] = useState<GenerationAttempt | null>(null)
   const [currentVersionCommitRun, setCurrentVersionCommitRun] = useState<CurrentVersionCommitRun>(idleCurrentVersionCommitRun)
-  const [shareFeedback, setShareFeedback] = useState(false)
   const [workspaceProjectTitle, setWorkspaceProjectTitle] = useState(initialProjectRef === null ? "New project" : initialProjectRef === previewProject.projectRef ? previewProject.title : "Project")
   const workspaceProjectRefMirror = useRef<string | null>(initialProjectRef)
   const projectCreationAttemptRef = useRef<ProjectCreationAttempt | null>(null)
@@ -377,13 +376,6 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
     }
   }, [api, generationRef])
 
-  const handleShare = useCallback(() => {
-    const clipboardWrite = navigator.clipboard?.writeText(window.location.href)
-    if (clipboardWrite !== undefined) void clipboardWrite.catch(() => undefined)
-    setShareFeedback(true)
-    window.setTimeout(() => setShareFeedback(false), 1800)
-  }, [])
-
   const currentCandidates = candidates.map((candidate) => ({ ...candidate, isCurrent: candidate.versionRef === currentVersionRef }))
 
   const renderQueue = (presentation: QueuePresentation) => (
@@ -431,7 +423,6 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
                 <button className={styles.queueButton} type="button" onClick={() => setQueueOpen((value) => !value)} aria-expanded={queueOpen} aria-label={queueOpen ? "Hide generation queue" : "Open generation queue"}>
                   <PanelRight size={14} /> <span>Queue</span><b>{currentCandidates.length}</b>
                 </button>
-                <button className={styles.ghostButton} type="button" onClick={handleShare}><Share2 size={14} /> {shareFeedback ? "Link copied" : "Share"}</button>
               </div>
             </header>
             <div className={styles.canvasBody}>

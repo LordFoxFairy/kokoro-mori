@@ -1577,15 +1577,33 @@ describe("Mori studio page", () => {
     expect(within(stemsEditor).queryByText("Version vocals")).not.toBeInTheDocument()
   })
 
-  it("uses the global player as the single transport and gives share feedback", () => {
+  it("uses the global player as the single transport", () => {
     renderStudio()
 
     const player = screen.getByRole("region", { name: "Global player" })
     fireEvent.click(within(player).getByRole("button", { name: "Play" }))
     expect(within(player).getByRole("button", { name: "Pause" })).toBeInTheDocument()
+  })
 
-    fireEvent.click(screen.getByRole("button", { name: "Share" }))
-    expect(screen.getByText("Link copied")).toBeInTheDocument()
+  it("confirms the Studio deep link only after the clipboard write succeeds", async () => {
+    const writeText = vi.fn<(value: string) => Promise<void>>().mockResolvedValue()
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } })
+    renderStudio()
+
+    fireEvent.click(screen.getByRole("button", { name: "Copy link" }))
+    expect(screen.getByRole("button", { name: "Copying…" })).toBeDisabled()
+    await waitFor(() => expect(screen.getByRole("button", { name: "Link copied" })).toBeInTheDocument())
+    expect(writeText).toHaveBeenCalledWith(window.location.href)
+  })
+
+  it("reports a failed Studio link copy without claiming success", async () => {
+    const writeText = vi.fn<(value: string) => Promise<void>>().mockRejectedValue(new Error("clipboard denied"))
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } })
+    renderStudio()
+
+    fireEvent.click(screen.getByRole("button", { name: "Copy link" }))
+    await waitFor(() => expect(screen.getByRole("button", { name: "Copy failed" })).toBeInTheDocument())
+    expect(screen.queryByRole("button", { name: "Link copied" })).not.toBeInTheDocument()
   })
 
   it("creates a reviewed Remaster as new Takes without replacing Current", async () => {

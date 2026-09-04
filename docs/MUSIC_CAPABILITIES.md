@@ -219,6 +219,10 @@ Abstract / Editorial / Illustrated / Photographic 与 Warm dawn / Violet night /
 还是“做音乐 Cover / Restyle”。Private 是安全且可预测的默认值；Link only / Public 不会自动开启 Remix，
 Allow remixes 也不会改变可见性。保存草稿不会发布、分享或替换 Current Version。
 
+产品反馈也必须服从同一事实边界：Create 的未保存输入没有可分享资源，因此不显示 Share；Studio 的 `Copy link`
+只是复制当前 Project + Version 深链，等待剪贴板写入成功后才显示 `Link copied`，权限拒绝时明确显示失败并允许重试。
+它不代表作品已经发布，也不会改变 Release draft 的可见性。
+
 ### Lyrics 的 AI 协作模型
 
 Lyrics 不再只是一个孤立 textarea，也不复制 Tad 的工具入口列表。当前界面把可保存的歌词 Draft 与
@@ -564,6 +568,8 @@ BFF 必须按受信会话校验该 asset 与用户可见 Mori 资源的关联，
   Release artwork 完全分离，Vocal / Instrumental 模式只暴露必要控制，结果保持非破坏式。
 - 已完成浏览器侧第五刀：Finish 与 Export 的来源卡统一显示歌曲名、时长、保存的混音名称和轨道数，不再把 opaque
   Version ref 当作用户信息；Remaster、Release draft 与文件导出的职责仍保持分离。
+- 已完成浏览器侧第六刀：Create 移除没有持久化分享对象的 Share；Studio 将深链动作明确命名为 Copy link，
+  以 pending / success / failure 状态反映真实 Clipboard 结果，失败可再次点击重试，不提前宣称成功。
 - 下一步：选区/多轨渲染；等待真实多轨 artifact contract 后再开放。
 - AI MV 作为完成歌曲的后置流程，不抢占创作主路径。
 

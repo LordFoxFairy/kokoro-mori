@@ -52,6 +52,11 @@
   background: #fff;
 }
 
+.ghostButton:disabled {
+  cursor: wait;
+  opacity: 0.68;
+}
+
 .iconButton svg {
   width: 16px;
   height: 16px;

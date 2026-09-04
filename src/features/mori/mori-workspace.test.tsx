@@ -699,11 +699,11 @@ describe("Mori workspace", () => {
     expect(onGenerate.mock.calls[0]?.[0].lyrics).toBe("Hold the light until the morning comes.")
   })
 
-  it("gives Create share feedback instead of leaving a dead action", () => {
+  it("keeps the Create header focused on generation instead of exposing a dead share action", () => {
     renderWorkspace()
 
-    fireEvent.click(screen.getByRole("button", { name: "Share" }))
-    expect(screen.getByRole("button", { name: "Link copied" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Open generation queue" })).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: /share|copy link/iu })).not.toBeInTheDocument()
   })
 
   it("keeps the sidebar state at the application shell level", () => {
