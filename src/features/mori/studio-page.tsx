@@ -1,6 +1,6 @@
 "use client"
 
-import { AlertCircle, ArrowLeft, AudioLines, AudioWaveform, Check, Download, FileText, LoaderCircle, Play, RotateCcw, Share2, Sparkles, X } from "lucide-react"
+import { AlertCircle, ArrowLeft, AudioLines, AudioWaveform, Check, Download, FileText, History, LoaderCircle, Play, RotateCcw, Share2, Sparkles, X } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useId, useMemo, useRef, useState } from "react"
 import {
@@ -33,6 +33,7 @@ import { StudioFinishDialog } from "./components/studio-finish-dialog"
 import { StudioLyricsEditor, type StudioLyricsRunState } from "./components/studio-lyrics-editor"
 import { StudioStemsEditor, type StudioStemSeparationRunState } from "./components/studio-stems-editor"
 import { StudioTimeline } from "./components/studio-timeline"
+import { StudioVersionHistoryDrawer, StudioVersionHistoryRail } from "./components/studio-version-history"
 import { useMoriApp } from "./components/mori-app-provider"
 import { Waveform } from "./components/waveform"
 import { previewCandidates, previewProject, previewSongPlan } from "./preview-data"
@@ -136,6 +137,8 @@ const idleCurrentVersionCommitRun: CurrentVersionCommitRun = {
   retryable: false,
 }
 
+const versionHistoryDrawerId = "studio-version-history-drawer"
+
 export function StudioPageContent({ candidate, projectRef, versionRef, api, stemPlaybackFactory = createHtmlStemPlaybackController }: StudioPageContentProps) {
   const { playerCandidate, playing, positionSeconds, seekPlayer, selectPlayerCandidate, setPlaying } = useMoriApp()
   const exportStatusDescriptionId = useId()
@@ -151,6 +154,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api, stem
   const [projectTitle, setProjectTitle] = useState<string | null>(null)
   const [activeTool, setActiveTool] = useState<StudioTool>("arrangement")
   const [shareFeedback, setShareFeedback] = useState(false)
+  const [versionHistoryOpen, setVersionHistoryOpen] = useState(false)
   const [finishDialogOpen, setFinishDialogOpen] = useState(false)
   const [exportDialogOpen, setExportDialogOpen] = useState(false)
   const [exportFeedback, setExportFeedback] = useState<"idle" | MoriExportStatus>("idle")
@@ -208,6 +212,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api, stem
     setExportMessage(null)
     setFinishDialogOpen(false)
     setExportDialogOpen(false)
+    setVersionHistoryOpen(false)
   }, [activeProjectRef, activeVersionRef])
 
   useEffect(() => {
@@ -1042,6 +1047,14 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api, stem
             <button className={styles.ghostButton} type="button" onClick={share}><Share2 size={14} /> {shareFeedback ? "Link copied" : "Share"}</button>
           {activeCandidate !== null ? <>
             <button
+              className={`${styles.ghostButton} ${styles.versionHistoryTrigger}`}
+              type="button"
+              aria-label="Open version history"
+              aria-expanded={versionHistoryOpen}
+              aria-controls={versionHistoryDrawerId}
+              onClick={() => setVersionHistoryOpen(true)}
+            ><History size={14} /> Versions</button>
+            <button
               className={`${styles.ghostButton} ${styles.finishButton}`}
               type="button"
               aria-label="Finish"
@@ -1080,25 +1093,22 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api, stem
           {activeTool === "lyrics" ? <StudioLyricsEditor key={activeCandidate.versionRef} versionRef={activeCandidate.versionRef} run={lyricsRevisionRun} onGenerate={(plan) => { void generateLyricsRevision(plan) }} onCancel={() => { void cancelLyricsRevision() }} onReset={resetLyricsRevision} /> : null}
           {activeTool === "stems" ? <StudioStemsEditor key={activeVersionRef ?? "no-version"} durationSeconds={activeCandidate.durationSeconds} run={stemSeparationRun} layerRun={studioChangeRun} onSeparate={(plan) => { void generateStemSeparation(plan) }} onCancel={() => { void cancelStemSeparation() }} onReset={resetStemSeparation} onSaveMix={saveMixRevision} onGenerateLayer={(plan) => { void generateStudioChange(plan) }} onCancelLayer={() => { void cancelStudioChange() }} onResetLayer={resetStudioChange} onReviewTakes={() => setActiveTool("arrangement")} playbackFactory={stemPlaybackFactory} /> : null}
         </section>
-        <aside className={styles.versionRail} aria-label="Version history">
-          <div className={styles.versionRailHeader}><div><span>Project history</span><h2>Versions</h2></div></div>
-          {studioCandidates.map((item, index) => {
-            const isOpen = item.versionRef === activeCandidate.versionRef
-            const status = item.versionRef === currentVersionRef ? "Current" : "Draft"
-            const duration = `${Math.floor(item.durationSeconds / 60)}:${String(item.durationSeconds % 60).padStart(2, "0")}`
-            return <Link
-              aria-current={isOpen ? "page" : undefined}
-              aria-label={`${item.title}, ${status}, ${duration}`}
-              className={`${styles.versionItem} ${isOpen ? styles.versionItemActive : ""}`}
-              href={`/projects/${activeProjectRef}/studio/${item.versionRef}`}
-              key={item.versionRef}
-            >
-              <div className={`${styles.versionThumb} ${index === 1 ? styles.versionThumbAlt : ""}`}><Play size={12} fill="currentColor" /></div>
-              <div><strong>{item.title}</strong><span>{status} · {duration}</span></div>
-            </Link>
-          })}
-        </aside>
+        <StudioVersionHistoryRail
+          className={styles.versionHistorySlot}
+          candidates={studioCandidates}
+          projectRef={activeProjectRef}
+          openVersionRef={activeCandidate.versionRef}
+          currentVersionRef={currentVersionRef}
+        />
       </div>}
+      {versionHistoryOpen && activeCandidate !== null ? <StudioVersionHistoryDrawer
+        id={versionHistoryDrawerId}
+        candidates={studioCandidates}
+        projectRef={activeProjectRef}
+        openVersionRef={activeCandidate.versionRef}
+        currentVersionRef={currentVersionRef}
+        onClose={() => setVersionHistoryOpen(false)}
+      /> : null}
       {exportDialogOpen && activeCandidate !== null ? <StudioExportDialog
         versionRef={activeCandidate.versionRef}
         versionTitle={activeCandidate.title}

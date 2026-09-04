@@ -38,6 +38,65 @@ describe("Mori studio page", () => {
     expect(screen.getByRole("region", { name: "Stems editor" })).toBeInTheDocument()
   })
 
+  it("opens projected Versions in a contextual drawer and restores its trigger on close", async () => {
+    render(
+      <MoriAppProvider>
+        <StudioPageContent
+          candidate={previewCandidates[0]}
+          projectRef="project_drawer"
+          api={{
+            getProject: async () => ({
+              data: {
+                project_ref: "project_drawer",
+                title: "Soft Landing",
+                description: "One careful direction",
+                current_version_ref: "version_drawer_a",
+                candidate_count: 1,
+                last_activity_at: "2026-09-04T10:00:00.000Z",
+              },
+              meta: { request_id: "request_project_drawer" },
+            }),
+            listCandidates: async () => ({
+              data: {
+                candidates: [{
+                  candidate_ref: "candidate_drawer_a",
+                  generation_ref: "generation_drawer",
+                  version_ref: "version_drawer_a",
+                  project_ref: "project_drawer",
+                  title: "Soft Landing",
+                  duration_seconds: 154,
+                  audio_asset_ref: "asset_drawer_a",
+                  waveform_asset_ref: "waveform_drawer_a",
+                  style_tags: ["intimate", "acoustic"],
+                  created_at: "2026-09-04T09:59:00.000Z",
+                }],
+                next_cursor: null,
+              },
+              meta: { request_id: "request_candidates_drawer" },
+            }),
+          }}
+          stemPlaybackFactory={createTestStemPlaybackController}
+        />
+      </MoriAppProvider>,
+    )
+
+    await screen.findByRole("heading", { name: "Soft Landing" })
+    const trigger = screen.getByRole("button", { name: "Open version history" })
+    expect(trigger).toHaveAttribute("aria-expanded", "false")
+    expect(trigger).toHaveAttribute("aria-controls", "studio-version-history-drawer")
+    trigger.focus()
+    fireEvent.click(trigger)
+
+    expect(trigger).toHaveAttribute("aria-expanded", "true")
+    const drawer = screen.getByRole("dialog", { name: "Version history" })
+    expect(within(drawer).getByRole("link", { name: "Soft Landing, Current, Open, 2:34" })).toHaveAttribute("href", "/projects/project_drawer/studio/version_drawer_a")
+
+    fireEvent.click(within(drawer).getByRole("button", { name: "Close version history" }))
+    expect(screen.queryByRole("dialog", { name: "Version history" })).not.toBeInTheDocument()
+    expect(trigger).toHaveAttribute("aria-expanded", "false")
+    expect(trigger).toHaveFocus()
+  })
+
   it("keeps the previous Current until the Use take command is confirmed", async () => {
     let releaseSelection: () => void = () => undefined
     const selectionGate = new Promise<void>((resolve) => { releaseSelection = resolve })
@@ -84,6 +143,11 @@ describe("Mori studio page", () => {
     const history = screen.getByRole("complementary", { name: "Version history" })
     expect(within(history).getByRole("link", { name: /First Light · Afterglow, Current/u })).toHaveAttribute("aria-current", "page")
     expect(within(history).getByRole("link", { name: /^First Light, Draft/u })).not.toHaveAttribute("aria-current")
+
+    fireEvent.click(screen.getByRole("button", { name: "Open version history" }))
+    const drawer = screen.getByRole("dialog", { name: "Version history" })
+    expect(within(drawer).getByRole("link", { name: "First Light · Afterglow, Current, Open, 3:16" })).toHaveAttribute("aria-current", "page")
+    expect(within(drawer).getByRole("link", { name: "First Light, Draft, 3:02" })).not.toHaveAttribute("aria-current")
   })
 
   it("keeps Current unchanged and safely reuses the command identity on retry", async () => {
@@ -2173,7 +2237,7 @@ describe("Mori studio page", () => {
 
     const history = await screen.findByRole("complementary", { name: "Version history" })
     await waitFor(() => expect(within(history).getByRole("link", { name: "Window Seat · Wide, Current, 2:26" })).not.toHaveAttribute("aria-current"))
-    expect(within(history).getByRole("link", { name: "Window Seat, Draft, 2:20" })).toHaveAttribute("aria-current", "page")
+    expect(within(history).getByRole("link", { name: "Window Seat, Draft, Open, 2:20" })).toHaveAttribute("aria-current", "page")
     expect(screen.getByText("Open take")).toBeInTheDocument()
   })
 
