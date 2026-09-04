@@ -2,7 +2,7 @@
 
 import { ArrowRight, AudioLines, Check, Mic2, Pencil, Plus, RotateCcw, Scissors, SlidersHorizontal, Sparkles, Square } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
-import { useId, useState } from "react"
+import { useId, useRef, useState } from "react"
 import type { FormEvent } from "react"
 import type { GenerationStatus } from "../domain"
 import {
@@ -107,8 +107,46 @@ const transformIntents: readonly {
   },
 ]
 
+const operationPromptStarters: Readonly<Record<Exclude<StudioChangeOperation, "transform">, readonly string[]>> = {
+  add_part: [
+    "Add a restrained string lift",
+    "Bring in soft percussion",
+    "Layer an answering vocal",
+  ],
+  replace_section: [
+    "Make this section land with more lift",
+    "Strip this back to piano and voice",
+    "Rebuild the groove with tighter drums",
+  ],
+  extend: [
+    "Continue into a gentle outro",
+    "Build toward one final chorus",
+    "Let the hook dissolve into ambience",
+  ],
+}
+
+const restylePromptStarters = [
+  "Turn this into warm analog soul",
+  "Reframe it as intimate acoustic pop",
+  "Push it toward cinematic synthwave",
+] as const
+
+const coverPromptStarters: Readonly<Record<StudioCoverMode, readonly string[]>> = {
+  vocal: [
+    "Re-perform it as a close acoustic duet",
+    "Give it a smoky late-night vocal",
+    "Make the performance brighter and more urgent",
+  ],
+  instrumental: [
+    "Rebuild it around felt piano and chamber strings",
+    "Turn it into a guitar-led instrumental",
+    "Make it sparse, cinematic, and beatless",
+  ],
+}
+
 export function StudioAiComposer({ selectedSection, run, initialOperation, initialTransformScope, onGenerate, onCancel, onReset }: StudioAiComposerProps) {
   const promptId = useId()
+  const promptRef = useRef<HTMLTextAreaElement>(null)
   const [operation, setOperation] = useState<StudioChangeOperation>(() => run.plan?.operation ?? initialOperation ?? "add_part")
   const [instruction, setInstruction] = useState(() => run.plan?.instruction ?? "")
   const [preserve, setPreserve] = useState<StudioChangePreserve[]>(() => [...(run.plan?.preserve ?? defaultStudioChangePreserve)])
@@ -129,6 +167,7 @@ export function StudioAiComposer({ selectedSection, run, initialOperation, initi
     : preserve
   const activeOutputCount: StudioChangeOutputCount = isCover ? 2 : outputCount
   const activeScope = studioChangeScopeLabel(operation, selectedSection, transformScope, transformIntent)
+  const promptStarters = studioPromptStarters(operation, transformIntent, coverMode)
   const busy = isActiveStudioChangeStatus(run.status)
   const reviewedPlan = plan !== null && (
     (plan.draft.operation === "transform" && plan.draft.scope.type === "whole_version")
@@ -156,6 +195,11 @@ export function StudioAiComposer({ selectedSection, run, initialOperation, initi
     clearFinishedRun()
     setInstruction(nextInstruction)
     setPlan(null)
+  }
+
+  const choosePromptStarter = (starter: string) => {
+    updateInstruction(starter)
+    promptRef.current?.focus()
   }
 
   const togglePreserve = (item: StudioChangePreserve) => {
@@ -222,7 +266,7 @@ export function StudioAiComposer({ selectedSection, run, initialOperation, initi
     if (busy) return
     onReset()
     setPlan(null)
-    window.requestAnimationFrame(() => document.getElementById(promptId)?.focus())
+    window.requestAnimationFrame(() => promptRef.current?.focus())
   }
 
   const plannedOperation = visiblePlan === null ? null : studioChangePlanLabel(visiblePlan)
@@ -304,8 +348,17 @@ export function StudioAiComposer({ selectedSection, run, initialOperation, initi
       ) : null}
 
       <form className={styles.studioAiForm} onSubmit={reviewChange}>
+        <div className={styles.studioAiPromptStarters} role="group" aria-label="Prompt starters">
+          <span>Try a direction</span>
+          <div>
+            {promptStarters.map((starter) => (
+              <button type="button" disabled={busy} key={starter} onClick={() => choosePromptStarter(starter)}>{starter}</button>
+            ))}
+          </div>
+        </div>
         <label className={styles.srOnly} htmlFor={promptId}>Tell Mori what to change</label>
         <textarea
+          ref={promptRef}
           id={promptId}
           className={styles.studioAiPrompt}
           value={instruction}
@@ -429,6 +482,11 @@ export function StudioAiComposer({ selectedSection, run, initialOperation, initi
 
 function getOperation(operation: StudioChangeOperation): StudioAiOperationConfig {
   return operations.find((item) => item.id === operation) ?? operations[0]
+}
+
+function studioPromptStarters(operation: StudioChangeOperation, transformIntent: StudioTransformIntent, coverMode: StudioCoverMode): readonly string[] {
+  if (operation !== "transform") return operationPromptStarters[operation]
+  return transformIntent === "cover" ? coverPromptStarters[coverMode] : restylePromptStarters
 }
 
 function transformIntentFromPlan(plan: StudioChangePlan | null): StudioTransformIntent {

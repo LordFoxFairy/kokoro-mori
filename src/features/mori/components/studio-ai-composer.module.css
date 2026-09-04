@@ -365,6 +365,62 @@
   box-shadow: 0 0 0 3px rgba(109, 92, 231, 0.08);
 }
 
+.studioAiPromptStarters {
+  display: grid;
+  min-width: 0;
+  grid-column: 1 / -1;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 0 2px 7px;
+  border-bottom: 1px solid rgba(109, 92, 231, 0.08);
+}
+
+.studioAiPromptStarters > span {
+  color: var(--mori-faint);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.studioAiPromptStarters > div {
+  display: flex;
+  min-width: 0;
+  gap: 5px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.studioAiPromptStarters > div::-webkit-scrollbar {
+  display: none;
+}
+
+.studioAiPromptStarters button {
+  min-height: 25px;
+  flex: 0 0 auto;
+  padding: 0 8px;
+  border: 1px solid rgba(109, 92, 231, 0.1);
+  border-radius: 999px;
+  color: var(--mori-muted);
+  font-size: 8px;
+  font-weight: 650;
+  background: rgba(248, 246, 255, 0.78);
+  transition: border-color var(--mori-motion-fast) ease, color var(--mori-motion-fast) ease, background var(--mori-motion-fast) ease;
+}
+
+.studioAiPromptStarters button:hover:not(:disabled) {
+  border-color: rgba(109, 92, 231, 0.24);
+  color: var(--mori-primary-deep);
+  background: rgba(239, 235, 255, 0.92);
+}
+
+.studioAiPromptStarters button:disabled {
+  cursor: progress;
+  opacity: 0.5;
+}
+
 .studioAiPrompt {
   width: 100%;
   min-height: 50px;
@@ -729,6 +785,11 @@
   outline-offset: 2px;
 }
 
+.studioAiPromptStarters button:focus-visible {
+  outline: 2px solid rgba(109, 92, 231, 0.48);
+  outline-offset: 2px;
+}
+
 .studioAiPlanFooter .studioAiStage {
   border-color: transparent;
   color: #fff;
@@ -754,7 +815,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .studioAiProgress > span {
+  .studioAiProgress > span,
+  .studioAiPromptStarters button {
     transition: none;
   }
 }
@@ -794,6 +856,11 @@
 
   .studioAiForm {
     grid-template-columns: 1fr;
+  }
+
+  .studioAiPromptStarters {
+    grid-template-columns: 1fr;
+    gap: 5px;
   }
 
   .studioAiReview {

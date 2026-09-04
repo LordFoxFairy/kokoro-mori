@@ -21,6 +21,7 @@
 官方 [Studio 2.0](https://help.suno.com/en/articles/13670529) 当前把 AI 生成与完整制作环境放在一起：
 
 - Chat Bar 承接生成音频、MIDI、插件与项目操作；Transport 位于时间线上方。
+- 自然语言入口仍绑定当前作品上下文，而不是把 AI 协作拆成另一个聊天产品。
 - 每次生成的 alternatives 进入 Take Lanes，再由用户试听并提交到时间线。
 - Studio 已继续扩展到 automation、effects、MIDI、synth、recording 与 advanced stems。
 - 导出覆盖整首、选区、多轨，以及 32-bit WAV / MP3 和独立 stems。
@@ -45,6 +46,9 @@ AI MV、Vocal Remover、Text to Speech 分类。官方公开页面还列出 Audi
 
 Tad 的优势是 **用户先知道自己要做哪一种 AI 操作**；弱点是能力数量继续增长后容易形成工具集合，作品、版本、
 试听与继续制作之间的连续性不如 Project-first 模型自然。
+
+Tad 公开页也把 AI prompt assistance 作为降低起步成本的能力：先给带有 genre、instrument、BPM、style、mood
+的可选方向，再允许用户继续修改。Mori 吸收“提供创意起点”，但不自动跳过 Review 或直接触发生成。
 
 截至调研日期，在 Tad 官方站点导航和公开站点检索中未发现 developer portal 或公开 API documentation 入口。
 这只是“当前未发现公开入口”，不推断其内部接口或后续计划。
@@ -98,6 +102,10 @@ Commit       用户显式确认后才改变持久化事实
 
 自然语言负责表达创意，结构化字段负责保护不可模糊的事实。AI 不能直接覆盖 Current Version，也不能把失败或
 尚未确认的本地状态伪装成成功。
+
+Studio 的自然语言输入按 Add part、Replace section、Extend、Restyle、Vocal Cover、Instrumental Cover
+提供少量上下文 starter。点击只会预填并聚焦仍可编辑的输入框；用户仍需 Review Change Plan，starter 本身不成为
+新的任务类型、全局入口或自动执行命令。
 
 ## 4. 下一轮界面方案
 

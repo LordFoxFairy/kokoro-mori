@@ -39,6 +39,8 @@ Mori 的落地：
   两种表面复用同一组 Version 状态，并分别标明 Open 与 Current，缩窄画布时也不会失去回看入口。
 - Finish 仍绑定当前 Version：Remaster 的音频结果回到 Take Lanes，Release 的视觉与元数据只进入 draft，
   两条路径都不会绕过用户确认或偷偷发布。
+- Studio 的自然语言协作留在当前时间线选区；每种命名操作提供少量可编辑 prompt starter，降低空白输入成本，
+  但点击 starter 不会生成，仍必须先复核结构化 Change Plan。
 
 ### 2. Figma First Draft：AI 先给可编辑的第一稿
 
@@ -149,7 +151,8 @@ Workspace nav    内容随项目上下文变化                     跨页面保
   Take Lanes；切换子工作流保留未提交草稿，离开再返回也能恢复运行中的图层与取消入口。
 - 已落地第一版：Studio 的 Mori AI Changes 把 Add part、Replace section、Extend、Transform 放在
   Arrangement 时间线上下文中；时间线播放头与全局 Player 双向使用同一位置状态，并明确标记当前段落。
-  用户可选择结构段或拖动起止控制形成 Custom range，再输入指令并复核 Change Plan；移动范围会让旧 Plan
+  用户可选择结构段或拖动起止控制形成 Custom range，再输入指令并复核 Change Plan；每种操作的少量 prompt
+  starter 只预填并聚焦可编辑输入，不会自动执行；移动范围会让旧 Plan
   失效。Transform 进一步拆成 Restyle / Cover 两个可读意图：Restyle 可使用选区或整首，并保留用户选择的
   anchors、references 与 1 / 2 / 4 个输出；Cover 固定使用 open Version 的整首音频，不要求重新上传，按 Vocal /
   Instrumental 决定可选 Voice 与严格保护项，并固定输出两条 Take。界面与 Review Plan 都明确区分 audio Cover

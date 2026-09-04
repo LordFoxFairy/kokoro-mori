@@ -33,6 +33,23 @@ function renderComposer(onGenerate = vi.fn<(plan: StudioChangePlan) => void>()) 
 }
 
 describe("Studio AI composer", () => {
+  it("offers operation-aware prompt starters without skipping plan review", () => {
+    const onGenerate = renderComposer()
+
+    const addStarters = screen.getByRole("group", { name: "Prompt starters" })
+    expect(within(addStarters).getByRole("button", { name: "Add a restrained string lift" })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole("button", { name: "Extend" }))
+    const extendStarter = screen.getByRole("button", { name: "Continue into a gentle outro" })
+    fireEvent.click(extendStarter)
+
+    expect(screen.getByRole("textbox", { name: "Tell Mori what to change" })).toHaveValue("Continue into a gentle outro")
+    expect(screen.getByRole("textbox", { name: "Tell Mori what to change" })).toHaveFocus()
+    expect(screen.queryByRole("region", { name: "AI change plan" })).not.toBeInTheDocument()
+    expect(onGenerate).not.toHaveBeenCalled()
+    expect(screen.getByRole("button", { name: "Review change" })).toBeEnabled()
+  })
+
   it("reveals clear Restyle and Cover intents only inside Transform", () => {
     renderComposer()
 

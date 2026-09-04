@@ -123,7 +123,8 @@ Commit       用户试听后显式 Use take
 当前 Studio 已落地第一版 **Mori AI Changes**：时间线播放头与全局 Player 使用同一位置状态，并实时标记所在段落；
 用户既可选择结构段，也可拖动起止控制形成精确的 Custom range，范围会直接成为 Replace/Transform 的毫秒级
 `time_range`，Add/Extend 则使用其终点。自然语言指令、Change Plan 复核、非破坏式提示和 Generation 状态处于
-同一个工作面。Direction controls
+同一个工作面。Add part、Replace section、Extend、Restyle 与两种 Cover 现在各自提供少量 prompt starter；
+starter 只填入可编辑指令，不创建任务，也不绕过 Change Plan。Direction controls
 允许用户明确锁定 Melody、Lyrics、Voice、Tempo、Structure，并选择 1 / 2 / 4 个 alternatives；Transform
 不再展示一组含义模糊的高级参数，而是先让用户选择 Restyle 或 Cover。生成后可看到进度、取消或重试；成功
 Candidate 直接追加到 Take Lanes，但不会替换 Current Version。它不挤入全局 Rail，也不伪装成聊天记录。
@@ -520,6 +521,8 @@ BFF 必须按受信会话校验该 asset 与用户可见 Mori 资源的关联，
   并把成功 Candidate 非破坏式追加到 Take Lanes。
 - Direction controls 已把 API 中的 `preserve`、`output_count` 与 Transform `whole_version` scope 变成用户可见、
   可复核的控制项；默认工作面仍保持收起，避免把 Studio 做成参数面板。
+- Mori AI 输入已加入 operation-aware prompt starters：既降低空白输入成本，也保持自然语言可编辑、计划先复核、
+  用户再显式生成的控制边界。
 - Transform 已拆成 Restyle / Cover 两个可读意图：Restyle 保留选区、anchors、references 与 1 / 2 / 4 Takes；
   Cover 固定使用 open Version、Whole song、两条 Take，并按 Vocal / Instrumental 锁定 Voice 和保护项。两者都先
   Review，并通过精确 snapshot 匹配后进入 Take Lanes。
