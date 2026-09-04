@@ -7,6 +7,7 @@ import {
 } from "./generation-queue"
 
 export const generationQueueStorageKey = "mori-generation-queue-v1"
+export const generationQueueStorageEvent = "mori-generation-queue-updated"
 
 /** Read the browser-owned task summary; SSR and storage failures stay neutral. */
 export function readGenerationQueueState(): GenerationQueueState {
@@ -27,6 +28,7 @@ export function writeGenerationQueueState(state: GenerationQueueState): void {
 
   try {
     window.localStorage.setItem(generationQueueStorageKey, serializeGenerationQueueState(state))
+    window.dispatchEvent(new Event(generationQueueStorageEvent))
   } catch {
     // A blocked or full local store must not interrupt a generation.
   }

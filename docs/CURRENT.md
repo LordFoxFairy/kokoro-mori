@@ -30,6 +30,7 @@
   Create 与 Studio Change 共用这份队列，刷新后可从 active generation ref 恢复 snapshot polling，并在切换任务时保持其他进行中任务的后台轮询。
   Generation SSE 支持 AbortSignal，页面卸载时停止长连接。
 - Studio 时间线在窄屏提供横向滚动、键盘焦点和明确的 Swipe hint；短桌面视口的 Export dialog 会避开固定 Player safe area。
+  Studio Header 提供项目级 Generation queue 入口，使用同一浏览器任务摘要展示后台运行、完成和需处理的任务，并可回到对应的 Create 或 Studio 上下文。
 
 ## 验证证据
 
@@ -38,7 +39,7 @@
 ```text
 pnpm lint                         passed
 pnpm typecheck                    passed
-pnpm test --maxWorkers=1          passed: 49 files / 375 tests
+pnpm test --maxWorkers=1          passed: 50 files / 378 tests
 pnpm build                        passed
 ```
 

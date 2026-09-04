@@ -1,0 +1,369 @@
+.studioQueueButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--mori-border);
+  border-radius: 10px;
+  color: var(--mori-muted);
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.74);
+  transition: border-color var(--mori-motion-fast) ease, color var(--mori-motion-fast) ease, background var(--mori-motion-fast) ease;
+}
+
+.studioQueueButton:hover,
+.studioQueueButton[aria-expanded="true"] {
+  border-color: rgba(109, 92, 231, 0.3);
+  color: var(--mori-primary);
+  background: var(--mori-primary-soft);
+}
+
+.studioQueueButton[data-queue-state="active"] {
+  border-color: rgba(109, 92, 231, 0.26);
+  color: var(--mori-primary);
+  background: var(--mori-primary-soft);
+}
+
+.studioQueueButton[data-queue-state="attention"] {
+  border-color: rgba(201, 85, 85, 0.24);
+  color: var(--mori-error);
+  background: rgba(255, 241, 239, 0.86);
+}
+
+.studioQueueButton b {
+  display: grid;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  place-items: center;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 9px;
+  line-height: 1;
+  background: var(--mori-primary);
+}
+
+.studioQueueLayer {
+  position: fixed;
+  inset: 68px 0 var(--mori-player-safe-space);
+  z-index: 19;
+  pointer-events: none;
+}
+
+.studioQueueBackdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: rgba(38, 34, 48, 0.08);
+  pointer-events: auto;
+}
+
+.studioQueuePanel {
+  position: absolute;
+  top: 12px;
+  right: 18px;
+  bottom: 12px;
+  display: flex;
+  width: min(390px, calc(100vw - 36px));
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--mori-border);
+  border-radius: 18px;
+  outline: 0;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: -18px 16px 45px rgba(62, 45, 86, 0.15);
+  pointer-events: auto;
+}
+
+.studioQueueHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 22px 20px 17px;
+  border-bottom: 1px solid #f0eeeb;
+}
+
+.studioQueueKicker {
+  color: var(--mori-faint);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.studioQueueHeader h2 {
+  margin: 6px 0 4px;
+  color: var(--mori-foreground);
+  font-family: var(--mori-font-display);
+  font-size: 24px;
+  font-weight: 400;
+  letter-spacing: -0.055em;
+}
+
+.studioQueueHeader p {
+  margin: 0;
+  color: var(--mori-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.studioQueueClose {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--mori-border);
+  border-radius: 9px;
+  color: var(--mori-muted);
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.studioQueueClose:hover {
+  border-color: var(--mori-border-strong);
+  color: var(--mori-foreground);
+  background: #fff;
+}
+
+.studioQueueBody {
+  min-height: 0;
+  overflow: auto;
+  padding: 16px;
+}
+
+.studioQueueSummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  color: var(--mori-faint);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.studioQueueSummary span:last-child {
+  color: var(--mori-primary);
+}
+
+.studioQueueItems {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.studioQueueItem {
+  position: relative;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 11px;
+  padding: 14px;
+  border: 1px solid var(--mori-border);
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(250, 248, 255, 0.78));
+}
+
+.studioQueueItemCurrent {
+  border-color: rgba(109, 92, 231, 0.3);
+  box-shadow: inset 3px 0 0 var(--mori-primary);
+}
+
+.studioQueueStatus {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 9px;
+}
+
+.studioQueueStatusQueued,
+.studioQueueStatusStreaming {
+  color: var(--mori-primary);
+  background: var(--mori-primary-soft);
+}
+
+.studioQueueStatusQueued svg,
+.studioQueueStatusStreaming svg {
+  animation: studioQueueSpin 850ms linear infinite;
+}
+
+.studioQueueStatusCompleted {
+  color: var(--mori-success);
+  background: rgba(231, 246, 239, 0.9);
+}
+
+.studioQueueStatusFailed {
+  color: var(--mori-error);
+  background: rgba(255, 241, 239, 0.92);
+}
+
+@keyframes studioQueueSpin {
+  to { transform: rotate(360deg); }
+}
+
+.studioQueueItemContent {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.studioQueueItemTitle {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.studioQueueItemTitle strong {
+  overflow: hidden;
+  color: var(--mori-foreground);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studioQueueCurrent {
+  flex: 0 0 auto;
+  padding: 3px 6px;
+  border-radius: 999px;
+  color: var(--mori-primary);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: var(--mori-primary-soft);
+}
+
+.studioQueueItemMeta,
+.studioQueueItemContext,
+.studioQueueItemHint {
+  color: var(--mori-muted);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.studioQueueItemContext {
+  color: var(--mori-primary);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.studioQueueProgress {
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #eeebf0;
+}
+
+.studioQueueProgress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--mori-primary), #dda38e);
+  transition: width 220ms ease;
+}
+
+.studioQueueItemHint {
+  color: var(--mori-faint);
+}
+
+.studioQueueOpenLink {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 4px;
+  margin-top: 2px;
+  color: var(--mori-primary);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.studioQueueOpenLink:hover {
+  color: var(--mori-primary-deep);
+}
+
+.studioQueueEmpty {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  min-height: 260px;
+  gap: 8px;
+  padding: 20px;
+  text-align: center;
+}
+
+.studioQueueEmptyIcon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  margin-bottom: 4px;
+  place-items: center;
+  border: 1px solid rgba(109, 92, 231, 0.16);
+  border-radius: 13px;
+  color: var(--mori-primary);
+  background: var(--mori-primary-soft);
+}
+
+.studioQueueEmpty strong {
+  color: var(--mori-foreground);
+  font-size: 13px;
+}
+
+.studioQueueEmpty > span:last-child {
+  max-width: 260px;
+  color: var(--mori-muted);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.studioQueueButton:focus-visible,
+.studioQueueClose:focus-visible,
+.studioQueueOpenLink:focus-visible {
+  outline: 3px solid rgba(109, 92, 231, 0.22);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .studioQueueStatusQueued svg,
+  .studioQueueStatusStreaming svg {
+    animation: none;
+  }
+
+  .studioQueueProgress span {
+    transition: none;
+  }
+}
+
+@media (max-width: 700px) {
+  .studioQueueButton {
+    width: 34px;
+    padding-inline: 0;
+    justify-content: center;
+    font-size: 0;
+  }
+
+  .studioQueueButtonLabel {
+    display: none;
+  }
+
+  .studioQueueLayer {
+    inset: 58px 0 var(--mori-player-safe-space);
+  }
+
+  .studioQueuePanel {
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    border-right: 0;
+    border-bottom: 0;
+    border-radius: 18px 18px 0 0;
+  }
+}

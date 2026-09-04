@@ -33,6 +33,7 @@ import { StudioExportDialog } from "./components/studio-export-dialog"
 import { StudioFinishDialog } from "./components/studio-finish-dialog"
 import { StudioLyricsEditor, type StudioLyricsRunState } from "./components/studio-lyrics-editor"
 import { StudioStemsEditor, type StudioStemSeparationRunState } from "./components/studio-stems-editor"
+import { StudioGenerationQueue } from "./components/studio-generation-queue"
 import { StudioTimeline } from "./components/studio-timeline"
 import { StudioVersionHistoryDrawer, StudioVersionHistoryRail } from "./components/studio-version-history"
 import { useMoriApp } from "./components/mori-app-provider"
@@ -1155,6 +1156,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
             >
               <StudioLinkCopyIcon status={linkCopyStatus} /> <span aria-live="polite">{studioLinkCopyLabel(linkCopyStatus)}</span>
             </button>
+            <StudioGenerationQueue projectRef={activeProjectRef} activeVersionRef={activeVersionRef} />
           {activeCandidate !== null ? <>
             <button
               className={`${styles.ghostButton} ${styles.versionHistoryTrigger}`}
