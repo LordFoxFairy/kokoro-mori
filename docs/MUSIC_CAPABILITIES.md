@@ -186,6 +186,10 @@ Result       固定 2 个 Remastered Takes
 Commit       对比后显式 Use take；源与 Current 均不改变
 ```
 
+Finish 与独立 Export 使用同一套来源心智：**Open version** 显示歌曲名、时长与是否包含已保存 mixer choices，
+**Mix Revision** 显示用户命名、修订号和轨道数。界面不展示 `version_ref`、`mix_revision_ref` 等内部引用；
+引用只留在命令与结果核对边界。这样用户只需判断“原始版本还是已保存混音”，不必理解系统标识符。
+
 这个层级吸收 Suno Remaster 的“保持作品身份、用强度控制制作变化”，以及 Tad 把 AI 能力意图说清楚的优点；
 但 Mori 把来源、约束和结果去向全部结构化。运行中关闭 Finish 不会取消任务，重新打开可恢复进度；snapshot 的
 source 或 strength 与 Review Plan 不一致时不会挂接任何 Candidate。保存过 Mix 时默认选择最新 Mix Revision，
@@ -555,6 +559,8 @@ BFF 必须按受信会话校验该 asset 与用户可见 Mori 资源的关联，
   只进入 Release draft，不进入音频 Take Lanes；窗口关闭、页签切换与任务恢复保持上下文，切换 Version 会清理旧草稿。
 - 已完成浏览器侧第四刀：Studio Transform 中的 Restyle / Cover 使用命名意图和严格 typed snapshot；Cover 与
   Release artwork 完全分离，Vocal / Instrumental 模式只暴露必要控制，结果保持非破坏式。
+- 已完成浏览器侧第五刀：Finish 与 Export 的来源卡统一显示歌曲名、时长、保存的混音名称和轨道数，不再把 opaque
+  Version ref 当作用户信息；Remaster、Release draft 与文件导出的职责仍保持分离。
 - 下一步：选区/多轨渲染；等待真实多轨 artifact contract 后再开放。
 - AI MV 作为完成歌曲的后置流程，不抢占创作主路径。
 

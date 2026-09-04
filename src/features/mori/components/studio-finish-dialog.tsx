@@ -12,7 +12,6 @@ import { StudioReleasePanel, type StudioReleasePanelProps } from "./studio-relea
 import styles from "./studio-finish-dialog.module.css"
 
 type StudioFinishDialogProps = {
-  versionRef: string
   versionTitle: string
   durationSeconds: number
   latestMixRevision: MoriMixRevision | null
@@ -39,7 +38,6 @@ const strengthOptions: readonly {
 ]
 
 export function StudioFinishDialog({
-  versionRef,
   versionTitle,
   durationSeconds,
   latestMixRevision,
@@ -250,8 +248,8 @@ export function StudioFinishDialog({
                     inputRef={sourceType === "version" ? sourceRef : undefined}
                     active={sourceType === "version"}
                     label="Open version"
-                    description="The Version currently open in Studio"
-                    detail={versionRef}
+                    description={`${versionTitle} · ${formatDuration(durationSeconds)}`}
+                    detail="Base audio before saved mixer changes"
                     icon={<Music2 size={16} />}
                     onSelect={() => setSourceType("version")}
                   />
@@ -346,10 +344,17 @@ function SourceChoice({ inputRef, active, label, description, detail, icon, onSe
     <label className={`${styles.sourceChoice} ${active ? styles.choiceActive : ""}`}>
       <input ref={inputRef} className={styles.radioInput} type="radio" name="remaster-source" aria-label={label} checked={active} onChange={onSelect} />
       <span className={styles.choiceIcon}>{icon}</span>
-      <span className={styles.choiceCopy}><strong>{label}</strong><small>{description}</small><code>{detail}</code></span>
+      <span className={styles.choiceCopy}><strong>{label}</strong><small>{description}</small><span className={styles.choiceMeta}>{detail}</span></span>
       <span className={styles.choiceCheck} aria-hidden="true"><Check size={13} /></span>
     </label>
   )
+}
+
+function formatDuration(durationSeconds: number): string {
+  const safeDuration = Math.max(0, Math.round(durationSeconds))
+  const minutes = Math.floor(safeDuration / 60)
+  const seconds = safeDuration % 60
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`
 }
 
 type RemasterPlanProps = {

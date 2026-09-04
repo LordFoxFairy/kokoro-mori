@@ -7,8 +7,8 @@ import { createExportRequest, type MoriExportFormat, type MoriExportInput, type 
 import styles from "./studio-export-dialog.module.css"
 
 type StudioExportDialogProps = {
-  versionRef: string
   versionTitle: string
+  durationSeconds: number
   latestMixRevision: MoriMixRevision | null
   status: "idle" | MoriExportStatus
   activeInput: MoriExportInput | null
@@ -20,8 +20,8 @@ type StudioExportDialogProps = {
 }
 
 export function StudioExportDialog({
-  versionRef,
   versionTitle,
+  durationSeconds,
   latestMixRevision,
   status,
   activeInput,
@@ -156,8 +156,8 @@ export function StudioExportDialog({
                   <span className={styles.choiceIcon}><Music2 size={16} /></span>
                   <span className={styles.choiceCopy}>
                     <strong>Open version</strong>
-                    <small>Audio from the Version open in Studio · no saved mixer changes</small>
-                    <code>{versionRef}</code>
+                    <small>{versionTitle} · {formatDuration(durationSeconds)}</small>
+                    <span className={styles.choiceMeta}>Base audio before saved mixer changes</span>
                   </span>
                   <span className={styles.choiceCheck} aria-hidden="true"><Check size={13} /></span>
                 </label>
@@ -178,7 +178,7 @@ export function StudioExportDialog({
                     <span className={styles.choiceCopy}>
                       <strong>Mix revision {latestMixRevision.revision}</strong>
                       <small>{latestMixRevision.name}</small>
-                      <code>{latestMixRevision.tracks.length} saved tracks</code>
+                      <span className={styles.choiceMeta}>{latestMixRevision.tracks.length} saved tracks</span>
                     </span>
                     <span className={styles.choiceCheck} aria-hidden="true"><Check size={13} /></span>
                   </label>
@@ -249,6 +249,13 @@ export function StudioExportDialog({
 
 function exportSourceLabel(source: MoriExportInput["source"]): string {
   return source.type === "version" ? "Open version" : "Saved Mix Revision"
+}
+
+function formatDuration(durationSeconds: number): string {
+  const safeDuration = Math.max(0, Math.round(durationSeconds))
+  const minutes = Math.floor(safeDuration / 60)
+  const seconds = safeDuration % 60
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`
 }
 
 function getFocusableElements(container: HTMLElement): HTMLElement[] {

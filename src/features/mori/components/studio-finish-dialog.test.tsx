@@ -32,7 +32,6 @@ describe("Studio Finish dialog", () => {
     const onViewChange = vi.fn()
     render(
       <StudioFinishDialog
-        versionRef="version_1"
         versionTitle="First Light"
         durationSeconds={182}
         latestMixRevision={null}
@@ -70,7 +69,6 @@ describe("Studio Finish dialog", () => {
     const onSubmit = vi.fn()
     render(
       <StudioFinishDialog
-        versionRef="version_1"
         versionTitle="First Light"
         durationSeconds={182}
         latestMixRevision={mixRevision}
@@ -121,7 +119,6 @@ describe("Studio Finish dialog", () => {
     launcher.focus()
     const view = render(
       <StudioFinishDialog
-        versionRef="version_1"
         versionTitle="First Light"
         durationSeconds={182}
         latestMixRevision={null}
@@ -136,6 +133,9 @@ describe("Studio Finish dialog", () => {
 
     const versionSource = screen.getByRole("radio", { name: /Open version/u })
     expect(versionSource).toHaveFocus()
+    expect(screen.getByText("First Light · 3:02")).toBeInTheDocument()
+    expect(screen.getByText("Base audio before saved mixer changes")).toBeInTheDocument()
+    expect(screen.queryByText("version_1")).not.toBeInTheDocument()
     expect(document.body.style.overflow).toBe("hidden")
     screen.getByRole("button", { name: "Close Finish" }).focus()
     fireEvent.keyDown(window, { key: "Tab", shiftKey: true })
@@ -158,7 +158,6 @@ describe("Studio Finish dialog", () => {
     })
     render(
       <StudioFinishDialog
-        versionRef="version_1"
         versionTitle="First Light"
         durationSeconds={182}
         latestMixRevision={null}
@@ -190,7 +189,6 @@ describe("Studio Finish dialog", () => {
     const onReviewTakes = vi.fn()
     const view = render(
       <StudioFinishDialog
-        versionRef="version_1"
         versionTitle="First Light"
         durationSeconds={182}
         latestMixRevision={null}
@@ -211,7 +209,6 @@ describe("Studio Finish dialog", () => {
 
     view.rerender(
       <StudioFinishDialog
-        versionRef="version_1"
         versionTitle="First Light"
         durationSeconds={182}
         latestMixRevision={null}

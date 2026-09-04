@@ -1119,8 +1119,8 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
         onClose={() => setVersionHistoryOpen(false)}
       /> : null}
       {exportDialogOpen && activeCandidate !== null ? <StudioExportDialog
-        versionRef={activeCandidate.versionRef}
         versionTitle={activeCandidate.title}
+        durationSeconds={activeCandidate.durationSeconds}
         latestMixRevision={latestMixRevision}
         status={exportFeedback}
         activeInput={exportInput}
@@ -1131,7 +1131,6 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
         onSubmit={(input) => { void startExport(input) }}
       /> : null}
       {finishDialogOpen && activeCandidate !== null ? <StudioFinishDialog
-        versionRef={activeCandidate.versionRef}
         versionTitle={activeCandidate.title}
         durationSeconds={activeCandidate.durationSeconds}
         latestMixRevision={latestMixRevision}

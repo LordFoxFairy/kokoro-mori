@@ -212,11 +212,11 @@
   text-overflow: ellipsis;
 }
 
-.choiceCopy code {
+.choiceMeta {
   overflow: hidden;
   color: var(--mori-faint);
-  font-family: var(--mori-font-mono);
   font-size: 8px;
+  line-height: 1.4;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

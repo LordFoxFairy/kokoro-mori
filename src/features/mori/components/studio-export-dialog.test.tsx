@@ -20,8 +20,8 @@ describe("Studio export dialog", () => {
   it("mounts the modal layer at document body so global shell surfaces stay behind it", () => {
     render(
       <StudioExportDialog
-        versionRef="version_1"
         versionTitle="First Light"
+        durationSeconds={182}
         latestMixRevision={null}
         status="idle"
         activeInput={null}
@@ -46,8 +46,8 @@ describe("Studio export dialog", () => {
 
     const view = render(
       <StudioExportDialog
-        versionRef="version_1"
         versionTitle="First Light"
+        durationSeconds={182}
         latestMixRevision={null}
         status="idle"
         activeInput={null}
@@ -64,6 +64,9 @@ describe("Studio export dialog", () => {
     expect(dialog).toHaveAttribute("aria-modal", "true")
     expect(versionSource).toBeChecked()
     expect(versionSource).toHaveFocus()
+    expect(within(dialog).getByText("First Light · 3:02")).toBeInTheDocument()
+    expect(within(dialog).getByText("Base audio before saved mixer changes")).toBeInTheDocument()
+    expect(within(dialog).queryByText("version_1")).not.toBeInTheDocument()
     expect(within(dialog).getByText("Full song")).toBeInTheDocument()
     expect(within(dialog).getByRole("radio", { name: "MP3" })).toBeChecked()
 
@@ -85,8 +88,8 @@ describe("Studio export dialog", () => {
     const onSubmit = vi.fn()
     render(
       <StudioExportDialog
-        versionRef="version_1"
         versionTitle="First Light"
+        durationSeconds={182}
         latestMixRevision={mixRevision}
         status="idle"
         activeInput={null}
@@ -120,8 +123,8 @@ describe("Studio export dialog", () => {
     }
     const view = render(
       <StudioExportDialog
-        versionRef="version_1"
         versionTitle="First Light"
+        durationSeconds={182}
         latestMixRevision={mixRevision}
         status="failed"
         activeInput={activeInput}
@@ -141,8 +144,8 @@ describe("Studio export dialog", () => {
 
     view.rerender(
       <StudioExportDialog
-        versionRef="version_1"
         versionTitle="First Light"
+        durationSeconds={182}
         latestMixRevision={mixRevision}
         status="processing"
         activeInput={activeInput}
@@ -179,8 +182,8 @@ describe("Studio export dialog", () => {
     }
     render(
       <StudioExportDialog
-        versionRef="version_1"
         versionTitle="First Light"
+        durationSeconds={182}
         latestMixRevision={null}
         status="succeeded"
         activeInput={input}
