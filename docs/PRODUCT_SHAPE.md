@@ -30,6 +30,8 @@ Mori 的落地：
 - 当前先落地 Take Lanes：生成的方向可试听、对比，再明确提交为当前版本；Lyrics 草稿和 Stems
   分离也沿用这条闭环；成功 Stems 通过受信同源媒体投影进入同步 audition mixer，真实音频字节继续由
   BFF 与 Storage owner 承接。
+- Take Lanes 中打开、播放、选择与 Project Current 保持分离；`Use take` 是带幂等与并发条件的持久化命令，
+  只有精确确认后才改变 Current，失败不会让用户看到一个假的成功状态。
 - Finish 仍绑定当前 Version：Remaster 的音频结果回到 Take Lanes，Release 的视觉与元数据只进入 draft，
   两条路径都不会绕过用户确认或偷偷发布。
 
@@ -105,7 +107,10 @@ Workspace nav    内容随项目上下文变化                     跨页面保
 - 已有：Project-first 导航、Contextual Queue、全局 Player、Candidate → Version → Studio。
 - 已有：Smart/Custom、浅色渐变视觉、浮窗式设置分组与 compact Rail。
 - 已落地第一版：Song Plan 从提示说明升级为可编辑、可确认的中间状态，并在确认后通过契约持久化再创建生成任务。
-- 已落地第一版：Studio Take Lanes 支持试听、选择和明确提交当前版本；Lyrics 支持本地草稿保存、分段 AI Revision、
+- 已落地第一版：Studio Take Lanes 支持试听、选择和明确提交当前版本；Open Version、Playing、Selected Take 与
+  Current Version 分开建模，`Use take` 通过 Project-scoped compare-and-set 契约提交，等待与失败期间保留旧
+  Current，可重试故障复用同一幂等键，并发冲突要求刷新；Version history 只按确认的 Project Current 标记。
+  Lyrics 支持本地草稿保存、分段 AI Revision、
   多 Suggestion 对比以及 Apply / Undo；Stems 支持基于当前 Version 的 Isolate part、Auto split、Custom stems
   三种渐进意图、可选 MIDI、异步恢复/取消/重试，以及对真实返回资产的逐轨 Mute/Solo/Level；
   Isolate 明确一个目标与 remaining mix，Custom 要求 2–10 个稳定目标。成功结果现已提供共享 Play/Pause、Seek、

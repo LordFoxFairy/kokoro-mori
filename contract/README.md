@@ -13,6 +13,11 @@ music owner、BFF 或其他 Kokoro 子仓的内部模型。
 - [`tests/mori-studio-change.contract.test.ts`](./tests/mori-studio-change.contract.test.ts)：检查路径、
   幂等 Header、operation/scope 对应关系、`generation_kind` 快照分支、`snake_case` 与
   provider-neutral 边界。
+- [`openapi/mori-current-version.v1.json`](./openapi/mori-current-version.v1.json)：把 Take 明确提交为
+  Project 的 Current Version；命令同时携带 Candidate、Version 与期望的旧 Current，使用 compare-and-set
+  防止旧 Studio 窗口静默覆盖新选择。
+- [`tests/mori-current-version.contract.test.ts`](./tests/mori-current-version.contract.test.ts)：检查 `PUT`、
+  `Idempotency-Key`、精确响应、`409` 并发冲突、`422` 关系错误、`snake_case` 与受信身份边界。
 - [`openapi/mori-lyrics-revision.v1.json`](./openapi/mori-lyrics-revision.v1.json)：Lyrics 中
   Rewrite、Continue、Find rhyme、Restructure 的 version-scoped 异步文本 Revision，以及 snapshot、
   SSE replay 与 cancel。
@@ -71,6 +76,12 @@ Remaster 仍属于稳定一层操作 `transform`，但使用严格的 `intent: r
 `intent`、scope、instruction、preserve、references 与 output count，Cover 还必须回显 mode 与 Voice；Remaster
 快照必须原样回显 `intent`、source 与 `variation_strength`。浏览器只接受与已复核计划完全相同的快照，因此页面
 刷新后不依赖内存中的表单状态，也不会把错误任务的 Candidate 挂入当前 Take Lanes。
+
+`PUT /api/v1/mori/projects/{project_ref}/current_version` 是独立的同步提交命令，不属于 Generation，也不把
+“打开的 Version”“正在播放”“选中的 Take”误当成 Project Current。请求显式携带 `candidate_ref`、`version_ref`
+和 `expected_current_version_ref`；owner 必须验证 Candidate/Version/Project 关系并原子比较旧 Current。成功后返回
+确认的 Current、来源 Candidate、旧 Current 与选择时间；浏览器逐字段核对后才更新界面。提交期间旧 Current 保持
+不变，失败也不做乐观回滚；可重试故障复用同一 `Idempotency-Key`，`409` 冲突要求刷新 Studio 后重新选择。
 
 Lyrics Revision 不混入音频 Generation：它输出可编辑的文本 Suggestion，而不是 Candidate/Take。
 `POST /api/v1/mori/versions/{version_ref}/lyrics_revisions` 接收当前完整 `lyrics_context`、显式 section

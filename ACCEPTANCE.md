@@ -1,7 +1,7 @@
 # Mori Preview Acceptance
 
 > 记录日期：2026-09-03
-> 范围：Mori 全局壳体、页面 IA、fixture-only 生成体验、Library/Studio/Transform/Finish 交互与 API client seam
+> 范围：Mori 全局壳体、页面 IA、fixture-only 生成体验、Library/Studio/Transform/Finish、Current Version 提交与 API client seam
 
 ## 验证命令
 
@@ -18,7 +18,7 @@ pnpm build
 
 - `pnpm lint`：通过，`--max-warnings=0`
 - `pnpm typecheck`：通过
-- `pnpm test`：通过，37 个测试文件、265 个测试
+- `pnpm test`：通过，38 个测试文件、276 个测试
 - `pnpm build`：通过，生成 `/`、`/create`、`/projects`、`/library`、`/settings`、`/help`、Project Overview 和 Studio 路由
 
 ## 页面巡检
@@ -80,7 +80,13 @@ style 与 palette 都是 provider-neutral 枚举，创建、snapshot、SSE、取
 Studio Transform。关闭并重新打开 Finish、切换 Remaster / Release 都保留草稿和运行态，切换 Version 则清除旧上下文。
 Release 已在 1280×720 桌面视口验证固定 Finish 标题/页签、内部滚动、底部保存动作与 Global Player 分层；在 390×844
 移动视口验证单栏堆叠、无横向溢出、底部字段可达、保存动作位于 Player 上方，并验证 Rail 展开/收起不移动工作区语义。
-Arrangement 已提供 Take Lanes，可试听、选择方向并明确 Use take 后切换当前版本；
+Arrangement 已提供 Take Lanes，可试听、选择方向并通过独立的 Project-scoped `PUT current_version` 命令提交当前版本；
+Open Version、Playing、Selected Take 与 Current Version 保持分离，提交期间旧 Current 不变，响应必须精确匹配
+Project/Candidate/Version/previous Current 才更新。可重试失败保留 Retry 并复用同一 Idempotency-Key，并发冲突要求刷新；
+同源 Mori 代理已经转发 PUT body 与幂等 Header，Release Draft 与 Current Version 不再在浏览器边界收到 405。
+该状态已在 1280×720 桌面视口巡检默认、提交中、不可重试和可重试失败反馈，以及 Take Lanes 与固定 Player 的分层；
+390×844 移动视口下 Rail 默认收起，Take Lanes 宽 361px、viewport 390px，页面 `clientWidth` 与 `scrollWidth`
+均为 390px，失败操作、歌曲卡和固定 Player 保持可达，浏览器无 warning/error。
 Arrangement 现在提供与时间线连在一起的 Mori AI Changes：Add part、Replace section、Extend、Transform
 共享同一套上下文式输入；Intro、Verse、Lift、Chorus、Outro 可直接选为 AI 操作上下文，操作范围和结果去向
 始终可见；时间标尺按当前 Version 时长生成，时间线播放头与 Global Player 的 seek 状态同步，并实时标记

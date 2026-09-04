@@ -111,6 +111,11 @@ Commit       用户试听后显式 Use take
 不再展示一组含义模糊的高级参数，而是先让用户选择 Restyle 或 Cover。生成后可看到进度、取消或重试；成功
 Candidate 直接追加到 Take Lanes，但不会替换 Current Version。它不挤入全局 Rail，也不伪装成聊天记录。
 
+Take Lanes 中的 **Open Version、Playing、Selected Take、Current Version** 是四个独立状态。`Use take` 不再是
+前端本地切换：它通过 Project-scoped、带幂等键和期望旧 Current 的 compare-and-set 命令提交。等待期间旧 Current
+继续保持；成功响应必须精确确认 Project、Candidate、Version 与 previous Current，界面才更新 Project Current 并
+打开该 Take。瞬时失败保留原 Current 和 Retry，重试复用原幂等键；并发冲突要求刷新，不用旧页面覆盖新选择。
+
 ### Transform / Restyle / Cover 的意图模型
 
 这层同时吸收 Suno 的 Version 连续性和 Tad 的命名能力分类：入口仍在当前 Version 的 Arrangement 中，但用户
@@ -330,6 +335,34 @@ Voice；浏览器逐字段匹配后才接收 Candidate。这样刷新或断线�
 - 输出只创建 Candidate/Take，不原地修改 Current Version。
 - `Use take` 是独立、可审计、带并发版本条件的提交动作。
 
+### Current Version Commit API
+
+Take 的提交是 Project 事实，不依附当前浏览器选择，也不复用异步 Generation 状态机：
+
+```http
+PUT /api/v1/mori/projects/{project_ref}/current_version
+Idempotency-Key: <opaque command identity>
+```
+
+```text
+CurrentVersionInput
+  candidate_ref
+  version_ref
+  expected_current_version_ref   MoriRef | null
+
+CurrentVersionSelection
+  project_ref
+  current_version_ref
+  source_candidate_ref
+  previous_version_ref
+  selected_at
+```
+
+owner 原子验证 Project/Candidate/Version 关系与 expected Current；旧值不匹配返回 `409 current_version_conflict`，
+关系不成立返回 `422`。消费者只在响应与完整命令上下文一致时更新 Current；网络不确定时使用同一幂等键重放，
+不生成第二次选择。机器事实源见
+[`contract/openapi/mori-current-version.v1.json`](../contract/openapi/mori-current-version.v1.json)。
+
 ### Lyrics Revision API
 
 歌词建议输出文本，不输出音频 Candidate，因此不把它伪装成 Studio Generation。浏览器侧单独固定以下异步资源：
@@ -458,6 +491,8 @@ BFF 必须按受信会话校验该 asset 与用户可见 Mori 资源的关联，
 - Transform 已拆成 Restyle / Cover 两个可读意图：Restyle 保留选区、anchors、references 与 1 / 2 / 4 Takes；
   Cover 固定使用 open Version、Whole song、两条 Take，并按 Vocal / Instrumental 锁定 Voice 和保护项。两者都先
   Review，并通过精确 snapshot 匹配后进入 Take Lanes。
+- Take Lanes 的 `Use take` 已接入独立 Current Version command：非乐观提交、CAS 冲突、精确响应核对、失败保留
+  旧 Current、可重试故障复用幂等键；Version history 从 Project 确认的 Current 派生，不再按列表顺序猜测。
 - 下一步只需由 BFF / music owner adapter 实现已固定契约；浏览器不引入 provider 字段。
 
 ### P2 · 深度编辑（进行中）
