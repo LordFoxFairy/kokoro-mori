@@ -92,6 +92,10 @@ describe("Mori project overview", () => {
     await waitFor(() => expect(screen.getByRole("heading", { name: "Window Seat" })).toBeInTheDocument())
     expect(screen.getByText("A quiet, forward-moving sketch.")).toBeInTheDocument()
     expect(screen.getByRole("link", { name: "Open Studio" })).toHaveAttribute("href", "/projects/project_live_1/studio/version_live_1")
+    expect(screen.queryByText("Warm · hopeful")).not.toBeInTheDocument()
+    const songPlan = screen.getByRole("region", { name: "Song plan" })
+    expect(within(songPlan).getByText("Plan details not available")).toBeInTheDocument()
+    expect(within(songPlan).queryByText("102 BPM")).not.toBeInTheDocument()
   })
 
   it("continues from the confirmed Current Version instead of the first projected direction", async () => {

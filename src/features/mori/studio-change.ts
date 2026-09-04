@@ -45,7 +45,7 @@ export type StudioChangePlanOptions = {
 
 export const minimumStudioTimelineSelectionMs = 1_000
 
-export function buildStudioTimelineSections(structure: string[], durationSeconds: number): StudioTimelineSection[] {
+export function buildStudioTimelineSections(structure: readonly string[], durationSeconds: number): StudioTimelineSection[] {
   if (structure.length === 0 || !Number.isFinite(durationSeconds) || durationSeconds <= 0) return []
   const weights = structure.map((label, index) => sectionWeight(label, index, structure.length))
   const totalWeight = weights.reduce((sum, weight) => sum + weight, 0)

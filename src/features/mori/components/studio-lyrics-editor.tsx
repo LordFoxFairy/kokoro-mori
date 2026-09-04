@@ -28,6 +28,7 @@ export type StudioLyricsRunState = {
 
 type StudioLyricsEditorProps = {
   versionRef: string
+  initialLyrics?: string
   run: StudioLyricsRunState
   onGenerate: (plan: StudioLyricsPlan) => void
   onCancel: () => void
@@ -44,10 +45,10 @@ const directionPlaceholders: Record<StudioLyricsDirection, string> = {
   restructure: "Describe how the lyrical arc should unfold…",
 }
 
-export function StudioLyricsEditor({ versionRef, run, onGenerate, onCancel, onReset }: StudioLyricsEditorProps) {
+export function StudioLyricsEditor({ versionRef, initialLyrics = defaultStudioLyrics, run, onGenerate, onCancel, onReset }: StudioLyricsEditorProps) {
   const promptId = useId()
   const storageKey = `mori.lyrics.${versionRef}`
-  const [lyrics, setLyrics] = useState(() => readStoredLyrics(storageKey) ?? defaultStudioLyrics)
+  const [lyrics, setLyrics] = useState(() => readStoredLyrics(storageKey) ?? initialLyrics)
   const [saved, setSaved] = useState(true)
   const [direction, setDirection] = useState<StudioLyricsDirection>(() => run.plan?.direction ?? "rewrite")
   const [scope, setScope] = useState<StudioLyricsScope>(() => run.plan?.scope ?? "verse")
@@ -138,6 +139,7 @@ export function StudioLyricsEditor({ versionRef, run, onGenerate, onCancel, onRe
             className={styles.draftArea}
             aria-label="Lyrics draft"
             value={lyrics}
+            placeholder="Start a lyric draft for this Version…"
             onChange={(event) => editLyrics(event.target.value)}
           />
           <footer className={styles.draftFooter}>

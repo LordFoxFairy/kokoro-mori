@@ -31,6 +31,7 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
   }))
   const requestedProject = projectState.projectRef === initialProjectRef ? projectState.value : createUnavailableProject(initialProjectRef)
   const candidates = candidateState.projectRef === initialProjectRef ? candidateState.value : []
+  const hasPlanProjection = initialProjectRef === previewProject.projectRef
   const studioCandidate = requestedProject.currentVersionRef === null
     ? undefined
     : candidates.find((candidate) => candidate.versionRef === requestedProject.currentVersionRef)
@@ -90,7 +91,7 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
         <div><span>Current version</span><strong>{requestedProject.currentVersionRef ? (candidates.find((candidate) => candidate.versionRef === requestedProject.currentVersionRef)?.title ?? "Ready") : "Not started"}</strong></div>
         <div><span>Directions</span><strong>{requestedProject.candidateCount}</strong></div>
         <div><span>Last activity</span><strong>{requestedProject.lastActivity}</strong></div>
-        <div><span>Plan mood</span><strong>{previewSongPlan.mood}</strong></div>
+        <div><span>Plan mood</span><strong>{hasPlanProjection ? previewSongPlan.mood : "Unavailable"}</strong></div>
       </div>
 
       {studioCandidate ? (
@@ -168,11 +169,15 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
 
       <section className={styles.overviewSection} aria-labelledby="plan-overview-heading">
         <div className={styles.overviewSectionHeader}><div><h2 id="plan-overview-heading">Song plan</h2><p>The intention behind this project, kept visible as you refine it.</p></div></div>
-        <div className={styles.overviewPlanCard}>
+        {hasPlanProjection ? <div className={styles.overviewPlanCard}>
           <div className={styles.overviewPlanStats}><span><b>Mood</b>{previewSongPlan.mood}</span><span><b>Tempo</b>{previewSongPlan.tempoBpm} BPM</span><span><b>Voice</b>Intimate lead</span></div>
           <div className={styles.tagRow}>{previewSongPlan.structure.map((item) => <span className={`${styles.tag} ${styles.tagSelected}`} key={item}>{item}</span>)}</div>
           <p><Clock3 size={14} /> {previewSongPlan.vocalDirection}</p>
-        </div>
+        </div> : <div className={styles.overviewPlanUnavailable}>
+          <span className={styles.overviewPlanUnavailableIcon} aria-hidden="true"><Sparkles size={17} /></span>
+          <div><strong>Plan details not available</strong><p>Start a new direction to shape an editable mood, structure, palette, and voice before generating.</p></div>
+          <Link href={`/create?project_ref=${encodeURIComponent(requestedProject.projectRef)}`}>Create with a plan <ArrowUpRight size={13} /></Link>
+        </div>}
       </section>
     </div>
   )

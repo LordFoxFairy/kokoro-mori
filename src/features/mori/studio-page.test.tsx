@@ -2329,6 +2329,15 @@ describe("Mori studio page", () => {
     expect(screen.getByRole("link", { name: "Project" })).toHaveAttribute("href", "/projects/project_live_1")
     expect(screen.getByRole("link", { name: /Window Seat/ })).toHaveAttribute("href", "/projects/project_live_1/studio/version_live_1")
     expect(screen.getAllByText("soft motion · close vocal").length).toBeGreaterThan(0)
+    expect(screen.getByRole("button", { name: "Select Whole song section" })).toHaveAttribute("aria-pressed", "true")
+    expect(screen.queryByRole("button", { name: "Select Chorus section" })).not.toBeInTheDocument()
+
+    const lyricsSummary = screen.getByRole("region", { name: "Lyrics summary" })
+    expect(within(lyricsSummary).getByText("No lyric draft attached")).toBeInTheDocument()
+    fireEvent.click(within(lyricsSummary).getByRole("button", { name: "Open Lyrics" }))
+    expect(screen.getByRole("tab", { name: "Lyrics" })).toHaveAttribute("aria-selected", "true")
+    expect(screen.getByRole("textbox", { name: "Lyrics draft" })).toHaveValue("")
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Lyrics" })).toHaveFocus())
   })
 
   it("shows an explicit unavailable state when the requested version is absent", async () => {

@@ -1,6 +1,6 @@
 "use client"
 
-import { AlertCircle, ArrowLeft, AudioLines, AudioWaveform, Check, Download, FileText, History, LoaderCircle, Pause, Play, RotateCcw, Share2, Sparkles, X } from "lucide-react"
+import { AlertCircle, ArrowLeft, ArrowRight, AudioLines, AudioWaveform, Check, Download, FileText, History, LoaderCircle, Pause, Play, RotateCcw, Share2, Sparkles, X } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react"
 import {
@@ -39,7 +39,7 @@ import { Waveform } from "./components/waveform"
 import { previewCandidates, previewProject, previewSongPlan } from "./preview-data"
 import type { StudioEntryIntent, StudioEntrySurface } from "./studio-entry"
 import { buildStudioTimelineSections, isActiveStudioChangeStatus, type StudioChangePlan, type StudioTimelineSection } from "./studio-change"
-import { createStudioLyricsRevisionDraft, isActiveLyricsRevisionStatus, studioLyricsScopeLabel, type StudioLyricsPlan } from "./studio-lyrics"
+import { createStudioLyricsRevisionDraft, defaultStudioLyrics, isActiveLyricsRevisionStatus, studioLyricsScopeLabel, type StudioLyricsPlan } from "./studio-lyrics"
 import { isStudioRemasterPlan, isStudioRemasterSnapshot } from "./studio-remaster"
 import { createStudioStemSeparationDraft, isActiveStemSeparationStatus, stemSeparationSnapshotMatchesPlan, type StudioStemSeparationPlan } from "./studio-stems"
 import { createHtmlStemPlaybackController, type StemPlaybackFactory } from "./stem-playback"
@@ -143,6 +143,7 @@ const idleCurrentVersionCommitRun: CurrentVersionCommitRun = {
 }
 
 const versionHistoryDrawerId = "studio-version-history-drawer"
+const wholeSongStructure = ["Whole song"] as const
 
 export function StudioPageContent({ candidate, projectRef, versionRef, initialSurface = "arrangement", initialIntent = null, api, stemPlaybackFactory = createHtmlStemPlaybackController }: StudioPageContentProps) {
   const { playerCandidate, playing, positionSeconds, seekPlayer, selectPlayerCandidate, setPlaying } = useMoriApp()
@@ -1052,6 +1053,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
   }
 
   const activeProjectTitle = projectTitle ?? (activeProjectRef === previewProject.projectRef ? previewProject.title : "Project")
+  const hasPreviewProjectContent = activeProjectRef === previewProject.projectRef
   const remasterRun = isStudioRemasterPlan(studioChangeRun.plan)
   const remasterActive = remasterRun && isActiveStudioChangeStatus(studioChangeRun.status)
   const finishActive = remasterActive || releaseWorkflow.active
@@ -1116,10 +1118,13 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
         <section className={styles.studioCanvas} aria-label="Studio editor">
           <div className={styles.studioCanvasTop}><div><span className={styles.eyebrow}><span className={styles.eyebrowDot} />Editing with intention</span><h2>Shape the feeling.</h2></div><button className={`${styles.generateButton} ${styles.studioPreviewButton}`} type="button" aria-label={isActiveVersionPlaying ? "Pause" : "Preview"} onClick={preview}>{isActiveVersionPlaying ? <Pause size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" />}<span>{isActiveVersionPlaying ? "Pause" : "Preview"}</span></button></div>
           <div id="mori-studio-panel-arrangement" role="tabpanel" aria-labelledby="mori-studio-tool-arrangement" hidden={activeTool !== "arrangement"}>
-            {activeTool === "arrangement" ? <ArrangementEditor candidate={activeCandidate} takes={studioCandidates} currentVersionRef={currentVersionRef} playerVersionRef={playerCandidate?.versionRef ?? ""} positionSeconds={playerCandidate?.versionRef === activeCandidate.versionRef ? positionSeconds : 0} playing={playerCandidate?.versionRef === activeCandidate.versionRef && playing} initialIntent={initialIntent} studioChangeRun={studioChangeRun} currentVersionCommitRun={currentVersionCommitRun} onSeekTimeline={(nextPositionSeconds) => seekTimeline(activeCandidate, nextPositionSeconds)} onGenerateStudioChange={(plan) => { void generateStudioChange(plan) }} onCancelStudioChange={() => { void cancelStudioChange() }} onResetStudioChange={resetStudioChange} onSelectTake={selectTake} onPreviewTake={previewTake} onPromoteTake={(take) => { void commitCurrentVersion(take) }} onRetryCurrentVersion={retryCurrentVersionCommit} onDismissCurrentVersion={dismissCurrentVersionCommit} /> : null}
+            {activeTool === "arrangement" ? <ArrangementEditor candidate={activeCandidate} takes={studioCandidates} structure={hasPreviewProjectContent ? previewSongPlan.structure : wholeSongStructure} lyricsPreview={hasPreviewProjectContent ? defaultStudioLyrics : ""} currentVersionRef={currentVersionRef} playerVersionRef={playerCandidate?.versionRef ?? ""} positionSeconds={playerCandidate?.versionRef === activeCandidate.versionRef ? positionSeconds : 0} playing={playerCandidate?.versionRef === activeCandidate.versionRef && playing} initialIntent={initialIntent} studioChangeRun={studioChangeRun} currentVersionCommitRun={currentVersionCommitRun} onSeekTimeline={(nextPositionSeconds) => seekTimeline(activeCandidate, nextPositionSeconds)} onGenerateStudioChange={(plan) => { void generateStudioChange(plan) }} onCancelStudioChange={() => { void cancelStudioChange() }} onResetStudioChange={resetStudioChange} onSelectTake={selectTake} onPreviewTake={previewTake} onPromoteTake={(take) => { void commitCurrentVersion(take) }} onRetryCurrentVersion={retryCurrentVersionCommit} onDismissCurrentVersion={dismissCurrentVersionCommit} onOpenLyrics={() => {
+              setActiveTool("lyrics")
+              window.requestAnimationFrame(() => document.getElementById("mori-studio-tool-lyrics")?.focus())
+            }} /> : null}
           </div>
           <div id="mori-studio-panel-lyrics" role="tabpanel" aria-labelledby="mori-studio-tool-lyrics" hidden={activeTool !== "lyrics"}>
-            {activeTool === "lyrics" ? <StudioLyricsEditor key={activeCandidate.versionRef} versionRef={activeCandidate.versionRef} run={lyricsRevisionRun} onGenerate={(plan) => { void generateLyricsRevision(plan) }} onCancel={() => { void cancelLyricsRevision() }} onReset={resetLyricsRevision} /> : null}
+            {activeTool === "lyrics" ? <StudioLyricsEditor key={activeCandidate.versionRef} versionRef={activeCandidate.versionRef} initialLyrics={hasPreviewProjectContent ? defaultStudioLyrics : ""} run={lyricsRevisionRun} onGenerate={(plan) => { void generateLyricsRevision(plan) }} onCancel={() => { void cancelLyricsRevision() }} onReset={resetLyricsRevision} /> : null}
           </div>
           <div id="mori-studio-panel-stems" role="tabpanel" aria-labelledby="mori-studio-tool-stems" hidden={activeTool !== "stems"}>
             {activeTool === "stems" ? <StudioStemsEditor key={activeVersionRef ?? "no-version"} durationSeconds={activeCandidate.durationSeconds} run={stemSeparationRun} layerRun={studioChangeRun} onSeparate={(plan) => { void generateStemSeparation(plan) }} onCancel={() => { void cancelStemSeparation() }} onReset={resetStemSeparation} onSaveMix={saveMixRevision} onGenerateLayer={(plan) => { void generateStudioChange(plan) }} onCancelLayer={() => { void cancelStudioChange() }} onResetLayer={resetStudioChange} onReviewTakes={() => setActiveTool("arrangement")} playbackFactory={stemPlaybackFactory} /> : null}
@@ -1461,6 +1466,8 @@ function stemSeparationTerminalMessage(status: "failed" | "cancelled" | "expired
 type ArrangementEditorProps = {
   candidate: Candidate
   takes: Candidate[]
+  structure: readonly string[]
+  lyricsPreview: string
   currentVersionRef: string
   playerVersionRef: string
   positionSeconds: number
@@ -1477,10 +1484,11 @@ type ArrangementEditorProps = {
   onPromoteTake: (take: Candidate) => void
   onRetryCurrentVersion: () => void
   onDismissCurrentVersion: () => void
+  onOpenLyrics: () => void
 }
 
-function ArrangementEditor({ candidate, takes, currentVersionRef, playerVersionRef, positionSeconds, playing, initialIntent, studioChangeRun, currentVersionCommitRun, onSeekTimeline, onGenerateStudioChange, onCancelStudioChange, onResetStudioChange, onSelectTake, onPreviewTake, onPromoteTake, onRetryCurrentVersion, onDismissCurrentVersion }: ArrangementEditorProps) {
-  const timelineSections = useMemo(() => buildStudioTimelineSections(previewSongPlan.structure, candidate.durationSeconds), [candidate.durationSeconds])
+function ArrangementEditor({ candidate, takes, structure, lyricsPreview, currentVersionRef, playerVersionRef, positionSeconds, playing, initialIntent, studioChangeRun, currentVersionCommitRun, onSeekTimeline, onGenerateStudioChange, onCancelStudioChange, onResetStudioChange, onSelectTake, onPreviewTake, onPromoteTake, onRetryCurrentVersion, onDismissCurrentVersion, onOpenLyrics }: ArrangementEditorProps) {
+  const timelineSections = useMemo(() => buildStudioTimelineSections(structure, candidate.durationSeconds), [candidate.durationSeconds, structure])
   const defaultSection = studioChangeRun.plan?.selection
     ?? timelineSections.find((item) => item.label.toLowerCase() === "chorus")
     ?? timelineSections[0]
@@ -1553,11 +1561,18 @@ function ArrangementEditor({ candidate, takes, currentVersionRef, playerVersionR
           })}
         </div>
       </section>
-      <LyricsCard />
+      <LyricsCard lyrics={lyricsPreview} onOpen={onOpenLyrics} />
     </section>
   )
 }
 
-function LyricsCard() {
-  return <div className={styles.lyricsCard}><div className={styles.lyricsHeader}><div><span>Lyrics</span><strong>Draft 01</strong></div></div><p>We were headlights in the quiet<br />finding a little gold in the blue<br /><em>and every road became a reason<br />to carry the morning through</em></p></div>
+function LyricsCard({ lyrics, onOpen }: { lyrics: string; onOpen: () => void }) {
+  const hasLyrics = lyrics.trim() !== ""
+  return <section className={styles.lyricsCard} aria-label="Lyrics summary">
+    <div className={styles.lyricsHeader}>
+      <div><span>Lyrics</span><strong>{hasLyrics ? "Draft 01" : "No draft yet"}</strong></div>
+      <button className={styles.lyricsOpenButton} type="button" onClick={onOpen}>Open Lyrics <ArrowRight size={12} /></button>
+    </div>
+    {hasLyrics ? <p className={styles.lyricsPreview}>{lyrics}</p> : <div className={styles.lyricsEmpty}><strong>No lyric draft attached</strong><span>Start words for this Version without leaving the Studio context.</span></div>}
+  </section>
 }

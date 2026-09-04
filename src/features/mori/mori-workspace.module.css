@@ -1950,6 +1950,55 @@
   color: var(--mori-primary);
 }
 
+.overviewPlanUnavailable {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 13px;
+  padding: 16px 17px;
+  border: 1px dashed rgba(109, 92, 231, 0.2);
+  border-radius: 15px;
+  background:
+    radial-gradient(circle at 4% 10%, rgba(147, 121, 235, 0.1), transparent 28%),
+    linear-gradient(110deg, rgba(250, 249, 255, 0.88), rgba(255, 250, 246, 0.76));
+}
+
+.overviewPlanUnavailableIcon {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 11px;
+  color: var(--mori-primary);
+  background: rgba(237, 233, 255, 0.9);
+}
+
+.overviewPlanUnavailable > div {
+  display: grid;
+  gap: 4px;
+}
+
+.overviewPlanUnavailable strong {
+  font-size: 12px;
+}
+
+.overviewPlanUnavailable p {
+  margin: 0;
+  color: var(--mori-muted);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.overviewPlanUnavailable > a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--mori-primary-deep);
+  font-size: 10px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
 /* Settings follows Kokoro's proven modal rhythm: a real floating window,
  * persistent vertical tabs, and one independently scrolling content pane.
  * The information architecture stays Mori-specific; generic Kokoro settings
@@ -3020,6 +3069,25 @@
   font-size: 12px;
 }
 
+.lyricsOpenButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 0 9px;
+  border: 1px solid rgba(109, 92, 231, 0.15);
+  border-radius: 9px;
+  color: var(--mori-primary-deep);
+  font-size: 9px;
+  font-weight: 750;
+  background: rgba(246, 243, 255, 0.84);
+}
+
+.lyricsOpenButton:hover {
+  border-color: rgba(109, 92, 231, 0.28);
+  background: rgba(238, 233, 255, 0.94);
+}
+
 .lyricsCard p {
   margin: 22px 0 4px;
   color: #615b65;
@@ -3028,8 +3096,32 @@
   line-height: 1.7;
 }
 
+.lyricsPreview {
+  white-space: pre-line;
+}
+
 .lyricsCard em {
   color: var(--mori-primary);
+}
+
+.lyricsEmpty {
+  display: grid;
+  gap: 4px;
+  margin-top: 15px;
+  padding: 13px 14px;
+  border: 1px dashed rgba(109, 92, 231, 0.16);
+  border-radius: 11px;
+  background: linear-gradient(110deg, rgba(247, 245, 255, 0.72), rgba(255, 250, 247, 0.66));
+}
+
+.lyricsEmpty strong {
+  font-size: 11px;
+}
+
+.lyricsEmpty span {
+  color: var(--mori-muted);
+  font-size: 9px;
+  line-height: 1.45;
 }
 
 @media (max-width: 900px) {
@@ -3127,6 +3219,15 @@
     grid-template-columns: 32px minmax(0, 1fr);
     grid-template-rows: auto;
     gap: 12px;
+  }
+
+  .overviewPlanUnavailable {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .overviewPlanUnavailable > a {
+    grid-column: 2;
   }
 
   .overviewCandidate {
