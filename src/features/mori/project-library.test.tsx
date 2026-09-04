@@ -300,6 +300,103 @@ describe("Mori catalog surfaces", () => {
     expect(screen.queryByText("City Lights demo")).not.toBeInTheDocument()
   })
 
+  it("loads the next creative source page without mixing or resetting the first page", async () => {
+    const listCreativeSources = vi.fn(async (options: { limit?: number; cursor?: string | null } = {}) => {
+      const secondPage = options.cursor === "source_cursor_2"
+      return {
+        data: {
+          sources: [secondPage ? {
+            source_kind: "inspiration" as const,
+            source_ref: "style_live_afterglow",
+            name: "Afterglow Live",
+            description: "Soft pulse · intimate glow",
+            style: "Dream pop · intimate · organic",
+            created_at: "2026-09-04T12:00:00.000Z",
+          } : {
+            source_kind: "voice" as const,
+            source_ref: "voice_live_mira",
+            name: "Mira Live",
+            description: "Warm alto · intimate phrasing",
+            created_at: "2026-09-04T12:00:00.000Z",
+          }],
+          next_cursor: secondPage ? null : "source_cursor_2",
+        },
+        meta: { request_id: secondPage ? "request_library_source_page_2" : "request_library_source_page_1" },
+      }
+    })
+    const api = {
+      listLibrary: async () => ({ data: { items: [], next_cursor: null }, meta: { request_id: "request_library_versions" } }),
+      listCreativeSources,
+    }
+
+    render(<MoriAppProvider><LibraryPageContent api={api} /></MoriAppProvider>)
+    fireEvent.click(screen.getByRole("button", { name: "Sources" }))
+
+    await waitFor(() => expect(screen.getByText("Mira Live")).toBeInTheDocument())
+    fireEvent.click(screen.getByRole("button", { name: "Inspiration" }))
+    expect(screen.queryByText("Mira Live")).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: "Load more creative sources" }))
+
+    await waitFor(() => expect(screen.getByText("Afterglow Live")).toBeInTheDocument())
+    fireEvent.click(screen.getByRole("button", { name: "All sources" }))
+    expect(screen.getByText("Mira Live")).toBeInTheDocument()
+    expect(screen.getByText("Afterglow Live")).toBeInTheDocument()
+    expect(listCreativeSources).toHaveBeenNthCalledWith(2, { limit: 20, cursor: "source_cursor_2" })
+    expect(screen.queryByRole("button", { name: "Load more creative sources" })).not.toBeInTheDocument()
+  })
+
+  it("keeps the source cursor available when a page fails and offers a retry", async () => {
+    let nextPageAttempts = 0
+    const listCreativeSources = vi.fn(async (options: { limit?: number; cursor?: string | null } = {}) => {
+      if (options.cursor !== undefined && options.cursor !== null) {
+        nextPageAttempts += 1
+        if (nextPageAttempts === 1) throw new Error("temporary source page failure")
+        return {
+          data: {
+            sources: [{
+              source_kind: "audio" as const,
+              source_ref: "asset_live_room_tone",
+              name: "Room Tone Live",
+              description: "A quiet room tone for texture",
+              duration_seconds: 18,
+              created_at: "2026-09-04T12:00:00.000Z",
+            }],
+            next_cursor: null,
+          },
+          meta: { request_id: "request_library_source_retry_success" },
+        }
+      }
+      return {
+        data: {
+          sources: [{
+            source_kind: "voice" as const,
+            source_ref: "voice_live_mira",
+            name: "Mira Live",
+            description: "Warm alto · intimate phrasing",
+            created_at: "2026-09-04T12:00:00.000Z",
+          }],
+          next_cursor: "source_cursor_retry",
+        },
+        meta: { request_id: "request_library_source_retry_initial" },
+      }
+    })
+    const api = {
+      listLibrary: async () => ({ data: { items: [], next_cursor: null }, meta: { request_id: "request_library_versions" } }),
+      listCreativeSources,
+    }
+
+    render(<MoriAppProvider><LibraryPageContent api={api} /></MoriAppProvider>)
+    fireEvent.click(screen.getByRole("button", { name: "Sources" }))
+    await waitFor(() => expect(screen.getByText("Mira Live")).toBeInTheDocument())
+
+    fireEvent.click(screen.getByRole("button", { name: "Load more creative sources" }))
+    expect(await screen.findByText("The next page could not load.")).toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }))
+
+    await waitFor(() => expect(screen.getByText("Room Tone Live")).toBeInTheDocument())
+    expect(nextPageAttempts).toBe(2)
+  })
+
   it("does not mix preview Sources into a live Version response when the Source projection fails", async () => {
     const api = {
       listLibrary: async () => ({ data: { items: [], next_cursor: null }, meta: { request_id: "request_library_versions_only" } }),

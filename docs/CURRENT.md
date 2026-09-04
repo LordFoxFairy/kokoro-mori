@@ -16,7 +16,7 @@
   使用独立的 `GET /library/sources` 与按 kind/ref 的 deep-link GET；两者各自使用 opaque cursor/limit，
   Audio / Voice / Inspiration 使用 discriminated union。Source API 成功后不再把 preview Sources 混入 live 响应；
   未配置 API 或所有 projection 都不可用时保留 preview fallback，单个 Source projection 失败则清空该区域并明确显示 unavailable，
-  避免把过期 fixture 当成真实数据；Create deep link 会优先解析 live Source detail。
+  避免把过期 fixture 当成真实数据；Library 会消费 `next_cursor` 提供 Load more / Try again，Create deep link 会优先解析 live Source detail。
 
 ## 验证证据
 
@@ -25,7 +25,7 @@
 ```text
 pnpm lint                         passed
 pnpm typecheck                    passed
-pnpm test --maxWorkers=1          passed: 43 files / 342 tests
+pnpm test --maxWorkers=1          passed: 43 files / 344 tests
 pnpm build                        passed
 ```
 

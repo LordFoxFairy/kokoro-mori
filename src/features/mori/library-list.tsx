@@ -43,6 +43,9 @@ export function LibraryPageContent({ api }: LibraryPageContentProps = {}) {
   const [librarySources, setLibrarySources] = useState<readonly MoriCreativeLibrarySource[]>(previewCreativeSources)
   const [libraryStatus, setLibraryStatus] = useState<ProjectionStatus>("loading")
   const [sourceStatus, setSourceStatus] = useState<ProjectionStatus>("loading")
+  const [sourceCursor, setSourceCursor] = useState<string | null>(null)
+  const [sourcePageLoading, setSourcePageLoading] = useState(false)
+  const [sourcePageError, setSourcePageError] = useState(false)
   const [projects, setProjects] = useState<Project[]>([previewProject])
   const [projectStatus, setProjectStatus] = useState<ProjectionStatus>("loading")
   const [filter, setFilter] = useState<LibraryFilter>("All")
@@ -84,8 +87,14 @@ export function LibraryPageContent({ api }: LibraryPageContentProps = {}) {
       } else {
         setLibraryItems([])
       }
-      if (sourcesReady) setLibrarySources(sourceResponse.data.sources.map(toCreativeSource))
-      else if (listCreativeSources !== undefined) setLibrarySources([])
+      if (sourcesReady) {
+        setLibrarySources(sourceResponse.data.sources.map(toCreativeSource))
+        setSourceCursor(sourceResponse.data.next_cursor)
+        setSourcePageError(false)
+      } else if (listCreativeSources !== undefined) {
+        setLibrarySources([])
+        setSourceCursor(null)
+      }
       setLibraryStatus(libraryReady ? "ready" : "unavailable")
       setProjects(projectsReady ? projectResponse.data.projects.map(toDomainProject) : [])
       setProjectStatus(listProjects === undefined ? "omitted" : projectsReady ? "ready" : "unavailable")
@@ -155,6 +164,31 @@ export function LibraryPageContent({ api }: LibraryPageContentProps = {}) {
   const resultLabel = hasQuery
     ? `${resultCount} ${resultCount === 1 ? "result" : "results"}`
     : `${resultCount} ${resultCount === 1 ? "item" : "items"}`
+  const hasMoreSources = showsSources && sourceStatus === "ready" && sourceCursor !== null
+  const showSourceShelf = visibleSources.length > 0 || hasMoreSources
+  const showResultSurface = resultCount > 0 || showSourceShelf
+
+  async function loadMoreSources() {
+    const listCreativeSources = libraryApi.listCreativeSources
+    const cursor = sourceCursor
+    if (listCreativeSources === undefined || cursor === null || sourcePageLoading) return
+
+    setSourcePageLoading(true)
+    setSourcePageError(false)
+    try {
+      const response = await listCreativeSources({ limit: 20, cursor })
+      const nextSources = response.data.sources.map(toCreativeSource)
+      setLibrarySources((current) => {
+        const existing = new Set(current.map((source) => `${source.sourceKind}:${source.ref}`))
+        return [...current, ...nextSources.filter((source) => !existing.has(`${source.sourceKind}:${source.ref}`))]
+      })
+      setSourceCursor(response.data.next_cursor)
+    } catch {
+      setSourcePageError(true)
+    } finally {
+      setSourcePageLoading(false)
+    }
+  }
 
   const playVersion = (versionRef: string) => {
     const libraryItem = libraryItems.find((item): item is Extract<LibraryItem, { kind: "version" }> => item.kind === "version" && item.ref === versionRef)
@@ -215,7 +249,7 @@ export function LibraryPageContent({ api }: LibraryPageContentProps = {}) {
           <span>{availabilityMessage}</span>
         </div>
       )}
-      {resultCount > 0 ? (
+      {showResultSurface ? (
         <div className={styles.libraryResults} id="mori-library-results">
           {visibleVersions.length > 0 ? (
             <section className={styles.librarySection} aria-label="Saved versions">
@@ -250,7 +284,7 @@ export function LibraryPageContent({ api }: LibraryPageContentProps = {}) {
               </div>
             </section>
           ) : null}
-          {visibleSources.length > 0 ? (
+          {showSourceShelf ? (
             <CreativeSourceLibrary
               sources={visibleSources}
               filter={sourceFilter}
@@ -260,6 +294,10 @@ export function LibraryPageContent({ api }: LibraryPageContentProps = {}) {
                 setSourceFilter("All sources")
                 setFilter("Sources")
               }}
+              nextCursor={sourceCursor}
+              loadingMore={sourcePageLoading}
+              loadMoreError={sourcePageError}
+              onLoadMore={loadMoreSources}
             />
           ) : null}
         </div>

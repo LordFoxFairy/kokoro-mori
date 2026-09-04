@@ -12,9 +12,13 @@ type CreativeSourceLibraryProps = {
   showFilters: boolean
   onFilterChange: (filter: CreativeSourceFilter) => void
   onBrowseAll: () => void
+  nextCursor: string | null
+  loadingMore: boolean
+  loadMoreError: boolean
+  onLoadMore: () => void
 }
 
-export function CreativeSourceLibrary({ sources, filter, showFilters, onFilterChange, onBrowseAll }: CreativeSourceLibraryProps) {
+export function CreativeSourceLibrary({ sources, filter, showFilters, onFilterChange, onBrowseAll, nextCursor, loadingMore, loadMoreError, onLoadMore }: CreativeSourceLibraryProps) {
   return (
     <section className={styles.shelf} aria-label="Creative source library">
       <header className={styles.header}>
@@ -45,6 +49,19 @@ export function CreativeSourceLibrary({ sources, filter, showFilters, onFilterCh
           </article>
         ))}
       </div>
+      {nextCursor !== null ? (
+        <div className={styles.pagination}>
+          <button className={styles.paginationButton} type="button" disabled={loadingMore} aria-busy={loadingMore} onClick={onLoadMore}>
+            {loadingMore ? "Loading creative sources…" : "Load more creative sources"}
+          </button>
+          {loadMoreError ? (
+            <span className={styles.paginationError} role="status">
+              The next page could not load.
+              <button className={styles.paginationRetry} type="button" onClick={onLoadMore}>Try again</button>
+            </span>
+          ) : null}
+        </div>
+      ) : null}
     </section>
   )
 }

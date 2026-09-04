@@ -18,7 +18,7 @@ pnpm build
 
 - `pnpm lint`：通过，`--max-warnings=0`
 - `pnpm typecheck`：通过
-- `pnpm test`：通过，43 个测试文件、342 个测试
+- `pnpm test`：通过，43 个测试文件、344 个测试
 - `pnpm build`：通过，生成 `/`、`/create`、`/projects`、`/library`、`/settings`、`/help`、Project Overview 和 Studio 路由
 
 ## 页面巡检

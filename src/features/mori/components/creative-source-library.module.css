@@ -163,6 +163,59 @@
   height: 12px;
 }
 
+.pagination {
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+}
+
+.paginationButton {
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid rgba(109, 92, 231, 0.18);
+  border-radius: 999px;
+  color: var(--mori-primary);
+  font-size: 10px;
+  font-weight: 800;
+  background: rgba(237, 233, 254, 0.66);
+  transition: border-color var(--mori-motion-fast) ease, background var(--mori-motion-fast) ease, color var(--mori-motion-fast) ease;
+}
+
+.paginationButton:hover:not(:disabled) {
+  border-color: rgba(109, 92, 231, 0.34);
+  color: var(--mori-primary-deep);
+  background: rgba(237, 233, 254, 0.92);
+}
+
+.paginationButton:focus-visible,
+.paginationRetry:focus-visible {
+  outline: 3px solid rgba(109, 92, 231, 0.22);
+  outline-offset: 2px;
+}
+
+.paginationButton:disabled {
+  cursor: wait;
+  opacity: 0.62;
+}
+
+.paginationError {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--mori-error);
+  font-size: 10px;
+}
+
+.paginationRetry {
+  padding: 0;
+  border: 0;
+  color: var(--mori-error);
+  font: inherit;
+  font-weight: 800;
+  text-decoration: underline;
+  background: transparent;
+}
+
 @media (max-width: 900px) {
   .grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
