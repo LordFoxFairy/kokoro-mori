@@ -234,6 +234,8 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
   const pendingExportCommandRef = useRef<PendingExportCommand | null>(null)
   const pendingCurrentVersionCommandRef = useRef<PendingCurrentVersionCommand | null>(null)
   const stemSeparationCommandEpochRef = useRef(0)
+  const studioChangeCommandEpochRef = useRef(0)
+  const studioChangeCancelRequestRef = useRef<string | null>(null)
   const ignoredStemSeparationsRef = useRef(new Set<string>())
   const activeStemEventRequestRef = useRef<{ stemSeparationRef: string; controller: AbortController } | null>(null)
   const preserveInitialFinishEntryRef = useRef(initialSurface === "finish")
@@ -254,6 +256,8 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
     const contextChanged = previousContext.projectRef !== activeProjectRef || previousContext.versionRef !== activeVersionRef
     previousStudioContextRef.current = { projectRef: activeProjectRef, versionRef: activeVersionRef }
     stemSeparationCommandEpochRef.current += 1
+    studioChangeCommandEpochRef.current += 1
+    studioChangeCancelRequestRef.current = null
     exportCommandEpochRef.current += 1
     pendingExportCommandRef.current = null
     setTrackedStemSeparation((current) => {
@@ -275,6 +279,10 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
     setExportInput(null)
     setExportSnapshot(null)
     setExportMessage(null)
+    if (contextChanged) {
+      setTrackedStudioChange(null)
+      setStudioChangeRun(idleStudioChangeRun)
+    }
     if (preserveInitialFinishEntryRef.current) {
       if (activeVersionRef !== null) {
         preserveInitialFinishEntryRef.current = false
@@ -392,21 +400,26 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
 
   const generateStudioChange = async (plan: StudioChangePlan) => {
     if (activeCandidate === null || isActiveStudioChangeStatus(studioChangeRun.status)) return
+    const commandEpoch = studioChangeCommandEpochRef.current + 1
+    studioChangeCommandEpochRef.current = commandEpoch
+    studioChangeCancelRequestRef.current = null
     const sourceVersionRef = activeCandidate.versionRef
     setTrackedStudioChange(null)
-    setStudioChangeRun({ status: "preparing", progress: 4, resultCount: 0, plan, message: null })
+    setStudioChangeRun({ status: "preparing", progress: 4, resultCount: 0, plan, message: null, cancelPending: false })
     try {
       const response = await studioApi.createStudioChange(
         sourceVersionRef,
         createStudioChangeRequest(plan.draft),
         `mori-studio-change-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       )
+      if (studioChangeCommandEpochRef.current !== commandEpoch) return
       setStudioChangeRun({
         status: response.data.status,
         progress: response.data.status === "queued" ? 0 : 12,
         resultCount: 0,
         plan,
         message: null,
+        cancelPending: false,
       })
       const queueItem: GenerationQueueItem = {
         generation_ref: response.data.generation_ref,
@@ -428,12 +441,14 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
         plan,
       })
     } catch (error) {
+      if (studioChangeCommandEpochRef.current !== commandEpoch) return
       setStudioChangeRun({
         status: "failed",
         progress: 0,
         resultCount: 0,
         plan,
         message: studioChangeFailureMessage(error),
+        cancelPending: false,
       })
     }
   }
@@ -475,7 +490,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
           }
         }
 
-        setStudioChangeRun((current) => ({ ...current, status, progress, message: null }))
+        setStudioChangeRun((current) => ({ ...current, status, progress, message: null, cancelPending: false }))
         writeGenerationQueueState(updateGenerationQueueItem(readGenerationQueueState(), trackedStudioChange.generationRef, {
           status,
           progress,
@@ -543,18 +558,24 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
   const cancelStudioChange = async () => {
     if (trackedStudioChange === null) return
     const generationRef = trackedStudioChange.generationRef
-    setStudioChangeRun((current) => ({ ...current, message: "Stopping after the current render step…" }))
+    if (studioChangeCancelRequestRef.current === generationRef) return
+    const commandEpoch = studioChangeCommandEpochRef.current
+    studioChangeCancelRequestRef.current = generationRef
+    setStudioChangeRun((current) => ({ ...current, cancelPending: true, message: "Stopping after the current render step…" }))
     try {
       const response = await studioApi.cancelGeneration(
         generationRef,
         `mori-studio-cancel-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       )
+      if (studioChangeCommandEpochRef.current !== commandEpoch) return
+      if (response.data.generation_ref !== generationRef) throw new Error("studio_cancel_context_mismatch")
       setTrackedStudioChange(null)
       setStudioChangeRun((current) => ({
         ...current,
         status: response.data.status,
         progress: Math.min(current.progress, 99),
         message: null,
+        cancelPending: false,
       }))
       const queue = readGenerationQueueState()
       const queuedItem = queue.items.find((item) => item.generation_ref === generationRef)
@@ -563,7 +584,11 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
         progress: Math.min(queuedItem?.progress ?? studioChangeRun.progress, 99),
       }))
     } catch {
-      setStudioChangeRun((current) => ({ ...current, message: "Cancellation did not complete. Rendering is still being tracked." }))
+      if (studioChangeCommandEpochRef.current === commandEpoch) {
+        setStudioChangeRun((current) => ({ ...current, cancelPending: false, message: "Cancellation did not complete. Rendering is still being tracked." }))
+      }
+    } finally {
+      if (studioChangeCancelRequestRef.current === generationRef) studioChangeCancelRequestRef.current = null
     }
   }
 

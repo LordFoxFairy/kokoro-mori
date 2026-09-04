@@ -24,6 +24,7 @@ type InspectorPanelProps = {
   onDismissCurrentVersion?: () => void
   onPlay: (candidate: Candidate) => void
   onCancel?: () => void
+  cancelPending?: boolean
   onRetry?: () => void
   onClose?: () => void
   onSelectGeneration?: (generationRef: string) => void
@@ -35,7 +36,7 @@ function formatDuration(seconds: number): string {
   return `${minutes}:${remaining}`
 }
 
-export function InspectorPanel({ presentation = "drawer", projectRef, generation, queueItems = [], activeGenerationRef = null, candidates, songPlan, selectedCandidateRef, playing, currentVersionCommitRun = idleCurrentVersionCommitRun, onSelect, onPromote, onRetryCurrentVersion, onDismissCurrentVersion, onPlay, onCancel, onRetry, onClose, onSelectGeneration }: InspectorPanelProps) {
+export function InspectorPanel({ presentation = "drawer", projectRef, generation, queueItems = [], activeGenerationRef = null, candidates, songPlan, selectedCandidateRef, playing, currentVersionCommitRun = idleCurrentVersionCommitRun, onSelect, onPromote, onRetryCurrentVersion, onDismissCurrentVersion, onPlay, onCancel, cancelPending = false, onRetry, onClose, onSelectGeneration }: InspectorPanelProps) {
   const generationActive = generation !== null && ["queued", "preparing", "generating", "post_processing"].includes(generation.status)
   const generationFailed = generation !== null && (generation.status === "failed" || generation.status === "expired")
   const generationEmpty = generation?.status === "succeeded" && candidates.length === 0
@@ -139,7 +140,7 @@ export function InspectorPanel({ presentation = "drawer", projectRef, generation
             <div className={styles.progressValue} style={{ width: `${generation.progress}%` }} />
           </div>
           <p className={styles.queueText}>{generationActive ? "Mori is shaping the next direction. You can keep working while it runs." : generationFailed ? "Your idea is still here. Nothing was added to the library." : generationEmpty ? "Mori finished this run without a playable direction. Try again or adjust the idea." : "Ready to compare. Pick a direction and make it yours."}</p>
-          {onCancel && generationActive ? <div className={styles.queueActions}><span>Need to change the idea?</span><button className={styles.cancelButton} type="button" onClick={onCancel}>Cancel generation</button></div> : null}
+          {onCancel && generationActive ? <div className={styles.queueActions}><span>Need to change the idea?</span><button className={styles.cancelButton} type="button" disabled={cancelPending} onClick={onCancel}>{cancelPending ? "Stopping…" : "Cancel generation"}</button></div> : null}
           {onRetry && (generationFailed || generationEmpty) ? <div className={styles.queueActions}><span>Keep the same idea?</span><button className={styles.retryButton} type="button" onClick={onRetry}>Try again</button></div> : null}
           </section>
 

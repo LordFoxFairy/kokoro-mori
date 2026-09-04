@@ -407,7 +407,7 @@ function RemasterPlan({ plan, latestMixRevision, run, busy, onClose, onEdit, onS
         <div className={styles.actions}>
           {busy ? <>
             <button className={styles.secondaryButton} type="button" onClick={onClose}>Close</button>
-            <button className={styles.dangerButton} type="button" onClick={onCancel}><Square size={12} fill="currentColor" /> Cancel remaster</button>
+            <button className={styles.dangerButton} type="button" disabled={run.cancelPending === true} onClick={onCancel}><Square size={12} fill="currentColor" /> {run.cancelPending === true ? "Stopping…" : "Cancel remaster"}</button>
           </> : <>
             <button className={styles.secondaryButton} type="button" onClick={onEdit}><Pencil size={13} /> Edit plan</button>
             {succeeded ? (

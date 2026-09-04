@@ -77,11 +77,14 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
   const [generationQueueHydrated, setGenerationQueueHydrated] = useState(false)
   const [lastGenerationAttempt, setLastGenerationAttempt] = useState<GenerationAttempt | null>(null)
   const [currentVersionCommitRun, setCurrentVersionCommitRun] = useState<CurrentVersionCommitRun>(idleCurrentVersionCommitRun)
+  const [cancelPendingGenerationRef, setCancelPendingGenerationRef] = useState<string | null>(null)
   const [workspaceProjectTitle, setWorkspaceProjectTitle] = useState(initialProjectRef === null ? "New project" : initialProjectRef === previewProject.projectRef ? previewProject.title : "Project")
   const workspaceProjectRefMirror = useRef<string | null>(initialProjectRef)
   const projectCreationAttemptRef = useRef<ProjectCreationAttempt | null>(null)
   const generationQueueRef = useRef<GenerationQueueState>(emptyGenerationQueueState())
   const pendingCurrentVersionCommandRef = useRef<PendingCurrentVersionCommand | null>(null)
+  const generationCommandEpochRef = useRef(0)
+  const cancelGenerationRequestRef = useRef<string | null>(null)
   const defaultApi = useMemo(() => createMoriApiClient(), [])
   const api = injectedApi ?? defaultApi
   const mode = modeOverride ?? preferences.defaultMode
@@ -229,6 +232,10 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
   }, [api])
 
   const handleGenerate = useCallback(async (draft: CreationDraft, generationMode = mode) => {
+    const commandEpoch = generationCommandEpochRef.current + 1
+    generationCommandEpochRef.current = commandEpoch
+    cancelGenerationRequestRef.current = null
+    setCancelPendingGenerationRef(null)
     setLastGenerationAttempt({ mode: generationMode, draft })
     setGenerationRef(null)
     setHasGeneration(true)
@@ -245,6 +252,7 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
     setSongPlan(localPlan)
     try {
       const targetProjectRef = await ensureWorkspaceProject(draft)
+      if (generationCommandEpochRef.current !== commandEpoch) return
       let songPlanRef: string | undefined
       if (generationMode === "smart") {
         const draftPlan = localPlan ?? buildSongPlan(targetProjectRef, draft)
@@ -254,6 +262,7 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
           `mori-plan-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         )
         songPlanRef = planResponse.data.song_plan_ref
+        if (generationCommandEpochRef.current !== commandEpoch) return
         setSongPlan(toDomainSongPlan(planResponse.data))
       }
       const response = await api.createGeneration(
@@ -271,6 +280,7 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
         }),
         `mori-create-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       )
+      if (generationCommandEpochRef.current !== commandEpoch) return
       const queueItem: GenerationQueueItem = {
         generation_ref: response.data.generation_ref,
         project_ref: targetProjectRef,
@@ -292,6 +302,7 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
       setGenerationLabel("Queued for your workspace")
       setProgress(response.data.status === "queued" ? 0 : 12)
     } catch (error) {
+      if (generationCommandEpochRef.current !== commandEpoch) return
       setGenerationStatus("failed")
       setGenerationLabel(generationFailureLabel(error))
       setProgress(0)
@@ -527,22 +538,39 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
 
   const handleCancel = useCallback(async () => {
     if (generationRef === null) return
+    if (cancelGenerationRequestRef.current === generationRef) return
+    const commandEpoch = generationCommandEpochRef.current
+    const requestedGenerationRef = generationRef
+    cancelGenerationRequestRef.current = requestedGenerationRef
+    setCancelPendingGenerationRef(requestedGenerationRef)
     try {
       const response = await api.cancelGeneration(
-        generationRef,
+        requestedGenerationRef,
         `mori-cancel-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       )
+      if (generationCommandEpochRef.current !== commandEpoch) return
+      if (response.data.generation_ref !== requestedGenerationRef) throw new Error("generation_cancel_context_mismatch")
       setGenerationStatus(response.data.status)
       setGenerationLabel(generationLabelFor(response.data.status))
       setProgress((value) => Math.min(value, 99))
-      updateQueue((current) => updateGenerationQueueItem(current, generationRef, {
-        status: response.data.status,
-        progress: Math.min(progress, 99),
-      }))
+      updateQueue((current) => {
+        const item = current.items.find((candidate) => candidate.generation_ref === requestedGenerationRef)
+        return item === undefined
+          ? current
+          : updateGenerationQueueItem(current, requestedGenerationRef, {
+            status: response.data.status,
+            progress: Math.min(item.progress, 99),
+          })
+      })
     } catch {
-      setGenerationLabel("Cancellation failed")
+      if (generationCommandEpochRef.current === commandEpoch) setGenerationLabel("Cancellation failed")
+    } finally {
+      if (cancelGenerationRequestRef.current === requestedGenerationRef) {
+        cancelGenerationRequestRef.current = null
+        if (generationCommandEpochRef.current === commandEpoch) setCancelPendingGenerationRef(null)
+      }
     }
-  }, [api, generationRef, progress, updateQueue])
+  }, [api, generationRef, updateQueue])
 
   const currentCandidates = candidates.map((candidate) => ({ ...candidate, isCurrent: candidate.versionRef === currentVersionRef }))
   const generationFeedback = generationFeedbackFor(hasGeneration ? generationStatus : null)
@@ -553,6 +581,9 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
   const selectQueuedGeneration = useCallback((nextGenerationRef: string) => {
     const item = generationQueueRef.current.items.find((candidate) => candidate.generation_ref === nextGenerationRef)
     if (item === undefined || item.kind !== "create") return
+    generationCommandEpochRef.current += 1
+    cancelGenerationRequestRef.current = null
+    setCancelPendingGenerationRef(null)
     updateQueue((current) => ({ ...current, active_generation_ref: item.generation_ref }))
     setGenerationRef(item.generation_ref)
     setHasGeneration(true)
@@ -586,6 +617,7 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
       onRetryCurrentVersion={retryCurrentVersionCommit}
       onDismissCurrentVersion={dismissCurrentVersionCommit}
       onCancel={() => { void handleCancel() }}
+      cancelPending={cancelPendingGenerationRef === generationRef}
       onRetry={canRetryGeneration ? retryLastGeneration : undefined}
       onSelectGeneration={selectQueuedGeneration}
       onPlay={(candidate) => {

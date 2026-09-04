@@ -24,12 +24,17 @@
   Audio / Voice / Inspiration 使用 discriminated union。Source API 成功后不再把 preview Sources 混入 live 响应；
   未配置 API 或所有 projection 都不可用时保留 preview fallback，单个 Source projection 失败则清空该区域并明确显示 unavailable，
   避免把过期 fixture 当成真实数据；Library 会消费 `next_cursor` 提供 Load more / Try again，Create deep link 会优先解析 live Source detail。
+- Home / Projects 在 live projection 失败时会明确标注当前展示的是 Preview workspace，并提供 Retry；恢复后自动切回真实投影，
+  不把本地 fixture 静默伪装成用户数据。Projects 与 Library Versions 均消费 opaque cursor，分页追加按资源引用去重。
 - Generation 生命周期已补齐 Create、snapshot、SSE replay、cancel 与 Project Candidate list 的本仓 OpenAPI；Candidate
   list 使用 opaque cursor/limit/generation filter，页面投影统一消费全部分页并按 `candidate_ref` 去重。Generation queue
   以显式字段白名单保存多任务摘要、状态、进度、候选引用和 event cursor，不保存 prompt、lyrics、provider payload 或音频字节；
   Create 与 Studio Change 共用这份队列；Create 不会接管 Studio Change，Studio 路由会从 active generation ref 拉回 snapshot 并恢复工作上下文，
   网络瞬时错误按退避重试而非立即伪装成失败，在切换任务时保持其他进行中任务的后台轮询。
-  Generation SSE 支持 AbortSignal，页面卸载时停止长连接。
+  Generation SSE 支持 AbortSignal，页面卸载时停止长连接；Create / Studio Change 的生成与取消命令带 epoch/context guard，
+  重复点击会进入 Stopping 状态，过期响应不会覆盖用户当前查看的任务。
+- Settings 继续采用 Kokoro 的浮动窗口信息架构：搜索、键盘 tab 切换、Escape、焦点循环和背景 `inert` 隔离均保持可逆，
+  只保留 Mori 的外观、播放、创作与账户设置。
 - Studio 时间线在窄屏提供横向滚动、键盘焦点和明确的 Swipe hint；短桌面视口的 Export dialog 会避开固定 Player safe area。
   Studio Header 提供项目级 Generation queue 入口，使用同一浏览器任务摘要展示后台运行、完成和需处理的任务，并可回到对应的 Create 或 Studio 上下文。
 - 移动端全局 Player 保留上一首、播放、下一首、静音、Up next 和 seek 进度，不再把核心听音控制隐藏在窄屏；dock 使用独立的两行安全区，
@@ -42,7 +47,7 @@
 ```text
 pnpm lint                         passed
 pnpm typecheck                    passed
-pnpm test --maxWorkers=1          passed: 50 files / 384 tests
+pnpm test --maxWorkers=1          passed: 51 files / 390 tests
 pnpm build                        passed
 ```
 

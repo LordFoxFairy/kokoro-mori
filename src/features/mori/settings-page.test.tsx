@@ -1,12 +1,23 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 import { MoriAppProvider, useMoriApp } from "./components/mori-app-provider"
+import { MoriAppShell } from "./components/mori-app-shell"
 import { MoriSettingsPage } from "./settings-page"
 
 function renderSettings() {
   return render(
     <MoriAppProvider>
       <MoriSettingsPage />
+    </MoriAppProvider>,
+  )
+}
+
+function renderSettingsWithShell() {
+  return render(
+    <MoriAppProvider>
+      <MoriAppShell activeKey="settings" ariaLabel="Settings">
+        <MoriSettingsPage />
+      </MoriAppShell>
     </MoriAppProvider>,
   )
 }
@@ -30,6 +41,32 @@ describe("Mori settings", () => {
     renderSettings()
 
     expect(document.body.style.overflow).toBe("hidden")
+  })
+
+  it("isolates the shell background and restores its original attributes on unmount", async () => {
+    const { unmount } = renderSettingsWithShell()
+    const rail = screen.getByRole("navigation", { name: "Mori" })
+    const surface = screen.getByRole("region", { name: "Settings" })
+    const playerSlot = screen.getByRole("region", { name: "Global player" }).parentElement
+    if (playerSlot === null) throw new Error("Global player slot was not rendered")
+
+    await waitFor(() => {
+      expect(rail).toHaveAttribute("aria-hidden", "true")
+      expect(rail).toHaveAttribute("inert")
+      expect(surface).toHaveAttribute("aria-hidden", "true")
+      expect(surface).toHaveAttribute("inert")
+      expect(playerSlot).toHaveAttribute("aria-hidden", "true")
+      expect(playerSlot).toHaveAttribute("inert")
+    })
+
+    unmount()
+
+    expect(rail).not.toHaveAttribute("aria-hidden")
+    expect(rail).not.toHaveAttribute("inert")
+    expect(surface).not.toHaveAttribute("aria-hidden")
+    expect(surface).not.toHaveAttribute("inert")
+    expect(playerSlot).not.toHaveAttribute("aria-hidden")
+    expect(playerSlot).not.toHaveAttribute("inert")
   })
 
   it("moves focus into the window and keeps keyboard focus inside it", async () => {

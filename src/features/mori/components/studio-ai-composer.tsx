@@ -41,6 +41,7 @@ export type StudioAiRunState = {
   resultCount: number
   plan: StudioChangePlan | null
   message: string | null
+  cancelPending?: boolean
 }
 
 type StudioAiComposerProps = {
@@ -512,7 +513,7 @@ export function StudioAiComposer({ selectedSection, run, initialOperation, initi
             <span><Check size={13} /> Current version stays untouched.</span>
             <div>
               {busy ? (
-                <button className={styles.studioAiCancel} type="button" onClick={onCancel}><Square size={11} fill="currentColor" /> Cancel change</button>
+                <button className={styles.studioAiCancel} type="button" disabled={run.cancelPending === true} onClick={onCancel}><Square size={11} fill="currentColor" /> {run.cancelPending === true ? "Stopping…" : "Cancel change"}</button>
               ) : <>
                 <button type="button" onClick={editPlan}><Pencil size={12} /> Edit request</button>
                 {run.status === "succeeded" && run.resultCount > 0 ? (

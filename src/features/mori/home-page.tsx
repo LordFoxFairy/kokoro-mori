@@ -17,6 +17,7 @@ type HomePageContentProps = {
 }
 
 type DirectionProjectionStatus = "ready" | "loading" | "unavailable"
+type ProjectProjectionStatus = "preview" | "ready" | "unavailable"
 
 export function HomePageContent({ api }: HomePageContentProps = {}) {
   const { playerCandidate, playing, selectPlayerCandidate, setPlaying } = useMoriApp()
@@ -25,6 +26,8 @@ export function HomePageContent({ api }: HomePageContentProps = {}) {
   const [featuredProject, setFeaturedProject] = useState<Project | null>(previewProject)
   const [candidates, setCandidates] = useState<Candidate[]>(previewCandidates)
   const [directionStatus, setDirectionStatus] = useState<DirectionProjectionStatus>("ready")
+  const [projectStatus, setProjectStatus] = useState<ProjectProjectionStatus>("preview")
+  const [projectRequestVersion, setProjectRequestVersion] = useState(0)
 
   useEffect(() => {
     let disposed = false
@@ -36,6 +39,7 @@ export function HomePageContent({ api }: HomePageContentProps = {}) {
         setFeaturedProject(null)
         setCandidates([])
         setDirectionStatus("ready")
+        setProjectStatus("ready")
         return
       }
 
@@ -43,6 +47,7 @@ export function HomePageContent({ api }: HomePageContentProps = {}) {
       setFeaturedProject(nextProject)
       setCandidates([])
       setDirectionStatus("loading")
+      setProjectStatus("ready")
 
       try {
         const candidateResponse = await listAllMoriCandidates(homeApi, project.project_ref)
@@ -58,13 +63,13 @@ export function HomePageContent({ api }: HomePageContentProps = {}) {
         setDirectionStatus("unavailable")
       }
     }).catch(() => {
-      // Keep the deterministic preview visible while the project projection is unavailable.
+      if (!disposed) setProjectStatus("unavailable")
     })
 
     return () => {
       disposed = true
     }
-  }, [homeApi])
+  }, [homeApi, projectRequestVersion])
 
   function playCandidate(candidate: Candidate) {
     if (playerCandidate?.candidateRef === candidate.candidateRef) {
@@ -106,6 +111,17 @@ export function HomePageContent({ api }: HomePageContentProps = {}) {
         </div>
         <p>Mori opens an editable Song Plan before generating any music.</p>
       </form>
+
+      {projectStatus !== "ready" ? (
+        <div className={styles.projectionNotice} role="status">
+          <span className={styles.projectionNoticeIcon} aria-hidden="true"><Sparkles size={15} /></span>
+          <div className={styles.projectionNoticeCopy}>
+            <strong>{projectStatus === "unavailable" ? "Live workspace is temporarily unavailable" : "Preview workspace"}</strong>
+            <span>{projectStatus === "unavailable" ? "Showing the local preview so you can keep exploring. Retry when the connection is ready." : "This local preview will be replaced by your workspace when it connects."}</span>
+          </div>
+          {projectStatus === "unavailable" ? <button type="button" onClick={() => setProjectRequestVersion((version) => version + 1)}>Retry</button> : null}
+        </div>
+      ) : null}
 
       {featuredProject === null ? <section className={styles.homeStartFeature} aria-labelledby="start-heading">
         <span className={styles.homeStartMark} aria-hidden="true"><Music2 size={24} /></span>

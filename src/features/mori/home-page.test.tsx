@@ -1,11 +1,45 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import type { MoriApi } from "@/lib/mori-api"
 import { MoriAppProvider } from "./components/mori-app-provider"
 import { MoriCatalogShell } from "./components/mori-catalog-shell"
 import { HomePageContent } from "./home-page"
 
 describe("Mori home page", () => {
+  it("labels the preview when the workspace projection is unavailable and retries it", async () => {
+    const listProjects = vi.fn<MoriApi["listProjects"]>()
+      .mockRejectedValueOnce(new Error("workspace unavailable"))
+      .mockResolvedValueOnce({
+        data: {
+          projects: [{
+            project_ref: "project_recovered_home",
+            title: "Recovered Light",
+            description: "A live project after retry.",
+            current_version_ref: null,
+            candidate_count: 0,
+            last_activity_at: "2026-09-04T12:00:00.000Z",
+          }],
+          next_cursor: null,
+        },
+        meta: { request_id: "request_home_recovered" },
+      })
+
+    render(
+      <MoriAppProvider>
+        <MoriCatalogShell activeKey="home" ariaLabel="Home">
+          <HomePageContent api={{ listProjects, listCandidates: async () => ({ data: { candidates: [], next_cursor: null }, meta: { request_id: "request_home_candidates_empty" } }) }} />
+        </MoriCatalogShell>
+      </MoriAppProvider>,
+    )
+
+    expect(screen.getByText("Preview workspace")).toBeInTheDocument()
+    fireEvent.click(await screen.findByRole("button", { name: "Retry" }))
+
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Recovered Light" })).toBeInTheDocument())
+    expect(screen.queryByText("Preview workspace")).not.toBeInTheDocument()
+    expect(listProjects).toHaveBeenCalledTimes(2)
+  })
+
   it("carries a one-sentence idea into Create through a real form contract", () => {
     render(
       <MoriAppProvider>

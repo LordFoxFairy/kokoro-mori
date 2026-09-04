@@ -13,6 +13,12 @@ type MoriSettingsPageProps = {
   returnTo?: string
 }
 
+type SettingsBackgroundAttributeSnapshot = {
+  element: HTMLElement
+  ariaHidden: string | null
+  inert: string | null
+}
+
 const sections: Array<{ key: SettingsSection; label: string; description: string; icon: typeof Palette }> = [
   { key: "appearance", label: "Appearance", description: "Workspace mood and shell", icon: Palette },
   { key: "playback", label: "Playback", description: "Player and listening behavior", icon: Headphones },
@@ -26,6 +32,8 @@ export function MoriSettingsPage({ returnTo = "/" }: MoriSettingsPageProps = {})
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null)
   const closeLinkRef = useRef<HTMLAnchorElement>(null)
   const settingsDialogRef = useRef<HTMLElement>(null)
+  const settingsOverlayRef = useRef<HTMLDivElement>(null)
+  const appShellRef = useRef<HTMLElement | null>(null)
   const { railCollapsed, setRailCollapsed, preferences, updatePreferences } = useMoriApp()
   const returnLabel = settingsReturnLabel(returnTo)
   const visibleSections = filterSettingsSections(navQuery)
@@ -108,8 +116,19 @@ export function MoriSettingsPage({ returnTo = "/" }: MoriSettingsPageProps = {})
     }
   }, [portalTarget])
 
+  useEffect(() => {
+    if (portalTarget === null) {
+      appShellRef.current = settingsOverlayRef.current?.closest<HTMLElement>(`.${styles.appShell}`) ?? null
+      return
+    }
+
+    const appShell = appShellRef.current
+    if (appShell === null) return
+    return isolateSettingsBackground(appShell)
+  }, [portalTarget])
+
   const settingsWindow = (
-    <div className={styles.settingsPage} data-testid="settings-overlay">
+    <div ref={settingsOverlayRef} className={styles.settingsPage} data-testid="settings-overlay">
       <Link className={styles.settingsBackdrop} href={returnTo} aria-label="Close settings" />
       <section ref={settingsDialogRef} className={styles.settingsWindow} role="dialog" aria-modal="true" aria-labelledby="mori-settings-title">
         <nav className={styles.settingsNav} aria-label="Settings navigation">
@@ -301,6 +320,33 @@ function getFocusableElements(container: HTMLElement): HTMLElement[] {
     "textarea:not([disabled])",
     "[tabindex]:not([tabindex='-1'])",
   ].join(",")))
+}
+
+function isolateSettingsBackground(appShell: HTMLElement): () => void {
+  const backgroundElements = [
+    appShell.querySelector<HTMLElement>(`.${styles.rail}`),
+    appShell.querySelector<HTMLElement>(`.${styles.surface}`),
+    appShell.querySelector<HTMLElement>(`.${styles.globalPlayerSlot}`),
+  ].filter((element): element is HTMLElement => element !== null)
+  const snapshots: SettingsBackgroundAttributeSnapshot[] = backgroundElements.map((element) => ({
+    element,
+    ariaHidden: element.getAttribute("aria-hidden"),
+    inert: element.getAttribute("inert"),
+  }))
+
+  backgroundElements.forEach((element) => {
+    element.setAttribute("aria-hidden", "true")
+    element.setAttribute("inert", "")
+  })
+
+  return () => {
+    snapshots.forEach(({ element, ariaHidden, inert }) => {
+      if (ariaHidden === null) element.removeAttribute("aria-hidden")
+      else element.setAttribute("aria-hidden", ariaHidden)
+      if (inert === null) element.removeAttribute("inert")
+      else element.setAttribute("inert", inert)
+    })
+  }
 }
 
 function SettingsPanel({ icon: Icon, title, description, children }: { icon: typeof Palette; title: string; description: string; children: ReactNode }) {

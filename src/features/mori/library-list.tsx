@@ -8,6 +8,7 @@ import { createMoriApiClient } from "@/lib/mori-api-client"
 import type { Candidate, LibraryItem, Project } from "./domain"
 import { creativeSourceKindLabel, previewCreativeSources, type MoriCreativeLibrarySource } from "./creative-assets"
 import { CreativeSourceLibrary, type CreativeSourceFilter } from "./components/creative-source-library"
+import paginationStyles from "./components/creative-source-library.module.css"
 import { useMoriApp } from "./components/mori-app-provider"
 import { previewCandidates, previewLibrary, previewProject } from "./preview-data"
 import styles from "./mori-workspace.module.css"
@@ -40,8 +41,12 @@ export function LibraryPageContent({ api }: LibraryPageContentProps = {}) {
   const defaultApi = useMemo(() => createMoriApiClient(), [])
   const libraryApi = api ?? defaultApi
   const [libraryItems, setLibraryItems] = useState<LibraryItem[]>(previewLibrary)
+  const [libraryItemRefs, setLibraryItemRefs] = useState<string[]>([])
   const [librarySources, setLibrarySources] = useState<readonly MoriCreativeLibrarySource[]>(previewCreativeSources)
   const [libraryStatus, setLibraryStatus] = useState<ProjectionStatus>("loading")
+  const [libraryCursor, setLibraryCursor] = useState<string | null>(null)
+  const [libraryPageLoading, setLibraryPageLoading] = useState(false)
+  const [libraryPageError, setLibraryPageError] = useState(false)
   const [sourceStatus, setSourceStatus] = useState<ProjectionStatus>("loading")
   const [sourceCursor, setSourceCursor] = useState<string | null>(null)
   const [sourcePageLoading, setSourcePageLoading] = useState(false)
@@ -83,9 +88,15 @@ export function LibraryPageContent({ api }: LibraryPageContentProps = {}) {
       }
 
       if (libraryReady) {
-        setLibraryItems(toDomainLibrary(libraryResult.value.data.items))
+        const initialItems = uniqueLibraryItems(libraryResult.value.data.items, new Set(), new Set())
+        setLibraryItems(toDomainLibrary(initialItems))
+        setLibraryItemRefs(initialItems.map((item) => item.library_item_ref))
+        setLibraryCursor(libraryResult.value.data.next_cursor)
+        setLibraryPageError(false)
       } else {
         setLibraryItems([])
+        setLibraryItemRefs([])
+        setLibraryCursor(null)
       }
       if (sourcesReady) {
         setLibrarySources(sourceResponse.data.sources.map(toCreativeSource))
@@ -164,9 +175,11 @@ export function LibraryPageContent({ api }: LibraryPageContentProps = {}) {
   const resultLabel = hasQuery
     ? `${resultCount} ${resultCount === 1 ? "result" : "results"}`
     : `${resultCount} ${resultCount === 1 ? "item" : "items"}`
+  const hasMoreVersions = showsVersions && libraryStatus === "ready" && libraryCursor !== null
+  const showVersionShelf = visibleVersions.length > 0 || hasMoreVersions
   const hasMoreSources = showsSources && sourceStatus === "ready" && sourceCursor !== null
   const showSourceShelf = visibleSources.length > 0 || hasMoreSources
-  const showResultSurface = resultCount > 0 || showSourceShelf
+  const showResultSurface = resultCount > 0 || showVersionShelf || showSourceShelf
 
   async function loadMoreSources() {
     const listCreativeSources = libraryApi.listCreativeSources
@@ -187,6 +200,28 @@ export function LibraryPageContent({ api }: LibraryPageContentProps = {}) {
       setSourcePageError(true)
     } finally {
       setSourcePageLoading(false)
+    }
+  }
+
+  async function loadMoreVersions() {
+    const cursor = libraryCursor
+    if (cursor === null || libraryPageLoading) return
+
+    setLibraryPageLoading(true)
+    setLibraryPageError(false)
+    try {
+      const response = await libraryApi.listLibrary({ kind: "all", limit: 20, cursor })
+      const existingVersionRefs = new Set(libraryItems
+        .filter((item): item is Extract<LibraryItem, { kind: "version" }> => item.kind === "version")
+        .map((item) => item.ref))
+      const nextItems = uniqueLibraryItems(response.data.items, new Set(libraryItemRefs), existingVersionRefs)
+      setLibraryItems((current) => [...current, ...toDomainLibrary(nextItems, current.length)])
+      setLibraryItemRefs((current) => [...current, ...nextItems.map((item) => item.library_item_ref)])
+      setLibraryCursor(response.data.next_cursor)
+    } catch {
+      setLibraryPageError(true)
+    } finally {
+      setLibraryPageLoading(false)
     }
   }
 
@@ -251,7 +286,7 @@ export function LibraryPageContent({ api }: LibraryPageContentProps = {}) {
       )}
       {showResultSurface ? (
         <div className={styles.libraryResults} id="mori-library-results">
-          {visibleVersions.length > 0 ? (
+          {showVersionShelf ? (
             <section className={styles.librarySection} aria-label="Saved versions">
               <header className={styles.librarySectionHeader}>
                 <div>
@@ -282,6 +317,28 @@ export function LibraryPageContent({ api }: LibraryPageContentProps = {}) {
                   )
                 })}
               </div>
+              {hasMoreVersions ? (
+                <div className={paginationStyles.pagination}>
+                  <button
+                    className={paginationStyles.paginationButton}
+                    type="button"
+                    disabled={libraryPageLoading}
+                    aria-busy={libraryPageLoading}
+                    onClick={() => void loadMoreVersions()}
+                  >
+                    {libraryPageLoading ? "Loading more versions…" : "Load more versions"}
+                  </button>
+                  {libraryPageLoading ? (
+                    <span role="status" aria-live="polite" aria-label="Library versions pagination">Loading more versions…</span>
+                  ) : null}
+                  {libraryPageError ? (
+                    <span className={paginationStyles.paginationError} role="status" aria-label="Library versions pagination">
+                      The next versions page could not load.
+                      <button className={paginationStyles.paginationRetry} type="button" onClick={() => void loadMoreVersions()}>Try again</button>
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
             </section>
           ) : null}
           {showSourceShelf ? (
@@ -317,7 +374,18 @@ export function LibraryPageContent({ api }: LibraryPageContentProps = {}) {
   )
 }
 
-function toDomainLibrary(items: MoriLibraryItem[]): LibraryItem[] {
+function uniqueLibraryItems(items: MoriLibraryItem[], existingLibraryItemRefs: ReadonlySet<string>, existingVersionRefs: ReadonlySet<string>): MoriLibraryItem[] {
+  const seenLibraryItemRefs = new Set(existingLibraryItemRefs)
+  const seenVersionRefs = new Set(existingVersionRefs)
+  return items.filter((item) => {
+    if (seenLibraryItemRefs.has(item.library_item_ref) || seenVersionRefs.has(item.version_ref)) return false
+    seenLibraryItemRefs.add(item.library_item_ref)
+    seenVersionRefs.add(item.version_ref)
+    return true
+  })
+}
+
+function toDomainLibrary(items: MoriLibraryItem[], startIndex = 0): LibraryItem[] {
   return [
     ...items.filter((item): item is Extract<MoriLibraryItem, { kind: "version" }> => item.kind === "version").map((item, index) => ({
       kind: "version" as const,
@@ -326,7 +394,7 @@ function toDomainLibrary(items: MoriLibraryItem[]): LibraryItem[] {
       title: item.title,
       subtitle: `Version · ${item.project_title}`,
       durationSeconds: item.duration_seconds,
-      accent: index % 2 === 0 ? "lavender" as const : "peach" as const,
+      accent: (startIndex + index) % 2 === 0 ? "lavender" as const : "peach" as const,
       audioAssetRef: item.audio_asset_ref,
       waveformAssetRef: item.waveform_asset_ref,
     })),

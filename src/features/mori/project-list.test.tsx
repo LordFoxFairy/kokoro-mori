@@ -4,6 +4,34 @@ import type { MoriApi } from "@/lib/mori-api"
 import { ProjectsPageContent } from "./project-list"
 
 describe("Mori projects", () => {
+  it("labels the preview when live projects are unavailable and retries the projection", async () => {
+    const listProjects = vi.fn<MoriApi["listProjects"]>()
+      .mockRejectedValueOnce(new Error("projects unavailable"))
+      .mockResolvedValueOnce({
+        data: {
+          projects: [{
+            project_ref: "project_recovered",
+            title: "Recovered Project",
+            description: "Loaded after retry.",
+            current_version_ref: null,
+            candidate_count: 0,
+            last_activity_at: "2026-09-04T12:00:00.000Z",
+          }],
+          next_cursor: null,
+        },
+        meta: { request_id: "request_projects_recovered" },
+      })
+
+    render(<ProjectsPageContent api={{ listProjects }} />)
+
+    expect(screen.getByText("Preview workspace")).toBeInTheDocument()
+    fireEvent.click(await screen.findByRole("button", { name: "Retry" }))
+
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Recovered Project" })).toBeInTheDocument())
+    expect(screen.queryByText("Preview workspace")).not.toBeInTheDocument()
+    expect(listProjects).toHaveBeenCalledTimes(2)
+  })
+
   it("appends the next project page and deduplicates by project ref", async () => {
     const listProjects = vi.fn(async (options: { limit?: number; cursor?: string | null } = {}) => {
       if (options.cursor === "projects_cursor_2") {

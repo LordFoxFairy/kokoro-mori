@@ -1156,10 +1156,11 @@ describe("Mori workspace", () => {
   })
 
   it("lets a user cancel an active generation from the queue", async () => {
-    const cancelGeneration = vi.fn(async () => ({
-      data: { generation_ref: "generation_live_1", status: "cancelled" as const },
-      meta: { request_id: "request_cancel_1" },
-    }))
+    let resolveCancellation: ((value: Awaited<ReturnType<MoriApi["cancelGeneration"]>>) => void) | undefined
+    const cancellation = new Promise<Awaited<ReturnType<MoriApi["cancelGeneration"]>>>((resolve) => {
+      resolveCancellation = resolve
+    })
+    const cancelGeneration = vi.fn<MoriApi["cancelGeneration"]>(async () => cancellation)
     const api: Pick<MoriApi, "createSongPlan" | "createGeneration" | "getGeneration" | "getGenerationEvents" | "listCandidates" | "cancelGeneration"> = {
       createSongPlan: async (projectRef, input, idempotencyKey) => ({
         data: {
@@ -1210,7 +1211,14 @@ describe("Mori workspace", () => {
     fireEvent.click(screen.getByRole("button", { name: "Cancel generation" }))
 
     await waitFor(() => expect(cancelGeneration).toHaveBeenCalledOnce())
-    expect(screen.getByText("Generation cancelled")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Stopping…" })).toBeDisabled()
+    fireEvent.click(screen.getByRole("button", { name: "Stopping…" }))
+    expect(cancelGeneration).toHaveBeenCalledOnce()
+    resolveCancellation?.({
+      data: { generation_ref: "generation_live_1", status: "cancelled" },
+      meta: { request_id: "request_cancel_1" },
+    })
+    await waitFor(() => expect(screen.getByText("Generation cancelled")).toBeInTheDocument())
   })
 
   it("offers a human retry path when generation fails", async () => {

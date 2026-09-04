@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowUpRight, Clock3, Music2 } from "lucide-react"
+import { ArrowUpRight, Clock3, Music2, Sparkles } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import type { MoriApi, MoriProject } from "@/lib/mori-api"
@@ -22,6 +22,8 @@ export function ProjectsPageContent({ api }: ProjectsPageContentProps = {}) {
   const [nextCursor, setNextCursor] = useState<string | null>(null)
   const [loadingMore, setLoadingMore] = useState(false)
   const [loadMoreError, setLoadMoreError] = useState(false)
+  const [projectStatus, setProjectStatus] = useState<"preview" | "ready" | "unavailable">("preview")
+  const [projectRequestVersion, setProjectRequestVersion] = useState(0)
 
   useEffect(() => {
     let disposed = false
@@ -30,15 +32,16 @@ export function ProjectsPageContent({ api }: ProjectsPageContentProps = {}) {
         setProjects(response.data.projects.map(toDomainProject))
         setNextCursor(response.data.next_cursor)
         setLoadMoreError(false)
+        setProjectStatus("ready")
       }
     }).catch(() => {
-      // Keep the deterministic fixture visible while the BFF is unavailable.
+      if (!disposed) setProjectStatus("unavailable")
     })
 
     return () => {
       disposed = true
     }
-  }, [projectsApi])
+  }, [projectRequestVersion, projectsApi])
 
   async function loadMoreProjects() {
     if (loadingMore || nextCursor === null) return
@@ -72,6 +75,16 @@ export function ProjectsPageContent({ api }: ProjectsPageContentProps = {}) {
         </div>
         <button className={styles.generateButton} type="button" onClick={() => setCreateOpen(true)} aria-haspopup="dialog" aria-expanded={createOpen}><Music2 size={15} /> New project</button>
       </div>
+      {projectStatus !== "ready" ? (
+        <div className={styles.projectionNotice} role="status">
+          <span className={styles.projectionNoticeIcon} aria-hidden="true"><Sparkles size={15} /></span>
+          <div className={styles.projectionNoticeCopy}>
+            <strong>{projectStatus === "unavailable" ? "Live projects are temporarily unavailable" : "Preview workspace"}</strong>
+            <span>{projectStatus === "unavailable" ? "Showing the local preview so you can keep exploring. Retry when the connection is ready." : "This local preview will be replaced by your projects when it connects."}</span>
+          </div>
+          {projectStatus === "unavailable" ? <button type="button" onClick={() => setProjectRequestVersion((version) => version + 1)}>Retry</button> : null}
+        </div>
+      ) : null}
       <div className={styles.projectGrid}>
         {projects.length > 0 ? projects.map((project, index) => <ProjectCard key={project.projectRef} project={project} index={index} />) : <div className={styles.libraryEmpty}>
           <div className={styles.libraryEmptyIcon}><Music2 size={18} /></div>
