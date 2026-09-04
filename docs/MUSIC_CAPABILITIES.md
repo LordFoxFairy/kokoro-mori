@@ -116,6 +116,11 @@ Take Lanes 中的 **Open Version、Playing、Selected Take、Current Version** �
 继续保持；成功响应必须精确确认 Project、Candidate、Version 与 previous Current，界面才更新 Project Current 并
 打开该 Take。瞬时失败保留原 Current 和 Retry，重试复用原幂等键；并发冲突要求刷新，不用旧页面覆盖新选择。
 
+Version history 继续属于 Project / Studio，而不是全局工具：大于 1360px 时作为第三栏持续可见；画布更窄时由
+Studio 顶部 Versions 动作打开右侧抽屉，移动端使用全宽工作表。常驻栏与抽屉共享同一 Version 列表和状态规则，
+`aria-current` 只表达当前打开的 Version，Current 标签只来自 Project 确认值；打开历史不会暂停 Global Player，
+抽屉则位于 Player 上方并完整管理焦点与背景滚动。
+
 ### Transform / Restyle / Cover 的意图模型
 
 这层同时吸收 Suno 的 Version 连续性和 Tad 的命名能力分类：入口仍在当前 Version 的 Arrangement 中，但用户
@@ -493,6 +498,8 @@ BFF 必须按受信会话校验该 asset 与用户可见 Mori 资源的关联，
   Review，并通过精确 snapshot 匹配后进入 Take Lanes。
 - Take Lanes 的 `Use take` 已接入独立 Current Version command：非乐观提交、CAS 冲突、精确响应核对、失败保留
   旧 Current、可重试故障复用幂等键；Version history 从 Project 确认的 Current 派生，不再按列表顺序猜测。
+- Version history 已完成响应式连续性：宽屏保留项目第三栏，1280px 与移动端通过 Studio header 抽屉访问；
+  常驻栏和抽屉复用状态行，Open 与 Current 不合并，缩窄布局不会让历史入口消失。
 - 下一步只需由 BFF / music owner adapter 实现已固定契约；浏览器不引入 provider 字段。
 
 ### P2 · 深度编辑（进行中）
@@ -536,3 +543,4 @@ BFF 必须按受信会话校验该 asset 与用户可见 Mori 资源的关联，
 - 不把未渲染请求伪装成可播放音频。
 - Player 跨页面保持；Generation Queue 与 Playback Queue 继续分离。
 - 桌面保持浅色三层结构：全局 Rail、项目 Studio、全局 Player；移动端按优先级收敛而非等比缩小。
+- Version history 在所有宽度都必须可达，但始终停留在 Project / Studio 上下文；抽屉覆盖 Player，不挤压或替代 Player。

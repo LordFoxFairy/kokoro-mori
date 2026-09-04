@@ -1,7 +1,7 @@
 # Mori Preview Acceptance
 
-> 记录日期：2026-09-03
-> 范围：Mori 全局壳体、页面 IA、fixture-only 生成体验、Library/Studio/Transform/Finish、Current Version 提交与 API client seam
+> 记录日期：2026-09-04
+> 范围：Mori 全局壳体、页面 IA、fixture-only 生成体验、Library/Studio/Transform/Finish、Current Version 提交、响应式 Version history 与 API client seam
 
 ## 验证命令
 
@@ -18,7 +18,7 @@ pnpm build
 
 - `pnpm lint`：通过，`--max-warnings=0`
 - `pnpm typecheck`：通过
-- `pnpm test`：通过，38 个测试文件、276 个测试
+- `pnpm test`：通过，39 个测试文件、281 个测试
 - `pnpm build`：通过，生成 `/`、`/create`、`/projects`、`/library`、`/settings`、`/help`、Project Overview 和 Studio 路由
 
 ## 页面巡检
@@ -70,7 +70,7 @@ Studio 顶部现在提供上下文化的 Finish，而不是新增全局 AI 工�
 开始，默认 Balanced，并提供 Subtle / Balanced / Bold 三档可解释强度。用户先 Review source、strength、Whole song、
 五项保护约束和“两条 Take”去向，再执行已有的 version-scoped Generation；窗口关闭后任务仍被 Studio 跟踪并可重新打开。
 Remaster snapshot 必须回显完全一致的 `intent`、source 与 `variation_strength`，否则整单拒收；成功结果只追加到 Take Lanes，
-不会覆盖源 Version、Mix Revision 或 Current Version；390px 视口下 Studio 收敛为真正单栏，顶栏三个动作与三项工具均完整可达，
+不会覆盖源 Version、Mix Revision 或 Current Version；390px 视口下 Studio 收敛为真正单栏，顶栏四个动作与三项工具均完整可达，
 页面无横向溢出，Finish 使用可滚动工作表并将 Review / Execute footer 固定在可见区域；
 Finish 的 Release 页签把发布准备保留在当前 Version：标题、说明、Private / Link only / Public、允许 Remix、Explicit content
 和 Artwork 均可保存为 draft，默认 Private，且可见性与 Remix 权限互不推导。窗口只有 `Save release draft`，不存在 Publish
@@ -87,6 +87,10 @@ Project/Candidate/Version/previous Current 才更新。可重试失败保留 Ret
 该状态已在 1280×720 桌面视口巡检默认、提交中、不可重试和可重试失败反馈，以及 Take Lanes 与固定 Player 的分层；
 390×844 移动视口下 Rail 默认收起，Take Lanes 宽 361px、viewport 390px，页面 `clientWidth` 与 `scrollWidth`
 均为 390px，失败操作、歌曲卡和固定 Player 保持可达，浏览器无 warning/error。
+Version history 已在 1440×900 验证为 Studio 第三栏，Versions 顶栏动作隐藏；在 1280×720 验证为两栏 Studio，
+常驻历史隐藏且 Versions 动作可打开 386px 右侧抽屉；在 390×844 验证为单栏与全宽历史工作表，页面
+`clientWidth` / `scrollWidth` 均为 390px。两种历史表面都将 Open 与 Current 独立标记；抽屉位于固定 Player
+上方，打开后焦点进入 Close、锁定背景滚动，Escape / Close 后回到触发入口，浏览器无 warning/error。
 Arrangement 现在提供与时间线连在一起的 Mori AI Changes：Add part、Replace section、Extend、Transform
 共享同一套上下文式输入；Intro、Verse、Lift、Chorus、Outro 可直接选为 AI 操作上下文，操作范围和结果去向
 始终可见；时间标尺按当前 Version 时长生成，时间线播放头与 Global Player 的 seek 状态同步，并实时标记

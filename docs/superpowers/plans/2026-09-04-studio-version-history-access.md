@@ -30,12 +30,12 @@
 - Consumes: `Candidate[]`, `projectRef`, `openVersionRef`, and confirmed `currentVersionRef`.
 - Produces: `StudioVersionHistoryRail` and `StudioVersionHistoryDrawer`.
 
-- [ ] Write failing component tests proving the rail labels Current and Open independently and builds encoded Project Version links.
-- [ ] Write failing drawer tests for dialog semantics, initial close-button focus, Tab/Shift+Tab trapping, Escape/backdrop close, focus restoration, body scroll lock, and navigation dismissal.
-- [ ] Run `pnpm exec vitest run src/features/mori/components/studio-version-history.test.tsx`; confirm failure because the component does not exist.
-- [ ] Implement one shared item renderer plus the persistent rail and portal drawer. Keep Version title, lifecycle label, Open label, duration, and artwork cue scannable.
-- [ ] Move Version-specific row/header styling out of `mori-workspace.module.css` into the focused component stylesheet; leave only Studio-grid placement hooks in the workspace stylesheet.
-- [ ] Re-run the focused test and `pnpm typecheck`; commit the component slice.
+- [x] Write failing component tests proving the rail labels Current and Open independently and builds encoded Project Version links.
+- [x] Write failing drawer tests for dialog semantics, initial close-button focus, Tab/Shift+Tab trapping, Escape/backdrop close, focus restoration, body scroll lock, and navigation dismissal.
+- [x] Run `pnpm exec vitest run src/features/mori/components/studio-version-history.test.tsx`; confirm failure because the component does not exist.
+- [x] Implement one shared item renderer plus the persistent rail and portal drawer. Keep Version title, lifecycle label, Open label, duration, and artwork cue scannable.
+- [x] Move Version-specific row/header styling out of `mori-workspace.module.css` into the focused component stylesheet; leave only Studio-grid placement hooks in the workspace stylesheet.
+- [x] Re-run the focused test and `pnpm typecheck`; commit the component slice.
 
 ### Task 2: Studio integration and Current synchronization
 
@@ -48,12 +48,12 @@
 - Consumes: `StudioVersionHistoryRail`, `StudioVersionHistoryDrawer`, existing `studioCandidates`, `activeProjectRef`, `activeCandidate.versionRef`, and `currentVersionRef`.
 - Produces: responsive `Open version history` header action with `aria-expanded` and `aria-controls`.
 
-- [ ] Add failing Studio tests proving the header action opens the drawer with hydrated live-project Versions and closes through its explicit close action.
-- [ ] Add a failing test proving a successful `Use take` updates Current labels in both persistent history and the drawer while Open remains explicit.
-- [ ] Run `pnpm exec vitest run src/features/mori/studio-page.test.tsx`; confirm the new assertions fail because the trigger/drawer is absent.
-- [ ] Integrate drawer state, trigger semantics, shared rail, and close-on-Version-navigation without changing generation, playback, or current-version command flows.
-- [ ] Add responsive trigger/grid CSS: persistent rail above 1360px, drawer trigger at or below 1360px, icon-only trigger under 700px.
-- [ ] Re-run Studio/component tests, lint, and typecheck; commit the integration slice.
+- [x] Add failing Studio tests proving the header action opens the drawer with hydrated live-project Versions and closes through its explicit close action.
+- [x] Add a failing test proving a successful `Use take` updates Current labels in both persistent history and the drawer while Open remains explicit.
+- [x] Run `pnpm exec vitest run src/features/mori/studio-page.test.tsx`; confirm the new assertions fail because the trigger/drawer is absent.
+- [x] Integrate drawer state, trigger semantics, shared rail, and close-on-Version-navigation without changing generation, playback, or current-version command flows.
+- [x] Add responsive trigger/grid CSS: persistent rail above 1360px, drawer trigger at or below 1360px, icon-only trigger under 700px.
+- [x] Re-run Studio/component tests, lint, and typecheck; commit the integration slice.
 
 ### Task 3: Browser inspection and documentation
 
@@ -67,8 +67,8 @@
 - Consumes: completed responsive Version history implementation.
 - Produces: verified product and acceptance record.
 
-- [ ] Start `pnpm dev --hostname 127.0.0.1 --port 3004` and inspect Studio at 1440×900, 1280×720, and 390×844.
-- [ ] Verify the wide persistent rail, medium/mobile drawer, Current/Open labels, focus return, fixed Player layering, and `documentElement.clientWidth === documentElement.scrollWidth` at narrow width.
-- [ ] Update product/capability/acceptance docs with the responsive history rule and observed evidence.
-- [ ] Run `git diff --check && pnpm lint && pnpm typecheck && pnpm test && pnpm build` and record exact test counts.
-- [ ] Restore generated files, stop the server, check every plan item, commit docs, and confirm a clean worktree.
+- [x] Start `pnpm dev --hostname 127.0.0.1 --port 3004` and inspect Studio at 1440×900, 1280×720, and 390×844.
+- [x] Verify the wide persistent rail, medium/mobile drawer, Current/Open labels, focus return, fixed Player layering, and `documentElement.clientWidth === documentElement.scrollWidth` at narrow width.
+- [x] Update product/capability/acceptance docs with the responsive history rule and observed evidence.
+- [x] Run `git diff --check && pnpm lint && pnpm typecheck && pnpm test && pnpm build` and record exact test counts.
+- [x] Restore generated files, stop the server, check every plan item, commit docs, and confirm a clean worktree.

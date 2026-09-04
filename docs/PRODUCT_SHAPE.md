@@ -32,6 +32,8 @@ Mori 的落地：
   BFF 与 Storage owner 承接。
 - Take Lanes 中打开、播放、选择与 Project Current 保持分离；`Use take` 是带幂等与并发条件的持久化命令，
   只有精确确认后才改变 Current，失败不会让用户看到一个假的成功状态。
+- Version history 在宽屏 Studio 中保持为项目右栏，在中等和移动宽度收进 Studio 顶部的 Versions 抽屉；
+  两种表面复用同一组 Version 状态，并分别标明 Open 与 Current，缩窄画布时也不会失去回看入口。
 - Finish 仍绑定当前 Version：Remaster 的音频结果回到 Take Lanes，Release 的视觉与元数据只进入 draft，
   两条路径都不会绕过用户确认或偷偷发布。
 
@@ -82,6 +84,8 @@ Workspace nav    内容随项目上下文变化                     跨页面保
 - Rail 是应用骨架，不是悬浮卡片；展开/收起不改变内容的语义位置。
 - Create 的第一主操作只有一个：Smart 先 Review plan、Custom 直接 Generate；Queue 是当前任务的上下文入口。
 - Studio 的工具和版本历史属于项目，不提升到全局 Rail。
+- Studio 在大于 1360px 时使用工具 / 画布 / Version history 三栏；在 1360px 及以下保留工具与画布，
+  Version history 由标题栏动作打开右侧抽屉，不把主画布继续挤窄。
 - Player 使用独立的全宽 transport dock：左侧当前作品，中部 transport + progress，右侧
   音量和队列。
 - Settings 使用浮在当前工作区之上的窗口：左侧固定偏好导航，右侧独立滚动设置内容；关闭后
@@ -109,7 +113,9 @@ Workspace nav    内容随项目上下文变化                     跨页面保
 - 已落地第一版：Song Plan 从提示说明升级为可编辑、可确认的中间状态，并在确认后通过契约持久化再创建生成任务。
 - 已落地第一版：Studio Take Lanes 支持试听、选择和明确提交当前版本；Open Version、Playing、Selected Take 与
   Current Version 分开建模，`Use take` 通过 Project-scoped compare-and-set 契约提交，等待与失败期间保留旧
-  Current，可重试故障复用同一幂等键，并发冲突要求刷新；Version history 只按确认的 Project Current 标记。
+  Current，可重试故障复用同一幂等键，并发冲突要求刷新；Version history 只按确认的 Project Current 标记，
+  并在宽屏常驻右栏、中屏/移动端上下文抽屉中始终可达。历史行把正在查看的 Open 与项目确认的 Current 独立展示，
+  抽屉支持焦点约束、Escape / 遮罩关闭、导航关闭与焦点返回。
   Lyrics 支持本地草稿保存、分段 AI Revision、
   多 Suggestion 对比以及 Apply / Undo；Stems 支持基于当前 Version 的 Isolate part、Auto split、Custom stems
   三种渐进意图、可选 MIDI、异步恢复/取消/重试，以及对真实返回资产的逐轨 Mute/Solo/Level；
