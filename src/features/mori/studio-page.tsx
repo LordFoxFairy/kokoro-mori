@@ -141,6 +141,17 @@ function studioLinkCopyLabel(status: StudioLinkCopyStatus) {
   }
 }
 
+function StudioLinkCopyIcon({ status }: { status: StudioLinkCopyStatus }) {
+  const icon = status === "copying"
+    ? <LoaderCircle size={14} />
+    : status === "copied"
+      ? <Check size={14} />
+      : status === "failed"
+        ? <AlertCircle size={14} />
+        : <Link2 size={14} />
+  return <span className={styles.linkCopyIcon} data-link-copy-icon={status} aria-hidden="true">{icon}</span>
+}
+
 export function StudioPageContent({ candidate, projectRef, versionRef, initialSurface = "arrangement", initialIntent = null, api, stemPlaybackFactory = createHtmlStemPlaybackController }: StudioPageContentProps) {
   const { playerCandidate, playing, positionSeconds, seekPlayer, selectPlayerCandidate, setPlaying } = useMoriApp()
   const exportStatusDescriptionId = useId()
@@ -1076,12 +1087,14 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
           <div className={styles.studioHeaderLeft}><Link className={styles.studioBack} href={`/projects/${activeProjectRef}`}><ArrowLeft size={15} /> {activeProjectTitle}</Link><span>/</span><strong>Studio</strong></div>
           <div className={styles.studioHeaderActions}>
             <button
-              className={styles.ghostButton}
+              className={`${styles.ghostButton} ${styles.linkCopyButton}`}
               type="button"
+              title={studioLinkCopyLabel(linkCopyStatus)}
+              data-link-copy-status={linkCopyStatus}
               disabled={linkCopyStatus === "copying"}
               onClick={() => { void copyStudioLink() }}
             >
-              <Link2 size={14} /> <span aria-live="polite">{studioLinkCopyLabel(linkCopyStatus)}</span>
+              <StudioLinkCopyIcon status={linkCopyStatus} /> <span aria-live="polite">{studioLinkCopyLabel(linkCopyStatus)}</span>
             </button>
           {activeCandidate !== null ? <>
             <button

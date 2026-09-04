@@ -57,6 +57,38 @@
   opacity: 0.68;
 }
 
+.linkCopyButton[data-link-copy-status="copying"] {
+  border-color: rgba(109, 92, 231, 0.26);
+  color: var(--mori-primary);
+  background: var(--mori-primary-soft);
+}
+
+.linkCopyButton[data-link-copy-status="copied"] {
+  border-color: rgba(61, 155, 114, 0.26);
+  color: var(--mori-success);
+  background: rgba(231, 246, 239, 0.82);
+}
+
+.linkCopyButton[data-link-copy-status="failed"] {
+  border-color: rgba(201, 85, 85, 0.24);
+  color: var(--mori-error);
+  background: rgba(255, 241, 239, 0.86);
+}
+
+.linkCopyIcon {
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+}
+
+.linkCopyIcon[data-link-copy-icon="copying"] svg {
+  animation: linkCopySpin 780ms linear infinite;
+}
+
+@keyframes linkCopySpin {
+  to { transform: rotate(360deg); }
+}
+
 .iconButton svg {
   width: 16px;
   height: 16px;
@@ -5424,7 +5456,8 @@
   .navItem,
   .playerButton,
   .playerTool,
-  .exportActivity {
+  .exportActivity,
+  .linkCopyIcon svg {
     transition: none;
     animation: none;
   }

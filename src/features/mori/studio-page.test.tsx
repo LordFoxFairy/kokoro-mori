@@ -1591,8 +1591,13 @@ describe("Mori studio page", () => {
     renderStudio()
 
     fireEvent.click(screen.getByRole("button", { name: "Copy link" }))
-    expect(screen.getByRole("button", { name: "Copying…" })).toBeDisabled()
-    await waitFor(() => expect(screen.getByRole("button", { name: "Link copied" })).toBeInTheDocument())
+    const copyingButton = screen.getByRole("button", { name: "Copying…" })
+    expect(copyingButton).toBeDisabled()
+    expect(copyingButton).toHaveAttribute("data-link-copy-status", "copying")
+    expect(copyingButton.querySelector('[data-link-copy-icon="copying"]')).toBeInTheDocument()
+    const copiedButton = await screen.findByRole("button", { name: "Link copied" })
+    expect(copiedButton).toHaveAttribute("data-link-copy-status", "copied")
+    expect(copiedButton.querySelector('[data-link-copy-icon="copied"]')).toBeInTheDocument()
     expect(writeText).toHaveBeenCalledWith(window.location.href)
   })
 
@@ -1602,7 +1607,9 @@ describe("Mori studio page", () => {
     renderStudio()
 
     fireEvent.click(screen.getByRole("button", { name: "Copy link" }))
-    await waitFor(() => expect(screen.getByRole("button", { name: "Copy failed" })).toBeInTheDocument())
+    const failedButton = await screen.findByRole("button", { name: "Copy failed" })
+    expect(failedButton).toHaveAttribute("data-link-copy-status", "failed")
+    expect(failedButton.querySelector('[data-link-copy-icon="failed"]')).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Link copied" })).not.toBeInTheDocument()
   })
 
