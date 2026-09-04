@@ -2607,6 +2607,10 @@
   letter-spacing: -0.06em;
 }
 
+.studioPreviewButton {
+  flex: 0 0 auto;
+}
+
 .lyricsCard {
   border: 1px solid var(--mori-border);
   border-radius: 16px;
@@ -4325,8 +4329,19 @@
   }
 
   .studioCanvasTop {
-    align-items: flex-start;
-    flex-direction: column;
+    align-items: flex-end;
+    flex-direction: row;
+    gap: 12px;
+  }
+
+  .studioCanvasTop > div {
+    min-width: 0;
+  }
+
+  .studioCanvasTop .studioPreviewButton {
+    width: auto;
+    min-height: 36px;
+    padding-inline: 14px;
   }
 
   .takeLane {

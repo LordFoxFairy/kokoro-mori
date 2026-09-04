@@ -1,8 +1,8 @@
 "use client"
 
-import { AlertCircle, ArrowLeft, AudioLines, AudioWaveform, Check, Download, FileText, History, LoaderCircle, Play, RotateCcw, Share2, Sparkles, X } from "lucide-react"
+import { AlertCircle, ArrowLeft, AudioLines, AudioWaveform, Check, Download, FileText, History, LoaderCircle, Pause, Play, RotateCcw, Share2, Sparkles, X } from "lucide-react"
 import Link from "next/link"
-import { useEffect, useId, useMemo, useRef, useState } from "react"
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react"
 import {
   createLyricsRevisionRequest,
   createStemSeparationRequest,
@@ -46,6 +46,8 @@ import { useStudioReleaseWorkflow } from "./use-studio-release-workflow"
 import styles from "./mori-workspace.module.css"
 
 type StudioTool = "arrangement" | "lyrics" | "stems"
+
+const studioToolOrder: readonly StudioTool[] = ["arrangement", "lyrics", "stems"]
 
 type StudioPageContentProps = {
   candidate: Candidate
@@ -1038,6 +1040,15 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api, stem
   const remasterRun = isStudioRemasterPlan(studioChangeRun.plan)
   const remasterActive = remasterRun && isActiveStudioChangeStatus(studioChangeRun.status)
   const finishActive = remasterActive || releaseWorkflow.active
+  const isActiveVersionPlaying = playerCandidate?.versionRef === activeCandidate?.versionRef && playing
+
+  function navigateStudioTools(event: ReactKeyboardEvent<HTMLButtonElement>, currentTool: StudioTool) {
+    const nextTool = studioToolForKey(event.key, currentTool)
+    if (nextTool === null) return
+    event.preventDefault()
+    setActiveTool(nextTool)
+    document.getElementById(`mori-studio-tool-${nextTool}`)?.focus()
+  }
 
   return (
     <MoriStudioShell candidate={activeCandidate} playerCandidates={studioCandidates}>
@@ -1080,18 +1091,24 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api, stem
         <aside className={styles.studioSidebar} aria-label="Studio tools">
           <div className={styles.studioArtwork}><span>01</span></div>
           <div className={styles.studioSidebarCopy}><span>{activeCandidate.versionRef === currentVersionRef ? "Current version" : "Open take"}</span><h1>{activeCandidate.title}</h1><p>{activeCandidate.subtitle}</p></div>
-          <div className={styles.studioToolList}>
-            <button className={activeTool === "arrangement" ? styles.studioToolActive : ""} type="button" aria-pressed={activeTool === "arrangement"} onClick={() => setActiveTool("arrangement")}><AudioLines size={15} /> Arrangement</button>
-            <button className={activeTool === "lyrics" ? styles.studioToolActive : ""} type="button" aria-pressed={activeTool === "lyrics"} onClick={() => setActiveTool("lyrics")}><FileText size={15} /> Lyrics</button>
-            <button className={activeTool === "stems" ? styles.studioToolActive : ""} type="button" aria-pressed={activeTool === "stems"} onClick={() => setActiveTool("stems")}><AudioWaveform size={15} /> Stems</button>
+          <div className={styles.studioToolList} role="tablist" aria-label="Studio workspace">
+            <button className={activeTool === "arrangement" ? styles.studioToolActive : ""} id="mori-studio-tool-arrangement" type="button" role="tab" aria-selected={activeTool === "arrangement"} aria-controls="mori-studio-panel-arrangement" tabIndex={activeTool === "arrangement" ? 0 : -1} onKeyDown={(event) => navigateStudioTools(event, "arrangement")} onClick={() => setActiveTool("arrangement")}><AudioLines size={15} /> Arrangement</button>
+            <button className={activeTool === "lyrics" ? styles.studioToolActive : ""} id="mori-studio-tool-lyrics" type="button" role="tab" aria-selected={activeTool === "lyrics"} aria-controls="mori-studio-panel-lyrics" tabIndex={activeTool === "lyrics" ? 0 : -1} onKeyDown={(event) => navigateStudioTools(event, "lyrics")} onClick={() => setActiveTool("lyrics")}><FileText size={15} /> Lyrics</button>
+            <button className={activeTool === "stems" ? styles.studioToolActive : ""} id="mori-studio-tool-stems" type="button" role="tab" aria-selected={activeTool === "stems"} aria-controls="mori-studio-panel-stems" tabIndex={activeTool === "stems" ? 0 : -1} onKeyDown={(event) => navigateStudioTools(event, "stems")} onClick={() => setActiveTool("stems")}><AudioWaveform size={15} /> Stems</button>
           </div>
           <div className={styles.studioSidebarBottom}><span>Version</span><strong>{activeCandidate.versionRef}</strong></div>
         </aside>
         <section className={styles.studioCanvas} aria-label="Studio editor">
-          <div className={styles.studioCanvasTop}><div><span className={styles.eyebrow}><span className={styles.eyebrowDot} />Editing with intention</span><h2>Shape the feeling.</h2></div><button className={styles.generateButton} type="button" onClick={preview}><Play size={14} fill="currentColor" /> {playerCandidate?.versionRef === activeCandidate.versionRef && playing ? "Pause" : "Preview"}</button></div>
-          {activeTool === "arrangement" ? <ArrangementEditor candidate={activeCandidate} takes={studioCandidates} currentVersionRef={currentVersionRef} playerVersionRef={playerCandidate?.versionRef ?? ""} positionSeconds={playerCandidate?.versionRef === activeCandidate.versionRef ? positionSeconds : 0} playing={playerCandidate?.versionRef === activeCandidate.versionRef && playing} studioChangeRun={studioChangeRun} currentVersionCommitRun={currentVersionCommitRun} onSeekTimeline={(nextPositionSeconds) => seekTimeline(activeCandidate, nextPositionSeconds)} onGenerateStudioChange={(plan) => { void generateStudioChange(plan) }} onCancelStudioChange={() => { void cancelStudioChange() }} onResetStudioChange={resetStudioChange} onSelectTake={selectTake} onPreviewTake={previewTake} onPromoteTake={(take) => { void commitCurrentVersion(take) }} onRetryCurrentVersion={retryCurrentVersionCommit} onDismissCurrentVersion={dismissCurrentVersionCommit} /> : null}
-          {activeTool === "lyrics" ? <StudioLyricsEditor key={activeCandidate.versionRef} versionRef={activeCandidate.versionRef} run={lyricsRevisionRun} onGenerate={(plan) => { void generateLyricsRevision(plan) }} onCancel={() => { void cancelLyricsRevision() }} onReset={resetLyricsRevision} /> : null}
-          {activeTool === "stems" ? <StudioStemsEditor key={activeVersionRef ?? "no-version"} durationSeconds={activeCandidate.durationSeconds} run={stemSeparationRun} layerRun={studioChangeRun} onSeparate={(plan) => { void generateStemSeparation(plan) }} onCancel={() => { void cancelStemSeparation() }} onReset={resetStemSeparation} onSaveMix={saveMixRevision} onGenerateLayer={(plan) => { void generateStudioChange(plan) }} onCancelLayer={() => { void cancelStudioChange() }} onResetLayer={resetStudioChange} onReviewTakes={() => setActiveTool("arrangement")} playbackFactory={stemPlaybackFactory} /> : null}
+          <div className={styles.studioCanvasTop}><div><span className={styles.eyebrow}><span className={styles.eyebrowDot} />Editing with intention</span><h2>Shape the feeling.</h2></div><button className={`${styles.generateButton} ${styles.studioPreviewButton}`} type="button" aria-label={isActiveVersionPlaying ? "Pause" : "Preview"} onClick={preview}>{isActiveVersionPlaying ? <Pause size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" />}<span>{isActiveVersionPlaying ? "Pause" : "Preview"}</span></button></div>
+          <div id="mori-studio-panel-arrangement" role="tabpanel" aria-labelledby="mori-studio-tool-arrangement" hidden={activeTool !== "arrangement"}>
+            {activeTool === "arrangement" ? <ArrangementEditor candidate={activeCandidate} takes={studioCandidates} currentVersionRef={currentVersionRef} playerVersionRef={playerCandidate?.versionRef ?? ""} positionSeconds={playerCandidate?.versionRef === activeCandidate.versionRef ? positionSeconds : 0} playing={playerCandidate?.versionRef === activeCandidate.versionRef && playing} studioChangeRun={studioChangeRun} currentVersionCommitRun={currentVersionCommitRun} onSeekTimeline={(nextPositionSeconds) => seekTimeline(activeCandidate, nextPositionSeconds)} onGenerateStudioChange={(plan) => { void generateStudioChange(plan) }} onCancelStudioChange={() => { void cancelStudioChange() }} onResetStudioChange={resetStudioChange} onSelectTake={selectTake} onPreviewTake={previewTake} onPromoteTake={(take) => { void commitCurrentVersion(take) }} onRetryCurrentVersion={retryCurrentVersionCommit} onDismissCurrentVersion={dismissCurrentVersionCommit} /> : null}
+          </div>
+          <div id="mori-studio-panel-lyrics" role="tabpanel" aria-labelledby="mori-studio-tool-lyrics" hidden={activeTool !== "lyrics"}>
+            {activeTool === "lyrics" ? <StudioLyricsEditor key={activeCandidate.versionRef} versionRef={activeCandidate.versionRef} run={lyricsRevisionRun} onGenerate={(plan) => { void generateLyricsRevision(plan) }} onCancel={() => { void cancelLyricsRevision() }} onReset={resetLyricsRevision} /> : null}
+          </div>
+          <div id="mori-studio-panel-stems" role="tabpanel" aria-labelledby="mori-studio-tool-stems" hidden={activeTool !== "stems"}>
+            {activeTool === "stems" ? <StudioStemsEditor key={activeVersionRef ?? "no-version"} durationSeconds={activeCandidate.durationSeconds} run={stemSeparationRun} layerRun={studioChangeRun} onSeparate={(plan) => { void generateStemSeparation(plan) }} onCancel={() => { void cancelStemSeparation() }} onReset={resetStemSeparation} onSaveMix={saveMixRevision} onGenerateLayer={(plan) => { void generateStudioChange(plan) }} onCancelLayer={() => { void cancelStudioChange() }} onResetLayer={resetStudioChange} onReviewTakes={() => setActiveTool("arrangement")} playbackFactory={stemPlaybackFactory} /> : null}
+          </div>
         </section>
         <StudioVersionHistoryRail
           className={styles.versionHistorySlot}
@@ -1161,6 +1178,16 @@ function resolveInitialCandidate(candidate: Candidate, projectRef?: string, vers
   if (requestedProjectRef !== undefined && requestedProjectRef !== "" && requestedProjectRef !== previewProject.projectRef) return null
   if (requestedVersionRef !== undefined && requestedVersionRef !== "" && requestedVersionRef !== candidate.versionRef) return null
   return candidate
+}
+
+function studioToolForKey(key: string, currentTool: StudioTool): StudioTool | null {
+  if (key === "Home") return studioToolOrder[0] ?? null
+  if (key === "End") return studioToolOrder.at(-1) ?? null
+  if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(key)) return null
+
+  const currentIndex = studioToolOrder.indexOf(currentTool)
+  const direction = key === "ArrowRight" || key === "ArrowDown" ? 1 : -1
+  return studioToolOrder[(currentIndex + direction + studioToolOrder.length) % studioToolOrder.length] ?? null
 }
 
 function toDomainCandidate(candidate: MoriCandidate, index: number): Candidate {
