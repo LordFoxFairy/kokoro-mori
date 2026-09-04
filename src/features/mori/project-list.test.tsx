@@ -26,7 +26,61 @@ describe("Mori projects", () => {
 
     await waitFor(() => expect(screen.getByRole("heading", { name: "Window Seat" })).toBeInTheDocument())
     expect(screen.getByText("A quiet, forward-moving sketch.")).toBeInTheDocument()
-    expect(screen.getByRole("link", { name: "Continue creating" })).toHaveAttribute("href", "/projects/project_live_1")
+    expect(screen.getByRole("link", { name: "Create first direction for Window Seat" })).toHaveAttribute("href", "/create?project_ref=project_live_1")
+  })
+
+  it("continues each Project from the next meaningful step", async () => {
+    const api: Pick<MoriApi, "listProjects"> = {
+      listProjects: async () => ({
+        data: {
+          projects: [
+            {
+              project_ref: "project_current",
+              title: "First Light",
+              description: "A current song.",
+              current_version_ref: "version_current",
+              candidate_count: 2,
+              last_activity_at: "2026-09-04T12:00:00.000Z",
+            },
+            {
+              project_ref: "project_review",
+              title: "Blue Hour",
+              description: "Directions waiting for a decision.",
+              current_version_ref: null,
+              candidate_count: 2,
+              last_activity_at: "2026-09-04T11:00:00.000Z",
+            },
+            {
+              project_ref: "project_empty",
+              title: "Glasshouse",
+              description: "An empty Project.",
+              current_version_ref: null,
+              candidate_count: 0,
+              last_activity_at: "2026-09-04T10:00:00.000Z",
+            },
+          ],
+          next_cursor: null,
+        },
+        meta: { request_id: "request_project_continuations" },
+      }),
+    }
+
+    render(<ProjectsPageContent api={api} />)
+
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Glasshouse" })).toBeInTheDocument())
+    expect(screen.getByRole("link", { name: "Continue First Light in Studio" })).toHaveAttribute(
+      "href",
+      "/projects/project_current/studio/version_current",
+    )
+    expect(screen.getByRole("link", { name: "Review directions for Blue Hour" })).toHaveAttribute(
+      "href",
+      "/projects/project_review",
+    )
+    expect(screen.getByText("Awaiting choice")).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "Create first direction for Glasshouse" })).toHaveAttribute(
+      "href",
+      "/create?project_ref=project_empty",
+    )
   })
 
   it("shows an empty state when the projection has no projects", async () => {
@@ -72,7 +126,7 @@ describe("Mori projects", () => {
       expect.stringMatching(/^mori-project-/u),
     ))
     expect(await screen.findByText("Project created")).toBeInTheDocument()
-    expect(screen.getByRole("link", { name: "Open Window Seat project" })).toHaveAttribute("href", "/projects/project_live_1")
+    expect(screen.getByRole("link", { name: "Start the first direction for Window Seat" })).toHaveAttribute("href", "/create?project_ref=project_live_1")
     fireEvent.click(screen.getByRole("button", { name: "Keep browsing" }))
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
     expect(document.body.style.overflow).toBe("")

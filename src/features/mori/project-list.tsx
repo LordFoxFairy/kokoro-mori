@@ -70,23 +70,52 @@ export function ProjectsPageContent({ api }: ProjectsPageContentProps = {}) {
 }
 
 function ProjectCard({ project, index }: { project: Project; index: number }) {
+  const continuation = projectContinuation(project)
+  const projectState = project.currentVersionRef !== null
+    ? { label: "Active project", signal: "● Current", currentVersion: "Confirmed" }
+    : project.candidateCount > 0
+      ? { label: "Directions ready", signal: "● Review", currentVersion: "Awaiting choice" }
+      : { label: "New project", signal: "● Ready", currentVersion: "Not started" }
+
   return (
     <article className={styles.projectCard}>
       <div className={`${styles.projectArtwork} ${index % 3 === 1 ? styles.projectArtworkPeach : index % 3 === 2 ? styles.projectArtworkMint : styles.projectArtworkLavender}`}><span>{String(index + 1).padStart(2, "0")}</span></div>
       <div className={styles.projectCardBody}>
-        <div className={styles.projectCardMeta}><span>{project.candidateCount > 0 ? "Active project" : "New project"}</span><span className={styles.liveDot}>{project.candidateCount > 0 ? "● Live" : "● Ready"}</span></div>
+        <div className={styles.projectCardMeta}><span>{projectState.label}</span><span className={styles.liveDot}>{projectState.signal}</span></div>
         <h2>{project.title}</h2>
         <p>{project.description}</p>
         <div className={styles.projectCardFooter}>
           <span><Clock3 size={13} /> <strong>Last activity</strong> {project.lastActivity}</span>
-          <span><strong>Current version</strong> {project.currentVersionRef ? "Ready" : "Not started"}</span>
+          <span><strong>Current version</strong> {projectState.currentVersion}</span>
         </div>
-        <Link className={styles.projectContinue} href={`/projects/${project.projectRef}`}>
-          Continue creating <ArrowUpRight size={14} />
+        <Link className={styles.projectContinue} href={continuation.href} aria-label={continuation.ariaLabel}>
+          {continuation.label} <ArrowUpRight size={14} />
         </Link>
       </div>
     </article>
   )
+}
+
+function projectContinuation(project: Project): { href: string; label: string; ariaLabel: string } {
+  if (project.currentVersionRef !== null) {
+    return {
+      href: `/projects/${encodeURIComponent(project.projectRef)}/studio/${encodeURIComponent(project.currentVersionRef)}`,
+      label: "Continue in Studio",
+      ariaLabel: `Continue ${project.title} in Studio`,
+    }
+  }
+  if (project.candidateCount > 0) {
+    return {
+      href: `/projects/${encodeURIComponent(project.projectRef)}`,
+      label: "Review directions",
+      ariaLabel: `Review directions for ${project.title}`,
+    }
+  }
+  return {
+    href: `/create?project_ref=${encodeURIComponent(project.projectRef)}`,
+    label: "Create first direction",
+    ariaLabel: `Create first direction for ${project.title}`,
+  }
 }
 
 function toDomainProject(project: MoriProject, index: number): Project {

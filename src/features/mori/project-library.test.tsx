@@ -9,7 +9,7 @@ import { ProjectsPageContent } from "./project-list"
 describe("Mori catalog surfaces", () => {
   it("makes project continuation information findable", () => {
     render(<ProjectsPageContent />)
-    expect(screen.getByText("Continue creating")).toBeInTheDocument()
+    expect(screen.getByText("Continue in Studio")).toBeInTheDocument()
     expect(screen.getByText("Current version")).toBeInTheDocument()
     expect(screen.getByText("Active project")).toBeInTheDocument()
   })

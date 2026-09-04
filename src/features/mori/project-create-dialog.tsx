@@ -125,7 +125,13 @@ export function ProjectCreateDialog({ createProject, onClose, onCreated }: Proje
             <p>{createdProject.description}</p>
             <div className={styles.projectCreateActions}>
               <button className={styles.ghostButton} type="button" onClick={onClose}>Keep browsing</button>
-              <a className={styles.generateButton} href={`/projects/${encodeURIComponent(createdProject.project_ref)}`} aria-label={`Open ${createdProject.title} project`}>Open project</a>
+              <a
+                className={styles.generateButton}
+                href={`/create?project_ref=${encodeURIComponent(createdProject.project_ref)}`}
+                aria-label={`Start the first direction for ${createdProject.title}`}
+              >
+                Start first direction
+              </a>
             </div>
           </div>
         )}

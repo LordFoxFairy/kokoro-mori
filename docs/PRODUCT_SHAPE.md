@@ -161,6 +161,9 @@ Workspace nav    内容随项目上下文变化                     跨页面保
   Export 继续属于打开 Version 的 Studio，不用永远为空的筛选器伪装成全局能力。Projects 与 Versions 两个投影统一结算：
   任一真实投影成功后都不会再混入另一侧的示例数据，部分失败显示明确可用性提示；Current Version 标签只依据对应
   Project 的 `current_version_ref`，不再与示例项目比较。
+- 已落地第一版：Projects 列表不再用统一的模糊续作入口。已有 Current Version 的 Project 直接回到对应 Studio；
+  已有候选但尚未确认 Current 的 Project 回到 Project Overview 比较 Directions；空 Project 直接进入 Create 开始
+  第一条 Direction。新建 Project 后的主动作同样是开始第一条 Direction，减少一次没有决策价值的页面跳转。
 - 后续：Song Plan 的服务端版本历史、正式音频上传、版本自动保存，以及建立在真实时间选区和多轨交付模型上的
   更多导出 scope；AI MV 与真正的 Publish command 保持为完成歌曲后的后置流程。
 
