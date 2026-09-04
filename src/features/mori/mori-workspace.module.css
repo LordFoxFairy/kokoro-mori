@@ -2622,6 +2622,81 @@
   letter-spacing: -0.03em;
 }
 
+.takeLaneCommitNotice {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid var(--mori-border);
+  border-radius: 11px;
+  box-shadow: 0 6px 16px rgba(62, 45, 86, 0.045);
+}
+
+.takeLaneCommitNotice > div:not(.takeLaneCommitActions) {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.takeLaneCommitNotice strong {
+  font-size: 10px;
+}
+
+.takeLaneCommitNotice span {
+  color: var(--mori-muted);
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.takeLaneCommitNoticeError {
+  color: var(--mori-error);
+  border-color: rgba(201, 85, 85, 0.18);
+  background: linear-gradient(110deg, rgba(255, 248, 246, 0.97), rgba(255, 252, 249, 0.9));
+}
+
+.takeLaneCommitNoticeSuccess {
+  color: var(--mori-success);
+  border-color: rgba(61, 155, 114, 0.17);
+  background: linear-gradient(110deg, rgba(245, 253, 249, 0.97), rgba(252, 255, 253, 0.9));
+}
+
+.takeLaneCommitActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.takeLaneCommitActions button,
+.takeLaneCommitDismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 26px;
+  padding: 0 7px;
+  border: 1px solid rgba(201, 85, 85, 0.15);
+  border-radius: 8px;
+  color: var(--mori-foreground);
+  font-size: 9px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.takeLaneCommitActions button:hover,
+.takeLaneCommitDismiss:hover {
+  border-color: var(--mori-border-strong);
+  background: #fff;
+}
+
+.takeLaneCommitDismiss {
+  width: 26px;
+  padding: 0;
+  border-color: rgba(61, 155, 114, 0.14);
+}
+
 .takeLaneList {
   display: grid;
   gap: 7px;
@@ -2758,6 +2833,11 @@
 
 .takeLanePromote:hover {
   background: #e3dcff;
+}
+
+.takeLanePromote:disabled {
+  cursor: wait;
+  opacity: 0.58;
 }
 
 .takeLaneCurrentLabel {

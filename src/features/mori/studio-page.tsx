@@ -1,16 +1,18 @@
 "use client"
 
-import { ArrowLeft, AudioLines, AudioWaveform, Download, FileText, Play, Share2, Sparkles } from "lucide-react"
+import { AlertCircle, ArrowLeft, AudioLines, AudioWaveform, Check, Download, FileText, LoaderCircle, Play, RotateCcw, Share2, Sparkles, X } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useId, useMemo, useRef, useState } from "react"
 import {
   createLyricsRevisionRequest,
   createStemSeparationRequest,
   createStudioChangeRequest,
+  type CurrentVersionInput,
   type LyricsRevisionSnapshot,
   type MixRevisionInput,
   type MoriApi,
   type MoriCandidate,
+  type MoriCurrentVersionSelection,
   type MoriExportInput,
   type MoriExportSnapshot,
   type MoriExportStatus,
@@ -48,7 +50,7 @@ type StudioPageContentProps = {
   candidate: Candidate
   projectRef?: string
   versionRef?: string
-  api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "listCandidates" | "createStudioChange" | "getGeneration" | "getGenerationEvents" | "cancelGeneration" | "createLyricsRevision" | "getLyricsRevision" | "getLyricsRevisionEvents" | "cancelLyricsRevision" | "createStemSeparation" | "getStemSeparation" | "getStemSeparationEvents" | "cancelStemSeparation" | "createArtworkGeneration" | "getArtworkGeneration" | "getArtworkGenerationEvents" | "cancelArtworkGeneration" | "getReleaseDraft" | "putReleaseDraft" | "createMixRevision">>
+  api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "putCurrentVersion" | "listCandidates" | "createStudioChange" | "getGeneration" | "getGenerationEvents" | "cancelGeneration" | "createLyricsRevision" | "getLyricsRevision" | "getLyricsRevisionEvents" | "cancelLyricsRevision" | "createStemSeparation" | "getStemSeparation" | "getStemSeparationEvents" | "cancelStemSeparation" | "createArtworkGeneration" | "getArtworkGeneration" | "getArtworkGenerationEvents" | "cancelArtworkGeneration" | "getReleaseDraft" | "putReleaseDraft" | "createMixRevision">>
   stemPlaybackFactory?: StemPlaybackFactory
 }
 
@@ -85,6 +87,19 @@ type PendingExportCommand = {
   idempotencyKey: string
 }
 
+type PendingCurrentVersionCommand = {
+  projectRef: string
+  input: CurrentVersionInput
+  idempotencyKey: string
+}
+
+type CurrentVersionCommitRun = {
+  status: "idle" | "saving" | "failed" | "succeeded"
+  targetVersionRef: string | null
+  message: string | null
+  retryable: boolean
+}
+
 const idleStudioChangeRun: StudioAiRunState = {
   status: "idle",
   progress: 0,
@@ -114,6 +129,13 @@ const idleStemSeparationRun: StudioStemSeparationRunState = {
   message: null,
 }
 
+const idleCurrentVersionCommitRun: CurrentVersionCommitRun = {
+  status: "idle",
+  targetVersionRef: null,
+  message: null,
+  retryable: false,
+}
+
 export function StudioPageContent({ candidate, projectRef, versionRef, api, stemPlaybackFactory = createHtmlStemPlaybackController }: StudioPageContentProps) {
   const { playerCandidate, playing, positionSeconds, seekPlayer, selectPlayerCandidate, setPlaying } = useMoriApp()
   const exportStatusDescriptionId = useId()
@@ -125,6 +147,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api, stem
   const [activeCandidate, setActiveCandidate] = useState<Candidate | null>(() => initialCandidate)
   const [studioCandidates, setStudioCandidates] = useState(() => initialCandidate === null ? [] : [initialCandidate, ...previewCandidates.filter((item) => item.versionRef !== initialCandidate.versionRef)])
   const [currentVersionRef, setCurrentVersionRef] = useState(() => previewCandidates.find((item) => item.isCurrent)?.versionRef ?? candidate.versionRef)
+  const [currentVersionCommitRun, setCurrentVersionCommitRun] = useState<CurrentVersionCommitRun>(idleCurrentVersionCommitRun)
   const [projectTitle, setProjectTitle] = useState<string | null>(null)
   const [activeTool, setActiveTool] = useState<StudioTool>("arrangement")
   const [shareFeedback, setShareFeedback] = useState(false)
@@ -153,6 +176,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api, stem
   const exportCommandEpochRef = useRef(0)
   const exportFeedbackRef = useRef<"idle" | MoriExportStatus>("idle")
   const pendingExportCommandRef = useRef<PendingExportCommand | null>(null)
+  const pendingCurrentVersionCommandRef = useRef<PendingCurrentVersionCommand | null>(null)
   const stemSeparationCommandEpochRef = useRef(0)
   const ignoredStemSeparationsRef = useRef(new Set<string>())
   const activeStemEventRequestRef = useRef<{ stemSeparationRef: string; controller: AbortController } | null>(null)
@@ -193,10 +217,29 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api, stem
     const getProject = studioApi.getProject
     const listCandidates = studioApi.listCandidates
     let disposed = false
+    let projectedCurrentVersionRef: string | null | undefined
+    let projectedCandidates: Candidate[] | undefined
+
+    const applyCandidateProjection = () => {
+      if (disposed || projectedCandidates === undefined) return
+      const requestedVersionRef = versionRef?.trim()
+      const nextActiveCandidate = requestedVersionRef
+        ? projectedCandidates.find((item) => item.versionRef === requestedVersionRef)
+        : projectedCandidates[0]
+      const nextCurrentVersionRef = projectedCurrentVersionRef === undefined
+        ? projectedCandidates.find((item) => item.isCurrent)?.versionRef ?? nextActiveCandidate?.versionRef ?? ""
+        : projectedCurrentVersionRef ?? ""
+      setStudioCandidates(projectedCandidates.map((item) => ({ ...item, isCurrent: item.versionRef === nextCurrentVersionRef })))
+      setActiveCandidate(nextActiveCandidate ?? null)
+      setCurrentVersionRef(nextCurrentVersionRef)
+    }
 
     if (getProject) {
       void getProject(requestedProjectRef).then((response) => {
-        if (!disposed) setProjectTitle(response.data.title)
+        if (disposed) return
+        setProjectTitle(response.data.title)
+        projectedCurrentVersionRef = response.data.current_version_ref
+        applyCandidateProjection()
       }).catch(() => {
         // Keep the deterministic project title visible while the BFF is unavailable.
       })
@@ -205,14 +248,8 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api, stem
     if (listCandidates) {
       void listCandidates(requestedProjectRef).then((response) => {
         if (disposed) return
-        const nextCandidates = response.data.candidates.map(toDomainCandidate)
-        const requestedVersionRef = versionRef?.trim()
-        const nextActiveCandidate = requestedVersionRef
-          ? nextCandidates.find((item) => item.versionRef === requestedVersionRef)
-          : nextCandidates[0]
-        setStudioCandidates(nextCandidates)
-        setActiveCandidate(nextActiveCandidate ?? null)
-        setCurrentVersionRef(nextCandidates.find((item) => item.isCurrent)?.versionRef ?? nextActiveCandidate?.versionRef ?? "")
+        projectedCandidates = response.data.candidates.map(toDomainCandidate)
+        applyCandidateProjection()
       }).catch(() => {
         if (initialCandidate === null) {
           setStudioCandidates([])
@@ -227,6 +264,11 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api, stem
       disposed = true
     }
   }, [initialCandidate, projectRef, studioApi, versionRef])
+
+  useEffect(() => {
+    pendingCurrentVersionCommandRef.current = null
+    setCurrentVersionCommitRun(idleCurrentVersionCommitRun)
+  }, [activeProjectRef])
 
   const generateStudioChange = async (plan: StudioChangePlan) => {
     if (activeCandidate === null || isActiveStudioChangeStatus(studioChangeRun.status)) return
@@ -785,9 +827,73 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api, stem
     selectPlayerCandidate(take, nextPositionSeconds)
   }
 
-  const promoteTake = (take: Candidate) => {
-    setCurrentVersionRef(take.versionRef)
-    setActiveCandidate(take)
+  const commitCurrentVersion = async (take: Candidate, retryCommand?: PendingCurrentVersionCommand) => {
+    if (currentVersionCommitRun.status === "saving" || take.versionRef === currentVersionRef) return
+    const expectedCurrentVersionRef = currentVersionRef.trim() === "" ? null : currentVersionRef
+    const previousCommand = pendingCurrentVersionCommandRef.current
+    const command = retryCommand
+      ?? (previousCommand !== null
+        && previousCommand.projectRef === activeProjectRef
+        && previousCommand.input.candidate_ref === take.candidateRef
+        && previousCommand.input.version_ref === take.versionRef
+        && previousCommand.input.expected_current_version_ref === expectedCurrentVersionRef
+        ? previousCommand
+        : {
+            projectRef: activeProjectRef,
+            input: {
+              candidate_ref: take.candidateRef,
+              version_ref: take.versionRef,
+              expected_current_version_ref: expectedCurrentVersionRef,
+            },
+            idempotencyKey: `mori-current-version-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          })
+    pendingCurrentVersionCommandRef.current = command
+    setCurrentVersionCommitRun({
+      status: "saving",
+      targetVersionRef: take.versionRef,
+      message: null,
+      retryable: false,
+    })
+    try {
+      const response = await studioApi.putCurrentVersion(command.projectRef, command.input, command.idempotencyKey)
+      if (!currentVersionSelectionMatchesCommand(response.data, command)) {
+        throw new Error("current_version_confirmation_mismatch")
+      }
+      setCurrentVersionRef(take.versionRef)
+      setStudioCandidates((current) => current.map((item) => ({ ...item, isCurrent: item.versionRef === take.versionRef })))
+      setActiveCandidate(take)
+      pendingCurrentVersionCommandRef.current = null
+      setCurrentVersionCommitRun({
+        status: "succeeded",
+        targetVersionRef: take.versionRef,
+        message: `${take.title} is now the Current Version.`,
+        retryable: false,
+      })
+    } catch (error) {
+      const failure = currentVersionCommitFailure(error)
+      if (!failure.retryable) pendingCurrentVersionCommandRef.current = null
+      setCurrentVersionCommitRun({
+        status: "failed",
+        targetVersionRef: take.versionRef,
+        message: failure.message,
+        retryable: failure.retryable,
+      })
+    }
+  }
+
+  const retryCurrentVersionCommit = () => {
+    const command = pendingCurrentVersionCommandRef.current
+    if (command === null || !currentVersionCommitRun.retryable) return
+    const take = studioCandidates.find((item) => (
+      item.candidateRef === command.input.candidate_ref
+      && item.versionRef === command.input.version_ref
+    ))
+    if (take !== undefined) void commitCurrentVersion(take, command)
+  }
+
+  const dismissCurrentVersionCommit = () => {
+    pendingCurrentVersionCommandRef.current = null
+    setCurrentVersionCommitRun(idleCurrentVersionCommitRun)
   }
 
   const share = () => {
@@ -960,7 +1066,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api, stem
       </section> : <div className={styles.studioLayout}>
         <aside className={styles.studioSidebar} aria-label="Studio tools">
           <div className={styles.studioArtwork}><span>01</span></div>
-          <div className={styles.studioSidebarCopy}><span>Current version</span><h1>{activeCandidate.title}</h1><p>{activeCandidate.subtitle}</p></div>
+          <div className={styles.studioSidebarCopy}><span>{activeCandidate.versionRef === currentVersionRef ? "Current version" : "Open take"}</span><h1>{activeCandidate.title}</h1><p>{activeCandidate.subtitle}</p></div>
           <div className={styles.studioToolList}>
             <button className={activeTool === "arrangement" ? styles.studioToolActive : ""} type="button" aria-pressed={activeTool === "arrangement"} onClick={() => setActiveTool("arrangement")}><AudioLines size={15} /> Arrangement</button>
             <button className={activeTool === "lyrics" ? styles.studioToolActive : ""} type="button" aria-pressed={activeTool === "lyrics"} onClick={() => setActiveTool("lyrics")}><FileText size={15} /> Lyrics</button>
@@ -970,11 +1076,28 @@ export function StudioPageContent({ candidate, projectRef, versionRef, api, stem
         </aside>
         <section className={styles.studioCanvas} aria-label="Studio editor">
           <div className={styles.studioCanvasTop}><div><span className={styles.eyebrow}><span className={styles.eyebrowDot} />Editing with intention</span><h2>Shape the feeling.</h2></div><button className={styles.generateButton} type="button" onClick={preview}><Play size={14} fill="currentColor" /> {playerCandidate?.versionRef === activeCandidate.versionRef && playing ? "Pause" : "Preview"}</button></div>
-          {activeTool === "arrangement" ? <ArrangementEditor candidate={activeCandidate} takes={studioCandidates} currentVersionRef={currentVersionRef} playerVersionRef={playerCandidate?.versionRef ?? ""} positionSeconds={playerCandidate?.versionRef === activeCandidate.versionRef ? positionSeconds : 0} playing={playerCandidate?.versionRef === activeCandidate.versionRef && playing} studioChangeRun={studioChangeRun} onSeekTimeline={(nextPositionSeconds) => seekTimeline(activeCandidate, nextPositionSeconds)} onGenerateStudioChange={(plan) => { void generateStudioChange(plan) }} onCancelStudioChange={() => { void cancelStudioChange() }} onResetStudioChange={resetStudioChange} onSelectTake={selectTake} onPreviewTake={previewTake} onPromoteTake={promoteTake} /> : null}
+          {activeTool === "arrangement" ? <ArrangementEditor candidate={activeCandidate} takes={studioCandidates} currentVersionRef={currentVersionRef} playerVersionRef={playerCandidate?.versionRef ?? ""} positionSeconds={playerCandidate?.versionRef === activeCandidate.versionRef ? positionSeconds : 0} playing={playerCandidate?.versionRef === activeCandidate.versionRef && playing} studioChangeRun={studioChangeRun} currentVersionCommitRun={currentVersionCommitRun} onSeekTimeline={(nextPositionSeconds) => seekTimeline(activeCandidate, nextPositionSeconds)} onGenerateStudioChange={(plan) => { void generateStudioChange(plan) }} onCancelStudioChange={() => { void cancelStudioChange() }} onResetStudioChange={resetStudioChange} onSelectTake={selectTake} onPreviewTake={previewTake} onPromoteTake={(take) => { void commitCurrentVersion(take) }} onRetryCurrentVersion={retryCurrentVersionCommit} onDismissCurrentVersion={dismissCurrentVersionCommit} /> : null}
           {activeTool === "lyrics" ? <StudioLyricsEditor key={activeCandidate.versionRef} versionRef={activeCandidate.versionRef} run={lyricsRevisionRun} onGenerate={(plan) => { void generateLyricsRevision(plan) }} onCancel={() => { void cancelLyricsRevision() }} onReset={resetLyricsRevision} /> : null}
           {activeTool === "stems" ? <StudioStemsEditor key={activeVersionRef ?? "no-version"} durationSeconds={activeCandidate.durationSeconds} run={stemSeparationRun} layerRun={studioChangeRun} onSeparate={(plan) => { void generateStemSeparation(plan) }} onCancel={() => { void cancelStemSeparation() }} onReset={resetStemSeparation} onSaveMix={saveMixRevision} onGenerateLayer={(plan) => { void generateStudioChange(plan) }} onCancelLayer={() => { void cancelStudioChange() }} onResetLayer={resetStudioChange} onReviewTakes={() => setActiveTool("arrangement")} playbackFactory={stemPlaybackFactory} /> : null}
         </section>
-        <aside className={styles.versionRail} aria-label="Version history"><div className={styles.versionRailHeader}><div><span>Project history</span><h2>Versions</h2></div></div>{studioCandidates.map((item, index) => <Link className={`${styles.versionItem} ${item.versionRef === activeCandidate.versionRef ? styles.versionItemActive : ""}`} href={`/projects/${activeProjectRef}/studio/${item.versionRef}`} key={item.versionRef}><div className={`${styles.versionThumb} ${index === 1 ? styles.versionThumbAlt : ""}`}><Play size={12} fill="currentColor" /></div><div><strong>{item.title}</strong><span>{index === 0 ? "Current" : "Draft"} · {Math.floor(item.durationSeconds / 60)}:{String(item.durationSeconds % 60).padStart(2, "0")}</span></div></Link>)}</aside>
+        <aside className={styles.versionRail} aria-label="Version history">
+          <div className={styles.versionRailHeader}><div><span>Project history</span><h2>Versions</h2></div></div>
+          {studioCandidates.map((item, index) => {
+            const isOpen = item.versionRef === activeCandidate.versionRef
+            const status = item.versionRef === currentVersionRef ? "Current" : "Draft"
+            const duration = `${Math.floor(item.durationSeconds / 60)}:${String(item.durationSeconds % 60).padStart(2, "0")}`
+            return <Link
+              aria-current={isOpen ? "page" : undefined}
+              aria-label={`${item.title}, ${status}, ${duration}`}
+              className={`${styles.versionItem} ${isOpen ? styles.versionItemActive : ""}`}
+              href={`/projects/${activeProjectRef}/studio/${item.versionRef}`}
+              key={item.versionRef}
+            >
+              <div className={`${styles.versionThumb} ${index === 1 ? styles.versionThumbAlt : ""}`}><Play size={12} fill="currentColor" /></div>
+              <div><strong>{item.title}</strong><span>{status} · {duration}</span></div>
+            </Link>
+          })}
+        </aside>
       </div>}
       {exportDialogOpen && activeCandidate !== null ? <StudioExportDialog
         versionRef={activeCandidate.versionRef}
@@ -1051,6 +1174,38 @@ function mergeStudioCandidates(current: Candidate[], generated: Candidate[]): Ca
     ...current.filter((candidate) => !generatedRefs.has(candidate.candidateRef)),
     ...generated,
   ]
+}
+
+function currentVersionSelectionMatchesCommand(selection: MoriCurrentVersionSelection, command: PendingCurrentVersionCommand): boolean {
+  return selection.project_ref === command.projectRef
+    && selection.current_version_ref === command.input.version_ref
+    && selection.source_candidate_ref === command.input.candidate_ref
+    && selection.previous_version_ref === command.input.expected_current_version_ref
+}
+
+function currentVersionCommitFailure(error: unknown): { message: string; retryable: boolean } {
+  if (error instanceof Error && error.message === "current_version_confirmation_mismatch") {
+    return {
+      message: "The confirmation did not match this Take. Your previous Current is unchanged.",
+      retryable: false,
+    }
+  }
+  if (error instanceof MoriApiRequestError && error.code === "current_version_conflict") {
+    return {
+      message: "Current Version changed elsewhere. Refresh Studio before choosing again.",
+      retryable: false,
+    }
+  }
+  if (error instanceof MoriApiRequestError && !error.retryable) {
+    return {
+      message: "This Take is no longer eligible to become Current. Your previous Current is unchanged.",
+      retryable: false,
+    }
+  }
+  return {
+    message: "Mori couldn't make this Take Current. Your previous Current is unchanged.",
+    retryable: true,
+  }
 }
 
 function mixRevisionMatchesInput(revision: MoriMixRevision, input: MixRevisionInput): boolean {
@@ -1255,6 +1410,7 @@ type ArrangementEditorProps = {
   positionSeconds: number
   playing: boolean
   studioChangeRun: StudioAiRunState
+  currentVersionCommitRun: CurrentVersionCommitRun
   onSeekTimeline: (positionSeconds: number) => void
   onGenerateStudioChange: (plan: StudioChangePlan) => void
   onCancelStudioChange: () => void
@@ -1262,9 +1418,11 @@ type ArrangementEditorProps = {
   onSelectTake: (take: Candidate) => void
   onPreviewTake: (take: Candidate) => void
   onPromoteTake: (take: Candidate) => void
+  onRetryCurrentVersion: () => void
+  onDismissCurrentVersion: () => void
 }
 
-function ArrangementEditor({ candidate, takes, currentVersionRef, playerVersionRef, positionSeconds, playing, studioChangeRun, onSeekTimeline, onGenerateStudioChange, onCancelStudioChange, onResetStudioChange, onSelectTake, onPreviewTake, onPromoteTake }: ArrangementEditorProps) {
+function ArrangementEditor({ candidate, takes, currentVersionRef, playerVersionRef, positionSeconds, playing, studioChangeRun, currentVersionCommitRun, onSeekTimeline, onGenerateStudioChange, onCancelStudioChange, onResetStudioChange, onSelectTake, onPreviewTake, onPromoteTake, onRetryCurrentVersion, onDismissCurrentVersion }: ArrangementEditorProps) {
   const timelineSections = useMemo(() => buildStudioTimelineSections(previewSongPlan.structure, candidate.durationSeconds), [candidate.durationSeconds])
   const defaultSection = studioChangeRun.plan?.selection
     ?? timelineSections.find((item) => item.label.toLowerCase() === "chorus")
@@ -1293,11 +1451,26 @@ function ArrangementEditor({ candidate, takes, currentVersionRef, playerVersionR
           <div><span>Compare before committing</span><h3>Take lanes</h3></div>
           <span>{takes.length} {takes.length === 1 ? "take" : "takes"}</span>
         </div>
+        {currentVersionCommitRun.status === "failed" ? <div className={`${styles.takeLaneCommitNotice} ${styles.takeLaneCommitNoticeError}`} role="alert">
+          <AlertCircle aria-hidden="true" size={15} />
+          <div><strong>Current wasn&apos;t changed</strong><span>{currentVersionCommitRun.message}</span></div>
+          <div className={styles.takeLaneCommitActions}>
+            {currentVersionCommitRun.retryable ? <button type="button" onClick={onRetryCurrentVersion}><RotateCcw size={12} /> Retry Use take</button> : null}
+            <button type="button" onClick={onDismissCurrentVersion}><X size={12} /> Dismiss</button>
+          </div>
+        </div> : null}
+        {currentVersionCommitRun.status === "succeeded" ? <div className={`${styles.takeLaneCommitNotice} ${styles.takeLaneCommitNoticeSuccess}`} role="status">
+          <Check aria-hidden="true" size={15} />
+          <div><strong>Current Version updated</strong><span>{currentVersionCommitRun.message}</span></div>
+          <button className={styles.takeLaneCommitDismiss} type="button" aria-label="Dismiss Current Version confirmation" onClick={onDismissCurrentVersion}><X size={12} /></button>
+        </div> : null}
         <div className={styles.takeLaneList}>
           {takes.map((take, index) => {
             const isSelected = take.versionRef === candidate.versionRef
             const isCurrent = take.versionRef === currentVersionRef
             const isPlaying = take.versionRef === playerVersionRef && playing
+            const isCommitting = currentVersionCommitRun.status === "saving"
+            const isCommitTarget = isCommitting && currentVersionCommitRun.targetVersionRef === take.versionRef
             return (
               <article className={`${styles.takeLane} ${isSelected ? styles.takeLaneSelected : ""} ${isCurrent ? styles.takeLaneCurrent : ""}`} aria-label={`Take ${index + 1}: ${take.title}`} key={take.versionRef}>
                 <button className={styles.takeLaneSelect} type="button" aria-pressed={isSelected} aria-label={`Select ${take.title} take`} onClick={() => onSelectTake(take)}>
@@ -1308,7 +1481,7 @@ function ArrangementEditor({ candidate, takes, currentVersionRef, playerVersionR
                 <span className={styles.takeLaneDuration}>{Math.floor(take.durationSeconds / 60)}:{String(take.durationSeconds % 60).padStart(2, "0")}</span>
                 <div className={styles.takeLaneActions}>
                   <button className={styles.takeLanePreview} type="button" onClick={() => onPreviewTake(take)} aria-label={`${isPlaying ? "Pause" : "Preview"} ${take.title}`}><Play size={12} fill={isPlaying ? "currentColor" : "none"} /> {isPlaying ? "Pause" : "Preview"}</button>
-                  {isCurrent ? <span className={styles.takeLaneCurrentLabel}>Current version</span> : <button className={styles.takeLanePromote} type="button" onClick={() => onPromoteTake(take)} aria-label={`Use ${take.title} as current`}>Use take</button>}
+                  {isCurrent ? <span className={styles.takeLaneCurrentLabel}>Current version</span> : <button className={styles.takeLanePromote} type="button" disabled={isCommitting} onClick={() => onPromoteTake(take)} aria-label={`${isCommitTarget ? "Using" : "Use"} ${take.title} as current`}>{isCommitTarget ? <><LoaderCircle aria-hidden="true" size={12} /> Using take…</> : "Use take"}</button>}
                 </div>
               </article>
             )

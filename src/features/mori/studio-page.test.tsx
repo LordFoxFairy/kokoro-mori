@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 import type { ArtworkGenerationInput, MoriApi, MoriExportInput, ReleaseDraftInput, StudioChangeGenerationInput } from "@/lib/mori-api"
+import { MoriApiRequestError } from "@/lib/mori-api-client"
 import { MoriAppProvider } from "./components/mori-app-provider"
 import { previewCandidates } from "./preview-data"
 import type { StemPlaybackFactory } from "./stem-playback"
@@ -16,7 +17,7 @@ const createTestStemPlaybackController: StemPlaybackFactory = () => ({
 })
 
 describe("Mori studio page", () => {
-  function renderStudio(api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "listCandidates" | "createStudioChange" | "getGeneration" | "getGenerationEvents" | "cancelGeneration" | "createLyricsRevision" | "getLyricsRevision" | "getLyricsRevisionEvents" | "cancelLyricsRevision" | "createStemSeparation" | "getStemSeparation" | "getStemSeparationEvents" | "cancelStemSeparation" | "createArtworkGeneration" | "getArtworkGeneration" | "getArtworkGenerationEvents" | "cancelArtworkGeneration" | "getReleaseDraft" | "putReleaseDraft" | "createMixRevision">>) {
+  function renderStudio(api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "putCurrentVersion" | "listCandidates" | "createStudioChange" | "getGeneration" | "getGenerationEvents" | "cancelGeneration" | "createLyricsRevision" | "getLyricsRevision" | "getLyricsRevisionEvents" | "cancelLyricsRevision" | "createStemSeparation" | "getStemSeparation" | "getStemSeparationEvents" | "cancelStemSeparation" | "createArtworkGeneration" | "getArtworkGeneration" | "getArtworkGenerationEvents" | "cancelArtworkGeneration" | "getReleaseDraft" | "putReleaseDraft" | "createMixRevision">>) {
     return render(
       <MoriAppProvider>
         <StudioPageContent candidate={previewCandidates[0]} api={api} stemPlaybackFactory={createTestStemPlaybackController} />
@@ -37,8 +38,23 @@ describe("Mori studio page", () => {
     expect(screen.getByRole("region", { name: "Stems editor" })).toBeInTheDocument()
   })
 
-  it("shows take lanes and lets a user make a direction current", () => {
-    renderStudio()
+  it("keeps the previous Current until the Use take command is confirmed", async () => {
+    let releaseSelection: () => void = () => undefined
+    const selectionGate = new Promise<void>((resolve) => { releaseSelection = resolve })
+    const putCurrentVersion = vi.fn<MoriApi["putCurrentVersion"]>(async () => {
+      await selectionGate
+      return {
+        data: {
+          project_ref: "project_preview_first_light",
+          current_version_ref: "version_preview_first_light_b",
+          source_candidate_ref: "candidate_preview_first_light_b",
+          previous_version_ref: "version_preview_first_light_a",
+          selected_at: "2026-09-03T19:55:00.000Z",
+        },
+        meta: { request_id: "request_current_version_success" },
+      }
+    })
+    renderStudio({ putCurrentVersion })
 
     const takeLanes = screen.getByRole("region", { name: "Take lanes" })
     const firstTake = within(takeLanes).getByRole("article", { name: "Take 1: First Light" })
@@ -47,8 +63,100 @@ describe("Mori studio page", () => {
     expect(within(firstTake).getByText("Current version")).toBeInTheDocument()
     fireEvent.click(within(secondTake).getByRole("button", { name: "Use First Light · Afterglow as current" }))
 
-    expect(within(secondTake).getByText("Current version")).toBeInTheDocument()
+    await waitFor(() => expect(putCurrentVersion).toHaveBeenCalledOnce())
+    expect(within(firstTake).getByText("Current version")).toBeInTheDocument()
+    expect(within(secondTake).queryByText("Current version")).not.toBeInTheDocument()
+    expect(within(secondTake).getByRole("button", { name: "Using First Light · Afterglow as current" })).toBeDisabled()
+    expect(putCurrentVersion.mock.calls[0]?.slice(0, 2)).toEqual([
+      "project_preview_first_light",
+      {
+        candidate_ref: "candidate_preview_first_light_b",
+        version_ref: "version_preview_first_light_b",
+        expected_current_version_ref: "version_preview_first_light_a",
+      },
+    ])
+    expect(putCurrentVersion.mock.calls[0]?.[2]).toMatch(/^mori-current-version-/u)
+
+    releaseSelection()
+
+    await waitFor(() => expect(within(secondTake).getByText("Current version")).toBeInTheDocument())
     expect(within(firstTake).getByRole("button", { name: "Use First Light as current" })).toBeInTheDocument()
+    const history = screen.getByRole("complementary", { name: "Version history" })
+    expect(within(history).getByRole("link", { name: /First Light · Afterglow, Current/u })).toHaveAttribute("aria-current", "page")
+    expect(within(history).getByRole("link", { name: /^First Light, Draft/u })).not.toHaveAttribute("aria-current")
+  })
+
+  it("keeps Current unchanged and safely reuses the command identity on retry", async () => {
+    const idempotencyKeys: string[] = []
+    let attempt = 0
+    const putCurrentVersion = vi.fn<MoriApi["putCurrentVersion"]>(async (_projectRef, _input, idempotencyKey) => {
+      idempotencyKeys.push(idempotencyKey)
+      attempt += 1
+      if (attempt === 1) throw new Error("temporary failure")
+      return {
+        data: {
+          project_ref: "project_preview_first_light",
+          current_version_ref: "version_preview_first_light_b",
+          source_candidate_ref: "candidate_preview_first_light_b",
+          previous_version_ref: "version_preview_first_light_a",
+          selected_at: "2026-09-03T19:56:00.000Z",
+        },
+        meta: { request_id: "request_current_version_retry" },
+      }
+    })
+    renderStudio({ putCurrentVersion })
+
+    fireEvent.click(screen.getByRole("button", { name: "Use First Light · Afterglow as current" }))
+
+    const alert = await screen.findByRole("alert")
+    expect(alert).toHaveTextContent("Your previous Current is unchanged.")
+    expect(screen.getByRole("article", { name: "Take 1: First Light" })).toHaveTextContent("Current version")
+    fireEvent.click(within(alert).getByRole("button", { name: "Retry Use take" }))
+
+    await waitFor(() => expect(putCurrentVersion).toHaveBeenCalledTimes(2))
+    expect(idempotencyKeys[0]).toBe(idempotencyKeys[1])
+    await waitFor(() => expect(screen.getByRole("article", { name: "Take 2: First Light · Afterglow" })).toHaveTextContent("Current version"))
+  })
+
+  it("explains a stale Current conflict without overwriting either Version", async () => {
+    renderStudio({
+      putCurrentVersion: async () => {
+        throw new MoriApiRequestError({
+          code: "current_version_conflict",
+          message: "Current changed",
+          retryable: false,
+          details: null,
+        }, "request_current_version_conflict", 409)
+      },
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: "Use First Light · Afterglow as current" }))
+
+    const alert = await screen.findByRole("alert")
+    expect(alert).toHaveTextContent("Current Version changed elsewhere. Refresh Studio before choosing again.")
+    expect(within(alert).queryByRole("button", { name: "Retry Use take" })).not.toBeInTheDocument()
+    expect(screen.getByRole("article", { name: "Take 1: First Light" })).toHaveTextContent("Current version")
+    expect(screen.getByRole("article", { name: "Take 2: First Light · Afterglow" })).not.toHaveTextContent("Current version")
+  })
+
+  it("rejects a mismatched Current Version confirmation", async () => {
+    renderStudio({
+      putCurrentVersion: async () => ({
+        data: {
+          project_ref: "project_preview_first_light",
+          current_version_ref: "version_preview_first_light_b",
+          source_candidate_ref: "candidate_from_another_take",
+          previous_version_ref: "version_preview_first_light_a",
+          selected_at: "2026-09-03T19:57:00.000Z",
+        },
+        meta: { request_id: "request_current_version_mismatch" },
+      }),
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: "Use First Light · Afterglow as current" }))
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("The confirmation did not match this Take. Your previous Current is unchanged.")
+    expect(screen.getByRole("article", { name: "Take 1: First Light" })).toHaveTextContent("Current version")
   })
 
   it("turns a contextual AI instruction into a reviewable protected change plan", () => {
@@ -1286,6 +1394,16 @@ describe("Mori studio page", () => {
 
   it("clears stem results when the current version changes", async () => {
     renderStudio({
+      putCurrentVersion: async () => ({
+        data: {
+          project_ref: "project_preview_first_light",
+          current_version_ref: "version_preview_first_light_b",
+          source_candidate_ref: "candidate_preview_first_light_b",
+          previous_version_ref: "version_preview_first_light_a",
+          selected_at: "2026-09-03T20:00:00.000Z",
+        },
+        meta: { request_id: "request_current_version_stems" },
+      }),
       createStemSeparation: async () => ({
         data: { stem_separation_ref: "stem_separation_version_1", status: "queued" },
         meta: { request_id: "request_stem_version_1" },
@@ -1320,6 +1438,7 @@ describe("Mori studio page", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Arrangement" }))
     fireEvent.click(screen.getByRole("button", { name: "Use First Light · Afterglow as current" }))
+    await waitFor(() => expect(screen.getByRole("article", { name: "Take 2: First Light · Afterglow" })).toHaveTextContent("Current version"))
     fireEvent.click(screen.getByRole("button", { name: "Stems" }))
 
     stemsEditor = screen.getByRole("region", { name: "Stems editor" })
@@ -1995,6 +2114,67 @@ describe("Mori studio page", () => {
 
     expect(await within(dialog).findByRole("alert")).toHaveTextContent("The export result did not match this Version. Your choices are still here.")
     expect(within(dialog).queryByRole("link", { name: /Download/u })).not.toBeInTheDocument()
+  })
+
+  it("keeps the open Version distinct from the projected Current Version", async () => {
+    render(
+      <MoriAppProvider>
+        <StudioPageContent
+          candidate={previewCandidates[0]}
+          projectRef="project_live_current"
+          api={{
+            getProject: async () => ({
+              data: {
+                project_ref: "project_live_current",
+                title: "Window Seat",
+                description: "Two directions",
+                current_version_ref: "version_live_b",
+                candidate_count: 2,
+                last_activity_at: "2026-09-03T20:00:00.000Z",
+              },
+              meta: { request_id: "request_project_current" },
+            }),
+            listCandidates: async () => ({
+              data: {
+                candidates: [
+                  {
+                    candidate_ref: "candidate_live_a",
+                    generation_ref: "generation_live",
+                    version_ref: "version_live_a",
+                    project_ref: "project_live_current",
+                    title: "Window Seat",
+                    duration_seconds: 140,
+                    audio_asset_ref: "asset_live_a",
+                    waveform_asset_ref: "waveform_live_a",
+                    style_tags: ["quiet"],
+                    created_at: "2026-09-03T19:58:00.000Z",
+                  },
+                  {
+                    candidate_ref: "candidate_live_b",
+                    generation_ref: "generation_live",
+                    version_ref: "version_live_b",
+                    project_ref: "project_live_current",
+                    title: "Window Seat · Wide",
+                    duration_seconds: 146,
+                    audio_asset_ref: "asset_live_b",
+                    waveform_asset_ref: "waveform_live_b",
+                    style_tags: ["wide"],
+                    created_at: "2026-09-03T19:59:00.000Z",
+                  },
+                ],
+                next_cursor: null,
+              },
+              meta: { request_id: "request_candidates_current" },
+            }),
+          }}
+        />
+      </MoriAppProvider>,
+    )
+
+    const history = await screen.findByRole("complementary", { name: "Version history" })
+    await waitFor(() => expect(within(history).getByRole("link", { name: "Window Seat · Wide, Current, 2:26" })).not.toHaveAttribute("aria-current"))
+    expect(within(history).getByRole("link", { name: "Window Seat, Draft, 2:20" })).toHaveAttribute("aria-current", "page")
+    expect(screen.getByText("Open take")).toBeInTheDocument()
   })
 
   it("hydrates the studio version from the requested project projection", async () => {
