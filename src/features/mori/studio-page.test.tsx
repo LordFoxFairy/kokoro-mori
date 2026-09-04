@@ -1564,6 +1564,250 @@ describe("Mori studio page", () => {
     localStorage.clear()
   })
 
+  it("does not project a lyric revision into a different open Version", async () => {
+    let releaseSnapshot: () => void = () => undefined
+    let markSnapshotReturned: () => void = () => undefined
+    const snapshotGate = new Promise<void>((resolve) => { releaseSnapshot = resolve })
+    const snapshotReturned = new Promise<void>((resolve) => { markSnapshotReturned = resolve })
+    const createLyricsRevision = vi.fn(async () => ({
+      data: { lyrics_revision_ref: "lyrics_revision_stale_version", status: "queued" as const },
+      meta: { request_id: "request_lyrics_stale_version" },
+    }))
+    const getLyricsRevision = vi.fn(async () => {
+      await snapshotGate
+      markSnapshotReturned()
+      return {
+        data: {
+          lyrics_revision_ref: "lyrics_revision_stale_version",
+          version_ref: "version_preview_first_light_a",
+          status: "succeeded" as const,
+          progress: 100,
+          direction: "rewrite" as const,
+          scope: { type: "section" as const, section_label: "Chorus", start_line: 2, end_line: 4 },
+          instruction: "Keep this result attached to the original Version.",
+          constraints: ["meaning" as const],
+          output_count: 2,
+          source_digest: "sha256:lyrics-stale-version",
+          suggestions: [
+            { suggestion_ref: "lyrics_suggestion_stale_version", text: "This belongs to Version A only." },
+          ],
+          created_at: "2026-09-04T12:00:00.000Z",
+        },
+        meta: { request_id: "request_lyrics_stale_snapshot" },
+      }
+    })
+    renderStudio({
+      createLyricsRevision,
+      getLyricsRevision,
+      getLyricsRevisionEvents: async () => [],
+    })
+
+    fireEvent.click(screen.getByRole("tab", { name: "Lyrics" }))
+    let lyricPartner = screen.getByRole("region", { name: "Mori lyric partner" })
+    fireEvent.click(within(lyricPartner).getByRole("button", { name: "Chorus" }))
+    fireEvent.change(within(lyricPartner).getByRole("textbox", { name: "Describe the lyric direction" }), {
+      target: { value: "Keep this result attached to the original Version." },
+    })
+    fireEvent.click(within(lyricPartner).getByRole("button", { name: "Review direction" }))
+    fireEvent.click(within(lyricPartner).getByRole("button", { name: "Create 2 suggestions" }))
+    await waitFor(() => expect(createLyricsRevision).toHaveBeenCalledOnce())
+    await waitFor(() => expect(getLyricsRevision).toHaveBeenCalledOnce())
+
+    fireEvent.click(screen.getByRole("tab", { name: "Arrangement" }))
+    fireEvent.click(screen.getByRole("button", { name: "Select First Light · Afterglow take" }))
+    await waitFor(() => expect(screen.getByRole("button", { name: "Select First Light · Afterglow take" })).toHaveAttribute("aria-pressed", "true"))
+
+    fireEvent.click(screen.getByRole("tab", { name: "Lyrics" }))
+    lyricPartner = screen.getByRole("region", { name: "Mori lyric partner" })
+    expect(within(lyricPartner).queryByText("Keep this result attached to the original Version.")).not.toBeInTheDocument()
+
+    releaseSnapshot()
+    await snapshotReturned
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(within(lyricPartner).queryByText("This belongs to Version A only.")).not.toBeInTheDocument()
+    expect(within(lyricPartner).queryByRole("region", { name: "Lyric suggestions" })).not.toBeInTheDocument()
+  })
+
+  it("lets the new Version start a lyric revision after an old event replay fails late", async () => {
+    let releaseEvents: () => void = () => undefined
+    let markEventsReturned: () => void = () => undefined
+    const eventsGate = new Promise<void>((resolve) => { releaseEvents = resolve })
+    const eventsReturned = new Promise<void>((resolve) => { markEventsReturned = resolve })
+    const createLyricsRevision = vi.fn<MoriApi["createLyricsRevision"]>(async () => ({
+      data: { lyrics_revision_ref: "lyrics_revision_late_events", status: "queued" as const },
+      meta: { request_id: "request_lyrics_late_events" },
+    }))
+    const getLyricsRevisionEvents = vi.fn(async () => {
+      await eventsGate
+      markEventsReturned()
+      throw new Error("event replay unavailable")
+    })
+    renderStudio({
+      createLyricsRevision,
+      getLyricsRevision: async () => ({
+        data: {
+          lyrics_revision_ref: "lyrics_revision_late_events",
+          version_ref: "version_preview_first_light_a",
+          status: "generating",
+          progress: 52,
+          direction: "rewrite",
+          scope: { type: "section", section_label: "Chorus", start_line: 2, end_line: 4 },
+          instruction: "Keep the first revision on Version A.",
+          constraints: ["meaning", "cadence"],
+          output_count: 2,
+          source_digest: "sha256:lyrics-late-events",
+          suggestions: [],
+          created_at: "2026-09-04T12:00:00.000Z",
+        },
+        meta: { request_id: "request_lyrics_late_events_snapshot" },
+      }),
+      getLyricsRevisionEvents,
+    })
+
+    fireEvent.click(screen.getByRole("tab", { name: "Lyrics" }))
+    let lyricPartner = screen.getByRole("region", { name: "Mori lyric partner" })
+    fireEvent.click(within(lyricPartner).getByRole("button", { name: "Chorus" }))
+    fireEvent.change(within(lyricPartner).getByRole("textbox", { name: "Describe the lyric direction" }), {
+      target: { value: "Keep the first revision on Version A." },
+    })
+    fireEvent.click(within(lyricPartner).getByRole("button", { name: "Review direction" }))
+    fireEvent.click(within(lyricPartner).getByRole("button", { name: "Create 2 suggestions" }))
+    await waitFor(() => expect(getLyricsRevisionEvents).toHaveBeenCalledOnce())
+
+    fireEvent.click(screen.getByRole("tab", { name: "Arrangement" }))
+    fireEvent.click(screen.getByRole("button", { name: "Select First Light · Afterglow take" }))
+    await waitFor(() => expect(screen.getByRole("button", { name: "Select First Light · Afterglow take" })).toHaveAttribute("aria-pressed", "true"))
+    fireEvent.click(screen.getByRole("tab", { name: "Lyrics" }))
+
+    releaseEvents()
+    await eventsReturned
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    lyricPartner = screen.getByRole("region", { name: "Mori lyric partner" })
+    fireEvent.change(within(lyricPartner).getByRole("textbox", { name: "Describe the lyric direction" }), {
+      target: { value: "Start a separate revision for Version B." },
+    })
+    fireEvent.click(within(lyricPartner).getByRole("button", { name: "Review direction" }))
+    fireEvent.click(within(lyricPartner).getByRole("button", { name: "Create 2 suggestions" }))
+
+    await waitFor(() => expect(createLyricsRevision).toHaveBeenCalledTimes(2))
+    expect(createLyricsRevision.mock.calls[1]?.[0]).toBe("version_preview_first_light_b")
+  })
+
+  it("ignores a delayed lyric create receipt after an A to B to A Version switch", async () => {
+    let releaseCreate: () => void = () => undefined
+    let markCreateReturned: () => void = () => undefined
+    const createGate = new Promise<void>((resolve) => { releaseCreate = resolve })
+    const createReturned = new Promise<void>((resolve) => { markCreateReturned = resolve })
+    const createLyricsRevision = vi.fn(async () => {
+      await createGate
+      markCreateReturned()
+      return {
+        data: { lyrics_revision_ref: "lyrics_revision_stale_create", status: "queued" as const },
+        meta: { request_id: "request_lyrics_stale_create" },
+      }
+    })
+    const getLyricsRevision = vi.fn(async () => {
+      throw new Error("stale receipt must not start observation")
+    })
+    renderStudio({ createLyricsRevision, getLyricsRevision, getLyricsRevisionEvents: async () => [] })
+
+    fireEvent.click(screen.getByRole("tab", { name: "Lyrics" }))
+    const lyricPartner = screen.getByRole("region", { name: "Mori lyric partner" })
+    fireEvent.change(within(lyricPartner).getByRole("textbox", { name: "Describe the lyric direction" }), {
+      target: { value: "This create receipt must become stale." },
+    })
+    fireEvent.click(within(lyricPartner).getByRole("button", { name: "Review direction" }))
+    fireEvent.click(within(lyricPartner).getByRole("button", { name: "Create 2 suggestions" }))
+    await waitFor(() => expect(createLyricsRevision).toHaveBeenCalledOnce())
+
+    fireEvent.click(screen.getByRole("tab", { name: "Arrangement" }))
+    fireEvent.click(screen.getByRole("button", { name: "Select First Light · Afterglow take" }))
+    await waitFor(() => expect(screen.getByRole("button", { name: "Select First Light · Afterglow take" })).toHaveAttribute("aria-pressed", "true"))
+    fireEvent.click(screen.getByRole("button", { name: "Select First Light take" }))
+    await waitFor(() => expect(screen.getByRole("button", { name: "Select First Light take" })).toHaveAttribute("aria-pressed", "true"))
+
+    releaseCreate()
+    await createReturned
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(getLyricsRevision).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole("tab", { name: "Lyrics" }))
+    expect(screen.queryByText("This create receipt must become stale.")).not.toBeInTheDocument()
+  })
+
+  it("ignores a delayed lyric cancellation after an A to B to A Version switch", async () => {
+    let releaseCancel: () => void = () => undefined
+    let markCancelReturned: () => void = () => undefined
+    const cancelGate = new Promise<void>((resolve) => { releaseCancel = resolve })
+    const cancelReturned = new Promise<void>((resolve) => { markCancelReturned = resolve })
+    const cancelLyricsRevision = vi.fn(async (lyricsRevisionRef: string) => {
+      await cancelGate
+      markCancelReturned()
+      return {
+        data: { lyrics_revision_ref: lyricsRevisionRef, status: "cancelled" as const },
+        meta: { request_id: "request_lyrics_stale_cancel" },
+      }
+    })
+    renderStudio({
+      createLyricsRevision: async () => ({
+        data: { lyrics_revision_ref: "lyrics_revision_stale_cancel", status: "queued" },
+        meta: { request_id: "request_lyrics_stale_cancel_create" },
+      }),
+      getLyricsRevision: async () => ({
+        data: {
+          lyrics_revision_ref: "lyrics_revision_stale_cancel",
+          version_ref: "version_preview_first_light_a",
+          status: "generating",
+          progress: 54,
+          direction: "rewrite",
+          scope: { type: "section", section_label: "Chorus", start_line: 2, end_line: 4 },
+          instruction: "This cancellation must become stale.",
+          constraints: ["meaning", "cadence"],
+          output_count: 2,
+          source_digest: "sha256:lyrics-stale-cancel",
+          suggestions: [],
+          created_at: "2026-09-04T12:00:00.000Z",
+        },
+        meta: { request_id: "request_lyrics_stale_cancel_snapshot" },
+      }),
+      getLyricsRevisionEvents: async () => [],
+      cancelLyricsRevision,
+    })
+
+    fireEvent.click(screen.getByRole("tab", { name: "Lyrics" }))
+    let lyricPartner = screen.getByRole("region", { name: "Mori lyric partner" })
+    fireEvent.click(within(lyricPartner).getByRole("button", { name: "Chorus" }))
+    fireEvent.change(within(lyricPartner).getByRole("textbox", { name: "Describe the lyric direction" }), {
+      target: { value: "This cancellation must become stale." },
+    })
+    fireEvent.click(within(lyricPartner).getByRole("button", { name: "Review direction" }))
+    fireEvent.click(within(lyricPartner).getByRole("button", { name: "Create 2 suggestions" }))
+    await waitFor(() => expect(within(lyricPartner).getByRole("progressbar", { name: "Lyrics revision progress" })).toHaveAttribute("aria-valuenow", "54"))
+    fireEvent.click(within(lyricPartner).getByRole("button", { name: "Cancel revision" }))
+    await waitFor(() => expect(cancelLyricsRevision).toHaveBeenCalledOnce())
+
+    fireEvent.click(screen.getByRole("tab", { name: "Arrangement" }))
+    fireEvent.click(screen.getByRole("button", { name: "Select First Light · Afterglow take" }))
+    await waitFor(() => expect(screen.getByRole("button", { name: "Select First Light · Afterglow take" })).toHaveAttribute("aria-pressed", "true"))
+    fireEvent.click(screen.getByRole("button", { name: "Select First Light take" }))
+    await waitFor(() => expect(screen.getByRole("button", { name: "Select First Light take" })).toHaveAttribute("aria-pressed", "true"))
+
+    releaseCancel()
+    await cancelReturned
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    fireEvent.click(screen.getByRole("tab", { name: "Lyrics" }))
+    lyricPartner = screen.getByRole("region", { name: "Mori lyric partner" })
+    fireEvent.change(within(lyricPartner).getByRole("textbox", { name: "Describe the lyric direction" }), {
+      target: { value: "A fresh revision after returning to Version A." },
+    })
+    fireEvent.click(within(lyricPartner).getByRole("button", { name: "Review direction" }))
+    expect(within(lyricPartner).getByRole("button", { name: "Create 2 suggestions" })).toBeInTheDocument()
+    expect(within(lyricPartner).queryByText("Cancelled")).not.toBeInTheDocument()
+  })
+
   it("keeps lyrics editable with an explicit local save state", () => {
     renderStudio()
 

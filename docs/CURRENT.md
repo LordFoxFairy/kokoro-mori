@@ -40,6 +40,8 @@
   交互控件使用 44px touch target。Settings 与 New Project 共用可嵌套的 body lock / shell isolation，成功态会把焦点留在弹窗内。
 - Studio 时间线在窄屏提供横向滚动、键盘焦点和明确的 Swipe hint；短桌面视口的 Export dialog 会避开固定 Player safe area。
   Studio Header 提供项目级 Generation queue 入口，使用同一浏览器任务摘要展示后台运行、完成和需处理的任务，并可回到对应的 Create 或 Studio 上下文。
+- Lyrics Revision 绑定发起时的 Version 与单调 command epoch；切换 Take 会立即清空旧 Version 的前台写作状态，迟到的 create、snapshot、event 或 cancel
+  响应不会把旧计划、进度和建议投影到当前 Version，同一 Version 内切换 Studio 工具仍会保留进行中的 Revision。
 - 移动端全局 Player 保留上一首、播放、下一首、静音、Up next 和 seek 进度，不再把核心听音控制隐藏在窄屏；dock 使用独立的两行安全区，
   Playback queue portal 与 Generation drawer 统一继承全局 Player 高度契约，不覆盖页面底部内容。移动端抽屉开合状态与桌面侧边栏偏好已分离，
   窗口跨断点切换不会改写用户的桌面折叠偏好。
@@ -51,7 +53,7 @@
 ```text
 pnpm lint                         passed
 pnpm typecheck                    passed
-pnpm test                         passed: 54 files / 415 tests
+pnpm test                         passed: 54 files / 419 tests
 pnpm build                        passed
 ```
 

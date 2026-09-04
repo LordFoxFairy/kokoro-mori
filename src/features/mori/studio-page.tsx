@@ -85,6 +85,7 @@ type TrackedLyricsRevision = {
   lyricsRevisionRef: string
   sourceVersionRef: string
   plan: StudioLyricsPlan
+  commandEpoch: number
 }
 
 type TrackedStemSeparation = {
@@ -234,6 +235,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
   const exportFeedbackRef = useRef<StudioExportFeedback>("idle")
   const pendingExportCommandRef = useRef<PendingExportCommand | null>(null)
   const pendingCurrentVersionCommandRef = useRef<PendingCurrentVersionCommand | null>(null)
+  const lyricsRevisionCommandEpochRef = useRef(0)
   const stemSeparationCommandEpochRef = useRef(0)
   const studioChangeCommandEpochRef = useRef(0)
   const studioChangeObservationEpochRef = useRef(0)
@@ -259,6 +261,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
     const contextChanged = previousContext.projectRef !== activeProjectRef || previousContext.versionRef !== activeVersionRef
     previousStudioContextRef.current = { projectRef: activeProjectRef, versionRef: activeVersionRef }
     stemSeparationCommandEpochRef.current += 1
+    lyricsRevisionCommandEpochRef.current += 1
     studioChangeCommandEpochRef.current += 1
     studioChangeObservationEpochRef.current += 1
     studioChangeCancelRequestRef.current = null
@@ -287,6 +290,8 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
       studioRecoveryGenerationRef.current = null
       setTrackedStudioChange(null)
       setStudioChangeRun(idleStudioChangeRun)
+      setTrackedLyricsRevision(null)
+      setLyricsRevisionRun(idleLyricsRevisionRun)
     }
     if (preserveInitialFinishEntryRef.current) {
       if (activeVersionRef !== null) {
@@ -647,6 +652,8 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
   const generateLyricsRevision = async (plan: StudioLyricsPlan) => {
     if (activeCandidate === null || isActiveLyricsRevisionStatus(lyricsRevisionRun.status)) return
     const sourceVersionRef = activeCandidate.versionRef
+    const commandEpoch = lyricsRevisionCommandEpochRef.current + 1
+    lyricsRevisionCommandEpochRef.current = commandEpoch
     setTrackedLyricsRevision(null)
     setLyricsRevisionRun({
       status: "preparing",
@@ -662,6 +669,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
         createLyricsRevisionRequest(createStudioLyricsRevisionDraft(plan)),
         `mori-lyrics-revision-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       )
+      if (commandEpoch !== lyricsRevisionCommandEpochRef.current || activeVersionRefRef.current !== sourceVersionRef) return
       setLyricsRevisionRun({
         status: response.data.status,
         progress: response.data.status === "queued" ? 0 : 12,
@@ -674,8 +682,10 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
         lyricsRevisionRef: response.data.lyrics_revision_ref,
         sourceVersionRef,
         plan,
+        commandEpoch,
       })
     } catch (error) {
+      if (commandEpoch !== lyricsRevisionCommandEpochRef.current || activeVersionRefRef.current !== sourceVersionRef) return
       setLyricsRevisionRun({
         status: "failed",
         progress: 0,
@@ -692,11 +702,16 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
     let disposed = false
     let timer: number | undefined
     let lastEventId: string | null = null
+    const isCurrent = () => (
+      !disposed
+      && trackedLyricsRevision.commandEpoch === lyricsRevisionCommandEpochRef.current
+      && trackedLyricsRevision.sourceVersionRef === activeVersionRefRef.current
+    )
 
     const sync = async () => {
       try {
         const response = await studioApi.getLyricsRevision(trackedLyricsRevision.lyricsRevisionRef)
-        if (disposed) return
+        if (!isCurrent()) return
         const snapshot = response.data
         if (!lyricsRevisionSnapshotMatches(snapshot, trackedLyricsRevision)) {
           throw new Error("lyrics_revision_snapshot_context_mismatch")
@@ -732,6 +747,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
         let progress = snapshot.progress
         try {
           const events = await studioApi.getLyricsRevisionEvents(trackedLyricsRevision.lyricsRevisionRef, lastEventId)
+          if (!isCurrent()) return
           const latest = events.at(-1)
           if (
             latest !== undefined
@@ -747,10 +763,11 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
           // The durable snapshot remains authoritative if event replay is unavailable.
         }
 
+        if (!isCurrent()) return
         setLyricsRevisionRun((current) => ({ ...current, status, progress, message: null }))
         timer = window.setTimeout(() => { void sync() }, 800)
       } catch (error) {
-        if (!disposed) {
+        if (isCurrent()) {
           setLyricsRevisionRun((current) => ({
             ...current,
             status: "failed",
@@ -770,13 +787,18 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
 
   const cancelLyricsRevision = async () => {
     if (trackedLyricsRevision === null) return
-    const lyricsRevisionRef = trackedLyricsRevision.lyricsRevisionRef
+    const tracked = trackedLyricsRevision
+    const lyricsRevisionRef = tracked.lyricsRevisionRef
     setLyricsRevisionRun((current) => ({ ...current, message: "Stopping after the current writing step…" }))
     try {
       const response = await studioApi.cancelLyricsRevision(
         lyricsRevisionRef,
         `mori-lyrics-cancel-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       )
+      if (
+        tracked.commandEpoch !== lyricsRevisionCommandEpochRef.current
+        || tracked.sourceVersionRef !== activeVersionRefRef.current
+      ) return
       const status = response.data.status
       const stopped = status === "failed" || status === "cancelled" || status === "expired"
       if (stopped) setTrackedLyricsRevision(null)
@@ -791,12 +813,16 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
             : null,
       }))
     } catch {
-      setLyricsRevisionRun((current) => ({ ...current, message: "Cancellation did not complete. This revision is still being tracked." }))
+      if (
+        tracked.commandEpoch === lyricsRevisionCommandEpochRef.current
+        && tracked.sourceVersionRef === activeVersionRefRef.current
+      ) setLyricsRevisionRun((current) => ({ ...current, message: "Cancellation did not complete. This revision is still being tracked." }))
     }
   }
 
   const resetLyricsRevision = () => {
     if (isActiveLyricsRevisionStatus(lyricsRevisionRun.status)) return
+    lyricsRevisionCommandEpochRef.current += 1
     setTrackedLyricsRevision(null)
     setLyricsRevisionRun(idleLyricsRevisionRun)
   }
