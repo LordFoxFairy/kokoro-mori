@@ -44,6 +44,7 @@ export const previewCandidates: Candidate[] = [
     mood: "Warm",
     waveformSeed: 11,
     isCurrent: true,
+    audioAssetRef: null,
   },
   {
     candidateRef: "candidate_preview_first_light_b",
@@ -55,6 +56,7 @@ export const previewCandidates: Candidate[] = [
     mood: "Hopeful",
     waveformSeed: 27,
     isCurrent: false,
+    audioAssetRef: null,
   },
 ]
 

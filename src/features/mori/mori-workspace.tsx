@@ -551,6 +551,7 @@ function toDomainCandidate(candidate: import("@/lib/mori-api").MoriCandidate, in
     mood: tags[0] ?? "new direction",
     waveformSeed: index + 5,
     isCurrent: false,
+    audioAssetRef: candidate.audio_asset_ref,
   }
 }
 

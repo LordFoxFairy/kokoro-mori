@@ -34,7 +34,7 @@ describe("Mori application navigation", () => {
     expect(screen.getByRole("link", { name: "Library" })).toHaveAttribute("href", "/library")
   })
 
-  it("keeps playback controls available below catalog content", () => {
+  it("shows an honest unavailable state below catalog content", () => {
     render(
       <MoriAppProvider>
         <MoriCatalogShell activeKey="library" ariaLabel="Library">
@@ -45,9 +45,9 @@ describe("Mori application navigation", () => {
 
     expect(screen.getByRole("region", { name: "Global player" })).toBeInTheDocument()
     fireEvent.click(screen.getByRole("button", { name: "Play" }))
-    expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole("button", { name: "Mute" }))
-    expect(screen.getByRole("button", { name: "Unmute" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Play" })).toBeDisabled()
+    expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("Preview audio is unavailable")
+    expect(screen.getByRole("button", { name: "Mute" })).toBeDisabled()
   })
 
   it("supports a spacebar playback shortcut without hijacking text entry", () => {
@@ -61,10 +61,10 @@ describe("Mori application navigation", () => {
     )
 
     fireEvent.keyDown(window, { code: "Space", key: " " })
-    expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Play" })).toBeDisabled()
 
     fireEvent.keyDown(screen.getByRole("textbox", { name: "Search" }), { code: "Space", key: " " })
-    expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Play" })).toBeDisabled()
   })
 
   it("presents the player as one global dock with an explicit control group", () => {
@@ -100,11 +100,11 @@ describe("Mori application navigation", () => {
     const queue = screen.getByRole("dialog", { name: "Up next" })
     await waitFor(() => expect(queue).toHaveFocus())
     expect(trigger).toHaveAttribute("aria-expanded", "true")
-    expect(screen.getByRole("button", { name: "Pause First Light from queue" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Play First Light from queue" })).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole("button", { name: "Play First Light · Afterglow from queue" }))
     expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("First Light · Afterglow")
-    expect(screen.getByRole("button", { name: "Pause First Light · Afterglow from queue" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Play First Light · Afterglow from queue" })).toBeInTheDocument()
 
     fireEvent.keyDown(window, { key: "Escape" })
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Up next" })).not.toBeInTheDocument())
@@ -539,7 +539,7 @@ describe("Mori application navigation", () => {
     fireEvent.click(screen.getByRole("button", { name: "Play" }))
     fireEvent.click(screen.getByRole("button", { name: "Switch surface" }))
 
-    expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Play" })).toBeDisabled()
   })
 
   it("moves between preview versions from the global player", () => {
@@ -594,7 +594,7 @@ describe("Mori application navigation", () => {
     expect(screen.getByRole("region", { name: "Global player" })).not.toHaveTextContent("First Light")
   })
 
-  it("plays the next version when the playback preference is enabled", () => {
+  it("does not advance an unavailable preview when the playback preference is enabled", () => {
     vi.useFakeTimers()
 
     try {
@@ -620,12 +620,12 @@ describe("Mori application navigation", () => {
 
       fireEvent.click(screen.getByRole("button", { name: "Play next at end" }))
       fireEvent.click(screen.getByRole("button", { name: "Use short preview" }))
-      fireEvent.click(screen.getByRole("button", { name: "Play" }))
+      expect(screen.getByRole("button", { name: "Play" })).toBeDisabled()
 
       act(() => vi.advanceTimersByTime(2_000))
 
-      expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("First Light · Afterglow")
-      expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument()
+      expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("First Light")
+      expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("Preview audio is unavailable")
     } finally {
       vi.useRealTimers()
     }

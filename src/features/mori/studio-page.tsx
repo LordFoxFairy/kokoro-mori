@@ -1282,6 +1282,7 @@ function toDomainCandidate(candidate: MoriCandidate, index: number): Candidate {
     mood: tags[0] ?? "new direction",
     waveformSeed: index + 13,
     isCurrent: index === 0,
+    audioAssetRef: candidate.audio_asset_ref,
   }
 }
 

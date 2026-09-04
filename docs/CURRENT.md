@@ -15,6 +15,10 @@
 - 全局 Player 继续保持 viewport-fixed 的底部 transport；shell 通过同一组 `--mori-player-height` /
   `--mori-player-safe-space` token 预留可滚动安全区，短桌面视口将 dock 收敛到 72px，避免 Studio 的
   AI Changes / Take Lanes 被底部控件过度遮挡，移动端继续保留安全区与底部 sheet 行为。
+- 全局 Player 已接入窄化的 same-origin media seam：Candidate 只携带 opaque `audio_asset_ref`，浏览器通过
+  `/api/v1/mori/assets/{asset_ref}/content` 获取音频；Provider 使用可注入的 media controller 同步真实
+  `play/pause/seek/mute/timeupdate/ended` 状态，不再用定时器伪造播放。preview Candidate 没有音频资产时显示
+  `Preview audio is unavailable` 并禁用播放，真实媒体加载失败会停止 Playing、保留错误上下文并提供 Retry playback。
 - Library 已接入 provider-neutral 的 live projection seam：Version 使用 `GET /library`，Creative Source
   使用独立的 `GET /library/sources` 与按 kind/ref 的 deep-link GET；两者各自使用 opaque cursor/limit，
   Audio / Voice / Inspiration 使用 discriminated union。Source API 成功后不再把 preview Sources 混入 live 响应；
@@ -28,7 +32,7 @@
 ```text
 pnpm lint                         passed
 pnpm typecheck                    passed
-pnpm test --maxWorkers=1          passed: 43 files / 344 tests
+pnpm test --maxWorkers=1          passed: 45 files / 353 tests
 pnpm build                        passed
 ```
 

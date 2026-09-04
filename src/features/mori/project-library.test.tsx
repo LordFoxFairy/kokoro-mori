@@ -454,7 +454,7 @@ describe("Mori catalog surfaces", () => {
     expect(screen.queryByRole("button", { name: "Projects" })).not.toBeInTheDocument()
   })
 
-  it("lets a library version start playback and open its studio", () => {
+  it("keeps a preview version honest while opening its studio", () => {
     render(
       <MoriAppProvider>
         <MoriCatalogShell activeKey="library" ariaLabel="Library">
@@ -465,7 +465,8 @@ describe("Mori catalog surfaces", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Play First Light" }))
 
-    expect(screen.getByRole("button", { name: "Pause First Light" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Play First Light" })).toBeInTheDocument()
+    expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("Preview audio is unavailable")
     expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("First Light")
     expect(screen.getByRole("link", { name: "Open First Light studio" })).toHaveAttribute("href", "/projects/project_preview_first_light/studio/version_preview_first_light_a")
   })

@@ -48,6 +48,8 @@ export type Candidate = {
   mood: string
   waveformSeed: number
   isCurrent: boolean
+  /** Opaque storage reference resolved by the same-origin media seam. */
+  audioAssetRef?: string | null
 }
 
 export type Version = {

@@ -3957,6 +3957,10 @@
   outline: 0;
 }
 
+.playerSeekInput:disabled {
+  cursor: default;
+}
+
 .playerSeekInput::-webkit-slider-runnable-track {
   height: 4px;
   border-radius: 999px;
@@ -4045,6 +4049,35 @@
   margin-top: 3px;
   color: var(--mori-muted);
   font-size: 10px;
+}
+
+.playerStatus {
+  color: var(--mori-faint);
+}
+
+.playerError {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  color: #a34f50;
+  font-size: 10px;
+}
+
+.playerRetry {
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  color: var(--mori-primary-deep);
+  font-size: 10px;
+  font-weight: 700;
+  background: transparent;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.playerRetry:hover {
+  color: var(--mori-foreground);
 }
 
 .time {

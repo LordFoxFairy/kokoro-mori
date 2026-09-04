@@ -1782,12 +1782,13 @@ describe("Mori studio page", () => {
     expect(within(stemsEditor).queryByText("Version vocals")).not.toBeInTheDocument()
   })
 
-  it("uses the global player as the single transport", () => {
+  it("keeps the global player honest when preview audio is unavailable", () => {
     renderStudio()
 
     const player = screen.getByRole("region", { name: "Global player" })
     fireEvent.click(within(player).getByRole("button", { name: "Play" }))
-    expect(within(player).getByRole("button", { name: "Pause" })).toBeInTheDocument()
+    expect(within(player).getByRole("button", { name: "Play" })).toBeDisabled()
+    expect(player).toHaveTextContent("Preview audio is unavailable")
   })
 
   it("confirms the Studio deep link only after the clipboard write succeeds", async () => {

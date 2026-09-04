@@ -43,7 +43,7 @@ describe("Mori project overview", () => {
     expect(screen.getAllByText("Warm · hopeful")).toHaveLength(1)
   })
 
-  it("uses the global player when a candidate is played", () => {
+  it("shows the global player availability when a preview candidate is selected", () => {
     render(
       <MoriAppProvider>
         <MoriCatalogShell activeKey="projects" ariaLabel="Project overview">
@@ -55,7 +55,8 @@ describe("Mori project overview", () => {
     fireEvent.click(screen.getByRole("button", { name: "Play First Light" }))
 
     expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("First Light")
-    expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument()
+    expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("Preview audio is unavailable")
+    expect(screen.getByRole("button", { name: "Play" })).toBeDisabled()
   })
 
   it("hydrates the requested project and its latest candidates", async () => {

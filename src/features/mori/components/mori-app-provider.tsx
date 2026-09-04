@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { previewCandidates } from "../preview-data"
 import type { Candidate, CreationMode, LyricsMode } from "../domain"
+import { createHtmlPlayerMediaController, isPlayableCandidate, type PlayerMediaFactory } from "../player-media"
 
 export type MoriPreferences = {
   reduceMotion: boolean
@@ -33,9 +34,12 @@ type MoriAppContextValue = {
   playerCandidates: Candidate[]
   clearPlayerCandidate: () => void
   playing: boolean
+  playerMediaStatus: PlayerMediaStatus
+  playerMediaMessage: string | null
   muted: boolean
   positionSeconds: number
   togglePlaying: () => void
+  retryPlayerPlayback: () => void
   toggleMuted: () => void
   setPlaying: (playing: boolean) => void
   seekPlayer: (positionSeconds: number) => void
@@ -47,38 +51,77 @@ type MoriAppContextValue = {
   updatePreferences: (patch: Partial<MoriPreferences>) => void
 }
 
+export type PlayerMediaStatus = "ready" | "loading" | "unavailable" | "error"
+
 const MoriAppContext = createContext<MoriAppContextValue | null>(null)
 
-export function MoriAppProvider({ children }: { children: ReactNode }) {
+export function MoriAppProvider({ children, mediaFactory = createHtmlPlayerMediaController }: { children: ReactNode; mediaFactory?: PlayerMediaFactory }) {
   const [railCollapsed, setRailCollapsedState] = useState(false)
   const [railLoaded, setRailLoaded] = useState(false)
   const [preferences, setPreferences] = useState<MoriPreferences>(defaultPreferences)
   const [preferencesLoaded, setPreferencesLoaded] = useState(false)
   const [playerCandidate, setPlayerCandidate] = useState<Candidate | null>(previewCandidates[0])
   const [playerCandidates, setPlayerCandidates] = useState(previewCandidates)
-  const [playing, setPlaying] = useState(false)
+  const [playing, setPlayingState] = useState(false)
+  const [playerMediaStatus, setPlayerMediaStatus] = useState<PlayerMediaStatus>(isPlayableCandidate(playerCandidate) ? "ready" : "unavailable")
+  const [playerMediaMessage, setPlayerMediaMessage] = useState<string | null>(null)
   const [muted, setMuted] = useState(false)
   const [positionSeconds, setPositionSeconds] = useState(0)
   const playbackRef = useRef({ candidate: playerCandidate, candidates: playerCandidates, positionSeconds, endBehavior: preferences.endBehavior })
+  const playerSelectionRef = useRef<Candidate | null>(playerCandidate)
+  const mediaRef = useRef<ReturnType<PlayerMediaFactory> | null>(null)
 
   const setRailCollapsed = useCallback((collapsed: boolean) => setRailCollapsedState(collapsed), [])
   const toggleRail = useCallback(() => setRailCollapsedState((value) => !value), [])
-  const togglePlaying = useCallback(() => setPlaying((value) => !value), [])
+  const setPlayingForApp = useCallback((nextPlaying: boolean) => {
+    if (nextPlaying && !isPlayableCandidate(playerSelectionRef.current)) {
+      setPlayingState(false)
+      setPlayerMediaStatus("unavailable")
+      setPlayerMediaMessage(null)
+      return
+    }
+    if (nextPlaying) {
+      setPlayerMediaStatus("loading")
+      setPlayerMediaMessage(null)
+    }
+    setPlayingState(nextPlaying)
+  }, [])
+  const togglePlaying = useCallback(() => {
+    if (!isPlayableCandidate(playerSelectionRef.current)) {
+      setPlayingState(false)
+      setPlayerMediaStatus("unavailable")
+      setPlayerMediaMessage(null)
+      return
+    }
+    setPlayingForApp(!playing)
+  }, [playing, setPlayingForApp])
   const toggleMuted = useCallback(() => setMuted((value) => !value), [])
   const seekPlayer = useCallback((position: number) => {
     if (!Number.isFinite(position)) return
     if (playerCandidate === null) return
-    setPositionSeconds(Math.max(0, Math.min(playerCandidate.durationSeconds, Math.round(position))))
+    const nextPosition = Math.max(0, Math.min(playerCandidate.durationSeconds, position))
+    setPositionSeconds(nextPosition)
+    mediaRef.current?.seek(nextPosition)
   }, [playerCandidate])
   const updatePreferences = useCallback((patch: Partial<MoriPreferences>) => {
     setPreferences((current) => ({ ...current, ...patch }))
   }, [])
   const clearPlayerCandidate = useCallback(() => {
+    playerSelectionRef.current = null
     setPlayerCandidate(null)
     setPlayerCandidates([])
-    setPlaying(false)
+    setPlayingState(false)
     setPositionSeconds(0)
   }, [])
+
+  const retryPlayerPlayback = useCallback(() => {
+    if (!isPlayableCandidate(playerSelectionRef.current)) {
+      setPlayingState(false)
+      setPlayerMediaStatus("unavailable")
+      return
+    }
+    setPlayingForApp(true)
+  }, [setPlayingForApp])
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -117,6 +160,7 @@ export function MoriAppProvider({ children }: { children: ReactNode }) {
   }, [preferences, preferencesLoaded])
 
   const selectPlayerCandidate = useCallback((candidate: Candidate, initialPositionSeconds = 0) => {
+    playerSelectionRef.current = candidate
     setPlayerCandidate(candidate)
     setPositionSeconds(Math.max(0, Math.min(candidate.durationSeconds, Math.round(initialPositionSeconds))))
     setPlayerCandidates((items) => items.some((item) => item.candidateRef === candidate.candidateRef) ? items : [...items, candidate])
@@ -128,18 +172,95 @@ export function MoriAppProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const previousPlayerCandidate = useCallback(() => {
-    setPlayerCandidate((candidate) => candidate === null ? null : stepCandidate(candidate, playerCandidates, -1))
+    const nextCandidate = playerCandidate === null ? null : stepCandidate(playerCandidate, playerCandidates, -1)
+    playerSelectionRef.current = nextCandidate
+    setPlayerCandidate(nextCandidate)
     setPositionSeconds(0)
-  }, [playerCandidates])
+  }, [playerCandidate, playerCandidates])
 
   const nextPlayerCandidate = useCallback(() => {
-    setPlayerCandidate((candidate) => candidate === null ? null : stepCandidate(candidate, playerCandidates, 1))
+    const nextCandidate = playerCandidate === null ? null : stepCandidate(playerCandidate, playerCandidates, 1)
+    playerSelectionRef.current = nextCandidate
+    setPlayerCandidate(nextCandidate)
     setPositionSeconds(0)
-  }, [playerCandidates])
+  }, [playerCandidate, playerCandidates])
 
   useEffect(() => {
     playbackRef.current = { candidate: playerCandidate, candidates: playerCandidates, positionSeconds, endBehavior: preferences.endBehavior }
   }, [playerCandidate, playerCandidates, positionSeconds, preferences.endBehavior])
+
+  useEffect(() => {
+    const controller = mediaFactory({
+      onTimeUpdate: (nextPosition) => {
+        const currentCandidate = playbackRef.current.candidate
+        if (currentCandidate === null || !Number.isFinite(nextPosition)) return
+        const clampedPosition = Math.max(0, Math.min(currentCandidate.durationSeconds, nextPosition))
+        playbackRef.current.positionSeconds = clampedPosition
+        setPositionSeconds(clampedPosition)
+      },
+      onEnded: () => {
+        const current = playbackRef.current
+        setPositionSeconds(0)
+        if (current.endBehavior === "next" && current.candidates.length > 1 && current.candidate !== null) {
+          const nextCandidate = stepCandidate(current.candidate, current.candidates, 1)
+          current.candidate = nextCandidate
+          current.positionSeconds = 0
+          playerSelectionRef.current = nextCandidate
+          setPlayerCandidate(nextCandidate)
+          setPlayingForApp(true)
+          return
+        }
+        setPlayingState(false)
+      },
+      onError: () => {
+        setPlayingState(false)
+        setPlayerMediaStatus("error")
+        setPlayerMediaMessage("Audio could not be loaded.")
+      },
+    })
+    mediaRef.current = controller
+    return () => {
+      controller.dispose()
+      if (mediaRef.current === controller) mediaRef.current = null
+    }
+  }, [mediaFactory, setPlayingForApp])
+
+  useEffect(() => {
+    const controller = mediaRef.current
+    if (controller === null) return
+    controller.setSource(playerCandidate)
+    setPlayerMediaMessage(null)
+    setPlayerMediaStatus(isPlayableCandidate(playerCandidate) ? "ready" : "unavailable")
+  }, [mediaFactory, playerCandidate])
+
+  useEffect(() => {
+    const controller = mediaRef.current
+    if (controller === null) return
+    if (!playing) {
+      controller.pause()
+      return
+    }
+    if (!isPlayableCandidate(playerCandidate)) {
+      return
+    }
+
+    let active = true
+    void controller.play().then(() => {
+      if (active) setPlayerMediaStatus("ready")
+    }).catch(() => {
+      if (!active) return
+      setPlayingState(false)
+      setPlayerMediaStatus("error")
+      setPlayerMediaMessage("Audio could not be loaded.")
+    })
+    return () => {
+      active = false
+    }
+  }, [mediaFactory, playerCandidate, playing])
+
+  useEffect(() => {
+    mediaRef.current?.setMuted(muted)
+  }, [mediaFactory, muted])
 
   useEffect(() => {
     const keepMobileRailCompact = () => {
@@ -152,41 +273,13 @@ export function MoriAppProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
-    if (!playing) return
-    const timer = window.setInterval(() => {
-      const current = playbackRef.current
-      if (current.candidate === null) {
-        setPlaying(false)
-        return
-      }
-      const nextPosition = current.positionSeconds + 1
-      if (nextPosition < current.candidate.durationSeconds) {
-        current.positionSeconds = nextPosition
-        setPositionSeconds(nextPosition)
-        return
-      }
-
-      current.positionSeconds = 0
-      setPositionSeconds(0)
-      if (current.endBehavior === "next" && current.candidates.length > 1) {
-        const nextCandidate = stepCandidate(current.candidate, current.candidates, 1)
-        current.candidate = nextCandidate
-        setPlayerCandidate(nextCandidate)
-        return
-      }
-      setPlaying(false)
-    }, 1000)
-    return () => window.clearInterval(timer)
-  }, [playing])
-
-  useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.code !== "Space" || playerCandidate === null) return
+      if (event.code !== "Space" || !isPlayableCandidate(playerCandidate)) return
       if (document.querySelector('[aria-modal="true"]') !== null) return
       const target = event.target
       if (target instanceof HTMLElement && (target.isContentEditable || ["BUTTON", "INPUT", "SELECT", "TEXTAREA"].includes(target.tagName))) return
       event.preventDefault()
-      setPlaying((value) => !value)
+      setPlayingState((value) => !value)
     }
 
     window.addEventListener("keydown", handleKeyDown)
@@ -201,10 +294,13 @@ export function MoriAppProvider({ children }: { children: ReactNode }) {
     playerCandidates,
     clearPlayerCandidate,
     playing,
+    playerMediaStatus,
+    playerMediaMessage,
     muted,
     positionSeconds,
     togglePlaying,
-    setPlaying,
+    retryPlayerPlayback,
+    setPlaying: setPlayingForApp,
     toggleMuted,
     seekPlayer,
     selectPlayerCandidate,
@@ -213,7 +309,7 @@ export function MoriAppProvider({ children }: { children: ReactNode }) {
     nextPlayerCandidate,
     preferences,
     updatePreferences,
-  }), [clearPlayerCandidate, muted, nextPlayerCandidate, playerCandidate, playerCandidates, playing, positionSeconds, preferences, previousPlayerCandidate, railCollapsed, replacePlayerCandidates, seekPlayer, selectPlayerCandidate, setRailCollapsed, toggleMuted, togglePlaying, toggleRail, updatePreferences])
+  }), [clearPlayerCandidate, muted, nextPlayerCandidate, playerCandidate, playerCandidates, playerMediaMessage, playerMediaStatus, playing, positionSeconds, preferences, previousPlayerCandidate, railCollapsed, replacePlayerCandidates, retryPlayerPlayback, seekPlayer, selectPlayerCandidate, setPlayingForApp, setRailCollapsed, toggleMuted, togglePlaying, toggleRail, updatePreferences])
 
   return <MoriAppContext.Provider value={value}>{children}</MoriAppContext.Provider>
 }

@@ -18,7 +18,7 @@ pnpm build
 
 - `pnpm lint`：通过，`--max-warnings=0`
 - `pnpm typecheck`：通过
-- `pnpm test`：通过，43 个测试文件、344 个测试
+- `pnpm test`：通过，45 个测试文件、353 个测试
 - `pnpm build`：通过，生成 `/`、`/create`、`/projects`、`/library`、`/settings`、`/help`、Project Overview 和 Studio 路由
 
 ## 页面巡检
@@ -58,7 +58,10 @@ Studio 链接；All 视图将 Projects & versions 与 Creative sources 分成连
 Audio、Voices、Inspiration 渐进筛选，避免把资产类型继续堆进全局 Rail。搜索会在当前分类内匹配项目、版本
 标题、说明与创作素材，持续反馈结果数，并在无匹配时提供明确的清除入口；Browse all sources 会重置为完整
 素材架。桌面端将筛选与搜索放在同一工具栏，小屏幕把搜索提升到筛选之前并允许分类横向滚动。
-Home 与 Project Overview 的候选歌曲均可直接接入 Global Player；Projects、
+Home 与 Project Overview 的候选歌曲均可直接接入 Global Player；Candidate 的音频只通过
+opaque `audio_asset_ref` 进入同源 media seam，播放器用真实 media event 同步进度与结束行为；没有
+音频资产的 preview 方向明确显示 `Preview audio is unavailable` 并禁用播放，媒体加载错误停止 Playing
+并提供 Retry playback。Projects、
 Project Overview 与 Studio 会读取 provider-neutral 项目/候选 projection，Studio 会按
 请求的 `projectRef`/`versionRef` hydration 当前版本。Create Queue 支持活动生成的取消
 反馈、无可播放结果时的明确空状态和失败后的 Try again 重试入口；打开时焦点进入 Queue、背景滚动锁定，移动端使用全宽工作表；状态同步优先读取快照并通过 SSE `Last-Event-ID` 回放事件。候选方向使用可聚焦的显式选择控件和稳定选中态，不再依赖无语义的整卡点击；Create 不暴露无法分享未保存创作状态的假 Share；Studio 已巡检
