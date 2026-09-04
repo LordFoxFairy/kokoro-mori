@@ -56,6 +56,34 @@ describe("Mori generation queue", () => {
     )
   })
 
+  it("makes the paused direction selection explicit and keyboard reachable", () => {
+    const onSelect = vi.fn()
+
+    render(
+      <InspectorPanel
+        projectRef="project_queue_1"
+        generation={{ ...previewGeneration, status: "succeeded", progress: 100 }}
+        candidates={previewCandidates}
+        songPlan={previewSongPlan}
+        selectedCandidateRef={previewCandidates[0].candidateRef}
+        playing={false}
+        onSelect={onSelect}
+        onPromote={vi.fn()}
+        onPlay={vi.fn()}
+      />,
+    )
+
+    const selectedDirection = screen.getByRole("button", { name: "Select First Light direction" })
+    const nextDirection = screen.getByRole("button", { name: "Select First Light · Afterglow direction" })
+    expect(selectedDirection).toHaveAttribute("aria-pressed", "true")
+    expect(selectedDirection.closest("article")).toHaveAttribute("data-selected", "true")
+    expect(nextDirection).toHaveAttribute("aria-pressed", "false")
+    expect(nextDirection.closest("article")).toHaveAttribute("data-selected", "false")
+
+    fireEvent.click(nextDirection)
+    expect(onSelect).toHaveBeenCalledWith(previewCandidates[1])
+  })
+
   it("exposes cancellation while a generation is active", () => {
     const onCancel = vi.fn()
 

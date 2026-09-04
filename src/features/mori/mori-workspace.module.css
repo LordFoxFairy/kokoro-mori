@@ -793,10 +793,33 @@
   box-shadow: 0 8px 18px rgba(109, 92, 231, 0.08);
 }
 
-.candidateTop {
+.candidateCardSelected {
+  border-color: rgba(109, 92, 231, 0.34);
+  background: linear-gradient(145deg, rgba(248, 246, 255, 0.96), rgba(255, 250, 246, 0.94));
+  box-shadow: inset 3px 0 0 var(--mori-primary), 0 8px 18px rgba(109, 92, 231, 0.08);
+}
+
+.candidateSelect {
   display: flex;
   align-items: center;
   gap: 10px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  color: inherit;
+  text-align: left;
+  background: transparent;
+  cursor: pointer;
+}
+
+.candidateSelect:hover .candidateTitle {
+  color: var(--mori-primary-deep);
+}
+
+.candidateSelect:focus-visible {
+  outline: 3px solid rgba(109, 92, 231, 0.24);
+  outline-offset: 3px;
 }
 
 .candidateArtwork {
@@ -842,10 +865,12 @@
 }
 
 .candidateMeta {
+  display: block;
   min-width: 0;
 }
 
 .candidateTitle {
+  display: block;
   overflow: hidden;
   font-size: 12px;
   font-weight: 700;
@@ -854,6 +879,7 @@
 }
 
 .candidateSubtitle {
+  display: block;
   margin-top: 3px;
   overflow: hidden;
   color: var(--mori-muted);

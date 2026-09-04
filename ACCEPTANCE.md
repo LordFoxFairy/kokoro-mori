@@ -61,7 +61,7 @@ Audio、Voices、Inspiration 渐进筛选，避免把资产类型继续堆进全
 Home 与 Project Overview 的候选歌曲均可直接接入 Global Player；Projects、
 Project Overview 与 Studio 会读取 provider-neutral 项目/候选 projection，Studio 会按
 请求的 `projectRef`/`versionRef` hydration 当前版本。Create Queue 支持活动生成的取消
-反馈、无可播放结果时的明确空状态和失败后的 Try again 重试入口；打开时焦点进入 Queue、背景滚动锁定，移动端使用全宽工作表；状态同步优先读取快照并通过 SSE `Last-Event-ID` 回放事件。Create 不暴露无法分享未保存创作状态的假 Share；Studio 已巡检
+反馈、无可播放结果时的明确空状态和失败后的 Try again 重试入口；打开时焦点进入 Queue、背景滚动锁定，移动端使用全宽工作表；状态同步优先读取快照并通过 SSE `Last-Event-ID` 回放事件。候选方向使用可聚焦的显式选择控件和稳定选中态，不再依赖无语义的整卡点击；Create 不暴露无法分享未保存创作状态的假 Share；Studio 已巡检
 Arrangement/Lyrics/Stems 切换、Preview 与真实 Copy link 反馈，只有剪贴板写入成功才显示 Link copied，失败会明确提示并可重试；移动端文字收起后仍以旋转、绿色确认和红色警告图标呈现三种状态；Export 不再点击即提交固定 MP3，而是先打开可聚焦、可按
 Escape 关闭的明确工作窗，选择 Studio 当前打开的 Version 或该 Version 最新保存的 Mix Revision、MP3/WAV 与 Full song 后再提交。
 异步状态覆盖 queued/processing、失败保留选择与重试、完成下载；创建结果不确定时重试复用同一 Idempotency-Key，

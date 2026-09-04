@@ -130,15 +130,15 @@ export function InspectorPanel({ presentation = "drawer", projectRef, generation
             const isCommitting = currentVersionCommitRun.status === "saving"
             const isCommitTarget = isCommitting && currentVersionCommitRun.targetVersionRef === candidate.versionRef
             return (
-              <article className={`${styles.candidateCard} ${isCurrent ? styles.candidateCardCurrent : ""}`} key={candidate.candidateRef} onClick={() => onSelect(candidate)}>
-                <div className={styles.candidateTop}>
-                  <div className={`${styles.candidateArtwork} ${index === 1 ? styles.candidateArtworkAlt : ""}`} aria-hidden="true"><Play size={14} fill="currentColor" /></div>
-                  <div className={styles.candidateMeta}>
-                    <div className={styles.candidateTitle}>{candidate.title}</div>
-                    <div className={styles.candidateSubtitle}>{candidate.subtitle}</div>
-                  </div>
+              <article className={`${styles.candidateCard} ${isCurrent ? styles.candidateCardCurrent : ""} ${isSelected ? styles.candidateCardSelected : ""}`} data-selected={isSelected} key={candidate.candidateRef}>
+                <button className={styles.candidateSelect} type="button" aria-label={`Select ${candidate.title} direction`} aria-pressed={isSelected} onClick={() => onSelect(candidate)}>
+                  <span className={`${styles.candidateArtwork} ${index === 1 ? styles.candidateArtworkAlt : ""}`} aria-hidden="true"><Play size={14} fill="currentColor" /></span>
+                  <span className={styles.candidateMeta}>
+                    <span className={styles.candidateTitle}>{candidate.title}</span>
+                    <span className={styles.candidateSubtitle}>{candidate.subtitle}</span>
+                  </span>
                   <span className={styles.candidateDuration}>{formatDuration(candidate.durationSeconds)}</span>
-                </div>
+                </button>
                 <Waveform seed={candidate.waveformSeed} progress={isSelected ? 0.62 : 0.32} />
                 <div className={styles.candidateActions}>
                   <button className={styles.candidatePlay} type="button" onClick={(event) => { event.stopPropagation(); onPlay(candidate) }} aria-label={`${playing && isSelected ? "Pause" : "Play"} ${candidate.title}`}>

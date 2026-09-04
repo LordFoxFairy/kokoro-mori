@@ -757,8 +757,8 @@ describe("Mori workspace", () => {
     )
     fireEvent.click(screen.getByRole("button", { name: "Open generation queue" }))
     const queue = screen.getByRole("dialog", { name: "Generation queue" })
-    const currentCard = within(queue).getByText("First Light", { selector: "div" }).closest("article") as HTMLElement
-    const nextCard = within(queue).getByText("First Light · Afterglow").closest("article") as HTMLElement
+    const currentCard = within(queue).getByRole("button", { name: "Select First Light direction" }).closest("article") as HTMLElement
+    const nextCard = within(queue).getByRole("button", { name: "Select First Light · Afterglow direction" }).closest("article") as HTMLElement
 
     fireEvent.click(within(nextCard).getByRole("button", { name: "Set as current" }))
 
