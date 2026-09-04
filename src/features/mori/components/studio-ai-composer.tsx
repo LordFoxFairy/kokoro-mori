@@ -48,6 +48,7 @@ type StudioAiComposerProps = {
   run: StudioAiRunState
   initialOperation?: StudioChangeOperation | undefined
   initialTransformScope?: StudioTransformScope | undefined
+  initialTransformIntent?: StudioTransformIntent | undefined
   onGenerate: (plan: StudioChangePlan) => void
   onCancel: () => void
   onReset: () => void
@@ -149,14 +150,14 @@ const coverPromptStarters: Readonly<Record<StudioCoverMode, readonly string[]>> 
   ],
 }
 
-export function StudioAiComposer({ selectedSection, run, initialOperation, initialTransformScope, onGenerate, onCancel, onReset }: StudioAiComposerProps) {
+export function StudioAiComposer({ selectedSection, run, initialOperation, initialTransformScope, initialTransformIntent, onGenerate, onCancel, onReset }: StudioAiComposerProps) {
   const promptId = useId()
   const promptRef = useRef<HTMLTextAreaElement>(null)
   const [operation, setOperation] = useState<StudioChangeOperation>(() => run.plan?.operation ?? initialOperation ?? "add_part")
   const [instruction, setInstruction] = useState(() => run.plan?.instruction ?? "")
   const [preserve, setPreserve] = useState<StudioChangePreserve[]>(() => [...(run.plan?.preserve ?? defaultStudioChangePreserve)])
   const [outputCount, setOutputCount] = useState<StudioChangeOutputCount>(() => run.plan?.outputCount ?? 2)
-  const [transformIntent, setTransformIntent] = useState<StudioTransformIntent>(() => transformIntentFromPlan(run.plan))
+  const [transformIntent, setTransformIntent] = useState<StudioTransformIntent>(() => run.plan === null ? initialTransformIntent ?? "restyle" : transformIntentFromPlan(run.plan))
   const [transformScope, setTransformScope] = useState<StudioTransformScope>(() => (
     run.plan?.draft.operation === "transform" && run.plan.draft.scope.type === "whole_version"
       ? "whole_version"

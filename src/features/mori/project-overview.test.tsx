@@ -20,9 +20,13 @@ describe("Mori project overview", () => {
       "Continue making",
     ])
     const continuation = screen.getByRole("region", { name: "Continue making" })
-    expect(within(continuation).getByRole("link", { name: "Restyle or cover" })).toHaveAttribute(
+    expect(within(continuation).getByRole("link", { name: "Remix & edit" })).toHaveAttribute(
       "href",
       "/projects/project_preview_first_light/studio/version_preview_first_light_a?surface=arrangement&intent=transform",
+    )
+    expect(within(continuation).getByRole("link", { name: "Cover" })).toHaveAttribute(
+      "href",
+      "/projects/project_preview_first_light/studio/version_preview_first_light_a?surface=arrangement&intent=cover",
     )
     expect(within(continuation).getByRole("link", { name: "Lyrics" })).toHaveAttribute(
       "href",
@@ -318,9 +322,13 @@ describe("Mori project overview", () => {
     )
     const continuation = screen.getByRole("region", { name: "Continue making" })
     expect(within(continuation).getByText("Current · Current Version")).toBeInTheDocument()
-    expect(within(continuation).getByRole("link", { name: "Restyle or cover" })).toHaveAttribute(
+    expect(within(continuation).getByRole("link", { name: "Remix & edit" })).toHaveAttribute(
       "href",
       "/projects/project_live_current_partial/studio/version_live_current?surface=arrangement&intent=transform",
+    )
+    expect(within(continuation).getByRole("link", { name: "Cover" })).toHaveAttribute(
+      "href",
+      "/projects/project_live_current_partial/studio/version_live_current?surface=arrangement&intent=cover",
     )
     expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("Nothing playing")
   })

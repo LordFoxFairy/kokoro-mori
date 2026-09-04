@@ -1537,8 +1537,9 @@ function ArrangementEditor({ candidate, takes, structure, lyricsPreview, current
       <StudioAiComposer
         selectedSection={selection}
         run={studioChangeRun}
-        initialOperation={initialIntent === "transform" ? "transform" : undefined}
+        initialOperation={initialIntent === "transform" || initialIntent === "cover" ? "transform" : undefined}
         initialTransformScope={initialIntent === "transform" ? "whole_version" : undefined}
+        initialTransformIntent={initialIntent === "cover" ? "cover" : initialIntent === "transform" ? "restyle" : undefined}
         onGenerate={onGenerateStudioChange}
         onCancel={onCancelStudioChange}
         onReset={onResetStudioChange}

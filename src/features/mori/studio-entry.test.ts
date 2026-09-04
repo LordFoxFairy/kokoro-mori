@@ -7,11 +7,13 @@ describe("Mori Studio entry", () => {
     expect(parseStudioEntry({ surface: "stems" })).toEqual({ surface: "stems", intent: null })
     expect(parseStudioEntry({ surface: "finish" })).toEqual({ surface: "finish", intent: null })
     expect(parseStudioEntry({ surface: "arrangement", intent: "transform" })).toEqual({ surface: "arrangement", intent: "transform" })
+    expect(parseStudioEntry({ surface: "arrangement", intent: "cover" })).toEqual({ surface: "arrangement", intent: "cover" })
   })
 
   it("falls back to the default workspace for unknown or conflicting values", () => {
     expect(parseStudioEntry({ surface: "tools", intent: "transform" })).toEqual({ surface: "arrangement", intent: null })
     expect(parseStudioEntry({ surface: "lyrics", intent: "transform" })).toEqual({ surface: "lyrics", intent: null })
+    expect(parseStudioEntry({ surface: "stems", intent: "cover" })).toEqual({ surface: "stems", intent: null })
     expect(parseStudioEntry({ surface: ["finish", "lyrics"] })).toEqual({ surface: "finish", intent: null })
   })
 })

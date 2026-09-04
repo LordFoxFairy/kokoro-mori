@@ -80,6 +80,24 @@ describe("Mori studio page", () => {
     expect(within(aiChanges).getByLabelText("Change context")).toHaveTextContent("Whole song")
   })
 
+  it("opens Cover as a whole-song Studio intent", () => {
+    render(
+      <MoriAppProvider>
+        <StudioPageContent
+          candidate={previewCandidates[0]}
+          initialSurface="arrangement"
+          initialIntent="cover"
+          stemPlaybackFactory={createTestStemPlaybackController}
+        />
+      </MoriAppProvider>,
+    )
+
+    const aiChanges = screen.getByRole("region", { name: "Mori AI changes" })
+    expect(within(aiChanges).getByRole("button", { name: "Transform" })).toHaveAttribute("aria-pressed", "true")
+    expect(within(aiChanges).getByRole("button", { name: "Cover" })).toHaveAttribute("aria-pressed", "true")
+    expect(within(aiChanges).getByRole("button", { name: "Vocal cover" })).toBeInTheDocument()
+  })
+
   it("opens Finish directly from a project continuation", () => {
     render(
       <StrictMode>

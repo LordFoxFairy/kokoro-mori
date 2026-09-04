@@ -1,5 +1,5 @@
 export type StudioEntrySurface = "arrangement" | "lyrics" | "stems" | "finish"
-export type StudioEntryIntent = "transform" | null
+export type StudioEntryIntent = "transform" | "cover" | null
 
 export type StudioEntrySearchParams = {
   surface?: string | string[] | undefined
@@ -17,7 +17,9 @@ export function parseStudioEntry(searchParams: StudioEntrySearchParams): StudioE
   const requestedSurface = firstValue(searchParams.surface)
   const surface = isStudioEntrySurface(requestedSurface) ? requestedSurface : "arrangement"
   const requestedIntent = firstValue(searchParams.intent)
-  const intent = requestedSurface === "arrangement" && requestedIntent === "transform" ? "transform" : null
+  const intent = requestedSurface === "arrangement" && (requestedIntent === "transform" || requestedIntent === "cover")
+    ? requestedIntent
+    : null
 
   return { surface, intent }
 }

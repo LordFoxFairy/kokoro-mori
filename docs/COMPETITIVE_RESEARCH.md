@@ -115,7 +115,8 @@ Project Overview 不再只放一个笼统的 `Open Studio`。在确认的 Curren
 `Continue making` 区域：
 
 ```text
-Transform song   -> Arrangement / Transform
+Remix & edit     -> Arrangement / Transform
+Cover            -> Arrangement / Transform / Cover
 Write lyrics     -> Lyrics
 Voice & stems    -> Stems
 Finish song      -> Finish
@@ -124,10 +125,15 @@ Finish song      -> Finish
 每个动作只解释“会做什么”和“结果去哪里”，点击后带着同一个 Project + Current Version 深链到 Studio 的正确
 工作面。`Open Studio` 仍可作为次级通用入口；`New direction` 继续从当前 Project 进入 Create。
 
+其中 `Remix & edit` 与 `Cover` 必须拆成两个入口：前者对应对段落或整首的非破坏式改编，后者对应基于当前
+Version 的全曲新演绎。两者都进入同一个 Arrangement 工作面，但分别预选 Transform / Restyle 与 Transform / Cover，
+避免用“Restyle or cover”把两个不同的用户意图重新混在一起。
+
 推荐深链语义：
 
 ```text
 /studio/{version_ref}?surface=arrangement&intent=transform
+/studio/{version_ref}?surface=arrangement&intent=cover
 /studio/{version_ref}?surface=lyrics
 /studio/{version_ref}?surface=stems
 /studio/{version_ref}?surface=finish

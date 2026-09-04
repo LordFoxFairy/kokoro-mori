@@ -59,10 +59,11 @@ Idea / Reference
 
 ### Project Overview 的能力编排
 
-Project Overview 不再把统计、候选和四张等权功能卡纵向堆成 dashboard。桌面端先展示可试听的 Latest directions，
+Project Overview 不再把统计、候选和五张等权功能卡纵向堆成 dashboard。桌面端先展示可试听的 Latest directions，
 再在同一工作区右侧给出绑定 Current Version 的任务列表；窄屏按“先听方向、再选任务”的顺序自然下排。任务名称直接写成
-**Restyle or cover、Lyrics、Voice & stems、Remaster & release**，同时标明 Take lanes、Review before apply、
-Non-destructive 与 No auto-publish 等结果约束。这样吸收 Tad 的任务可辨识度，但入口仍然属于当前 Project / Version；
+**Remix & edit、Cover、Lyrics、Voice & stems、Remaster & release**，同时标明 Arrangement、New takes、Review before apply、
+Non-destructive 与 No auto-publish 等结果约束。Remix & edit 与 Cover 虽然都进入 Arrangement，但前者预选 Restyle，后者预选
+Cover，并分别使用对应深链；这样吸收 Tad 的任务可辨识度，又保留 Suno 的同一 Version 连续制作上下文，入口仍然属于当前 Project / Version；
 Song Plan 保持独立事实区，Project 状态不再重复展示 Mood。
 
 ### Create 的创意来源模型

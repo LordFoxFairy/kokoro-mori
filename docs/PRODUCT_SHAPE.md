@@ -166,6 +166,9 @@ Workspace nav    内容随项目上下文变化                     跨页面保
   Instrumental 决定可选 Voice 与严格保护项，并固定输出两条 Take。界面与 Review Plan 都明确区分 audio Cover
   和 Release artwork；服务返回的完整 typed snapshot 必须与复核计划逐字段一致。最终结果进入 Take Lanes，
   当前版本不会被直接覆盖。
+- 已落地第一版：Project Overview 的 `Continue making` 将 Tad 的任务分类落成五个当前版本动作：Remix & edit、Cover、Lyrics、
+  Voice & stems、Remaster & release。Remix & edit 与 Cover 都进入 Arrangement，但分别预选 Restyle 与 Cover；两者不再
+  复用含义模糊的 “Restyle or cover” 单一入口，用户从 Project 详情页即可知道下一步会改变什么、结果回到哪里。
 - 已落地第一版：从项目详情、Studio 或项目上下文中的 Rail 进入 Create 时保留 `project_ref`，
   生成命令不再意外落到预览项目；可用时先读取项目 projection 展示项目名称，读取失败保留中性上下文。
   无 `project_ref` 的全局 Create 明确显示为 New project，首次确认生成时用同一句 idea 自动建立 Project，随后才在

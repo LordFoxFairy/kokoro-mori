@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowLeft, ArrowUpRight, AudioWaveform, Clock3, FileText, Play, SlidersHorizontal, Sparkles } from "lucide-react"
+import { ArrowLeft, ArrowUpRight, AudioLines, AudioWaveform, Clock3, FileText, Play, SlidersHorizontal, Sparkles } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import type { MoriApi, MoriCandidate, MoriProject } from "@/lib/mori-api"
@@ -142,10 +142,17 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
             <div className={styles.continueMakingGrid}>
               <ProjectContinuationLink
                 href={`${studioBaseHref}?surface=arrangement&intent=transform`}
-                label="Restyle or cover"
-                description="Change genre, remix, or perform this Version."
-                destination="Transform · Take lanes"
-                icon={Sparkles}
+                label="Remix & edit"
+                description="Restyle, remix, replace, or extend a section."
+                destination="Arrangement"
+                icon={SlidersHorizontal}
+              />
+              <ProjectContinuationLink
+                href={`${studioBaseHref}?surface=arrangement&intent=cover`}
+                label="Cover"
+                description="Re-perform this Version as a vocal or instrumental take."
+                destination="New takes"
+                icon={AudioLines}
               />
               <ProjectContinuationLink
                 href={`${studioBaseHref}?surface=lyrics`}
