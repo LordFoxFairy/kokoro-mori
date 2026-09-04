@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowLeft, ArrowUpRight, AudioLines, AudioWaveform, Clock3, FileText, Play, SlidersHorizontal, Sparkles } from "lucide-react"
+import { ArrowLeft, ArrowUpRight, AudioLines, AudioWaveform, Clock3, FileText, Play, RotateCcw, SlidersHorizontal, Sparkles } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import type { MoriApi, MoriCandidate, MoriProject } from "@/lib/mori-api"
@@ -17,6 +17,8 @@ type ProjectOverviewPageContentProps = {
   api?: Pick<MoriApi, "getProject" | "listCandidates">
 }
 
+type CandidateProjectionStatus = "loading" | "ready" | "unavailable"
+
 export function ProjectOverviewPageContent({ projectRef = previewProject.projectRef, api }: ProjectOverviewPageContentProps = {}) {
   const { playerCandidate, playing, selectPlayerCandidate, setPlaying } = useMoriApp()
   const defaultApi = useMemo(() => createMoriApiClient(), [])
@@ -29,9 +31,15 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
   const [candidateState, setCandidateState] = useState(() => ({
     projectRef: initialProjectRef,
     value: initialProjectRef === previewProject.projectRef ? previewCandidates : [],
+    status: (initialProjectRef === previewProject.projectRef ? "ready" : "loading") as CandidateProjectionStatus,
   }))
+  const [candidateRequestVersion, setCandidateRequestVersion] = useState(0)
   const requestedProject = projectState.projectRef === initialProjectRef ? projectState.value : createUnavailableProject(initialProjectRef)
-  const candidates = candidateState.projectRef === initialProjectRef ? candidateState.value : []
+  const currentCandidateState = candidateState.projectRef === initialProjectRef
+    ? candidateState
+    : { projectRef: initialProjectRef, value: [], status: "loading" as const }
+  const candidates = currentCandidateState.value
+  const candidateStatus = currentCandidateState.status
   const hasPlanProjection = initialProjectRef === previewProject.projectRef
   const currentCandidate = requestedProject.currentVersionRef === null
     ? undefined
@@ -53,15 +61,18 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
     void listAllMoriCandidates(overviewApi, requestedProjectRef).then((candidates) => {
       if (disposed) return
       const nextCandidates = candidates.map(toDomainCandidate)
-      setCandidateState({ projectRef: requestedProjectRef, value: nextCandidates })
+      setCandidateState({ projectRef: requestedProjectRef, value: nextCandidates, status: "ready" })
     }).catch(() => {
+      if (!disposed && requestedProjectRef !== previewProject.projectRef) {
+        setCandidateState({ projectRef: requestedProjectRef, value: [], status: "unavailable" })
+      }
       // Never attach preview candidates to a live project when its projection is unavailable.
     })
 
     return () => {
       disposed = true
     }
-  }, [overviewApi, projectRef])
+  }, [candidateRequestVersion, overviewApi, projectRef])
 
   function playCandidate(candidate: (typeof previewCandidates)[number]) {
     if (playerCandidate?.versionRef === candidate.versionRef) {
@@ -97,9 +108,23 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
         <section className={`${styles.overviewSection} ${styles.overviewDirections}`} aria-labelledby="directions-heading">
           <div className={styles.overviewSectionHeader}>
             <div><h2 id="directions-heading">Latest directions</h2><p>Listen and compare before choosing what to change next.</p></div>
-            <span>{candidates.length} {candidates.length === 1 ? "candidate" : "candidates"}</span>
+            <span>{candidateStatus === "loading"
+              ? "Loading"
+              : candidateStatus === "unavailable"
+                ? `${requestedProject.candidateCount} saved`
+                : `${candidates.length} ${candidates.length === 1 ? "candidate" : "candidates"}`}</span>
           </div>
-          {candidates.length > 0 ? <div className={styles.overviewCandidateList}>
+          {candidateStatus === "loading" ? <div className={styles.overviewProjectionState} role="status">
+            <span className={styles.overviewProjectionStateIcon} aria-hidden="true"><AudioWaveform size={17} /></span>
+            <div><strong>Loading directions</strong><p>Bringing this Project&apos;s latest Versions into view.</p></div>
+          </div> : candidateStatus === "unavailable" ? <div className={styles.overviewProjectionState} role="status">
+            <span className={styles.overviewProjectionStateIcon} aria-hidden="true"><AudioWaveform size={17} /></span>
+            <div><strong>Directions temporarily unavailable</strong><p>Your saved directions are still part of this Project. Retry to compare them here.</p></div>
+            <button type="button" onClick={() => {
+              setCandidateState({ projectRef: initialProjectRef, value: [], status: "loading" })
+              setCandidateRequestVersion((version) => version + 1)
+            }} aria-label="Retry directions"><RotateCcw size={13} /> Retry</button>
+          </div> : candidates.length > 0 ? <div className={styles.overviewCandidateList}>
               {candidates.map((candidate, index) => {
                 const isCurrent = candidate.versionRef === requestedProject.currentVersionRef
                 return <article

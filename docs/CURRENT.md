@@ -34,6 +34,8 @@
   避免把过期 fixture 当成真实数据；Library 会消费 `next_cursor` 提供 Load more / Try again，Create deep link 会优先解析 live Source detail。
 - Home / Projects 在 live projection 失败时会明确标注当前展示的是 Preview workspace，并提供 Retry；恢复后自动切回真实投影，
   不把本地 fixture 静默伪装成用户数据。Projects 与 Library Versions 均消费 opaque cursor，分页追加按资源引用去重。
+- Project Overview 将 Candidate projection 的 `loading`、`ready` 与 `unavailable` 分开建模；请求失败时保留 Project
+  返回的已保存数量并提供 Retry，不再把服务暂时不可用误报成 `No directions yet`，也不会诱导用户重复创建方向。
 - Generation 生命周期已补齐 Create、snapshot、SSE replay、cancel 与 Project Candidate list 的本仓 OpenAPI；Candidate
   list 使用 opaque cursor/limit/generation filter，页面投影统一消费全部分页并按 `candidate_ref` 去重。Generation queue
   以显式字段白名单保存多任务摘要、状态、进度、候选引用和 event cursor，不保存 prompt、lyrics、provider payload 或音频字节；

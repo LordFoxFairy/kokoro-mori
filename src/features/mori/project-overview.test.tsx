@@ -451,22 +451,43 @@ describe("Mori project overview", () => {
     )
   })
 
-  it("keeps the live project when its candidate projection is temporarily unavailable", async () => {
-    const api = {
+  it("separates an unavailable candidate projection from a genuinely empty Project and retries it", async () => {
+    let attempt = 0
+    const listCandidates = vi.fn<MoriApi["listCandidates"]>(async () => {
+      attempt += 1
+      if (attempt === 1) throw new Error("candidate projection unavailable")
+      return {
+        data: {
+          candidates: [{
+            candidate_ref: "candidate_live_recovered",
+            generation_ref: "generation_live_recovered",
+            version_ref: "version_live_recovered",
+            project_ref: "project_live_partial",
+            title: "Blue Hour · Recovered",
+            duration_seconds: 148,
+            audio_asset_ref: "asset_live_recovered",
+            waveform_asset_ref: "waveform_live_recovered",
+            style_tags: ["restrained", "electronic"],
+            created_at: "2026-09-04T12:00:00.000Z",
+          }],
+          next_cursor: null,
+        },
+        meta: { request_id: "request_project_partial_recovered" },
+      }
+    })
+    const api: Pick<MoriApi, "getProject" | "listCandidates"> = {
       getProject: async () => ({
         data: {
           project_ref: "project_live_partial",
           title: "Blue Hour",
           description: "A restrained electronic study.",
           current_version_ref: null,
-          candidate_count: 0,
+          candidate_count: 2,
           last_activity_at: "2026-09-02T12:00:00.000Z",
         },
         meta: { request_id: "request_project_partial" },
       }),
-      listCandidates: async () => {
-        throw new Error("candidate projection unavailable")
-      },
+      listCandidates,
     }
 
     render(
@@ -479,11 +500,19 @@ describe("Mori project overview", () => {
 
     await waitFor(() => expect(screen.getByRole("heading", { name: "Blue Hour" })).toBeInTheDocument())
     expect(screen.getByText("A restrained electronic study.")).toBeInTheDocument()
-    expect(screen.getByText("No directions yet")).toBeInTheDocument()
+    expect(await screen.findByText("Directions temporarily unavailable")).toBeInTheDocument()
+    expect(screen.getByText("2 saved")).toBeInTheDocument()
+    expect(screen.queryByText("No directions yet")).not.toBeInTheDocument()
+    expect(screen.queryByRole("link", { name: "Create a direction" })).not.toBeInTheDocument()
     expect(screen.queryByRole("link", { name: "Open Studio" })).not.toBeInTheDocument()
     const player = screen.getByRole("region", { name: "Global player" })
     expect(player).toHaveTextContent("Choose a version")
     expect(player).toHaveTextContent("Your next listen starts here")
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry directions" }))
+
+    expect(await screen.findByRole("button", { name: "Play Blue Hour · Recovered" })).toBeInTheDocument()
+    expect(listCandidates).toHaveBeenCalledTimes(2)
   })
 
   it("preserves the active global listen when the candidate projection fails", async () => {
