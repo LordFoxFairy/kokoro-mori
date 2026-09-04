@@ -170,6 +170,9 @@ Workspace nav    内容随项目上下文变化                     跨页面保
   第一条 Direction。新建 Project 后的主动作同样是开始第一条 Direction，减少一次没有决策价值的页面跳转。
   Project 的 `current_version_ref` 是续作入口的事实来源；即使 Candidate projection 暂时不可用，已确认作品仍可进入
   Studio 和对应的 Transform / Lyrics / Stems / Finish 上下文，不因辅助列表故障失去主路径。
+- 已落地第一版：Projects 目录只保留页首一个 New project 主入口，不再用同尺寸的空卡重复抢占注意力；每张作品卡
+  整体都是唯一续作入口，并使用可扩展的紧凑网格承载更多工作区。卡片仍明确显示 Project 状态、Current Version 与
+  下一步动作，吸收成熟音乐产品的可扫描密度，但不把 Projects 降格为一次性歌曲封面墙。
 - 已落地第一版：Create 的 Generation Queue 不再本地伪造 `Set as current`。它与 Studio Take Lanes 复用同一个
   Project-scoped Current Version command、期望旧 Current、幂等重试和完整响应核对；提交确认前保留原 Current，
   失败提供可解释的重试/冲突状态。既有 Project 的 `current_version_ref` 会先从 projection 恢复为并发条件。

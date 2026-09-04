@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 import type { MoriApi } from "@/lib/mori-api"
 import { ProjectsPageContent } from "./project-list"
@@ -24,9 +24,13 @@ describe("Mori projects", () => {
 
     render(<ProjectsPageContent api={api} />)
 
-    await waitFor(() => expect(screen.getByRole("heading", { name: "Window Seat" })).toBeInTheDocument())
+    const heading = await screen.findByRole("heading", { name: "Window Seat" })
     expect(screen.getByText("A quiet, forward-moving sketch.")).toBeInTheDocument()
-    expect(screen.getByRole("link", { name: "Create first direction for Window Seat" })).toHaveAttribute("href", "/create?project_ref=project_live_1")
+    const continuation = screen.getByRole("link", { name: "Create first direction for Window Seat" })
+    expect(continuation).toHaveAttribute("href", "/create?project_ref=project_live_1")
+    expect(within(continuation).getByRole("heading", { name: "Window Seat" })).toBe(heading)
+    expect(screen.getAllByRole("button", { name: "New project" })).toHaveLength(1)
+    expect(screen.queryByRole("button", { name: "Create another project" })).not.toBeInTheDocument()
   })
 
   it("continues each Project from the next meaningful step", async () => {

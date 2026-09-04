@@ -46,14 +46,7 @@ export function ProjectsPageContent({ api }: ProjectsPageContentProps = {}) {
         <button className={styles.generateButton} type="button" onClick={() => setCreateOpen(true)} aria-haspopup="dialog" aria-expanded={createOpen}><Music2 size={15} /> New project</button>
       </div>
       <div className={styles.projectGrid}>
-        {projects.length > 0 ? <>
-          {projects.map((project, index) => <ProjectCard key={project.projectRef} project={project} index={index} />)}
-          <button className={styles.newProjectCard} type="button" onClick={() => setCreateOpen(true)} aria-haspopup="dialog" aria-label="Create another project">
-            <span className={styles.newProjectIcon}>+</span>
-            <strong>Start another idea</strong>
-            <span>Begin with a thought, a mood, or a reference.</span>
-          </button>
-        </> : <div className={styles.libraryEmpty}>
+        {projects.length > 0 ? projects.map((project, index) => <ProjectCard key={project.projectRef} project={project} index={index} />) : <div className={styles.libraryEmpty}>
           <div className={styles.libraryEmptyIcon}><Music2 size={18} /></div>
           <strong>No projects yet</strong>
           <p>Start with a thought, a mood, or a reference. Mori will keep every direction together.</p>
@@ -78,7 +71,7 @@ function ProjectCard({ project, index }: { project: Project; index: number }) {
       : { label: "New project", signal: "● Ready", currentVersion: "Not started" }
 
   return (
-    <article className={styles.projectCard}>
+    <Link className={styles.projectCard} href={continuation.href} aria-label={continuation.ariaLabel}>
       <div className={`${styles.projectArtwork} ${index % 3 === 1 ? styles.projectArtworkPeach : index % 3 === 2 ? styles.projectArtworkMint : styles.projectArtworkLavender}`}><span>{String(index + 1).padStart(2, "0")}</span></div>
       <div className={styles.projectCardBody}>
         <div className={styles.projectCardMeta}><span>{projectState.label}</span><span className={styles.liveDot}>{projectState.signal}</span></div>
@@ -88,11 +81,11 @@ function ProjectCard({ project, index }: { project: Project; index: number }) {
           <span><Clock3 size={13} /> <strong>Last activity</strong> {project.lastActivity}</span>
           <span><strong>Current version</strong> {projectState.currentVersion}</span>
         </div>
-        <Link className={styles.projectContinue} href={continuation.href} aria-label={continuation.ariaLabel}>
+        <span className={styles.projectContinue}>
           {continuation.label} <ArrowUpRight size={14} />
-        </Link>
+        </span>
       </div>
-    </article>
+    </Link>
   )
 }
 
