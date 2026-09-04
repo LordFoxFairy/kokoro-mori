@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import type { MoriLibraryItem, MoriProject } from "@/lib/mori-api"
 import { MoriAppProvider } from "./components/mori-app-provider"
 import { MoriCatalogShell } from "./components/mori-catalog-shell"
@@ -14,15 +14,18 @@ describe("Mori catalog surfaces", () => {
     expect(screen.getByText("Active project")).toBeInTheDocument()
   })
 
-  it("keeps library filters local and provider-neutral", () => {
+  it("keeps Projects in its workspace route instead of duplicating them in Library", () => {
     render(
       <MoriAppProvider>
         <LibraryPageContent />
       </MoriAppProvider>,
     )
-    for (const label of ["All", "Projects", "Versions", "Sources"]) {
+    for (const label of ["All", "Versions", "Sources"]) {
       expect(screen.getByRole("button", { name: label })).toBeInTheDocument()
     }
+    expect(screen.queryByRole("button", { name: "Projects" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("link", { name: "Open First Light project" })).not.toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "Open First Light studio" })).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Lyrics" })).not.toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Exports" })).not.toBeInTheDocument()
     expect(screen.queryByText(/suno|tad/i)).not.toBeInTheDocument()
@@ -37,11 +40,13 @@ describe("Mori catalog surfaces", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Versions" }))
 
-    expect(screen.queryByText("2 versions · Updated just now")).not.toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Versions" })).toHaveAttribute("aria-pressed", "true")
+    expect(screen.getByRole("region", { name: "Saved versions" })).toBeInTheDocument()
+    expect(screen.queryByRole("link", { name: "Use Mira in Create" })).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole("button", { name: "Projects" }))
-    expect(screen.getByText("2 versions · Updated just now")).toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: "Sources" }))
+    expect(screen.getByRole("region", { name: "Creative source library" })).toBeInTheDocument()
+    expect(screen.queryByRole("link", { name: "Open First Light studio" })).not.toBeInTheDocument()
   })
 
   it("filters library items by title", () => {
@@ -73,7 +78,7 @@ describe("Mori catalog surfaces", () => {
 
     expect(screen.getByText("No matches for “Midnight rain”")).toBeInTheDocument()
     fireEvent.click(screen.getByRole("button", { name: "Clear library search" }))
-    expect(screen.getAllByRole("article")).toHaveLength(9)
+    expect(screen.getAllByRole("article")).toHaveLength(8)
   })
 
   it("keeps reusable creative sources in a progressive Library shelf", () => {
@@ -115,7 +120,7 @@ describe("Mori catalog surfaces", () => {
     expect(screen.getByRole("region", { name: "Creative source library" })).toHaveTextContent("City Lights demo")
   })
 
-  it("searches reusable sources alongside projects and versions", () => {
+  it("searches reusable sources alongside saved Versions", () => {
     render(
       <MoriAppProvider>
         <LibraryPageContent />
@@ -143,7 +148,7 @@ describe("Mori catalog surfaces", () => {
     expect(screen.queryByRole("button", { name: "Exports" })).not.toBeInTheDocument()
   })
 
-  it("does not mix preview Versions into a live Project when the library projection fails", async () => {
+  it("does not turn a loaded Project projection into a duplicate Library row", async () => {
     const api = {
       listLibrary: async () => { throw new Error("library unavailable") },
       listProjects: async () => ({
@@ -164,8 +169,9 @@ describe("Mori catalog surfaces", () => {
 
     render(<MoriAppProvider><LibraryPageContent api={api} /></MoriAppProvider>)
 
-    await waitFor(() => expect(screen.getByText("Window Seat")).toBeInTheDocument())
-    expect(screen.getByRole("status", { name: "Library availability" })).toHaveTextContent("Versions are temporarily unavailable")
+    await waitFor(() => expect(screen.getByRole("status", { name: "Library availability" })).toHaveTextContent("Versions are temporarily unavailable"))
+    expect(screen.queryByText("Window Seat")).not.toBeInTheDocument()
+    expect(screen.getByRole("region", { name: "Creative source library" })).toBeInTheDocument()
     expect(screen.queryByRole("link", { name: "Open First Light studio" })).not.toBeInTheDocument()
   })
 
@@ -190,7 +196,7 @@ describe("Mori catalog surfaces", () => {
     render(<MoriAppProvider><LibraryPageContent api={api} /></MoriAppProvider>)
 
     await waitFor(() => expect(screen.getByText("Window Seat · Close")).toBeInTheDocument())
-    expect(screen.getByRole("status", { name: "Library availability" })).toHaveTextContent("Projects are temporarily unavailable")
+    expect(screen.getByRole("status", { name: "Library availability" })).toHaveTextContent("Current Version labels are temporarily unavailable")
     expect(screen.queryByRole("link", { name: "Open First Light project" })).not.toBeInTheDocument()
   })
 
@@ -270,7 +276,7 @@ describe("Mori catalog surfaces", () => {
     expect(screen.getByText("Generate a direction and keep the version you want to return to.")).toBeInTheDocument()
   })
 
-  it("keeps projects visible from the separate project projection", async () => {
+  it("uses the Project projection only to enrich Versions", async () => {
     const project: MoriProject = {
       project_ref: "project_rain_room",
       title: "Rain Room",
@@ -279,9 +285,10 @@ describe("Mori catalog surfaces", () => {
       candidate_count: 0,
       last_activity_at: "2026-09-02T12:00:00.000Z",
     }
+    const listProjects = vi.fn(async () => ({ data: { projects: [project], next_cursor: null }, meta: { request_id: "request_projects_library" } }))
     const api = {
       listLibrary: async () => ({ data: { items: [], next_cursor: null }, meta: { request_id: "request_library_projects" } }),
-      listProjects: async () => ({ data: { projects: [project], next_cursor: null }, meta: { request_id: "request_projects_library" } }),
+      listProjects,
     }
 
     render(
@@ -290,10 +297,9 @@ describe("Mori catalog surfaces", () => {
       </MoriAppProvider>,
     )
 
-    fireEvent.click(screen.getByRole("button", { name: "Projects" }))
-
-    await waitFor(() => expect(screen.getByText("Rain Room")).toBeInTheDocument())
-    expect(screen.getByRole("link", { name: "Open Rain Room project" })).toHaveAttribute("href", "/projects/project_rain_room")
+    await waitFor(() => expect(listProjects).toHaveBeenCalledOnce())
+    expect(screen.queryByText("Rain Room")).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Projects" })).not.toBeInTheDocument()
   })
 
   it("lets a library version start playback and open its studio", () => {

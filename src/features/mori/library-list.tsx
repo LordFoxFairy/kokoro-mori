@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowUpRight, CircleAlert, FolderKanban, Headphones, Music2, Pause, Play, Search, Sparkles, X } from "lucide-react"
+import { ArrowUpRight, CircleAlert, Headphones, Music2, Pause, Play, Search, Sparkles, X } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import type { MoriApi, MoriLibraryItem, MoriProject } from "@/lib/mori-api"
@@ -12,7 +12,7 @@ import { useMoriApp } from "./components/mori-app-provider"
 import { previewCandidates, previewLibrary, previewProject } from "./preview-data"
 import styles from "./mori-workspace.module.css"
 
-const filters = ["All", "Projects", "Versions", "Sources"] as const
+const filters = ["All", "Versions", "Sources"] as const
 type LibraryFilter = (typeof filters)[number]
 type ProjectionStatus = "loading" | "ready" | "unavailable" | "preview" | "omitted"
 
@@ -20,10 +20,6 @@ const emptyCopy: Record<LibraryFilter, { title: string; description: string }> =
   All: {
     title: "Your library is ready",
     description: "Start a direction and keep the versions, lyrics, and exports you want to return to.",
-  },
-  Projects: {
-    title: "No projects yet",
-    description: "Start a project from a thought, a mood, or a reference.",
   },
   Versions: {
     title: "No versions yet",
@@ -98,13 +94,10 @@ export function LibraryPageContent({ api }: LibraryPageContentProps = {}) {
     .map((item) => currentVersionByProject.get(item.projectRef) === item.ref
       ? { ...item, subtitle: item.subtitle.replace(/^Version/u, "Current version") }
       : item)
-  const itemsWithProjects = [...projects.map(toLibraryProject), ...versionItems]
   const normalizedQuery = query.trim().toLowerCase()
   const hasQuery = normalizedQuery.length > 0
-  const visibleWorks = itemsWithProjects.filter((item) => {
-    const matchesFilter = filter === "All"
-      || (filter === "Projects" && item.kind === "project")
-      || (filter === "Versions" && item.kind === "version")
+  const visibleVersions = versionItems.filter((item) => {
+    const matchesFilter = filter === "All" || filter === "Versions"
     if (!matchesFilter) return false
     if (!hasQuery) return true
     return `${item.title} ${item.subtitle}`.toLowerCase().includes(normalizedQuery)
@@ -120,19 +113,18 @@ export function LibraryPageContent({ api }: LibraryPageContentProps = {}) {
     if (!hasQuery) return true
     return `${source.name} ${source.description} ${creativeSourceKindLabel(source.sourceKind)}`.toLowerCase().includes(normalizedQuery)
   })
-  const resultCount = visibleWorks.length + visibleSources.length
+  const resultCount = visibleVersions.length + visibleSources.length
+  const showsVersions = filter === "All" || filter === "Versions"
   const unavailableKinds = [
-    projectStatus === "unavailable" ? "Projects" : null,
-    libraryStatus === "unavailable" ? "Versions" : null,
+    showsVersions && libraryStatus === "unavailable" ? "Versions" : null,
+    showsVersions && projectStatus === "unavailable" ? "Current Version labels" : null,
   ].filter((value): value is string => value !== null)
   const availabilityMessage = unavailableKinds.length === 0
     ? null
     : `${unavailableKinds.join(" and ")} are temporarily unavailable. The work that loaded successfully is still shown.`
-  const unavailableEmpty = filter === "Projects" && projectStatus === "unavailable"
-    ? { title: "Projects are temporarily unavailable", description: "Your versions and creative sources are still available." }
-    : filter === "Versions" && libraryStatus === "unavailable"
-      ? { title: "Versions are temporarily unavailable", description: "Your projects and creative sources are still available." }
-      : null
+  const unavailableEmpty = filter === "Versions" && libraryStatus === "unavailable"
+    ? { title: "Versions are temporarily unavailable", description: "Creative sources are still available from their own shelf." }
+    : null
   const emptyState = hasQuery
     ? {
         title: `No matches for “${query.trim()}”`,
@@ -161,7 +153,7 @@ export function LibraryPageContent({ api }: LibraryPageContentProps = {}) {
         <div>
           <div className={styles.eyebrow}><span className={styles.eyebrowDot} />Everything you make</div>
           <h1 className={styles.catalogTitle}>Library</h1>
-          <p className={styles.catalogDescription}>A calm shelf for the pieces you want to return to.</p>
+          <p className={styles.catalogDescription}>Saved music and reusable creative sources, ready for the next move.</p>
         </div>
       </div>
       <div className={styles.libraryToolbar}>
@@ -204,33 +196,32 @@ export function LibraryPageContent({ api }: LibraryPageContentProps = {}) {
       )}
       {resultCount > 0 ? (
         <div className={styles.libraryResults} id="mori-library-results">
-          {visibleWorks.length > 0 ? (
-            <section className={styles.librarySection} aria-label="Projects and versions">
+          {visibleVersions.length > 0 ? (
+            <section className={styles.librarySection} aria-label="Saved versions">
               <header className={styles.librarySectionHeader}>
                 <div>
-                  <h2>{filter === "Projects" ? "Projects" : filter === "Versions" ? "Versions" : "Projects & versions"}</h2>
-                  <p>Continue from the work itself, not from a disconnected tool.</p>
+                  <h2>{filter === "All" ? "Recent versions" : "Versions"}</h2>
+                  <p>Listen here, then open the Version in its Project to keep shaping it.</p>
                 </div>
-                <span>{visibleWorks.length} {visibleWorks.length === 1 ? "item" : "items"}</span>
+                <span>{visibleVersions.length} {visibleVersions.length === 1 ? "version" : "versions"}</span>
               </header>
               <div className={styles.libraryList}>
-                {visibleWorks.map((item) => {
-                  const isProject = item.kind === "project"
-                  const versionPath = isProject ? `/projects/${item.ref}` : `/projects/${item.projectRef}/studio/${item.ref}`
-                  const active = !isProject && playerCandidate?.versionRef === item.ref
+                {visibleVersions.map((item) => {
+                  const versionPath = `/projects/${item.projectRef}/studio/${item.ref}`
+                  const active = playerCandidate?.versionRef === item.ref
                   return (
                     <article className={styles.libraryRow} key={item.ref}>
                       <div className={`${styles.libraryArtwork} ${item.accent === "peach" ? styles.libraryArtworkPeach : item.accent === "mint" ? styles.libraryArtworkMint : ""}`}>
-                        {isProject ? <FolderKanban size={18} /> : <Music2 size={18} />}
+                        <Music2 size={18} />
                       </div>
                       <div className={styles.libraryCopy}>
                         <strong>{item.title}</strong>
                         <span>{item.subtitle}</span>
                       </div>
-                      {!isProject ? <span className={styles.libraryDuration}><Headphones size={13} /> {Math.floor(item.durationSeconds / 60)}:{String(item.durationSeconds % 60).padStart(2, "0")}</span> : null}
+                      <span className={styles.libraryDuration}><Headphones size={13} /> {Math.floor(item.durationSeconds / 60)}:{String(item.durationSeconds % 60).padStart(2, "0")}</span>
                       <div className={styles.libraryActions}>
-                        {!isProject ? <button className={styles.iconButton} type="button" onClick={() => playVersion(item.ref)} aria-label={`${active && playing ? "Pause" : "Play"} ${item.title}`}>{active && playing ? <Pause size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" />}</button> : null}
-                        <Link className={styles.iconButton} href={versionPath} aria-label={`Open ${item.title} ${isProject ? "project" : "studio"}`}><ArrowUpRight size={14} /></Link>
+                        <button className={styles.iconButton} type="button" onClick={() => playVersion(item.ref)} aria-label={`${active && playing ? "Pause" : "Play"} ${item.title}`}>{active && playing ? <Pause size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" />}</button>
+                        <Link className={styles.iconButton} href={versionPath} aria-label={`Open ${item.title} studio`}><ArrowUpRight size={14} /></Link>
                       </div>
                     </article>
                   )
@@ -290,16 +281,6 @@ function toDomainProject(project: MoriProject, index: number): Project {
     currentVersionRef: project.current_version_ref,
     candidateCount: project.candidate_count,
     lastActivity: formatActivity(project.last_activity_at),
-  }
-}
-
-function toLibraryProject(project: Project): Extract<LibraryItem, { kind: "project" }> {
-  return {
-    kind: "project",
-    ref: project.projectRef,
-    title: project.title,
-    subtitle: `${project.candidateCount} ${project.candidateCount === 1 ? "version" : "versions"} · Updated ${project.lastActivity.toLowerCase()}`,
-    accent: project.coverAccent,
   }
 }
 
