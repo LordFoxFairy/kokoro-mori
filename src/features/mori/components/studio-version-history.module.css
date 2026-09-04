@@ -291,6 +291,12 @@
   }
 }
 
+@media (max-width: 1360px) {
+  .rail {
+    display: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .drawer {
     animation: none;

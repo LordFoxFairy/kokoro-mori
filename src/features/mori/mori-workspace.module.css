@@ -2905,10 +2905,6 @@
     grid-template-columns: 170px minmax(0, 1fr);
   }
 
-  .versionHistorySlot {
-    display: none;
-  }
-
   .settingsPage {
     padding: 18px;
   }
@@ -4162,10 +4158,6 @@
 @media (min-width: 901px) and (max-width: 1360px) {
   .studioLayout {
     grid-template-columns: 220px minmax(0, 1fr);
-  }
-
-  .versionHistorySlot {
-    display: none;
   }
 
   .studioCanvas {
