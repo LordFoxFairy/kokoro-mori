@@ -180,6 +180,7 @@ export function MoriAppProvider({ children, mediaFactory = createHtmlPlayerMedia
     playerSelectionRef.current = nextCandidate
     setPlayerCandidate(nextCandidate)
     setPositionSeconds(0)
+    if (!isPlayableCandidate(nextCandidate)) setPlayingState(false)
   }, [playbackQueue, playerCandidate])
 
   const nextPlayerCandidate = useCallback(() => {
@@ -190,6 +191,7 @@ export function MoriAppProvider({ children, mediaFactory = createHtmlPlayerMedia
     playerSelectionRef.current = nextCandidate
     setPlayerCandidate(nextCandidate)
     setPositionSeconds(0)
+    if (!isPlayableCandidate(nextCandidate)) setPlayingState(false)
   }, [playbackQueue, playerCandidate])
 
   useEffect(() => {
@@ -264,10 +266,13 @@ export function MoriAppProvider({ children, mediaFactory = createHtmlPlayerMedia
     }
 
     let active = true
+    const playEpoch = selectionEpochRef.current
     void controller.play().then(() => {
-      if (active) setPlayerMediaStatus("ready")
+      if (active && selectionEpochRef.current === playEpoch && mediaSourceEpochRef.current === playEpoch) {
+        setPlayerMediaStatus("ready")
+      }
     }).catch(() => {
-      if (!active) return
+      if (!active || selectionEpochRef.current !== playEpoch || mediaSourceEpochRef.current !== playEpoch) return
       setPlayingState(false)
       setPlayerMediaStatus("error")
       setPlayerMediaMessage("Audio could not be loaded.")

@@ -36,6 +36,15 @@ const thirdCandidate: Candidate = {
   isCurrent: false,
 }
 
+const unavailableCandidate: Candidate = {
+  ...firstCandidate,
+  candidateRef: "candidate_unavailable",
+  versionRef: "version_unavailable",
+  title: "Unavailable Version",
+  audioAssetRef: null,
+  isCurrent: false,
+}
+
 describe("Mori global player media integration", () => {
   it("uses the injected media seam for play, pause, seek, mute, and timeupdate", async () => {
     const harness = createMediaHarness()
@@ -245,6 +254,34 @@ describe("Mori global player media integration", () => {
 
     await waitFor(() => expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("Live second"))
     expect(harness.controller.setSource).toHaveBeenLastCalledWith(secondCandidate)
+  })
+
+  it("stops Playing when queue navigation reaches a Version without audio", async () => {
+    const harness = createMediaHarness()
+
+    function QueueHarness() {
+      const { nextPlayerCandidate, playerCandidate, playing, selectPlayerCandidate, setPlaying } = useMoriApp()
+      return (
+        <>
+          <button type="button" onClick={() => {
+            selectPlayerCandidate(unavailableCandidate)
+            selectPlayerCandidate(firstCandidate)
+            setPlaying(true)
+          }}>Prepare playable then unavailable</button>
+          <button type="button" onClick={nextPlayerCandidate}>Visit next Version</button>
+          <output aria-label="Player state">{playerCandidate?.versionRef ?? "none"}|{playing ? "playing" : "paused"}</output>
+        </>
+      )
+    }
+
+    render(<MoriAppProvider mediaFactory={harness.factory}><QueueHarness /></MoriAppProvider>)
+
+    fireEvent.click(screen.getByRole("button", { name: "Prepare playable then unavailable" }))
+    await waitFor(() => expect(screen.getByRole("status", { name: "Player state" })).toHaveTextContent("version_live_first|playing"))
+
+    fireEvent.click(screen.getByRole("button", { name: "Visit next Version" }))
+
+    expect(screen.getByRole("status", { name: "Player state" })).toHaveTextContent("version_unavailable|paused")
   })
 
   it("keeps one queue item when the same Version is selected from another projection", () => {
