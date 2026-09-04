@@ -7,7 +7,7 @@ import styles from "../mori-workspace.module.css"
 
 type PlaybackQueueProps = {
   candidates: Candidate[]
-  currentCandidateRef: string | null
+  currentVersionRef: string | null
   playing: boolean
   onChoose: (candidate: Candidate) => void
   onClose: () => void
@@ -18,7 +18,7 @@ function formatDuration(seconds: number): string {
   return `${minutes}:${String(seconds % 60).padStart(2, "0")}`
 }
 
-export function PlaybackQueue({ candidates, currentCandidateRef, playing, onChoose, onClose }: PlaybackQueueProps) {
+export function PlaybackQueue({ candidates, currentVersionRef, playing, onChoose, onClose }: PlaybackQueueProps) {
   const queueRef = useRef<HTMLElement>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
   const mobileViewportRef = useRef(false)
@@ -95,12 +95,12 @@ export function PlaybackQueue({ candidates, currentCandidateRef, playing, onChoo
 
         <div className={styles.playbackQueueList}>
           {candidates.map((candidate, index) => {
-            const current = candidate.candidateRef === currentCandidateRef
+            const current = candidate.versionRef === currentVersionRef
             return (
               <button
                 className={`${styles.playbackQueueItem} ${current ? styles.playbackQueueItemCurrent : ""}`}
                 type="button"
-                key={candidate.candidateRef}
+                key={candidate.versionRef}
                 onClick={() => onChoose(candidate)}
                 aria-label={`${current && playing ? "Pause" : "Play"} ${candidate.title} from queue`}
               >

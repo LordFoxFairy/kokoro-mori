@@ -49,6 +49,7 @@ describe("Mori application navigation", () => {
     expect(player).toHaveTextContent("Choose a version")
     expect(screen.queryByRole("button", { name: "Play" })).not.toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Mute" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Open playback queue" })).not.toBeInTheDocument()
   })
 
   it("supports a spacebar playback shortcut without hijacking text entry", () => {
@@ -85,12 +86,14 @@ describe("Mori application navigation", () => {
   it("opens a playback queue from the shared global player and plays a chosen version", async () => {
     render(
       <MoriAppProvider>
+        <PlaybackQueueSeed />
         <MoriCatalogShell activeKey="library" ariaLabel="Library">
           <div>Library content</div>
         </MoriCatalogShell>
       </MoriAppProvider>,
     )
 
+    fireEvent.click(screen.getByRole("button", { name: "Choose preview listening queue" }))
     const trigger = screen.getByRole("button", { name: "Open playback queue" })
     expect(trigger).toHaveTextContent("Up next")
     trigger.focus()
@@ -115,12 +118,14 @@ describe("Mori application navigation", () => {
   it("keeps the portalled playback queue inside the player geometry contract", () => {
     render(
       <MoriAppProvider>
+        <PlaybackQueueSeed />
         <MoriCatalogShell activeKey="library" ariaLabel="Library">
           <div>Library content</div>
         </MoriCatalogShell>
       </MoriAppProvider>,
     )
 
+    fireEvent.click(screen.getByRole("button", { name: "Choose preview listening queue" }))
     fireEvent.click(screen.getByRole("button", { name: "Open playback queue" }))
 
     const queue = screen.getByRole("dialog", { name: "Up next" })
@@ -293,11 +298,13 @@ describe("Mori application navigation", () => {
     try {
       render(
         <MoriAppProvider>
+          <PlaybackQueueSeed />
           <MoriCatalogShell activeKey="library" ariaLabel="Library">
             <div>Library content</div>
           </MoriCatalogShell>
         </MoriAppProvider>,
       )
+      fireEvent.click(screen.getByRole("button", { name: "Choose preview listening queue" }))
       const trigger = screen.getByRole("button", { name: "Open playback queue" })
       trigger.focus()
       fireEvent.click(trigger)
@@ -634,7 +641,11 @@ describe("Mori application navigation", () => {
 
       return (
         <>
-          <button type="button" onClick={() => selectPlayerCandidate(previewCandidates[0])}>Select first version</button>
+          <button type="button" onClick={() => {
+            selectPlayerCandidate(previewCandidates[0])
+            selectPlayerCandidate(previewCandidates[1])
+            selectPlayerCandidate(previewCandidates[0])
+          }}>Select first version</button>
           <button type="button" onClick={nextPlayerCandidate}>Next version</button>
           <button type="button" onClick={previousPlayerCandidate}>Previous version</button>
           <MoriCatalogShell activeKey="home" ariaLabel="Home">
@@ -667,11 +678,15 @@ describe("Mori application navigation", () => {
     const firstLiveCandidate = liveCandidates.at(0)
 
     function CandidateCollectionHarness() {
-      const { nextPlayerCandidate, replacePlayerCandidates, selectPlayerCandidate } = useMoriApp()
+      const { nextPlayerCandidate, selectPlayerCandidate } = useMoriApp()
       return (
         <>
-          <button type="button" onClick={() => replacePlayerCandidates(liveCandidates)}>Use live collection</button>
-          <button type="button" onClick={() => { if (firstLiveCandidate !== undefined) selectPlayerCandidate(firstLiveCandidate) }}>Play live take</button>
+          <button type="button" onClick={() => {
+            const secondLiveCandidate = liveCandidates.at(1)
+            if (firstLiveCandidate !== undefined) selectPlayerCandidate(firstLiveCandidate)
+            if (secondLiveCandidate !== undefined) selectPlayerCandidate(secondLiveCandidate)
+            if (firstLiveCandidate !== undefined) selectPlayerCandidate(firstLiveCandidate)
+          }}>Play live take</button>
           <button type="button" onClick={nextPlayerCandidate}>Next live take</button>
           <MoriCatalogShell activeKey="home" ariaLabel="Home">
             <div>Home content</div>
@@ -686,7 +701,6 @@ describe("Mori application navigation", () => {
       </MoriAppProvider>,
     )
 
-    fireEvent.click(screen.getByRole("button", { name: "Use live collection" }))
     fireEvent.click(screen.getByRole("button", { name: "Play live take" }))
     fireEvent.click(screen.getByRole("button", { name: "Next live take" }))
 
@@ -731,3 +745,12 @@ describe("Mori application navigation", () => {
     }
   })
 })
+
+function PlaybackQueueSeed() {
+  const { selectPlayerCandidate } = useMoriApp()
+  return <button type="button" onClick={() => {
+    selectPlayerCandidate(previewCandidates[0])
+    selectPlayerCandidate(previewCandidates[1])
+    selectPlayerCandidate(previewCandidates[0])
+  }}>Choose preview listening queue</button>
+}

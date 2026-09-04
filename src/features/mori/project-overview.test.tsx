@@ -1,8 +1,42 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
-import { describe, expect, it } from "vitest"
-import { MoriAppProvider } from "./components/mori-app-provider"
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
+import { describe, expect, it, vi } from "vitest"
+import type { MoriApi } from "@/lib/mori-api"
+import type { Candidate } from "./domain"
+import { MoriAppProvider, useMoriApp } from "./components/mori-app-provider"
 import { MoriCatalogShell } from "./components/mori-catalog-shell"
+import type { PlayerMediaFactory } from "./player-media"
 import { ProjectOverviewPageContent } from "./project-overview"
+
+const activeListen: Candidate = {
+  candidateRef: "candidate_active_listen",
+  versionRef: "version_active_listen",
+  generationRef: "generation_active_listen",
+  title: "Still Playing",
+  subtitle: "Global listen",
+  durationSeconds: 180,
+  mood: "Focused",
+  waveformSeed: 41,
+  isCurrent: true,
+  audioAssetRef: "asset/active-listen",
+}
+
+const queuedListenB: Candidate = {
+  ...activeListen,
+  candidateRef: "candidate_queued_b",
+  versionRef: "version_queued_b",
+  title: "Queue B",
+  isCurrent: false,
+  audioAssetRef: "asset/queue-b",
+}
+
+const queuedListenC: Candidate = {
+  ...activeListen,
+  candidateRef: "candidate_queued_c",
+  versionRef: "version_queued_c",
+  title: "Queue C",
+  isCurrent: false,
+  audioAssetRef: "asset/queue-c",
+}
 
 describe("Mori project overview", () => {
   it("continues the confirmed Current Version through project-scoped AI intents", () => {
@@ -109,6 +143,59 @@ describe("Mori project overview", () => {
     expect(within(songPlan).queryByText("102 BPM")).not.toBeInTheDocument()
   })
 
+  it("recognizes the playing Version across Candidate projections without restarting it", async () => {
+    const media = createMediaHarness()
+    const api: Pick<MoriApi, "getProject" | "listCandidates"> = {
+      getProject: async () => ({
+        data: {
+          project_ref: "project_same_version",
+          title: "Same Version",
+          description: "A projection identity check.",
+          current_version_ref: activeListen.versionRef,
+          candidate_count: 1,
+          last_activity_at: "2026-09-04T12:00:00.000Z",
+        },
+        meta: { request_id: "request_same_version_project" },
+      }),
+      listCandidates: async () => ({
+        data: {
+          candidates: [{
+            candidate_ref: "candidate_same_version_projection",
+            generation_ref: "generation_same_version_projection",
+            version_ref: activeListen.versionRef,
+            project_ref: "project_same_version",
+            title: "Projected same Version",
+            duration_seconds: activeListen.durationSeconds,
+            audio_asset_ref: "asset/active-listen",
+            waveform_asset_ref: "waveform_same_version_projection",
+            style_tags: ["projection"],
+            created_at: "2026-09-04T12:00:00.000Z",
+          }],
+          next_cursor: null,
+        },
+        meta: { request_id: "request_same_version_candidates" },
+      }),
+    }
+
+    render(
+      <MoriAppProvider mediaFactory={media.factory}>
+        <ActiveListenHarness />
+        <MoriCatalogShell activeKey="projects" ariaLabel="Project overview">
+          <ProjectOverviewPageContent projectRef="project_same_version" api={api} />
+        </MoriCatalogShell>
+      </MoriAppProvider>,
+    )
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Play Projected same Version" })).toBeInTheDocument())
+    fireEvent.click(screen.getByRole("button", { name: "Start active listen" }))
+
+    const projectedControl = screen.getByRole("button", { name: "Pause Projected same Version" })
+    fireEvent.click(projectedControl)
+    expect(screen.getByRole("button", { name: "Play" })).toBeInTheDocument()
+    expect(screen.getByRole("slider", { name: "Seek through current version" })).toHaveValue("40")
+    expect(media.setSource).toHaveBeenLastCalledWith(activeListen)
+  })
+
   it("continues from the confirmed Current Version instead of the first projected direction", async () => {
     const api = {
       getProject: async () => ({
@@ -205,6 +292,115 @@ describe("Mori project overview", () => {
     expect(screen.queryByRole("link", { name: "Open Studio" })).not.toBeInTheDocument()
   })
 
+  it("preserves the active global listen when the requested project has no directions", async () => {
+    const media = createMediaHarness()
+    let resolveCandidates: ((value: Awaited<ReturnType<MoriApi["listCandidates"]>>) => void) | undefined
+    const candidateRequest = new Promise<Awaited<ReturnType<MoriApi["listCandidates"]>>>((resolve) => { resolveCandidates = resolve })
+    const listCandidates = vi.fn<MoriApi["listCandidates"]>(() => candidateRequest)
+    const api = {
+      getProject: async () => ({
+        data: {
+          project_ref: "project_empty_playback",
+          title: "Rain Room",
+          description: "A small room of reflected light.",
+          current_version_ref: null,
+          candidate_count: 0,
+          last_activity_at: "2026-09-02T12:00:00.000Z",
+        },
+        meta: { request_id: "request_project_empty_playback" },
+      }),
+      listCandidates,
+    }
+
+    render(
+      <MoriAppProvider mediaFactory={media.factory}>
+        <ActiveListenHarness />
+        <MoriCatalogShell activeKey="projects" ariaLabel="Project overview">
+          <ProjectOverviewPageContent projectRef="project_empty_playback" api={api} />
+        </MoriCatalogShell>
+      </MoriAppProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Start active listen" }))
+    await waitFor(() => expect(listCandidates).toHaveBeenCalled())
+    await act(async () => {
+      resolveCandidates?.({
+        data: { candidates: [], next_cursor: null },
+        meta: { request_id: "request_candidates_empty_playback" },
+      })
+      await candidateRequest
+    })
+
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Rain Room" })).toBeInTheDocument())
+    const player = screen.getByRole("region", { name: "Global player" })
+    expect(player).toHaveTextContent("Still Playing")
+    expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument()
+    expect(screen.getByRole("slider", { name: "Seek through current version" })).toHaveValue("40")
+    expect(media.setSource).toHaveBeenLastCalledWith(activeListen)
+  })
+
+  it("does not rewrite the listening queue when another Project projection loads", async () => {
+    const media = createMediaHarness()
+    let releaseProjection: (() => void) | undefined
+    const projectionGate = new Promise<void>((resolve) => { releaseProjection = resolve })
+    const api: Pick<MoriApi, "getProject" | "listCandidates"> = {
+      getProject: async () => ({
+        data: {
+          project_ref: "project_projection_only",
+          title: "Projection only",
+          description: "Browsing must not change listening intent.",
+          current_version_ref: null,
+          candidate_count: 1,
+          last_activity_at: "2026-09-04T12:00:00.000Z",
+        },
+        meta: { request_id: "request_projection_only" },
+      }),
+      listCandidates: async () => {
+        await projectionGate
+        return {
+          data: {
+            candidates: [{
+              candidate_ref: "candidate_surface_d",
+              generation_ref: "generation_surface_d",
+              version_ref: "version_surface_d",
+              project_ref: "project_projection_only",
+              title: "Surface D",
+              duration_seconds: 150,
+              audio_asset_ref: "asset/surface-d",
+              waveform_asset_ref: "waveform_surface_d",
+              style_tags: ["surface"],
+              created_at: "2026-09-04T12:00:00.000Z",
+            }],
+            next_cursor: null,
+          },
+          meta: { request_id: "request_surface_candidates" },
+        }
+      },
+    }
+
+    render(
+      <MoriAppProvider mediaFactory={media.factory}>
+        <ActiveQueueHarness />
+        <MoriCatalogShell activeKey="projects" ariaLabel="Project overview">
+          <ProjectOverviewPageContent projectRef="project_projection_only" api={api} />
+        </MoriCatalogShell>
+      </MoriAppProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Build active listening queue" }))
+    await waitFor(() => expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument())
+    await act(async () => { releaseProjection?.() })
+    await waitFor(() => expect(screen.getByRole("button", { name: "Play Surface D" })).toBeInTheDocument())
+    fireEvent.click(screen.getByRole("button", { name: "Open playback queue" }))
+
+    expect(screen.getAllByRole("button", { name: /from queue$/u }).map((button) => button.getAttribute("aria-label"))).toEqual([
+      "Pause Still Playing from queue",
+      "Play Queue B from queue",
+      "Play Queue C from queue",
+    ])
+    expect(screen.queryByRole("button", { name: "Play Surface D from queue" })).not.toBeInTheDocument()
+  })
+
   it("does not guess a continuation Version when candidates exist without a confirmed Current", async () => {
     const api = {
       getProject: async () => ({
@@ -290,6 +486,50 @@ describe("Mori project overview", () => {
     expect(player).toHaveTextContent("Your next listen starts here")
   })
 
+  it("preserves the active global listen when the candidate projection fails", async () => {
+    const media = createMediaHarness()
+    let rejectCandidates: ((reason: Error) => void) | undefined
+    const candidateRequest = new Promise<Awaited<ReturnType<MoriApi["listCandidates"]>>>((_, reject) => { rejectCandidates = reject })
+    const listCandidates = vi.fn<MoriApi["listCandidates"]>(() => candidateRequest)
+    const api = {
+      getProject: async () => ({
+        data: {
+          project_ref: "project_failed_playback",
+          title: "Blue Hour",
+          description: "A restrained electronic study.",
+          current_version_ref: null,
+          candidate_count: 1,
+          last_activity_at: "2026-09-02T12:00:00.000Z",
+        },
+        meta: { request_id: "request_project_failed_playback" },
+      }),
+      listCandidates,
+    }
+
+    render(
+      <MoriAppProvider mediaFactory={media.factory}>
+        <ActiveListenHarness />
+        <MoriCatalogShell activeKey="projects" ariaLabel="Project overview">
+          <ProjectOverviewPageContent projectRef="project_failed_playback" api={api} />
+        </MoriCatalogShell>
+      </MoriAppProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Start active listen" }))
+    await waitFor(() => expect(listCandidates).toHaveBeenCalled())
+    await act(async () => {
+      rejectCandidates?.(new Error("candidate projection unavailable"))
+      await candidateRequest.catch(() => undefined)
+    })
+
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Blue Hour" })).toBeInTheDocument())
+    const player = screen.getByRole("region", { name: "Global player" })
+    expect(player).toHaveTextContent("Still Playing")
+    expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument()
+    expect(screen.getByRole("slider", { name: "Seek through current version" })).toHaveValue("40")
+    expect(media.setSource).toHaveBeenLastCalledWith(activeListen)
+  })
+
   it("keeps the confirmed Current Version actionable when the candidate projection is unavailable", async () => {
     const api = {
       getProject: async () => ({
@@ -334,3 +574,37 @@ describe("Mori project overview", () => {
     expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("Choose a version")
   })
 })
+
+function ActiveListenHarness() {
+  const { selectPlayerCandidate, setPlaying } = useMoriApp()
+  return <button type="button" onClick={() => {
+    selectPlayerCandidate(activeListen, 40)
+    setPlaying(true)
+  }}>Start active listen</button>
+}
+
+function ActiveQueueHarness() {
+  const { selectPlayerCandidate, setPlaying } = useMoriApp()
+  return <button type="button" onClick={() => {
+    selectPlayerCandidate(activeListen)
+    selectPlayerCandidate(queuedListenB)
+    selectPlayerCandidate(queuedListenC)
+    selectPlayerCandidate(activeListen, 40)
+    setPlaying(true)
+  }}>Build active listening queue</button>
+}
+
+function createMediaHarness(): { factory: PlayerMediaFactory; setSource: ReturnType<typeof vi.fn> } {
+  const setSource = vi.fn()
+  return {
+    setSource,
+    factory: () => ({
+      setSource,
+      play: vi.fn(async () => undefined),
+      pause: vi.fn(),
+      seek: vi.fn(),
+      setMuted: vi.fn(),
+      dispose: vi.fn(),
+    }),
+  }
+}

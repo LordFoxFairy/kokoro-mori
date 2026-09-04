@@ -72,7 +72,7 @@ export function HomePageContent({ api }: HomePageContentProps = {}) {
   }, [homeApi, projectRequestVersion])
 
   function playCandidate(candidate: Candidate) {
-    if (playerCandidate?.candidateRef === candidate.candidateRef) {
+    if (playerCandidate?.versionRef === candidate.versionRef) {
       setPlaying(!playing)
       return
     }
@@ -150,7 +150,7 @@ export function HomePageContent({ api }: HomePageContentProps = {}) {
           project={featuredProject}
           candidates={candidates}
           status={directionStatus}
-          playerCandidateRef={playerCandidate?.candidateRef ?? null}
+          playerVersionRef={playerCandidate?.versionRef ?? null}
           playing={playing}
           onPlay={playCandidate}
         />
@@ -159,11 +159,11 @@ export function HomePageContent({ api }: HomePageContentProps = {}) {
   )
 }
 
-function HomeDirections({ project, candidates, status, playerCandidateRef, playing, onPlay }: {
+function HomeDirections({ project, candidates, status, playerVersionRef, playing, onPlay }: {
   project: Project | null
   candidates: Candidate[]
   status: DirectionProjectionStatus
-  playerCandidateRef: string | null
+  playerVersionRef: string | null
   playing: boolean
   onPlay: (candidate: Candidate) => void
 }) {
@@ -183,7 +183,7 @@ function HomeDirections({ project, candidates, status, playerCandidateRef, playi
   const projectRef = project?.projectRef ?? previewProject.projectRef
   return <div className={styles.homeTrackList}>
     {candidates.map((candidate, index) => {
-      const isPlaying = playerCandidateRef === candidate.candidateRef && playing
+      const isPlaying = playerVersionRef === candidate.versionRef && playing
       return <article className={styles.homeTrack} key={candidate.candidateRef}>
         <button className={`${styles.homeTrackArtwork} ${index === 1 ? styles.homeTrackArtworkAlt : ""}`} type="button" onClick={() => onPlay(candidate)} aria-label={`${isPlaying ? "Pause" : "Play"} ${candidate.title}`}><Play size={14} fill={isPlaying ? "currentColor" : "none"} /></button>
         <div className={styles.homeTrackCopy}><strong>{candidate.title}</strong><span>{candidate.subtitle}</span></div>

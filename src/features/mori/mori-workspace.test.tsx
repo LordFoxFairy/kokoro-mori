@@ -3,10 +3,12 @@ import { useState } from "react"
 import { describe, expect, it, vi } from "vitest"
 import type { GenerationCreateInput, MoriApi } from "@/lib/mori-api"
 import { MoriApiRequestError } from "@/lib/mori-api-client"
+import type { Candidate } from "./domain"
 import { MoriAppProvider, useMoriApp } from "./components/mori-app-provider"
 import { CreateCanvas, type CreationDraft } from "./components/create-canvas"
 import { createGenerationQueueState } from "./generation-queue"
 import { MoriWorkspace } from "./mori-workspace"
+import type { PlayerMediaFactory } from "./player-media"
 import { previewCandidates, previewProject } from "./preview-data"
 import { readGenerationQueueState, writeGenerationQueueState } from "./generation-queue-storage"
 
@@ -39,6 +41,44 @@ function ModalShortcutHarness() {
     <button type="button" onClick={() => selectPlayerCandidate(previewCandidates[0])}>Load player</button>
     <span role="status">{playing ? "playing" : "paused"}</span>
     <section role="dialog" aria-modal="true" aria-label="Test modal" tabIndex={-1}>Modal</section>
+  </>
+}
+
+const outsideListen: Candidate = {
+  candidateRef: "candidate_outside_listen",
+  versionRef: "version_outside_listen",
+  generationRef: "generation_outside_listen",
+  title: "Outside listen",
+  subtitle: "Keep this playing",
+  durationSeconds: 180,
+  mood: "Focused",
+  waveformSeed: 73,
+  isCurrent: false,
+  audioAssetRef: "asset/outside-listen",
+}
+
+const silentMediaFactory: PlayerMediaFactory = () => ({
+  setSource: vi.fn(),
+  play: vi.fn(async () => undefined),
+  pause: vi.fn(),
+  seek: vi.fn(),
+  setMuted: vi.fn(),
+  dispose: vi.fn(),
+})
+
+function ActivePlayerHarness() {
+  const { playbackQueue, playerCandidate, playing, positionSeconds, selectPlayerCandidate, setPlaying } = useMoriApp()
+  return <>
+    <button type="button" onClick={() => {
+      selectPlayerCandidate(outsideListen, 40)
+      setPlaying(true)
+    }}>Start outside listen</button>
+    <output aria-label="global listening state">{[
+      playerCandidate?.versionRef ?? "none",
+      playing ? "playing" : "paused",
+      String(positionSeconds),
+      playbackQueue.map((candidate) => candidate.versionRef).join(","),
+    ].join("|")}</output>
   </>
 }
 
@@ -172,14 +212,16 @@ describe("Mori workspace", () => {
     /></MoriAppProvider>)
 
     await waitFor(() => expect(getGeneration).toHaveBeenCalledWith(generationRef))
-    expect(screen.getByRole("button", { name: "Open generation queue" })).toHaveAttribute("data-generation-feedback", "active")
-    expect(readGenerationQueueState().items).toContainEqual(expect.objectContaining({
-      generation_ref: generationRef,
-      project_ref: "project_route_only_create",
-      kind: "create",
-      status: "generating",
-      progress: 47,
-    }))
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Open generation queue" })).toHaveAttribute("data-generation-feedback", "active")
+      expect(readGenerationQueueState().items).toContainEqual(expect.objectContaining({
+        generation_ref: generationRef,
+        project_ref: "project_route_only_create",
+        kind: "create",
+        status: "generating",
+        progress: 47,
+      }))
+    })
     expect(localStorage.getItem("mori-generation-queue-v1")).not.toContain("song_plan_route_only_create")
     expect(getGeneration).toHaveBeenCalledTimes(1)
     localStorage.clear()
@@ -1415,6 +1457,48 @@ describe("Mori workspace", () => {
     await waitFor(() => expect(within(nextCard).getByText("Current version")).toBeInTheDocument())
     expect(within(currentCard).queryByText("Current version")).not.toBeInTheDocument()
     expect(within(queue).getByRole("status")).toHaveTextContent("Current Version updated")
+  })
+
+  it("keeps global listening intent unchanged when a Direction is only selected", () => {
+    render(
+      <MoriAppProvider mediaFactory={silentMediaFactory}>
+        <ActivePlayerHarness />
+        <MoriWorkspace projectRef={previewProject.projectRef} />
+      </MoriAppProvider>,
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Start outside listen" }))
+    fireEvent.click(screen.getByRole("button", { name: "Open generation queue" }))
+    fireEvent.click(screen.getByRole("button", { name: "Select First Light · Afterglow direction" }))
+
+    expect(screen.getByLabelText("global listening state")).toHaveTextContent("version_outside_listen|playing|40|version_outside_listen")
+    expect(screen.getByRole("button", { name: "Play First Light · Afterglow" })).toHaveTextContent("Preview")
+  })
+
+  it("keeps global listening intent unchanged when a Direction becomes Current", async () => {
+    const putCurrentVersion = vi.fn<MoriApi["putCurrentVersion"]>(async () => ({
+      data: {
+        project_ref: previewProject.projectRef,
+        current_version_ref: previewCandidates[1].versionRef,
+        source_candidate_ref: previewCandidates[1].candidateRef,
+        previous_version_ref: previewCandidates[0].versionRef,
+        selected_at: "2026-09-04T13:00:00.000Z",
+      },
+      meta: { request_id: "request_current_preserves_listen" },
+    }))
+
+    render(
+      <MoriAppProvider mediaFactory={silentMediaFactory}>
+        <ActivePlayerHarness />
+        <MoriWorkspace projectRef={previewProject.projectRef} api={createWorkspaceApi({ putCurrentVersion })} />
+      </MoriAppProvider>,
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Start outside listen" }))
+    fireEvent.click(screen.getByRole("button", { name: "Open generation queue" }))
+    fireEvent.click(screen.getByRole("button", { name: "Set as current" }))
+
+    await waitFor(() => expect(screen.getByText("Current Version updated")).toBeInTheDocument())
+    expect(screen.getByLabelText("global listening state")).toHaveTextContent("version_outside_listen|playing|40|version_outside_listen")
+    expect(screen.getByRole("button", { name: "Play First Light · Afterglow" })).toHaveTextContent("Preview")
   })
 
   it("keeps the queue Current unchanged and reuses its command identity on retry", async () => {

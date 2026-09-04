@@ -16,6 +16,7 @@ type InspectorPanelProps = {
   candidates: Candidate[]
   songPlan: SongPlan | null
   selectedCandidateRef: string
+  playerVersionRef: string | null
   playing: boolean
   currentVersionCommitRun?: CurrentVersionCommitRun
   onSelect: (candidate: Candidate) => void
@@ -36,7 +37,7 @@ function formatDuration(seconds: number): string {
   return `${minutes}:${remaining}`
 }
 
-export function InspectorPanel({ presentation = "drawer", projectRef, generation, queueItems = [], activeGenerationRef = null, candidates, songPlan, selectedCandidateRef, playing, currentVersionCommitRun = idleCurrentVersionCommitRun, onSelect, onPromote, onRetryCurrentVersion, onDismissCurrentVersion, onPlay, onCancel, cancelPending = false, onRetry, onClose, onSelectGeneration }: InspectorPanelProps) {
+export function InspectorPanel({ presentation = "drawer", projectRef, generation, queueItems = [], activeGenerationRef = null, candidates, songPlan, selectedCandidateRef, playerVersionRef, playing, currentVersionCommitRun = idleCurrentVersionCommitRun, onSelect, onPromote, onRetryCurrentVersion, onDismissCurrentVersion, onPlay, onCancel, cancelPending = false, onRetry, onClose, onSelectGeneration }: InspectorPanelProps) {
   const generationActive = generation !== null && ["queued", "preparing", "generating", "post_processing"].includes(generation.status)
   const generationFailed = generation !== null && (generation.status === "failed" || generation.status === "expired")
   const generationEmpty = generation?.status === "succeeded" && candidates.length === 0
@@ -169,6 +170,7 @@ export function InspectorPanel({ presentation = "drawer", projectRef, generation
           </div> : candidates.map((candidate, index) => {
             const isCurrent = candidate.isCurrent
             const isSelected = selectedCandidateRef === candidate.candidateRef
+            const isPlaying = playing && playerVersionRef === candidate.versionRef
             const isCommitting = currentVersionCommitRun.status === "saving"
             const isCommitTarget = isCommitting && currentVersionCommitRun.targetVersionRef === candidate.versionRef
             return (
@@ -183,8 +185,8 @@ export function InspectorPanel({ presentation = "drawer", projectRef, generation
                 </button>
                 <Waveform seed={candidate.waveformSeed} progress={isSelected ? 0.62 : 0.32} />
                 <div className={styles.candidateActions}>
-                  <button className={styles.candidatePlay} type="button" onClick={(event) => { event.stopPropagation(); onPlay(candidate) }} aria-label={`${playing && isSelected ? "Pause" : "Play"} ${candidate.title}`}>
-                    <Play size={12} fill={playing && isSelected ? "currentColor" : "none"} /> {playing && isSelected ? "Playing" : "Preview"}
+                  <button className={styles.candidatePlay} type="button" onClick={(event) => { event.stopPropagation(); onPlay(candidate) }} aria-label={`${isPlaying ? "Pause" : "Play"} ${candidate.title}`}>
+                    <Play size={12} fill={isPlaying ? "currentColor" : "none"} /> {isPlaying ? "Playing" : "Preview"}
                   </button>
                   {projectRef === null ? null : <Link
                       className={styles.candidateStudioLink}

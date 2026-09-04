@@ -1,7 +1,6 @@
 "use client"
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
-import { previewCandidates } from "../preview-data"
 import type { Candidate, CreationMode, LyricsMode } from "../domain"
 import { createHtmlPlayerMediaController, isPlayableCandidate, type PlayerMediaFactory } from "../player-media"
 
@@ -31,8 +30,7 @@ type MoriAppContextValue = {
   toggleRail: () => void
   setRailCollapsed: (collapsed: boolean) => void
   playerCandidate: Candidate | null
-  playerCandidates: Candidate[]
-  clearPlayerCandidate: () => void
+  playbackQueue: Candidate[]
   playing: boolean
   playerMediaStatus: PlayerMediaStatus
   playerMediaMessage: string | null
@@ -44,7 +42,6 @@ type MoriAppContextValue = {
   setPlaying: (playing: boolean) => void
   seekPlayer: (positionSeconds: number) => void
   selectPlayerCandidate: (candidate: Candidate, positionSeconds?: number) => void
-  replacePlayerCandidates: (candidates: Candidate[]) => void
   previousPlayerCandidate: () => void
   nextPlayerCandidate: () => void
   preferences: MoriPreferences
@@ -60,18 +57,20 @@ export function MoriAppProvider({ children, mediaFactory = createHtmlPlayerMedia
   const [railLoaded, setRailLoaded] = useState(false)
   const [preferences, setPreferences] = useState<MoriPreferences>(defaultPreferences)
   const [preferencesLoaded, setPreferencesLoaded] = useState(false)
-  // Keep the global transport neutral until a user chooses a Version. The
-  // preview queue remains available, but an unavailable fixture should not
-  // become the first thing every surface shows.
+  // Browsing a surface does not mutate listening intent. The transport and
+  // queue remain empty until the user explicitly chooses a Version.
   const [playerCandidate, setPlayerCandidate] = useState<Candidate | null>(null)
-  const [playerCandidates, setPlayerCandidates] = useState(previewCandidates)
+  const [playbackQueue, setPlaybackQueue] = useState<Candidate[]>([])
   const [playing, setPlayingState] = useState(false)
   const [playerMediaStatus, setPlayerMediaStatus] = useState<PlayerMediaStatus>(isPlayableCandidate(playerCandidate) ? "ready" : "unavailable")
   const [playerMediaMessage, setPlayerMediaMessage] = useState<string | null>(null)
   const [muted, setMuted] = useState(false)
   const [positionSeconds, setPositionSeconds] = useState(0)
-  const playbackRef = useRef({ candidate: playerCandidate, candidates: playerCandidates, positionSeconds, endBehavior: preferences.endBehavior })
+  const playbackRef = useRef({ candidate: playerCandidate, queue: playbackQueue, positionSeconds, endBehavior: preferences.endBehavior })
   const playerSelectionRef = useRef<Candidate | null>(playerCandidate)
+  const selectionEpochRef = useRef(0)
+  const mediaSourceEpochRef = useRef(0)
+  const pendingSourcePositionRef = useRef<{ selectionEpoch: number; positionSeconds: number } | null>(null)
   const mediaRef = useRef<ReturnType<PlayerMediaFactory> | null>(null)
 
   const setRailCollapsed = useCallback((collapsed: boolean) => setRailCollapsedState(collapsed), [])
@@ -109,14 +108,6 @@ export function MoriAppProvider({ children, mediaFactory = createHtmlPlayerMedia
   const updatePreferences = useCallback((patch: Partial<MoriPreferences>) => {
     setPreferences((current) => ({ ...current, ...patch }))
   }, [])
-  const clearPlayerCandidate = useCallback(() => {
-    playerSelectionRef.current = null
-    setPlayerCandidate(null)
-    setPlayerCandidates([])
-    setPlayingState(false)
-    setPositionSeconds(0)
-  }, [])
-
   const retryPlayerPlayback = useCallback(() => {
     if (!isPlayableCandidate(playerSelectionRef.current)) {
       setPlayingState(false)
@@ -163,38 +154,52 @@ export function MoriAppProvider({ children, mediaFactory = createHtmlPlayerMedia
   }, [preferences, preferencesLoaded])
 
   const selectPlayerCandidate = useCallback((candidate: Candidate, initialPositionSeconds = 0) => {
+    const nextPositionSeconds = Math.max(0, Math.min(candidate.durationSeconds, Math.round(initialPositionSeconds)))
+    if (playerSelectionRef.current === candidate) {
+      setPositionSeconds(nextPositionSeconds)
+      mediaRef.current?.seek(nextPositionSeconds)
+      return
+    }
+    selectionEpochRef.current += 1
+    pendingSourcePositionRef.current = { selectionEpoch: selectionEpochRef.current, positionSeconds: nextPositionSeconds }
     playerSelectionRef.current = candidate
     setPlayerCandidate(candidate)
-    setPositionSeconds(Math.max(0, Math.min(candidate.durationSeconds, Math.round(initialPositionSeconds))))
-    setPlayerCandidates((items) => items.some((item) => item.candidateRef === candidate.candidateRef) ? items : [...items, candidate])
-  }, [])
-
-  const replacePlayerCandidates = useCallback((candidates: Candidate[]) => {
-    const uniqueCandidates = candidates.filter((candidate, index, items) => items.findIndex((item) => item.candidateRef === candidate.candidateRef) === index)
-    setPlayerCandidates(uniqueCandidates)
+    setPositionSeconds(nextPositionSeconds)
+    setPlaybackQueue((items) => {
+      const existingIndex = items.findIndex((item) => item.versionRef === candidate.versionRef)
+      if (existingIndex < 0) return [...items, candidate]
+      return items.map((item, index) => index === existingIndex ? candidate : item)
+    })
   }, [])
 
   const previousPlayerCandidate = useCallback(() => {
-    const nextCandidate = playerCandidate === null ? null : stepCandidate(playerCandidate, playerCandidates, -1)
+    if (playerCandidate === null || playbackQueue.length < 2) return
+    const nextCandidate = stepCandidate(playerCandidate, playbackQueue, -1)
+    selectionEpochRef.current += 1
+    pendingSourcePositionRef.current = { selectionEpoch: selectionEpochRef.current, positionSeconds: 0 }
     playerSelectionRef.current = nextCandidate
     setPlayerCandidate(nextCandidate)
     setPositionSeconds(0)
-  }, [playerCandidate, playerCandidates])
+  }, [playbackQueue, playerCandidate])
 
   const nextPlayerCandidate = useCallback(() => {
-    const nextCandidate = playerCandidate === null ? null : stepCandidate(playerCandidate, playerCandidates, 1)
+    if (playerCandidate === null || playbackQueue.length < 2) return
+    const nextCandidate = stepCandidate(playerCandidate, playbackQueue, 1)
+    selectionEpochRef.current += 1
+    pendingSourcePositionRef.current = { selectionEpoch: selectionEpochRef.current, positionSeconds: 0 }
     playerSelectionRef.current = nextCandidate
     setPlayerCandidate(nextCandidate)
     setPositionSeconds(0)
-  }, [playerCandidate, playerCandidates])
+  }, [playbackQueue, playerCandidate])
 
   useEffect(() => {
-    playbackRef.current = { candidate: playerCandidate, candidates: playerCandidates, positionSeconds, endBehavior: preferences.endBehavior }
-  }, [playerCandidate, playerCandidates, positionSeconds, preferences.endBehavior])
+    playbackRef.current = { candidate: playerCandidate, queue: playbackQueue, positionSeconds, endBehavior: preferences.endBehavior }
+  }, [playbackQueue, playerCandidate, positionSeconds, preferences.endBehavior])
 
   useEffect(() => {
     const controller = mediaFactory({
       onTimeUpdate: (nextPosition) => {
+        if (mediaSourceEpochRef.current !== selectionEpochRef.current) return
         const currentCandidate = playbackRef.current.candidate
         if (currentCandidate === null || !Number.isFinite(nextPosition)) return
         const clampedPosition = Math.max(0, Math.min(currentCandidate.durationSeconds, nextPosition))
@@ -202,12 +207,15 @@ export function MoriAppProvider({ children, mediaFactory = createHtmlPlayerMedia
         setPositionSeconds(clampedPosition)
       },
       onEnded: () => {
+        if (mediaSourceEpochRef.current !== selectionEpochRef.current) return
         const current = playbackRef.current
         setPositionSeconds(0)
-        if (current.endBehavior === "next" && current.candidates.length > 1 && current.candidate !== null) {
-          const nextCandidate = stepCandidate(current.candidate, current.candidates, 1)
+        if (current.endBehavior === "next" && current.queue.length > 1 && current.candidate !== null) {
+          const nextCandidate = stepCandidate(current.candidate, current.queue, 1)
           current.candidate = nextCandidate
           current.positionSeconds = 0
+          selectionEpochRef.current += 1
+          pendingSourcePositionRef.current = { selectionEpoch: selectionEpochRef.current, positionSeconds: 0 }
           playerSelectionRef.current = nextCandidate
           setPlayerCandidate(nextCandidate)
           setPlayingForApp(true)
@@ -216,6 +224,7 @@ export function MoriAppProvider({ children, mediaFactory = createHtmlPlayerMedia
         setPlayingState(false)
       },
       onError: () => {
+        if (mediaSourceEpochRef.current !== selectionEpochRef.current) return
         setPlayingState(false)
         setPlayerMediaStatus("error")
         setPlayerMediaMessage("Audio could not be loaded.")
@@ -231,7 +240,14 @@ export function MoriAppProvider({ children, mediaFactory = createHtmlPlayerMedia
   useEffect(() => {
     const controller = mediaRef.current
     if (controller === null) return
+    const sourceEpoch = selectionEpochRef.current
+    mediaSourceEpochRef.current = sourceEpoch
     controller.setSource(playerCandidate)
+    const pendingPosition = pendingSourcePositionRef.current
+    if (pendingPosition?.selectionEpoch === sourceEpoch) {
+      if (pendingPosition.positionSeconds > 0) controller.seek(pendingPosition.positionSeconds)
+      pendingSourcePositionRef.current = null
+    }
     setPlayerMediaMessage(null)
     setPlayerMediaStatus(isPlayableCandidate(playerCandidate) ? "ready" : "unavailable")
   }, [mediaFactory, playerCandidate])
@@ -284,8 +300,7 @@ export function MoriAppProvider({ children, mediaFactory = createHtmlPlayerMedia
     toggleRail,
     setRailCollapsed,
     playerCandidate,
-    playerCandidates,
-    clearPlayerCandidate,
+    playbackQueue,
     playing,
     playerMediaStatus,
     playerMediaMessage,
@@ -297,19 +312,18 @@ export function MoriAppProvider({ children, mediaFactory = createHtmlPlayerMedia
     toggleMuted,
     seekPlayer,
     selectPlayerCandidate,
-    replacePlayerCandidates,
     previousPlayerCandidate,
     nextPlayerCandidate,
     preferences,
     updatePreferences,
-  }), [clearPlayerCandidate, muted, nextPlayerCandidate, playerCandidate, playerCandidates, playerMediaMessage, playerMediaStatus, playing, positionSeconds, preferences, previousPlayerCandidate, railCollapsed, replacePlayerCandidates, retryPlayerPlayback, seekPlayer, selectPlayerCandidate, setPlayingForApp, setRailCollapsed, toggleMuted, togglePlaying, toggleRail, updatePreferences])
+  }), [muted, nextPlayerCandidate, playbackQueue, playerCandidate, playerMediaMessage, playerMediaStatus, playing, positionSeconds, preferences, previousPlayerCandidate, railCollapsed, retryPlayerPlayback, seekPlayer, selectPlayerCandidate, setPlayingForApp, setRailCollapsed, toggleMuted, togglePlaying, toggleRail, updatePreferences])
 
   return <MoriAppContext.Provider value={value}>{children}</MoriAppContext.Provider>
 }
 
 function stepCandidate(candidate: Candidate, candidates: Candidate[], direction: -1 | 1): Candidate {
   if (candidates.length === 0) return candidate
-  const currentIndex = candidates.findIndex((item) => item.candidateRef === candidate.candidateRef)
+  const currentIndex = candidates.findIndex((item) => item.versionRef === candidate.versionRef)
   const nextIndex = currentIndex < 0
     ? 0
     : (currentIndex + direction + candidates.length) % candidates.length

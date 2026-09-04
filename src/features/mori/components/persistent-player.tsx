@@ -51,11 +51,11 @@ export function PersistentPlayer({ candidate, playing, muted, positionSeconds, o
       <div className={styles.playerCenter}>
         {canPlay ? <>
           <div className={styles.playerControls} role="group" aria-label="Playback controls">
-            <button className={`${styles.playerButton} ${styles.playerSkipButton}`} type="button" onClick={onPrevious} aria-label="Previous version" disabled={!hasCandidate}><SkipBack /></button>
+            <button className={`${styles.playerButton} ${styles.playerSkipButton}`} type="button" onClick={onPrevious} aria-label="Previous version" disabled={onPrevious === undefined}><SkipBack /></button>
             <button className={`${styles.playerButton} ${styles.playerButtonPrimary}`} type="button" onClick={onToggle} aria-label={playing ? "Pause" : "Play"} aria-keyshortcuts="Space">
               {playing ? <Pause fill="currentColor" /> : <Play fill="currentColor" />}
             </button>
-            <button className={`${styles.playerButton} ${styles.playerSkipButton}`} type="button" onClick={onNext} aria-label="Next version" disabled={!hasCandidate}><SkipForward /></button>
+            <button className={`${styles.playerButton} ${styles.playerSkipButton}`} type="button" onClick={onNext} aria-label="Next version" disabled={onNext === undefined}><SkipForward /></button>
           </div>
           <div className={styles.playerProgress} role="group" aria-label="Playback progress">
             <span className={styles.time}>{formatDuration(positionSeconds)}</span>

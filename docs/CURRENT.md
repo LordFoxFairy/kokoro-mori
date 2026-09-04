@@ -19,6 +19,13 @@
   `/api/v1/mori/assets/{asset_ref}/content` 获取音频；Provider 使用可注入的 media controller 同步真实
   `play/pause/seek/mute/timeupdate/ended` 状态，不再用定时器伪造播放。preview Candidate 没有音频资产时显示
   `Preview audio is unavailable` 并禁用播放，真实媒体加载失败会停止 Playing、保留错误上下文并提供 Retry playback。
+- 全局 Player 与页面 projection 已解耦：打开空 Project、Candidate projection 暂时失败或进入不可用的 Studio Version
+  都不会清空正在播放的 Version、进度或媒体源；浏览 Library、Project 或 Studio 不会重写 `Up next`，队列默认
+  为空，只在用户明确试听 Version（或启用明确的生成后自动播放偏好）时按 `version_ref` 加入或更新，避免同一 Version
+  因不同 Candidate projection 重复出现。选择 Direction、设为 Current 或进入 Studio 只改变工作上下文，不会抢占当前播放；
+  同一 Version 经不同 Candidate projection 出现时仍共享同一个播放身份和进度。单项队列禁用上一首/下一首，
+  音源切换使用 selection epoch 忽略旧音源迟到事件，并把 Studio 首次定位同步 seek 到真实媒体，避免 transport
+  进度与真实音频脱节或覆盖用户的新选择。
 - Library 已接入 provider-neutral 的 live projection seam：Version 使用 `GET /library`，Creative Source
   使用独立的 `GET /library/sources` 与按 kind/ref 的 deep-link GET；两者各自使用 opaque cursor/limit，
   Audio / Voice / Inspiration 使用 discriminated union。Source API 成功后不再把 preview Sources 混入 live 响应；
@@ -55,7 +62,7 @@
 ```text
 pnpm lint                         passed
 pnpm typecheck                    passed
-pnpm test                         passed: 54 files / 430 tests
+pnpm test                         passed: 54 files / 442 tests
 pnpm build                        passed
 ```
 

@@ -37,7 +37,7 @@ type LibraryPageContentProps = {
 }
 
 export function LibraryPageContent({ api }: LibraryPageContentProps = {}) {
-  const { playerCandidate, playing, replacePlayerCandidates, selectPlayerCandidate, setPlaying } = useMoriApp()
+  const { playerCandidate, playing, selectPlayerCandidate, setPlaying } = useMoriApp()
   const defaultApi = useMemo(() => createMoriApiClient(), [])
   const libraryApi = api ?? defaultApi
   const [libraryItems, setLibraryItems] = useState<LibraryItem[]>(previewLibrary)
@@ -116,14 +116,6 @@ export function LibraryPageContent({ api }: LibraryPageContentProps = {}) {
       disposed = true
     }
   }, [libraryApi])
-
-  const playerLibraryCandidates = useMemo(() => libraryItems
-    .filter((item): item is Extract<LibraryItem, { kind: "version" }> => item.kind === "version")
-    .map(toPlayerCandidate), [libraryItems])
-
-  useEffect(() => {
-    if (libraryStatus === "ready") replacePlayerCandidates(playerLibraryCandidates)
-  }, [libraryStatus, playerLibraryCandidates, replacePlayerCandidates])
 
   const currentVersionByProject = new Map(projects.map((project) => [project.projectRef, project.currentVersionRef]))
   const versionItems = libraryItems

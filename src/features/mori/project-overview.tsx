@@ -18,7 +18,7 @@ type ProjectOverviewPageContentProps = {
 }
 
 export function ProjectOverviewPageContent({ projectRef = previewProject.projectRef, api }: ProjectOverviewPageContentProps = {}) {
-  const { clearPlayerCandidate, playerCandidate, playing, replacePlayerCandidates, selectPlayerCandidate, setPlaying } = useMoriApp()
+  const { playerCandidate, playing, selectPlayerCandidate, setPlaying } = useMoriApp()
   const defaultApi = useMemo(() => createMoriApiClient(), [])
   const overviewApi = api ?? defaultApi
   const initialProjectRef = projectRef.trim() || previewProject.projectRef
@@ -54,20 +54,17 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
       if (disposed) return
       const nextCandidates = candidates.map(toDomainCandidate)
       setCandidateState({ projectRef: requestedProjectRef, value: nextCandidates })
-      if (nextCandidates.length === 0) clearPlayerCandidate()
-      else replacePlayerCandidates(nextCandidates)
     }).catch(() => {
-      if (!disposed && requestedProjectRef !== previewProject.projectRef) clearPlayerCandidate()
       // Never attach preview candidates to a live project when its projection is unavailable.
     })
 
     return () => {
       disposed = true
     }
-  }, [clearPlayerCandidate, overviewApi, projectRef, replacePlayerCandidates])
+  }, [overviewApi, projectRef])
 
   function playCandidate(candidate: (typeof previewCandidates)[number]) {
-    if (playerCandidate?.candidateRef === candidate.candidateRef) {
+    if (playerCandidate?.versionRef === candidate.versionRef) {
       setPlaying(!playing)
       return
     }
@@ -111,8 +108,8 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
                   className={`${styles.overviewCandidate} ${isCurrent ? styles.overviewCandidateCurrent : ""}`}
                   key={candidate.candidateRef}
                 >
-                <button className={`${styles.candidateArtwork} ${styles.overviewCandidateArtwork} ${index === 1 ? styles.candidateArtworkAlt : ""}`} type="button" onClick={() => playCandidate(candidate)} aria-label={`${playerCandidate?.candidateRef === candidate.candidateRef && playing ? "Pause" : "Play"} ${candidate.title}`}>
-                  <Play size={14} fill={playerCandidate?.candidateRef === candidate.candidateRef && playing ? "currentColor" : "none"} />
+                <button className={`${styles.candidateArtwork} ${styles.overviewCandidateArtwork} ${index === 1 ? styles.candidateArtworkAlt : ""}`} type="button" onClick={() => playCandidate(candidate)} aria-label={`${playerCandidate?.versionRef === candidate.versionRef && playing ? "Pause" : "Play"} ${candidate.title}`}>
+                  <Play size={14} fill={playerCandidate?.versionRef === candidate.versionRef && playing ? "currentColor" : "none"} />
                 </button>
                 <div className={styles.overviewCandidateInfo}>
                   <div className={styles.overviewCandidateTitle}><strong>{candidate.title}</strong>{isCurrent ? <span className={styles.overviewCurrentBadge}>Current</span> : null}</div>

@@ -17,7 +17,7 @@ type MoriAppShellProps = {
 }
 
 export function MoriAppShell({ activeKey, ariaLabel, projectRef, children }: MoriAppShellProps) {
-  const { railCollapsed, toggleRail, playerCandidate, playerCandidates, playing, playerMediaStatus, playerMediaMessage, muted, positionSeconds, togglePlaying, retryPlayerPlayback, toggleMuted, setPlaying, seekPlayer, selectPlayerCandidate, previousPlayerCandidate, nextPlayerCandidate, preferences } = useMoriApp()
+  const { railCollapsed, toggleRail, playerCandidate, playbackQueue, playing, playerMediaStatus, playerMediaMessage, muted, positionSeconds, togglePlaying, retryPlayerPlayback, toggleMuted, setPlaying, seekPlayer, selectPlayerCandidate, previousPlayerCandidate, nextPlayerCandidate, preferences } = useMoriApp()
   const [playbackQueueOpen, setPlaybackQueueOpen] = useState(false)
   const [settingsReturnTo, setSettingsReturnTo] = useState<string | null>(null)
   const [{ isMobileViewport, mobileRailExpanded }, setViewportState] = useState({
@@ -73,14 +73,14 @@ export function MoriAppShell({ activeKey, ariaLabel, projectRef, children }: Mor
   }, [])
   const closeSettings = useCallback(() => setSettingsReturnTo(null), [])
 
-  const chooseQueuedCandidate = useCallback((candidate: (typeof playerCandidates)[number]) => {
-    if (playerCandidate?.candidateRef === candidate.candidateRef) {
+  const chooseQueuedCandidate = useCallback((candidate: (typeof playbackQueue)[number]) => {
+    if (playerCandidate?.versionRef === candidate.versionRef) {
       togglePlaying()
       return
     }
     selectPlayerCandidate(candidate)
     setPlaying(true)
-  }, [playerCandidate?.candidateRef, selectPlayerCandidate, setPlaying, togglePlaying])
+  }, [playerCandidate?.versionRef, selectPlayerCandidate, setPlaying, togglePlaying])
 
   useEffect(() => {
     if (!mobileRailOpen) return
@@ -155,16 +155,16 @@ export function MoriAppShell({ activeKey, ariaLabel, projectRef, children }: Mor
           playerMediaStatus={playerMediaStatus}
           playerMediaMessage={playerMediaMessage}
           onRetryPlayback={retryPlayerPlayback}
-          onPrevious={previousPlayerCandidate}
-          onNext={nextPlayerCandidate}
+          onPrevious={playbackQueue.length > 1 ? previousPlayerCandidate : undefined}
+          onNext={playbackQueue.length > 1 ? nextPlayerCandidate : undefined}
           queueOpen={playbackQueueOpen}
-          onSelectQueue={playerCandidates.length > 0 ? openPlaybackQueue : undefined}
+          onSelectQueue={playbackQueue.length > 0 ? openPlaybackQueue : undefined}
         />
       </div>
       {playbackQueueOpen && appShellElement !== null ? createPortal(
         <PlaybackQueue
-          candidates={playerCandidates}
-          currentCandidateRef={playerCandidate?.candidateRef ?? null}
+          candidates={playbackQueue}
+          currentVersionRef={playerCandidate?.versionRef ?? null}
           playing={playing}
           onChoose={chooseQueuedCandidate}
           onClose={closePlaybackQueue}

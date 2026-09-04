@@ -27,6 +27,15 @@ const secondCandidate: Candidate = {
   isCurrent: false,
 }
 
+const thirdCandidate: Candidate = {
+  ...firstCandidate,
+  candidateRef: "candidate_live_third",
+  versionRef: "version_live_third",
+  title: "Live third",
+  audioAssetRef: "asset/live-third",
+  isCurrent: false,
+}
+
 describe("Mori global player media integration", () => {
   it("uses the injected media seam for play, pause, seek, mute, and timeupdate", async () => {
     const harness = createMediaHarness()
@@ -65,6 +74,30 @@ describe("Mori global player media integration", () => {
     fireEvent.click(screen.getByRole("button", { name: "Pause" }))
     expect(harness.controller.pause).toHaveBeenCalled()
     expect(screen.getByRole("button", { name: "Play" })).toBeInTheDocument()
+  })
+
+  it("seeks the real media source when a new Version is selected at a timeline position", () => {
+    const harness = createMediaHarness()
+
+    function CandidateHarness() {
+      const { selectPlayerCandidate } = useMoriApp()
+      return <button type="button" onClick={() => selectPlayerCandidate(secondCandidate, 72)}>Select Version at 1:12</button>
+    }
+
+    render(
+      <MoriAppProvider mediaFactory={harness.factory}>
+        <CandidateHarness />
+        <MoriCatalogShell activeKey="library" ariaLabel="Library">
+          <div>Library content</div>
+        </MoriCatalogShell>
+      </MoriAppProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Select Version at 1:12" }))
+
+    expect(harness.controller.setSource).toHaveBeenLastCalledWith(secondCandidate)
+    expect(harness.controller.seek).toHaveBeenLastCalledWith(72)
+    expect(screen.getByRole("slider", { name: "Seek through current version" })).toHaveValue("72")
   })
 
   it("does not fake playback for preview candidates without media", () => {
@@ -116,10 +149,13 @@ describe("Mori global player media integration", () => {
     const harness = createMediaHarness()
 
     function CandidateHarness() {
-      const { replacePlayerCandidates, selectPlayerCandidate, updatePreferences } = useMoriApp()
+      const { selectPlayerCandidate, updatePreferences } = useMoriApp()
       return (
         <>
-          <button type="button" onClick={() => replacePlayerCandidates([firstCandidate, secondCandidate])}>Use live queue</button>
+          <button type="button" onClick={() => {
+            selectPlayerCandidate(firstCandidate)
+            selectPlayerCandidate(secondCandidate)
+          }}>Use live queue</button>
           <button type="button" onClick={() => selectPlayerCandidate(firstCandidate)}>Select live audio</button>
           <button type="button" onClick={() => updatePreferences({ endBehavior: "next" })}>Play next at end</button>
         </>
@@ -147,6 +183,104 @@ describe("Mori global player media integration", () => {
     await waitFor(() => expect(harness.controller.setSource).toHaveBeenLastCalledWith(secondCandidate))
     await waitFor(() => expect(harness.controller.play).toHaveBeenCalledTimes(2))
     expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument()
+  })
+
+  it("disables queue navigation until there is another Version to visit", () => {
+    const harness = createMediaHarness()
+
+    function CandidateHarness() {
+      const { selectPlayerCandidate } = useMoriApp()
+      return <button type="button" onClick={() => selectPlayerCandidate(firstCandidate)}>Select only Version</button>
+    }
+
+    render(
+      <MoriAppProvider mediaFactory={harness.factory}>
+        <CandidateHarness />
+        <MoriCatalogShell activeKey="library" ariaLabel="Library">
+          <div>Library content</div>
+        </MoriCatalogShell>
+      </MoriAppProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Select only Version" }))
+
+    expect(screen.getByRole("button", { name: "Previous version" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Next version" })).toBeDisabled()
+  })
+
+  it("ignores an ended event from the previous source while a new Version is being selected", async () => {
+    const harness = createMediaHarness()
+
+    function CandidateHarness() {
+      const { selectPlayerCandidate, updatePreferences } = useMoriApp()
+      return (
+        <>
+          <button type="button" onClick={() => {
+            selectPlayerCandidate(firstCandidate)
+            selectPlayerCandidate(thirdCandidate)
+            selectPlayerCandidate(firstCandidate)
+            updatePreferences({ endBehavior: "next" })
+          }}>Prepare old queue</button>
+          <button type="button" onClick={() => {
+            selectPlayerCandidate(secondCandidate)
+            harness.callbacks.onEnded()
+          }}>Choose new Version as old source ends</button>
+        </>
+      )
+    }
+
+    render(
+      <MoriAppProvider mediaFactory={harness.factory}>
+        <CandidateHarness />
+        <MoriCatalogShell activeKey="library" ariaLabel="Library">
+          <div>Library content</div>
+        </MoriCatalogShell>
+      </MoriAppProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Prepare old queue" }))
+    await waitFor(() => expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("Live first"))
+
+    fireEvent.click(screen.getByRole("button", { name: "Choose new Version as old source ends" }))
+
+    await waitFor(() => expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("Live second"))
+    expect(harness.controller.setSource).toHaveBeenLastCalledWith(secondCandidate)
+  })
+
+  it("keeps one queue item when the same Version is selected from another projection", () => {
+    const harness = createMediaHarness()
+    const sameVersionFromLibrary: Candidate = {
+      ...firstCandidate,
+      candidateRef: "candidate_library_projection",
+      title: "Live first · Library",
+    }
+
+    function CandidateHarness() {
+      const { selectPlayerCandidate } = useMoriApp()
+      return (
+        <>
+          <button type="button" onClick={() => selectPlayerCandidate(firstCandidate)}>Choose Project projection</button>
+          <button type="button" onClick={() => selectPlayerCandidate(sameVersionFromLibrary)}>Choose Library projection</button>
+        </>
+      )
+    }
+
+    render(
+      <MoriAppProvider mediaFactory={harness.factory}>
+        <CandidateHarness />
+        <MoriCatalogShell activeKey="library" ariaLabel="Library">
+          <div>Library content</div>
+        </MoriCatalogShell>
+      </MoriAppProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Choose Project projection" }))
+    fireEvent.click(screen.getByRole("button", { name: "Choose Library projection" }))
+    fireEvent.click(screen.getByRole("button", { name: "Open playback queue" }))
+
+    expect(screen.getAllByRole("button", { name: /from queue$/u })).toHaveLength(1)
+    expect(screen.getByRole("button", { name: "Play Live first · Library from queue" })).toBeInTheDocument()
+    expect(harness.controller.setSource).toHaveBeenLastCalledWith(sameVersionFromLibrary)
   })
 })
 

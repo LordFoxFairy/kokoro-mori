@@ -74,7 +74,7 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, generationRef: 
   const initialProjectRef = requestedProjectRef?.trim() || null
   const initialGenerationRef = requestedGenerationRef?.trim() || null
   const initialCandidates = initialProjectRef === previewProject.projectRef ? previewCandidates : []
-  const { playing, playerCandidate, replacePlayerCandidates, setPlaying, togglePlaying, selectPlayerCandidate, preferences } = useMoriApp()
+  const { playing, playerCandidate, setPlaying, togglePlaying, selectPlayerCandidate, preferences } = useMoriApp()
   const [workspaceProjectRef, setWorkspaceProjectRef] = useState<string | null>(initialProjectRef)
   const [modeOverride, setModeOverride] = useState<CreationMode | null>(null)
   const [queueOpen, setQueueOpen] = useState(false)
@@ -511,7 +511,6 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, generationRef: 
           const generatedCandidates = generated.map(toDomainCandidate)
           setCandidates(generatedCandidates)
           setSelectedCandidateRef(generatedCandidates[0]?.candidateRef ?? "")
-          replacePlayerCandidates(generatedCandidates)
           if (preferences.autoplay) {
             const firstCandidate = generatedCandidates[0]
             if (firstCandidate) {
@@ -543,7 +542,7 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, generationRef: 
       eventController.abort()
       if (timer !== undefined) window.clearTimeout(timer)
     }
-  }, [api, generationRef, preferences.autoplay, replacePlayerCandidates, selectPlayerCandidate, setPlaying, updateQueue])
+  }, [api, generationRef, preferences.autoplay, selectPlayerCandidate, setPlaying, updateQueue])
 
   useEffect(() => {
     if (!generationQueueHydrated) return
@@ -635,7 +634,6 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, generationRef: 
       setCurrentVersionRef(candidate.versionRef)
       setCandidates((items) => items.map((item) => ({ ...item, isCurrent: item.candidateRef === candidate.candidateRef })))
       setSelectedCandidateRef(candidate.candidateRef)
-      selectPlayerCandidate(candidate)
       pendingCurrentVersionCommandRef.current = null
       setCurrentVersionCommitRun({
         status: "succeeded",
@@ -653,7 +651,7 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, generationRef: 
         retryable: failure.retryable,
       })
     }
-  }, [api, currentVersionCommitRun.status, currentVersionRef, selectPlayerCandidate, setCandidates, setCurrentVersionRef, setSelectedCandidateRef])
+  }, [api, currentVersionCommitRun.status, currentVersionRef, setCandidates, setCurrentVersionRef, setSelectedCandidateRef])
 
   const retryCurrentVersionCommit = useCallback(() => {
     const command = pendingCurrentVersionCommandRef.current
@@ -763,8 +761,9 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, generationRef: 
       candidates={currentCandidates}
       songPlan={songPlan}
       selectedCandidateRef={selectedCandidateRef}
+      playerVersionRef={playerCandidate?.versionRef ?? null}
       playing={playing}
-      onSelect={(candidate) => { setSelectedCandidateRef(candidate.candidateRef); selectPlayerCandidate(candidate); setPlaying(false) }}
+      onSelect={(candidate) => setSelectedCandidateRef(candidate.candidateRef)}
       currentVersionCommitRun={currentVersionCommitRun}
       onPromote={(candidate) => { void commitCurrentVersion(candidate) }}
       onRetryCurrentVersion={retryCurrentVersionCommit}
@@ -775,7 +774,7 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, generationRef: 
       onSelectGeneration={selectQueuedGeneration}
       onPlay={(candidate) => {
         setSelectedCandidateRef(candidate.candidateRef)
-        if (playerCandidate?.candidateRef === candidate.candidateRef) togglePlaying()
+        if (playerCandidate?.versionRef === candidate.versionRef) togglePlaying()
         else { selectPlayerCandidate(candidate); setPlaying(true) }
       }}
       onClose={() => setQueueOpen(false)}
