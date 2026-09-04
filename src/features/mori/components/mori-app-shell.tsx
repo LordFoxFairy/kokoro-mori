@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from "react"
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react"
 import { createPortal } from "react-dom"
 import { useMoriApp } from "./mori-app-provider"
 import { MoriRail, type MoriNavigationKey } from "./mori-rail"
@@ -18,9 +18,30 @@ type MoriAppShellProps = {
 export function MoriAppShell({ activeKey, ariaLabel, projectRef, children }: MoriAppShellProps) {
   const { railCollapsed, toggleRail, setRailCollapsed, playerCandidate, playerCandidates, playing, muted, positionSeconds, togglePlaying, toggleMuted, setPlaying, seekPlayer, selectPlayerCandidate, previousPlayerCandidate, nextPlayerCandidate, preferences } = useMoriApp()
   const [playbackQueueOpen, setPlaybackQueueOpen] = useState(false)
+  const [isMobileViewport, setIsMobileViewport] = useState(false)
+  const railRef = useRef<HTMLElement>(null)
+  const railToggleRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    const updateViewport = () => setIsMobileViewport(window.innerWidth <= 700)
+    updateViewport()
+    window.addEventListener("resize", updateViewport)
+    return () => window.removeEventListener("resize", updateViewport)
+  }, [])
+
+  const mobileRailOpen = !railCollapsed && (isMobileViewport || (typeof window !== "undefined" && window.innerWidth <= 700))
+
+  const handleRailToggle = useCallback(() => {
+    const isMobile = window.innerWidth <= 700
+    toggleRail()
+    if (isMobile) window.requestAnimationFrame(() => railToggleRef.current?.focus())
+  }, [toggleRail])
 
   const handleRailNavigation = useCallback(() => {
-    if (window.innerWidth <= 700) setRailCollapsed(true)
+    if (window.innerWidth <= 700) {
+      setRailCollapsed(true)
+      window.requestAnimationFrame(() => railToggleRef.current?.focus())
+    }
   }, [setRailCollapsed])
 
   const openPlaybackQueue = useCallback(() => {
@@ -40,20 +61,42 @@ export function MoriAppShell({ activeKey, ariaLabel, projectRef, children }: Mor
   }, [playerCandidate?.candidateRef, selectPlayerCandidate, setPlaying, togglePlaying])
 
   useEffect(() => {
-    if (railCollapsed || window.innerWidth > 700) return
+    if (!mobileRailOpen) return
 
     const previousOverflow = document.body.style.overflow
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") toggleRail()
+      if (event.key === "Escape") {
+        event.preventDefault()
+        handleRailToggle()
+        return
+      }
+      if (event.key !== "Tab") return
+      const focusableElements = Array.from(railRef.current?.querySelectorAll<HTMLElement>('a[href], button:not([disabled])') ?? [])
+      const first = focusableElements[0]
+      const last = focusableElements[focusableElements.length - 1]
+      if (first === undefined || last === undefined) return
+      if (!railRef.current?.contains(document.activeElement)) {
+        event.preventDefault()
+        const target = event.shiftKey ? last : first
+        target.focus()
+      } else if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
     }
 
     document.body.style.overflow = "hidden"
     window.addEventListener("keydown", handleKeyDown)
+    const focusTimer = window.requestAnimationFrame(() => railToggleRef.current?.focus())
     return () => {
+      window.cancelAnimationFrame(focusTimer)
       window.removeEventListener("keydown", handleKeyDown)
       document.body.style.overflow = previousOverflow
     }
-  }, [railCollapsed, toggleRail])
+  }, [handleRailToggle, mobileRailOpen])
 
   const shellStyle = { "--mori-rail-width": railCollapsed ? "64px" : "256px" } as CSSProperties
   const className = `${styles.appShell} ${styles.appShellWithPlayer}`
@@ -65,13 +108,15 @@ export function MoriAppShell({ activeKey, ariaLabel, projectRef, children }: Mor
         collapsed={railCollapsed}
         projectRef={projectRef}
         onNavigate={handleRailNavigation}
-        onToggle={toggleRail}
+        onToggle={handleRailToggle}
+        railRef={railRef}
+        toggleRef={railToggleRef}
       />
-      {!railCollapsed ? <button className={styles.railBackdrop} type="button" onClick={toggleRail} aria-label="Close sidebar" /> : null}
-      <section className={styles.surface} aria-label={ariaLabel}>
+      {mobileRailOpen ? <button className={styles.railBackdrop} type="button" onClick={handleRailToggle} aria-label="Close sidebar" /> : null}
+      <section className={styles.surface} aria-label={ariaLabel} aria-hidden={mobileRailOpen ? true : undefined} inert={mobileRailOpen ? true : undefined}>
         {children}
       </section>
-      <div className={styles.globalPlayerSlot}>
+      <div className={styles.globalPlayerSlot} aria-hidden={mobileRailOpen ? true : undefined} inert={mobileRailOpen ? true : undefined}>
         <PersistentPlayer
           candidate={playerCandidate}
           playing={playing}

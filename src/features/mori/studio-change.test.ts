@@ -33,6 +33,28 @@ describe("Studio change plans", () => {
     })
   })
 
+  it("keeps an optional audio reference in a Restyle plan", () => {
+    const plan = buildStudioChangePlan("transform", verse, "Match the soft pulse of the reference.", {
+      transformIntent: "restyle",
+      transformScope: "whole_version",
+      preserve: ["melody"],
+      outputCount: 2,
+      coverMode: "vocal",
+      coverVoiceRef: null,
+      referenceAssetRefs: ["asset_preview_city_lights"],
+    })
+
+    expect(plan.draft).toEqual({
+      operation: "transform",
+      intent: "restyle",
+      scope: { type: "whole_version" },
+      instruction: "Match the soft pulse of the reference.",
+      preserve: ["melody"],
+      referenceAssetRefs: ["asset_preview_city_lights"],
+      outputCount: 2,
+    })
+  })
+
   it("turns a Vocal Cover into a protected whole-song two-Take plan", () => {
     const plan = buildStudioChangePlan("transform", verse, "Re-perform this as a close acoustic duet.", {
       transformIntent: "cover",

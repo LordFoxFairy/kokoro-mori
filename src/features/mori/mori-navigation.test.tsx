@@ -186,6 +186,89 @@ describe("Mori application navigation", () => {
     }
   })
 
+  it("moves focus into the mobile rail, hides the page behind it, and restores the trigger", async () => {
+    const originalWidth = window.innerWidth
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 390 })
+    localStorage.removeItem("mori.rail.v1")
+
+    try {
+      render(
+        <MoriAppProvider>
+          <MoriCatalogShell activeKey="library" ariaLabel="Library">
+            <div>Library content</div>
+          </MoriCatalogShell>
+        </MoriAppProvider>,
+      )
+      await waitFor(() => expect(screen.getByRole("button", { name: "Expand sidebar" })).toBeInTheDocument())
+
+      const expandButton = screen.getByRole("button", { name: "Expand sidebar" })
+      fireEvent.click(expandButton)
+      const collapseButton = screen.getByRole("button", { name: "Collapse sidebar" })
+      await waitFor(() => expect(collapseButton).toHaveFocus())
+
+      const surface = document.querySelector<HTMLElement>('section[aria-label="Library"]')
+      expect(surface).not.toBeNull()
+      expect(surface).toHaveAttribute("aria-hidden", "true")
+      expect(surface).toHaveAttribute("inert")
+      const player = document.querySelector<HTMLElement>('section[aria-label="Global player"]')
+      expect(player?.parentElement).toHaveAttribute("inert")
+
+      const brandLink = screen.getByRole("link", { name: "Mori home" })
+      const helpLink = screen.getByRole("link", { name: "Help and feedback" })
+      helpLink.focus()
+      fireEvent.keyDown(window, { key: "Tab" })
+      expect(brandLink).toHaveFocus()
+      fireEvent.keyDown(window, { key: "Tab", shiftKey: true })
+      expect(helpLink).toHaveFocus()
+
+      fireEvent.click(collapseButton)
+      await waitFor(() => expect(expandButton).toHaveFocus())
+    } finally {
+      document.body.style.overflow = ""
+      localStorage.removeItem("mori.rail.v1")
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: originalWidth })
+    }
+  })
+
+  it("treats the mobile playback queue as a modal and traps focus inside it", async () => {
+    const originalWidth = window.innerWidth
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 390 })
+
+    try {
+      render(
+        <MoriAppProvider>
+          <MoriCatalogShell activeKey="library" ariaLabel="Library">
+            <div>Library content</div>
+          </MoriCatalogShell>
+        </MoriAppProvider>,
+      )
+      const trigger = screen.getByRole("button", { name: "Open playback queue" })
+      trigger.focus()
+      fireEvent.click(trigger)
+
+      const queue = await screen.findByRole("dialog", { name: "Up next" })
+      await waitFor(() => expect(queue).toHaveAttribute("aria-modal", "true"))
+      await waitFor(() => expect(queue).toHaveFocus())
+
+      const closeButton = screen.getByRole("button", { name: "Close playback queue" })
+      const queueItems = screen.getAllByRole("button", { name: /from queue$/u })
+      const lastItem = queueItems[queueItems.length - 1]
+      expect(lastItem).toBeDefined()
+      closeButton.focus()
+      fireEvent.keyDown(window, { key: "Tab", shiftKey: true })
+      expect(lastItem).toHaveFocus()
+      fireEvent.keyDown(window, { key: "Tab" })
+      expect(closeButton).toHaveFocus()
+
+      fireEvent.keyDown(window, { key: "Escape" })
+      await waitFor(() => expect(screen.queryByRole("dialog", { name: "Up next" })).not.toBeInTheDocument())
+      expect(trigger).toHaveFocus()
+    } finally {
+      document.body.style.overflow = ""
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: originalWidth })
+    }
+  })
+
   it("dismisses the mobile rail when a destination is chosen", async () => {
     const originalWidth = window.innerWidth
     Object.defineProperty(window, "innerWidth", { configurable: true, value: 390 })

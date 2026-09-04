@@ -626,6 +626,21 @@
   text-transform: uppercase;
 }
 
+.studioAiControlLabel small {
+  margin-left: 4px;
+  color: var(--mori-muted);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.studioAiReferenceGroup {
+  grid-column: 1 / -1;
+  padding-top: 8px;
+  border-top: 1px solid rgba(109, 92, 231, 0.09);
+}
+
 .studioAiChoices {
   display: flex;
   flex-wrap: wrap;

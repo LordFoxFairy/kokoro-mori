@@ -41,6 +41,7 @@ export type StudioChangePlanOptions = {
   transformIntent: StudioTransformIntent
   coverMode: StudioCoverMode
   coverVoiceRef: string | null
+  referenceAssetRefs?: string[]
 }
 
 export const minimumStudioTimelineSelectionMs = 1_000
@@ -198,13 +199,29 @@ export function buildStudioChangePlan(
         return {
           ...planContext,
           operation,
-          draft: { ...common, operation, intent: "restyle", scope: { type: "whole_version" } },
+          draft: {
+            ...common,
+            ...(options.referenceAssetRefs !== undefined && options.referenceAssetRefs.length > 0
+              ? { referenceAssetRefs: [...options.referenceAssetRefs] }
+              : {}),
+            operation,
+            intent: "restyle",
+            scope: { type: "whole_version" },
+          },
         }
       }
       return {
         ...planContext,
         operation,
-        draft: { ...common, operation, intent: "restyle", scope: { type: "time_range", startMs: section.startMs, endMs: section.endMs } },
+        draft: {
+          ...common,
+          ...(options.referenceAssetRefs !== undefined && options.referenceAssetRefs.length > 0
+            ? { referenceAssetRefs: [...options.referenceAssetRefs] }
+            : {}),
+          operation,
+          intent: "restyle",
+          scope: { type: "time_range", startMs: section.startMs, endMs: section.endMs },
+        },
       }
   }
 }

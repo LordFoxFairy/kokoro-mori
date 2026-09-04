@@ -1,7 +1,7 @@
 "use client"
 
 import { ListMusic, Pause, Play, X } from "lucide-react"
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import type { Candidate } from "../domain"
 import styles from "../mori-workspace.module.css"
 
@@ -20,29 +20,71 @@ function formatDuration(seconds: number): string {
 
 export function PlaybackQueue({ candidates, currentCandidateRef, playing, onChoose, onClose }: PlaybackQueueProps) {
   const queueRef = useRef<HTMLElement>(null)
+  const previousFocusRef = useRef<HTMLElement | null>(null)
+  const mobileViewportRef = useRef(false)
+  const [isMobileViewport, setIsMobileViewport] = useState(false)
 
   useEffect(() => {
-    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const updateViewport = () => {
+      const nextIsMobileViewport = window.innerWidth <= 700
+      mobileViewportRef.current = nextIsMobileViewport
+      setIsMobileViewport(nextIsMobileViewport)
+    }
+    updateViewport()
+    window.addEventListener("resize", updateViewport)
+    return () => window.removeEventListener("resize", updateViewport)
+  }, [])
+
+  useEffect(() => {
+    previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
     queueRef.current?.focus()
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault()
         onClose()
+        return
+      }
+      if (event.key !== "Tab" || !mobileViewportRef.current) return
+
+      const focusableElements = Array.from(queueRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]), a[href]') ?? [])
+      const first = focusableElements[0]
+      const last = focusableElements[focusableElements.length - 1]
+      if (first === undefined || last === undefined) return
+
+      const activeElement = document.activeElement
+      if (!queueRef.current?.contains(activeElement)) {
+        event.preventDefault()
+        const target = event.shiftKey ? last : first
+        target.focus()
+      } else if (event.shiftKey && (activeElement === first || activeElement === queueRef.current)) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && (activeElement === last || activeElement === queueRef.current)) {
+        event.preventDefault()
+        first.focus()
       }
     }
 
     window.addEventListener("keydown", handleKeyDown)
     return () => {
       window.removeEventListener("keydown", handleKeyDown)
-      if (previousFocus?.isConnected) previousFocus.focus()
+      if (previousFocusRef.current?.isConnected) previousFocusRef.current.focus()
     }
   }, [onClose])
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow
+    if (isMobileViewport) document.body.style.overflow = "hidden"
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [isMobileViewport])
 
   return (
     <div className={styles.playbackQueueLayer}>
       <button className={styles.playbackQueueBackdrop} type="button" aria-label="Dismiss playback queue" onClick={onClose} />
-      <aside ref={queueRef} className={styles.playbackQueuePanel} role="dialog" aria-labelledby="playback-queue-title" tabIndex={-1}>
+      <aside ref={queueRef} className={styles.playbackQueuePanel} role="dialog" aria-modal={isMobileViewport ? "true" : undefined} aria-labelledby="playback-queue-title" tabIndex={-1}>
         <header className={styles.playbackQueueHeader}>
           <div>
             <span><ListMusic size={14} /> Listening queue</span>

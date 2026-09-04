@@ -18,7 +18,7 @@ pnpm build
 
 - `pnpm lint`：通过，`--max-warnings=0`
 - `pnpm typecheck`：通过
-- `pnpm test`：通过，41 个测试文件、320 个测试
+- `pnpm test`：通过，41 个测试文件、324 个测试
 - `pnpm build`：通过，生成 `/`、`/create`、`/projects`、`/library`、`/settings`、`/help`、Project Overview 和 Studio 路由
 
 ## 页面巡检
@@ -49,7 +49,7 @@ dock；桌面端提供歌曲、波形、进度和 transport，小屏幕收敛为
 立即切换播放；桌面端作为播放器上方的轻量面板，移动端作为紧贴播放器的底部 sheet，播放器本身保持可操作。
 Create 的 `Generations` 默认关闭，可通过 `Generations` 动作打开并通过 Close generation queue 关闭；
 移动端 390px 视口将收起的 Rail 收敛为 56px 顶部栏，只保留品牌与展开入口，内容使用完整宽度；
-展开后使用带遮罩的导航抽屉，选择目的地、点击遮罩或按 Escape 都会关闭。Player 桌面端采用左侧当前歌曲、中部
+展开后使用带遮罩的导航抽屉，选择目的地、点击遮罩或按 Escape 都会关闭；移动端打开时焦点进入 Rail，Tab 只在 Rail 内循环，内容区与 Player 暂时 inert，关闭后焦点回到展开入口。Player 桌面端采用左侧当前歌曲、中部
 transport + progress、右侧音量/队列的音乐播放器层级；移动端收敛为当前歌曲、播放和队列入口。
 播放支持在非输入控件上使用 Space 快捷键，输入歌词或表单时不会拦截空格；播放主按钮声明对应键盘快捷键。
 

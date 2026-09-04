@@ -1,6 +1,7 @@
-import { CircleHelp, FolderKanban, House, Library, PanelLeftClose, PanelLeftOpen, Plus, Settings2, Sparkles } from "lucide-react"
+import { AudioLines, CircleHelp, FolderKanban, House, Library, PanelLeftClose, PanelLeftOpen, Plus, Settings2, Sparkles } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useState } from "react"
+import type { RefObject } from "react"
 import styles from "../mori-workspace.module.css"
 
 export type MoriNavigationKey = "home" | "create" | "projects" | "library" | "settings" | "help"
@@ -11,6 +12,8 @@ type MoriRailProps = {
   projectRef?: string | null
   onNavigate?: () => void
   onToggle?: () => void
+  railRef?: RefObject<HTMLElement | null>
+  toggleRef?: RefObject<HTMLButtonElement | null>
 }
 
 const navigation = [
@@ -20,7 +23,7 @@ const navigation = [
   { key: "library" as const, label: "Library", href: "/library", icon: Library },
 ]
 
-export function MoriRail({ activeKey = "create", collapsed = false, projectRef, onNavigate, onToggle }: MoriRailProps) {
+export function MoriRail({ activeKey = "create", collapsed = false, projectRef, onNavigate, onToggle, railRef, toggleRef }: MoriRailProps) {
   const [settingsHref, setSettingsHref] = useState("/settings?return_to=%2F")
   const [createHref, setCreateHref] = useState("/create")
 
@@ -40,13 +43,13 @@ export function MoriRail({ activeKey = "create", collapsed = false, projectRef, 
   }, [projectRef])
 
   return (
-    <nav className={`${styles.rail} ${collapsed ? styles.railCollapsed : ""}`} aria-label="Mori" data-rail-state={collapsed ? "collapsed" : "expanded"}>
+    <nav ref={railRef} className={`${styles.rail} ${collapsed ? styles.railCollapsed : ""}`} aria-label="Mori" data-rail-state={collapsed ? "collapsed" : "expanded"}>
       <div className={styles.brandRow}>
         <Link className={styles.brandIdentity} href="/" aria-label="Mori home" onClick={onNavigate}>
-          <div className={styles.brandMark} aria-hidden="true">M</div>
+          <div className={styles.brandMark} aria-hidden="true"><AudioLines size={20} strokeWidth={1.9} /></div>
           <span className={styles.brandName}>Mori</span>
         </Link>
-        {onToggle ? <button className={styles.railToggle} type="button" onClick={onToggle} aria-expanded={!collapsed} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} title={collapsed ? "Expand sidebar" : "Collapse sidebar"}>{collapsed ? <PanelLeftOpen /> : <PanelLeftClose />}</button> : null}
+        {onToggle ? <button ref={toggleRef} className={styles.railToggle} type="button" onClick={onToggle} aria-expanded={!collapsed} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} title={collapsed ? "Expand sidebar" : "Collapse sidebar"}>{collapsed ? <PanelLeftOpen /> : <PanelLeftClose />}</button> : null}
       </div>
 
       <Link className={styles.newButton} href={createHref} aria-label="New creation" title={collapsed ? "New creation" : undefined} onClick={onNavigate}>

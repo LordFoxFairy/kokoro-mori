@@ -71,6 +71,32 @@ describe("Studio AI composer", () => {
     expect(within(intents).getByRole("button", { name: "Cover" })).toHaveAttribute("aria-pressed", "false")
   })
 
+  it("lets Restyle use an audio reference without exposing it to Cover", () => {
+    const onGenerate = renderComposer()
+    fireEvent.click(screen.getByRole("button", { name: "Transform" }))
+    fireEvent.click(screen.getByText("Keep & compare"))
+
+    const reference = screen.getByRole("button", { name: "Use City Lights demo as reference" })
+    expect(reference).toHaveAttribute("aria-pressed", "false")
+    fireEvent.click(reference)
+    expect(reference).toHaveAttribute("aria-pressed", "true")
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Tell Mori what to change" }), {
+      target: { value: "Match the soft pulse of the reference." },
+    })
+    fireEvent.click(screen.getByRole("button", { name: "Review change" }))
+
+    const plan = screen.getByRole("region", { name: "AI change plan" })
+    expect(within(plan).getByText("City Lights demo · 24 sec · soft city pulse")).toBeInTheDocument()
+    fireEvent.click(within(plan).getByRole("button", { name: "Generate 2 takes" }))
+    expect(onGenerate).toHaveBeenCalledWith(expect.objectContaining({
+      draft: expect.objectContaining({ referenceAssetRefs: ["asset_preview_city_lights"] }),
+    }))
+
+    fireEvent.click(screen.getByRole("button", { name: "Cover" }))
+    expect(screen.queryByRole("button", { name: "Use City Lights demo as reference" })).not.toBeInTheDocument()
+  })
+
   it("reviews a Vocal Cover from the open Version and sends a protected two-Take plan", () => {
     const onGenerate = renderComposer()
     fireEvent.click(screen.getByRole("button", { name: "Transform" }))

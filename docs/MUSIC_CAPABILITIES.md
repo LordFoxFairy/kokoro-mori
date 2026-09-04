@@ -583,4 +583,5 @@ BFF 必须按受信会话校验该 asset 与用户可见 Mori 资源的关联，
 - 不把未渲染请求伪装成可播放音频。
 - Player 跨页面保持；Generation Queue 与 Playback Queue 继续分离。
 - 桌面保持浅色三层结构：全局 Rail、项目 Studio、全局 Player；移动端按优先级收敛而非等比缩小。
+- 移动端 Rail 采用真正的导航抽屉语义：打开后锁定背景滚动、焦点进入并循环在 Rail 内，内容与 Player 使用 inert 隔离，Escape、遮罩和目的地选择关闭后回到触发入口；品牌行使用音乐波形图形，不再把孤立字母当作 Logo。
 - Version history 在所有宽度都必须可达，但始终停留在 Project / Studio 上下文；抽屉覆盖 Player，不挤压或替代 Player。

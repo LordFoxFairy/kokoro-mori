@@ -16,7 +16,7 @@ import {
   type StudioTimelineSection,
   type StudioTransformScope,
 } from "../studio-change"
-import { previewVoiceProfiles } from "../creative-assets"
+import { previewReferenceAudios, previewVoiceProfiles } from "../creative-assets"
 import {
   studioInstrumentalCoverProtectedAnchors,
   studioVocalCoverProtectedAnchors,
@@ -165,6 +165,7 @@ export function StudioAiComposer({ selectedSection, run, initialOperation, initi
   ))
   const [coverMode, setCoverMode] = useState<StudioCoverMode>(() => coverModeFromPlan(run.plan))
   const [coverVoiceRef, setCoverVoiceRef] = useState<string>(() => coverVoiceFromPlan(run.plan))
+  const [referenceAssetRefs, setReferenceAssetRefs] = useState<string[]>(() => referenceAssetsFromPlan(run.plan))
   const [plan, setPlan] = useState<StudioChangePlan | null>(null)
   const activeOperation = getOperation(operation)
   const isCover = operation === "transform" && transformIntent === "cover"
@@ -252,6 +253,15 @@ export function StudioAiComposer({ selectedSection, run, initialOperation, initi
     setPlan(null)
   }
 
+  const toggleReference = (referenceRef: string) => {
+    if (busy) return
+    clearFinishedRun()
+    setReferenceAssetRefs((current) => current.includes(referenceRef)
+      ? current.filter((value) => value !== referenceRef)
+      : [...current, referenceRef])
+    setPlan(null)
+  }
+
   const reviewChange = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const trimmedInstruction = instruction.trim()
@@ -265,6 +275,7 @@ export function StudioAiComposer({ selectedSection, run, initialOperation, initi
       transformIntent,
       coverMode,
       coverVoiceRef: coverVoiceRef === "" ? null : coverVoiceRef,
+      referenceAssetRefs: isCover ? [] : referenceAssetRefs,
     }))
   }
 
@@ -389,7 +400,7 @@ export function StudioAiComposer({ selectedSection, run, initialOperation, initi
       {!isCover ? <details className={styles.studioAiControls}>
         <summary>
           <span><SlidersHorizontal size={13} /> Keep &amp; compare</span>
-          <span>{preserve.length} kept · {takeCountLabel(outputCount)}</span>
+          <span>{referenceAssetRefs.length > 0 ? `${referenceAssetRefs.length} reference · ` : ""}{preserve.length} kept · {takeCountLabel(outputCount)}</span>
         </summary>
         <div className={styles.studioAiControlsBody}>
           <div className={styles.studioAiControlGroup} role="group" aria-label="Keep stable">
@@ -426,6 +437,25 @@ export function StudioAiComposer({ selectedSection, run, initialOperation, initi
             </div>
           </div>
           {operation === "transform" ? (
+            <div className={`${styles.studioAiControlGroup} ${styles.studioAiReferenceGroup}`} role="group" aria-label="Reference audio">
+              <span className={styles.studioAiControlLabel}>Reference audio <small>Optional</small></span>
+              <div className={styles.studioAiChoices}>
+                {previewReferenceAudios.map((reference) => (
+                  <button
+                    type="button"
+                    aria-label={`Use ${reference.name} as reference`}
+                    aria-pressed={referenceAssetRefs.includes(reference.ref)}
+                    disabled={busy}
+                    key={reference.ref}
+                    onClick={() => toggleReference(reference.ref)}
+                  >
+                    {reference.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {operation === "transform" ? (
             <div className={styles.studioAiControlGroup} role="group" aria-label="Transform scope">
               <span className={styles.studioAiControlLabel}>Apply to</span>
               <div className={styles.studioAiChoices}>
@@ -454,6 +484,10 @@ export function StudioAiComposer({ selectedSection, run, initialOperation, initi
             <span><strong>Scope</strong>{visiblePlan.scopeLabel}</span>
             {visibleCoverDraft !== null ? <span><strong>Mode</strong>{coverModeLabel(visibleCoverDraft.coverMode)}</span> : null}
             {visibleCoverDraft?.coverMode === "vocal" ? <span><strong>Voice</strong>{coverVoiceLabel(visibleCoverDraft.voiceRef)}</span> : null}
+            {visiblePlan.draft.operation === "transform" && visiblePlan.draft.intent === "restyle" && visiblePlan.draft.referenceAssetRefs?.map((referenceRef) => {
+              const reference = previewReferenceAudios.find((item) => item.ref === referenceRef)
+              return reference === undefined ? null : <span key={reference.ref}><strong>Reference</strong>{reference.name} · {reference.description}</span>
+            })}
             <span><strong>Keep</strong>{preserveLabel(visiblePlan.preserve)}</span>
             <span><strong>Result</strong>{alternativeCountLabel(visiblePlan.outputCount)} · Take lanes</span>
           </div>
@@ -518,6 +552,12 @@ function coverVoiceFromPlan(plan: StudioChangePlan | null): string {
   return plan?.draft.operation === "transform" && plan.draft.intent === "cover"
     ? plan.draft.voiceRef ?? ""
     : ""
+}
+
+function referenceAssetsFromPlan(plan: StudioChangePlan | null): string[] {
+  return plan?.draft.operation === "transform" && plan.draft.intent === "restyle"
+    ? [...(plan.draft.referenceAssetRefs ?? [])]
+    : []
 }
 
 function studioChangePlanLabel(plan: StudioChangePlan): string {
