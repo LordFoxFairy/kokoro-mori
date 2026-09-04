@@ -14,7 +14,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
   return proxy(request, context, "POST")
 }
 
-async function proxy(request: NextRequest, context: RouteContext, method: "GET" | "POST") {
+export async function PUT(request: NextRequest, context: RouteContext) {
+  return proxy(request, context, "PUT")
+}
+
+async function proxy(request: NextRequest, context: RouteContext, method: "GET" | "POST" | "PUT") {
   const { path } = await context.params
   const bffBaseUrl = (process.env.KOKORO_BFF_URL ?? "http://127.0.0.1:4300").replace(/\/$/u, "")
   const target = `${bffBaseUrl}/v1/mori/${path.map((segment) => encodeURIComponent(segment)).join("/")}${new URL(request.url).search}`
@@ -29,7 +33,7 @@ async function proxy(request: NextRequest, context: RouteContext, method: "GET" 
   headers.set("x-kokoro-principal-id", process.env.KOKORO_BFF_PRINCIPAL_ID ?? "local_user")
 
   let body: ArrayBuffer | undefined
-  if (method === "POST") body = await request.arrayBuffer()
+  if (method !== "GET") body = await request.arrayBuffer()
 
   try {
     const upstream = await fetch(target, {
