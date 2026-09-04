@@ -25,6 +25,8 @@ import {
 import { createMoriApiClient, MoriApiRequestError } from "@/lib/mori-api-client"
 import type { Candidate } from "./domain"
 import { listAllMoriCandidates } from "./candidate-pagination"
+import { updateGenerationQueueItem, upsertGenerationQueueItem, type GenerationQueueItem } from "./generation-queue"
+import { readGenerationQueueState, writeGenerationQueueState } from "./generation-queue-storage"
 import { MoriStudioShell } from "./components/mori-studio-shell"
 import { StudioAiComposer, type StudioAiRunState } from "./components/studio-ai-composer"
 import { StudioExportDialog } from "./components/studio-export-dialog"
@@ -173,6 +175,15 @@ function StudioExportIcon({ status }: { status: StudioExportFeedback }) {
         ? <AlertCircle size={14} />
         : <Download size={14} />
   return <span className={styles.exportStatusIcon} data-export-icon={status} aria-hidden="true">{icon}</span>
+}
+
+function studioGenerationQueueLabel(plan: StudioChangePlan): string {
+  if (plan.operation === "add_part") return `Add part · ${plan.scopeLabel}`
+  if (plan.operation === "replace_section") return `Replace section · ${plan.scopeLabel}`
+  if (plan.operation === "extend") return `Extend · ${plan.scopeLabel}`
+  if (plan.draft.operation !== "transform") return `Transform · ${plan.scopeLabel}`
+  const operation = plan.draft.intent === "cover" ? "Cover" : plan.draft.intent === "remaster" ? "Remaster" : "Restyle"
+  return `${operation} · ${plan.scopeLabel}`
 }
 
 export function StudioPageContent({ candidate, projectRef, versionRef, initialSurface = "arrangement", initialIntent = null, api, stemPlaybackFactory = createHtmlStemPlaybackController }: StudioPageContentProps) {
@@ -347,6 +358,20 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
         plan,
         message: null,
       })
+      const queueItem: GenerationQueueItem = {
+        generation_ref: response.data.generation_ref,
+        project_ref: activeProjectRef,
+        source_version_ref: sourceVersionRef,
+        kind: "studio_change",
+        label: studioGenerationQueueLabel(plan),
+        created_at: new Date().toISOString(),
+        status: response.data.status,
+        progress: response.data.status === "queued" ? 0 : 12,
+        candidate_refs: [],
+        last_event_id: null,
+      }
+      const nextQueue = upsertGenerationQueueItem(readGenerationQueueState(), queueItem)
+      writeGenerationQueueState({ ...nextQueue, active_generation_ref: queueItem.generation_ref })
       setTrackedStudioChange({
         generationRef: response.data.generation_ref,
         sourceVersionRef,
@@ -367,7 +392,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
     if (trackedStudioChange === null) return
     let disposed = false
     let timer: number | undefined
-    let lastEventId: string | null = null
+    let lastEventId: string | null = readGenerationQueueState().items.find((item) => item.generation_ref === trackedStudioChange.generationRef)?.last_event_id ?? null
     const eventController = new AbortController()
 
     const sync = async () => {
@@ -399,6 +424,12 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
         }
 
         setStudioChangeRun((current) => ({ ...current, status, progress, message: null }))
+        writeGenerationQueueState(updateGenerationQueueItem(readGenerationQueueState(), trackedStudioChange.generationRef, {
+          status,
+          progress,
+          candidate_refs: candidateRefs,
+          last_event_id: lastEventId,
+        }))
 
         if (status === "succeeded") {
           const candidateResponse = await listAllMoriCandidates(studioApi, snapshot.data.project_ref)
@@ -458,6 +489,10 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
         status: response.data.status,
         progress: Math.min(current.progress, 99),
         message: null,
+      }))
+      writeGenerationQueueState(updateGenerationQueueItem(readGenerationQueueState(), generationRef, {
+        status: response.data.status,
+        progress: Math.min(studioChangeRun.progress, 99),
       }))
     } catch {
       setStudioChangeRun((current) => ({ ...current, message: "Cancellation did not complete. Rendering is still being tracked." }))

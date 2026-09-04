@@ -612,6 +612,8 @@ describe("Mori studio page", () => {
     ))
     await waitFor(() => expect(getGeneration).toHaveBeenCalledWith("generation_restyle_reference"))
     await waitFor(() => expect(listCandidates).toHaveBeenCalledWith("project_preview_first_light"))
+    expect(localStorage.getItem("mori-generation-queue-v1")).toContain("generation_restyle_reference")
+    expect(localStorage.getItem("mori-generation-queue-v1")).not.toContain("City Lights pulse")
 
     const takeLanes = screen.getByRole("region", { name: "Take lanes" })
     expect(await within(takeLanes).findByRole("article", { name: "Take 3: First Light · City Lights Restyle" })).toBeInTheDocument()

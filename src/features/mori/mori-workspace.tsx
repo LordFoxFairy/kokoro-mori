@@ -10,16 +10,14 @@ import type { Candidate, CreationMode, GenerationStatus, SongPlan } from "./doma
 import type { MoriCreativeLibrarySource, MoriCreativeSourceSelection } from "./creative-assets"
 import { listAllMoriCandidates } from "./candidate-pagination"
 import {
-  createGenerationQueueState,
-  deserializeGenerationQueueState,
   emptyGenerationQueueState,
-  serializeGenerationQueueState,
   updateGenerationQueueItem,
   upsertGenerationQueueItem,
   type GenerationQueueItem,
   type GenerationQueueServerStatus,
   type GenerationQueueState,
 } from "./generation-queue"
+import { readGenerationQueueState, writeGenerationQueueState } from "./generation-queue-storage"
 import { previewCandidates, previewGeneration, previewProject, previewSongPlan } from "./preview-data"
 import { buildSongPlan, toSongPlanCreateInput } from "./song-plan"
 import {
@@ -56,8 +54,6 @@ type ProjectCreationAttempt = {
 
 type QueuePresentation = "drawer" | "pane"
 type GenerationFeedback = "idle" | "active" | "ready" | "attention"
-
-const generationQueueStorageKey = "mori-generation-queue-v1"
 
 export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, initialCreativeSource, api: injectedApi }: MoriWorkspaceProps = {}) {
   const initialProjectRef = requestedProjectRef?.trim() || null
@@ -102,14 +98,7 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
     let disposed = false
     queueMicrotask(() => {
       if (disposed) return
-      let restored = emptyGenerationQueueState()
-      try {
-        const serialized = window.localStorage.getItem(generationQueueStorageKey)
-        const parsed = serialized === null ? null : deserializeGenerationQueueState(serialized)
-        if (parsed !== null) restored = createGenerationQueueState(parsed)
-      } catch {
-        // A blocked or corrupt local store should not make Create unusable.
-      }
+      const restored = readGenerationQueueState()
       generationQueueRef.current = restored
       setGenerationQueue(restored)
 
@@ -138,11 +127,7 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
 
   useEffect(() => {
     if (!generationQueueHydrated) return
-    try {
-      window.localStorage.setItem(generationQueueStorageKey, serializeGenerationQueueState(generationQueue))
-    } catch {
-      // Persistence is a recovery enhancement; the active run remains in memory.
-    }
+    writeGenerationQueueState(generationQueue)
   }, [generationQueue, generationQueueHydrated])
 
   useEffect(() => {
@@ -544,6 +529,8 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
   const currentCandidates = candidates.map((candidate) => ({ ...candidate, isCurrent: candidate.versionRef === currentVersionRef }))
   const generationFeedback = generationFeedbackFor(hasGeneration ? generationStatus : null)
   const visibleGenerationQueueItems = generationQueue.items.filter((item) => workspaceProjectRef === null || item.project_ref === workspaceProjectRef)
+  const activeQueueItem = generationRef === null ? undefined : generationQueue.items.find((item) => item.generation_ref === generationRef)
+  const canRetryGeneration = activeQueueItem?.kind === "create" || (activeQueueItem === undefined && lastGenerationAttempt !== null)
 
   const selectQueuedGeneration = useCallback((nextGenerationRef: string) => {
     const item = generationQueueRef.current.items.find((candidate) => candidate.generation_ref === nextGenerationRef)
@@ -581,7 +568,7 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, initialPrompt, 
       onRetryCurrentVersion={retryCurrentVersionCommit}
       onDismissCurrentVersion={dismissCurrentVersionCommit}
       onCancel={() => { void handleCancel() }}
-      onRetry={retryLastGeneration}
+      onRetry={canRetryGeneration ? retryLastGeneration : undefined}
       onSelectGeneration={selectQueuedGeneration}
       onPlay={(candidate) => {
         setSelectedCandidateRef(candidate.candidateRef)
