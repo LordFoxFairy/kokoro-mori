@@ -54,4 +54,11 @@ describe("useCompositionEditor", () => {
     await act(async () => { await result.current.persist() })
     expect(revisions).toEqual([4, 12])
   })
+  it("surfaces a revision conflict instead of presenting a retry as successful", async () => {
+    const save = async () => { throw new Error("composition_conflict") }
+    const { result } = renderHook(() => useCompositionEditor(track, save, 4))
+    act(() => result.current.editAndQueue({ operation: "move", clipRef: "clip_1", startMs: 1000 }))
+    await act(async () => { await result.current.persist() })
+    expect(result.current.saveState).toBe("conflict")
+  })
 })

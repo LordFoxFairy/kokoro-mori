@@ -9,7 +9,7 @@ import type { CompositionRevisionInput } from "./composition-command"
 
 export function useCompositionEditor(initial: CompositionTrack, save?: (input: CompositionRevisionInput) => Promise<{ revision: number } | void>, expectedRevision = 0) {
   const [history, setHistory] = useState<CompositionHistory>(() => createCompositionHistory(initial))
-  const [saveState, setSaveState] = useState<"saved" | "unsaved" | "saving" | "failed">("saved")
+  const [saveState, setSaveState] = useState<"saved" | "unsaved" | "saving" | "conflict" | "failed">("saved")
   const [pendingCommands, setPendingCommands] = useState<CompositionRevisionInput["commands"]>([])
   const revisionRef = useRef(expectedRevision)
   const edit = useCallback((change: CompositionEdit) => setHistory((current) => applyCompositionEdit(current, change)), [])
@@ -22,7 +22,9 @@ export function useCompositionEditor(initial: CompositionTrack, save?: (input: C
       revisionRef.current = response?.revision ?? revisionRef.current + 1
       setPendingCommands([])
       setSaveState("saved")
-    } catch { setSaveState("failed") }
+    } catch (error) {
+      setSaveState(error instanceof Error && error.message === "composition_conflict" ? "conflict" : "failed")
+    }
   }, [pendingCommands, save])
   const rebase = useCallback((latest: CompositionTrack, nextRevision: number) => {
     revisionRef.current = nextRevision

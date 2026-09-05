@@ -2000,11 +2000,11 @@ function ArrangementEditor({ compositionSave, compositionRevision, candidate, ta
         <button
           className={styles.arrangementSaveButton}
           type="button"
-          disabled={compositionEditor.saveState === "saved" || compositionEditor.saveState === "saving"}
+          disabled={compositionEditor.saveState === "saved" || compositionEditor.saveState === "saving" || compositionEditor.saveState === "conflict"}
           onClick={() => { void compositionEditor.persist() }}
         >
           {compositionEditor.saveState === "saving" ? <LoaderCircle className={styles.spinner} size={14} /> : <Check size={14} />}
-          {compositionEditor.saveState === "failed" ? "Retry save" : "Save arrangement"}
+          {compositionEditor.saveState === "conflict" ? "Refresh to resolve" : compositionEditor.saveState === "failed" ? "Retry save" : "Save arrangement"}
         </button>
       </div>
       <StudioTimeline candidate={candidate} sections={timelineSections} selection={selection} positionSeconds={positionSeconds} playing={playing} disabled={changeActive} onSeek={onSeekTimeline} onSelect={selectTimelineRange} compositionTracks={[compositionEditor.composition]} selectedClipRef={selectedClipRef} onSelectClip={setSelectedClipRef} onEditClip={(operation, clipRef) => { setSelectedClipRef(clipRef); setEditOperation(operation) }} />
