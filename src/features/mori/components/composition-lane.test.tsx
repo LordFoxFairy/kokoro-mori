@@ -16,4 +16,12 @@ describe("CompositionLane", () => {
     fireEvent.click(screen.getByRole("button", { name: "Duplicate" }))
     expect(onDuplicate).toHaveBeenCalledWith("clip_1")
   })
+
+  it("disables editing while the timeline is busy", () => {
+    const onEdit = vi.fn()
+    const onSelect = vi.fn()
+    render(<CompositionLane disabled durationMs={10_000} onEditClip={onEdit} onSelectClip={onSelect} selectedClipRef="clip_1" tracks={[{ trackRef: "track_1", kind: "vocals", name: "Lead", clips: [{ clipRef: "clip_1", sourceRef: "asset_1", startMs: 0, durationMs: 4_000, offsetMs: 0 }] }]} />)
+    expect(screen.getByRole("button", { name: "Split" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Lead clip clip_1" })).toBeDisabled()
+  })
 })
