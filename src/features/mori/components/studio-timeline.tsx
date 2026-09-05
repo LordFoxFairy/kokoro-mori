@@ -11,6 +11,8 @@ import {
   type StudioTimelineSection,
 } from "../studio-change"
 import { Waveform } from "./waveform"
+import { CompositionLane } from "./composition-lane"
+import type { CompositionTrack } from "../composition"
 import styles from "./studio-timeline.module.css"
 
 type StudioTimelineProps = {
@@ -22,9 +24,12 @@ type StudioTimelineProps = {
   disabled: boolean
   onSeek: (positionSeconds: number) => void
   onSelect: (selection: StudioTimelineSection) => void
+  compositionTracks?: CompositionTrack[]
+  selectedClipRef?: string
+  onSelectClip?: (clipRef: string) => void
 }
 
-export function StudioTimeline({ candidate, sections, selection, positionSeconds, playing, disabled, onSeek, onSelect }: StudioTimelineProps) {
+export function StudioTimeline({ candidate, sections, selection, positionSeconds, playing, disabled, onSeek, onSelect, compositionTracks = [], selectedClipRef, onSelectClip }: StudioTimelineProps) {
   const sectionHintId = useId()
   const durationMs = Math.max(minimumStudioTimelineSelectionMs, Math.round(candidate.durationSeconds * 1_000))
   const positionMs = Math.max(0, Math.min(durationMs, Math.round(positionSeconds * 1_000)))
@@ -78,6 +83,8 @@ export function StudioTimeline({ candidate, sections, selection, positionSeconds
           onChange={(event) => onSeek(Number(event.target.value))}
         />
       </div>
+
+      {compositionTracks.length > 0 ? <CompositionLane tracks={compositionTracks} durationMs={durationMs} selectedClipRef={selectedClipRef} onSelectClip={onSelectClip} /> : null}
 
       <div className={styles.segmentRail}>
         <div
