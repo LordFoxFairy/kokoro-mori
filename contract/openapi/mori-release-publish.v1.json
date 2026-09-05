@@ -1,0 +1,34 @@
+{
+  "openapi": "3.1.0",
+  "info": { "title": "Mori Release Publish API", "version": "0.1.0", "description": "Publishes a confirmed, version-scoped release draft without conflating edit links and public links." },
+  "paths": {
+    "/api/v1/mori/versions/{version_ref}/release": {
+      "post": { "operationId": "publishMoriRelease", "security": [{ "moriSession": [] }], "parameters": [{ "$ref": "#/components/parameters/VersionRef" }, { "$ref": "#/components/parameters/IdempotencyKey" }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PublishInput" } } } }, "responses": { "202": { "description": "Release publishing started", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiPublishReceipt" } } } }, "409": { "$ref": "#/components/responses/ApiError" } } }
+    },
+    "/api/v1/mori/releases/{release_ref}": {
+      "parameters": [{ "$ref": "#/components/parameters/ReleaseRef" }],
+      "get": { "operationId": "getMoriRelease", "security": [{ "moriSession": [] }], "responses": { "200": { "description": "Release projection", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiRelease" } } } } } }
+    },
+    "/api/v1/mori/releases/{release_ref}/unpublish": {
+      "parameters": [{ "$ref": "#/components/parameters/ReleaseRef" }],
+      "post": { "operationId": "unpublishMoriRelease", "security": [{ "moriSession": [] }], "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }], "responses": { "200": { "description": "Release unpublished", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiRelease" } } } } } }
+    }
+  },
+  "components": {
+    "securitySchemes": { "moriSession": { "type": "apiKey", "in": "cookie", "name": "kokoro_session" } },
+    "parameters": {
+      "VersionRef": { "name": "version_ref", "in": "path", "required": true, "schema": { "type": "string", "minLength": 1 } },
+      "ReleaseRef": { "name": "release_ref", "in": "path", "required": true, "schema": { "type": "string", "minLength": 1 } },
+      "IdempotencyKey": { "name": "Idempotency-Key", "in": "header", "required": true, "schema": { "type": "string", "minLength": 1, "maxLength": 200 } }
+    },
+    "schemas": {
+      "PublishInput": { "type": "object", "additionalProperties": false, "required": ["release_draft_ref", "expected_draft_revision"], "properties": { "release_draft_ref": { "type": "string", "minLength": 1 }, "expected_draft_revision": { "type": "integer", "minimum": 1 } } },
+      "Release": { "type": "object", "required": ["release_ref", "version_ref", "release_draft_ref", "status", "public_url", "created_at", "updated_at"], "properties": { "release_ref": { "type": "string" }, "version_ref": { "type": "string" }, "release_draft_ref": { "type": "string" }, "status": { "enum": ["publishing", "published", "failed", "unpublished"] }, "public_url": { "type": ["string", "null"] }, "created_at": { "type": "string", "format": "date-time" }, "updated_at": { "type": "string", "format": "date-time" } } },
+      "ApiPublishReceipt": { "type": "object", "required": ["data", "meta"], "properties": { "data": { "$ref": "#/components/schemas/Release" }, "meta": { "$ref": "#/components/schemas/Meta" } } },
+      "ApiRelease": { "$ref": "#/components/schemas/ApiPublishReceipt" },
+      "Meta": { "type": "object", "required": ["request_id"], "properties": { "request_id": { "type": "string" } } },
+      "ErrorBody": { "type": "object", "required": ["error", "meta"], "properties": { "error": { "type": "object" }, "meta": { "$ref": "#/components/schemas/Meta" } } }
+    },
+    "responses": { "ApiError": { "description": "Mori API error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorBody" } } } } }
+  }
+}
