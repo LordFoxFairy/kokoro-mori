@@ -1870,6 +1870,27 @@ describe("Mori workspace", () => {
     expect(onGenerate).not.toHaveBeenCalled()
   })
 
+  it("shows processing and only exposes a ready uploaded reference", async () => {
+    const uploadContent = vi.fn<MoriApi["uploadCreativeSourceContent"]>(async () => ({
+      data: { upload_ref: "upload_live_1", source_kind: "audio", status: "processing", bytes_received: 4, byte_size: 4, asset_ref: null, source_ref: null, error: null, created_at: "2026-09-05T00:00:00Z", updated_at: "2026-09-05T00:00:01Z", expires_at: "2026-09-06T00:00:00Z" },
+      meta: { request_id: "upload_content_live_1" },
+    }))
+    const api: Partial<MoriApi> = {
+      createCreativeSourceUpload: async () => ({ data: { upload_ref: "upload_live_1", status: "creating", expires_at: "2026-09-06T00:00:00Z" }, meta: { request_id: "upload_create_live_1" } }),
+      uploadCreativeSourceContent: uploadContent,
+      getCreativeSourceUpload: async () => ({
+        data: { upload_ref: "upload_live_1", source_kind: "audio", status: "ready", bytes_received: 4, byte_size: 4, asset_ref: "asset_live_1", source_ref: "source_live_1", error: null, created_at: "2026-09-05T00:00:00Z", updated_at: "2026-09-05T00:00:02Z", expires_at: "2026-09-06T00:00:00Z" },
+        meta: { request_id: "upload_status_live_1" },
+      }),
+    }
+
+    render(<MoriAppProvider><CreateCanvas projectRef="project_live_1" mode="custom" api={api} onModeChange={() => undefined} onGenerate={() => undefined} /></MoriAppProvider>)
+    fireEvent.change(screen.getByLabelText("Reference audio file"), { target: { files: [new File(["test"], "guide.wav", { type: "audio/wav" })] } })
+    expect(await screen.findByText("processing · preparing your reference")).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByRole("button", { name: "Replace reference audio guide.wav" })).toBeInTheDocument())
+    expect(uploadContent).toHaveBeenCalledOnce()
+  })
+
   it("preserves the current audio reference when a replacement is rejected", () => {
     renderWorkspace()
 
