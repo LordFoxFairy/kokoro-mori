@@ -591,6 +591,9 @@ BFF 必须按受信会话校验该 asset 与用户可见 Mori 资源的关联，
 
 ### P2 · 深度编辑（进行中）
 
+Composition 的第一组 provider-neutral 纯函数已落地到 `composition.ts`：Move、Trim、Split 只改变本地 Track / Clip / Placement
+投影，不直接写 owner 数据；后续接入 revisioned Composition command 前，UI 不展示“已保存”状态。
+
 - 已完成可拖选时间范围、动态时间标尺、全局播放头与段落联动；Custom range 直接复用既有
   provider-neutral `time_range` 契约，调整范围后会使旧的 Review Plan 失效，避免错用过期选区。
 - Lyrics 已完成按 Verse / Chorus / Whole lyrics 组织的 Rewrite、Continue、Find rhyme、Restructure
