@@ -299,11 +299,13 @@ export function LibraryPageContent({ api }: LibraryPageContentProps = {}) {
                       <div className={styles.libraryCopy}>
                         <strong>{item.title}</strong>
                         <span>{item.subtitle}</span>
+                        {item.releaseStatus === "published" ? <small>Published</small> : item.releaseStatus === "unpublished" ? <small>Unpublished</small> : item.releaseStatus === "publishing" ? <small>Publishing…</small> : null}
                       </div>
                       <span className={styles.libraryDuration}><Headphones size={13} /> {Math.floor(item.durationSeconds / 60)}:{String(item.durationSeconds % 60).padStart(2, "0")}</span>
                       <div className={styles.libraryActions}>
                         <button className={styles.iconButton} type="button" onClick={() => playVersion(item.ref)} aria-label={`${active && playing ? "Pause" : "Play"} ${item.title}`}>{active && playing ? <Pause size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" />}</button>
                         <Link className={styles.iconButton} href={versionPath} aria-label={`Open ${item.title} studio`}><ArrowUpRight size={14} /></Link>
+                        {item.releaseStatus === "published" && item.publicUrl !== null && item.publicUrl !== undefined ? <a className={styles.iconButton} href={item.publicUrl} aria-label={`Open public release ${item.title}`}><ArrowUpRight size={14} /></a> : null}
                       </div>
                     </article>
                   )
@@ -389,6 +391,8 @@ function toDomainLibrary(items: MoriLibraryItem[], startIndex = 0): LibraryItem[
       accent: (startIndex + index) % 2 === 0 ? "lavender" as const : "peach" as const,
       audioAssetRef: item.audio_asset_ref,
       waveformAssetRef: item.waveform_asset_ref,
+      ...(item.release_status === undefined ? {} : { releaseStatus: item.release_status }),
+      ...(item.public_url === undefined ? {} : { publicUrl: item.public_url }),
     })),
   ]
 }

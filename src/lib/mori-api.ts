@@ -656,6 +656,9 @@ export type MoriLibraryVersionItem = {
   audio_asset_ref: string
   waveform_asset_ref: string
   created_at: string
+  release_status?: MoriReleaseStatus
+  release_ref?: MoriRef | null
+  public_url?: string | null
 }
 
 type MoriCreativeSourceCommon = {

@@ -41,6 +41,7 @@ import type {
   MoriExportSource,
   MoriGenerationEvent,
   MoriLibraryItem,
+  MoriLibraryVersionItem,
   MoriCreativeSource,
   MoriCreativeSourceKind,
   MoriCreativeSourceUpload,
@@ -1048,6 +1049,8 @@ export function parseMoriLibraryItem(value: unknown): MoriLibraryItem | null {
     && nonEmptyString(value.audio_asset_ref)
     && nonEmptyString(value.waveform_asset_ref)
   ) {
+    const releaseStatus = value.release_status === undefined ? undefined : ["publishing", "published", "failed", "unpublished"].includes(value.release_status as string) ? value.release_status as MoriLibraryVersionItem["release_status"] : null
+    if (releaseStatus === null || (value.release_ref !== undefined && !nullableString(value.release_ref)) || (value.public_url !== undefined && !nullableString(value.public_url))) return null
     return {
       library_item_ref: value.library_item_ref,
       kind: "version",
@@ -1059,6 +1062,9 @@ export function parseMoriLibraryItem(value: unknown): MoriLibraryItem | null {
       audio_asset_ref: value.audio_asset_ref,
       waveform_asset_ref: value.waveform_asset_ref,
       created_at: value.created_at,
+      ...(releaseStatus === undefined ? {} : { release_status: releaseStatus }),
+      ...(value.release_ref === undefined ? {} : { release_ref: value.release_ref }),
+      ...(value.public_url === undefined ? {} : { public_url: value.public_url }),
     }
   }
   return null

@@ -82,6 +82,8 @@ export type LibraryItem =
       audioAssetRef?: string | null
       /** Opaque waveform reference reserved for visual waveform projections. */
       waveformAssetRef?: string | null
+      releaseStatus?: "publishing" | "published" | "failed" | "unpublished"
+      publicUrl?: string | null
     }
 
 export type PlayerState = {
