@@ -1,5 +1,5 @@
 import type { GenerationStatus } from "./domain"
-import { createGenerationRequest, type ArtworkGenerationInput, type CurrentSongPlanInput, type CurrentVersionInput, type GenerationCreateInput, type GenerationReceipt, type LyricsDraftInput, type LyricsRevisionInput, type MixRevisionInput, type MoriApi, type MoriExportInput, type MoriGenerationDraft, type MoriProjectCreateInput, type MoriProjectWorkspaceOpenVersion, type MoriProjectWorkspaceProjection, type MoriReleaseDraft, type ProjectWorkspaceOpenVersionInput, type ReleaseDraftInput, type SongPlanCreateInput, type StemSeparationInput, type StudioChangeGenerationInput } from "@/lib/mori-api"
+import { createGenerationRequest, type ArtworkGenerationInput, type CurrentSongPlanInput, type CurrentVersionInput, type GenerationCreateInput, type GenerationReceipt, type LyricsDraftInput, type LyricsRevisionInput, type MixRevisionInput, type MoriApi, type MoriCreativeSourceUploadInput, type MoriCreativeSourceUploadStatus, type MoriExportInput, type MoriGenerationDraft, type MoriProjectCreateInput, type MoriProjectWorkspaceOpenVersion, type MoriProjectWorkspaceProjection, type MoriReleaseDraft, type ProjectWorkspaceOpenVersionInput, type ReleaseDraftInput, type SongPlanCreateInput, type StemSeparationInput, type StudioChangeGenerationInput } from "@/lib/mori-api"
 import type { MoriRef } from "./domain"
 
 export type GenerationControllerState = {
@@ -454,6 +454,22 @@ export const previewMoriApi: MoriApi = {
   },
   async getCreativeSource() {
     throw new Error("preview_creative_source_not_found")
+  },
+  async createCreativeSourceUpload(_input: MoriCreativeSourceUploadInput, idempotencyKey: string) {
+    return { data: { upload_ref: `upload_preview_${idempotencyKey}`, status: "creating" as const, expires_at: "2026-09-06T12:00:00.000Z" }, meta: { request_id: `preview-upload-create-${idempotencyKey}` } }
+  },
+  async uploadCreativeSourceContent(uploadRef, body, _contentType, _signal) {
+    void _contentType
+    void _signal
+    const byteSize = typeof body === "string" ? body.length : body instanceof ArrayBuffer ? body.byteLength : 1
+    return { data: { upload_ref: uploadRef, source_kind: "audio" as const, status: "ready" as MoriCreativeSourceUploadStatus, bytes_received: byteSize, byte_size: Math.max(1, byteSize), asset_ref: `asset_${uploadRef}`, source_ref: `source_${uploadRef}`, error: null, created_at: "2026-09-05T12:00:00.000Z", updated_at: "2026-09-05T12:00:01.000Z", expires_at: "2026-09-06T12:00:00.000Z" }, meta: { request_id: `preview-upload-content-${uploadRef}` } }
+  },
+  async getCreativeSourceUpload(uploadRef) {
+    return { data: { upload_ref: uploadRef, source_kind: "audio" as const, status: "ready" as const, bytes_received: 1, byte_size: 1, asset_ref: `asset_${uploadRef}`, source_ref: `source_${uploadRef}`, error: null, created_at: "2026-09-05T12:00:00.000Z", updated_at: "2026-09-05T12:00:01.000Z", expires_at: "2026-09-06T12:00:00.000Z" }, meta: { request_id: `preview-upload-status-${uploadRef}` } }
+  },
+  async cancelCreativeSourceUpload(uploadRef, _idempotencyKey) {
+    void _idempotencyKey
+    return { data: { upload_ref: uploadRef, source_kind: "audio" as const, status: "cancelled" as const, bytes_received: 0, byte_size: 1, asset_ref: null, source_ref: null, error: null, created_at: "2026-09-05T12:00:00.000Z", updated_at: "2026-09-05T12:00:01.000Z", expires_at: "2026-09-06T12:00:00.000Z" }, meta: { request_id: `preview-upload-cancel-${uploadRef}` } }
   },
   async listCandidates() {
     return {

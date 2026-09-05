@@ -678,6 +678,33 @@ export type MoriCreativeSourcePage = {
   next_cursor: string | null
 }
 
+export const moriCreativeSourceUploadStatuses = ["creating", "uploading", "processing", "ready", "failed", "cancelled", "expired"] as const
+export type MoriCreativeSourceUploadStatus = typeof moriCreativeSourceUploadStatuses[number]
+
+export type MoriCreativeSourceUploadInput = {
+  source_kind: "audio"
+  file_name: string
+  content_type: string
+  byte_size: number
+  project_ref: MoriRef
+}
+
+export type MoriCreativeSourceUpload = {
+  upload_ref: MoriRef
+  source_kind: "audio"
+  status: MoriCreativeSourceUploadStatus
+  bytes_received: number
+  byte_size: number
+  asset_ref: MoriRef | null
+  source_ref: MoriRef | null
+  error: ApiError["error"] | null
+  created_at: string
+  updated_at: string
+  expires_at: string
+}
+
+export type MoriCreativeSourceUploadReceipt = Pick<MoriCreativeSourceUpload, "upload_ref" | "status" | "expires_at">
+
 export type MoriExportStatus = "queued" | "processing" | "succeeded" | "failed"
 
 export type MoriExportFormat = "mp3" | "wav"
@@ -746,6 +773,10 @@ export type MoriApi = {
   listLibrary: (kindOrOptions?: MoriLibraryKind | MoriLibraryListOptions) => Promise<ApiSuccess<{ items: MoriLibraryItem[]; next_cursor: string | null }>>
   listCreativeSources: (options?: MoriCreativeSourceListOptions) => Promise<ApiSuccess<MoriCreativeSourcePage>>
   getCreativeSource: (sourceKind: MoriCreativeSourceKind, sourceRef: MoriRef) => Promise<ApiSuccess<MoriCreativeSource>>
+  createCreativeSourceUpload: (input: MoriCreativeSourceUploadInput, idempotencyKey: string) => Promise<ApiSuccess<MoriCreativeSourceUploadReceipt>>
+  uploadCreativeSourceContent: (uploadRef: MoriRef, body: BodyInit, contentType: string, signal?: AbortSignal) => Promise<ApiSuccess<MoriCreativeSourceUpload>>
+  getCreativeSourceUpload: (uploadRef: MoriRef) => Promise<ApiSuccess<MoriCreativeSourceUpload>>
+  cancelCreativeSourceUpload: (uploadRef: MoriRef, idempotencyKey: string) => Promise<ApiSuccess<MoriCreativeSourceUpload>>
   createExport: (versionRef: MoriRef, input: MoriExportInput, idempotencyKey: string) => Promise<ApiSuccess<MoriExportReceipt>>
   getExport: (exportRef: MoriRef) => Promise<ApiSuccess<MoriExportSnapshot>>
 }

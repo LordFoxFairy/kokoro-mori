@@ -2,6 +2,7 @@ import {
   artworkPalettes,
   artworkStyles,
   moriCreativeSourceKinds,
+  moriCreativeSourceUploadStatuses,
   releaseVisibilities,
   stemSeparationModes,
   stemTargetKinds,
@@ -42,6 +43,9 @@ import type {
   MoriLibraryItem,
   MoriCreativeSource,
   MoriCreativeSourceKind,
+  MoriCreativeSourceUpload,
+  MoriCreativeSourceUploadReceipt,
+  MoriCreativeSourceUploadStatus,
   MoriLyricsRevisionEvent,
   MoriLyricsSuggestion,
   MoriMixRevision,
@@ -118,6 +122,24 @@ function stringArray(value: unknown): value is string[] {
 
 function generationStatus(value: unknown): value is GenerationStatus {
   return typeof value === "string" && generationStatuses.includes(value as GenerationStatus)
+}
+
+function creativeSourceUploadStatus(value: unknown): value is MoriCreativeSourceUploadStatus {
+  return typeof value === "string" && moriCreativeSourceUploadStatuses.includes(value as MoriCreativeSourceUploadStatus)
+}
+
+function parseApiErrorValue(value: unknown): ApiError["error"] | null | undefined {
+  if (value === null) return null
+  if (!isRecord(value) || !nonEmptyString(value.code) || !nonEmptyString(value.message) || typeof value.retryable !== "boolean") return undefined
+  const details = value.details
+  if (details === null) return { code: value.code, message: value.message, retryable: value.retryable, details: null }
+  if (!Array.isArray(details) || !details.every((item) => isRecord(item) && (item.field === null || nonEmptyString(item.field)) && nonEmptyString(item.reason))) return undefined
+  return {
+    code: value.code,
+    message: value.message,
+    retryable: value.retryable,
+    details: details.map((item) => ({ field: item.field as string | null, reason: item.reason as string })),
+  }
 }
 
 function studioChangeOperation(value: unknown): value is StudioChangeOperation {
@@ -1084,6 +1106,30 @@ export function parseMoriCreativeSourcePage(value: unknown): { sources: MoriCrea
   if (!isRecord(value) || !Array.isArray(value.sources) || !nullableString(value.next_cursor)) return null
   const sources = value.sources.map(parseMoriCreativeSource)
   return sources.every(present) ? { sources, next_cursor: value.next_cursor } : null
+}
+
+export function parseMoriCreativeSourceUploadReceipt(value: unknown): MoriCreativeSourceUploadReceipt | null {
+  if (!isRecord(value) || !nonEmptyString(value.upload_ref) || !creativeSourceUploadStatus(value.status) || !dateString(value.expires_at)) return null
+  return { upload_ref: value.upload_ref, status: value.status, expires_at: value.expires_at }
+}
+
+export function parseMoriCreativeSourceUpload(value: unknown): MoriCreativeSourceUpload | null {
+  if (!isRecord(value) || !nonEmptyString(value.upload_ref) || value.source_kind !== "audio" || !creativeSourceUploadStatus(value.status) || !integer(value.bytes_received, 0) || !integer(value.byte_size, 1) || value.bytes_received > value.byte_size || !nullableString(value.asset_ref) || !nullableString(value.source_ref) || !dateString(value.created_at) || !dateString(value.updated_at) || !dateString(value.expires_at)) return null
+  const error = parseApiErrorValue(value.error)
+  if (error === undefined || (value.status === "ready" && (value.asset_ref === null || value.source_ref === null)) || (value.status !== "ready" && (value.asset_ref !== null || value.source_ref !== null))) return null
+  return {
+    upload_ref: value.upload_ref,
+    source_kind: "audio",
+    status: value.status,
+    bytes_received: value.bytes_received,
+    byte_size: value.byte_size,
+    asset_ref: value.asset_ref,
+    source_ref: value.source_ref,
+    error,
+    created_at: value.created_at,
+    updated_at: value.updated_at,
+    expires_at: value.expires_at,
+  }
 }
 
 export function parseMoriExportReceipt(value: unknown): MoriExportReceipt | null {

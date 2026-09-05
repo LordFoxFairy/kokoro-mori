@@ -12,6 +12,7 @@ import {
   type MoriCandidateListOptions,
   type MoriArtworkGenerationEvent,
   type MoriCreativeSourceListOptions,
+  type MoriCreativeSourceUploadInput,
   type MoriExportInput,
   type MoriLyricsRevisionEvent,
   type MoriStemSeparationEvent,
@@ -37,6 +38,8 @@ import {
   parseMoriCandidatePage,
   parseMoriCreativeSource,
   parseMoriCreativeSourcePage,
+  parseMoriCreativeSourceUpload,
+  parseMoriCreativeSourceUploadReceipt,
   parseMoriCurrentVersionSelection,
   parseMoriProjectWorkspaceProjection,
   parseMoriExportReceipt,
@@ -415,6 +418,38 @@ export function createMoriApiClient(options: MoriApiClientOptions = {}): MoriApi
       const response = await fetchImpl(`${apiBasePath}/library/sources/${encodeURIComponent(sourceKind)}/${encodeURIComponent(sourceRef)}`)
       const payload = await readJson(response)
       return parseSuccessResponse(response, payload, parseMoriCreativeSource)
+    },
+    async createCreativeSourceUpload(input: MoriCreativeSourceUploadInput, idempotencyKey: string) {
+      const response = await fetchImpl(`${apiBasePath}/creative-source-uploads`, {
+        method: "POST",
+        headers: createMutationHeaders(idempotencyKey),
+        body: JSON.stringify(input),
+      })
+      const payload = await readJson(response)
+      return parseSuccessResponse(response, payload, parseMoriCreativeSourceUploadReceipt)
+    },
+    async uploadCreativeSourceContent(uploadRef, body, contentType, signal) {
+      const response = await fetchImpl(`${apiBasePath}/creative-source-uploads/${encodeURIComponent(uploadRef)}/content`, {
+        method: "PUT",
+        headers: { "Content-Type": contentType },
+        body,
+        signal,
+      })
+      const payload = await readJson(response)
+      return parseSuccessResponse(response, payload, parseMoriCreativeSourceUpload)
+    },
+    async getCreativeSourceUpload(uploadRef) {
+      const response = await fetchImpl(`${apiBasePath}/creative-source-uploads/${encodeURIComponent(uploadRef)}`)
+      const payload = await readJson(response)
+      return parseSuccessResponse(response, payload, parseMoriCreativeSourceUpload)
+    },
+    async cancelCreativeSourceUpload(uploadRef, idempotencyKey) {
+      const response = await fetchImpl(`${apiBasePath}/creative-source-uploads/${encodeURIComponent(uploadRef)}/cancel`, {
+        method: "POST",
+        headers: createMutationHeaders(idempotencyKey),
+      })
+      const payload = await readJson(response)
+      return parseSuccessResponse(response, payload, parseMoriCreativeSourceUpload)
     },
     async createExport(versionRef: MoriRef, input: MoriExportInput, idempotencyKey: string) {
       const response = await fetchImpl(`${apiBasePath}/versions/${encodeURIComponent(versionRef)}/exports`, {
