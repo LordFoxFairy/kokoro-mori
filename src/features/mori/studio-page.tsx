@@ -1985,6 +1985,13 @@ function ArrangementEditor({ compositionSave, compositionRevision, onRefreshWork
   }], [candidate.durationSeconds, candidate.versionRef])
   const compositionEditor = useCompositionEditor(compositionTracks[0] as CompositionTrack, async (input) => (await compositionSave(candidate.versionRef, input as MoriCompositionRevisionInput, `mori-composition-${candidate.versionRef}-${Date.now()}`)).data, compositionRevision)
   const [editOperation, setEditOperation] = useState<"move" | "trim" | "split" | "crop" | "fade" | null>(null)
+  const duplicateClip = (clipRef: string) => {
+    const source = compositionEditor.composition.clips.find((clip) => clip.clipRef === clipRef)
+    if (source === undefined) return
+    const endMs = Math.max(...compositionEditor.composition.clips.map((clip) => clip.startMs + clip.durationMs))
+    compositionEditor.editAndQueue({ operation: "insert", clip: { ...source, clipRef: `${source.clipRef}:copy-${compositionEditor.composition.clips.length + 1}`, startMs: endMs + 250 } })
+    setSelectedClipRef(undefined)
+  }
 
   if (selection === undefined) return null
 
@@ -2008,7 +2015,7 @@ function ArrangementEditor({ compositionSave, compositionRevision, onRefreshWork
           {compositionEditor.saveState === "conflict" ? "Refresh to resolve" : compositionEditor.saveState === "failed" ? "Retry save" : "Save arrangement"}
         </button>
       </div>
-      <StudioTimeline candidate={candidate} sections={timelineSections} selection={selection} positionSeconds={positionSeconds} playing={playing} disabled={changeActive} onSeek={onSeekTimeline} onSelect={selectTimelineRange} compositionTracks={[compositionEditor.composition]} selectedClipRef={selectedClipRef} onSelectClip={setSelectedClipRef} onEditClip={(operation, clipRef) => { setSelectedClipRef(clipRef); setEditOperation(operation) }} />
+      <StudioTimeline candidate={candidate} sections={timelineSections} selection={selection} positionSeconds={positionSeconds} playing={playing} disabled={changeActive} onSeek={onSeekTimeline} onSelect={selectTimelineRange} compositionTracks={[compositionEditor.composition]} selectedClipRef={selectedClipRef} onSelectClip={setSelectedClipRef} onEditClip={(operation, clipRef) => { setSelectedClipRef(clipRef); setEditOperation(operation) }} onDuplicateClip={duplicateClip} />
       {selectedClipRef !== undefined && editOperation !== null ? <CompositionEditPanel clipRef={selectedClipRef} operation={editOperation} onApply={(edit) => { compositionEditor.editAndQueue(edit); setEditOperation(null) }} /> : null}
       <StudioAiComposer
         selectedSection={selection}
