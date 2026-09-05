@@ -4966,7 +4966,10 @@
   min-height: 100%;
 }
 
-.arrangementTimelineHeader { display:flex; justify-content:flex-end; min-height:18px; margin:0 0 6px; }
+.arrangementTimelineHeader { display:flex; align-items:center; justify-content:flex-end; gap:12px; min-height:32px; margin:0 0 6px; }
+.arrangementSaveButton { display:inline-flex; align-items:center; gap:6px; min-height:30px; padding:0 12px; border:1px solid var(--mori-border); border-radius:9px; color:var(--mori-ink); background:rgba(255,255,255,.8); font:inherit; font-size:12px; font-weight:700; cursor:pointer; }
+.arrangementSaveButton:hover:not(:disabled) { border-color:var(--mori-primary); color:var(--mori-primary); }
+.arrangementSaveButton:disabled { cursor:default; opacity:.52; }
 
 .studioPage .studioHeader {
   min-height: 68px;

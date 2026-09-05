@@ -1994,9 +1994,20 @@ function ArrangementEditor({ compositionSave, candidate, takes, structure, lyric
 
   return (
     <section aria-label="Arrangement editor">
-      <div className={styles.arrangementTimelineHeader}><CompositionSaveIndicator state={compositionEditor.canUndo ? "unsaved" : "saved"} /></div>
+      <div className={styles.arrangementTimelineHeader}>
+        <CompositionSaveIndicator state={compositionEditor.saveState} />
+        <button
+          className={styles.arrangementSaveButton}
+          type="button"
+          disabled={compositionEditor.saveState === "saved" || compositionEditor.saveState === "saving"}
+          onClick={() => { void compositionEditor.persist() }}
+        >
+          {compositionEditor.saveState === "saving" ? <LoaderCircle className={styles.spinner} size={14} /> : <Check size={14} />}
+          {compositionEditor.saveState === "failed" ? "Retry save" : "Save arrangement"}
+        </button>
+      </div>
       <StudioTimeline candidate={candidate} sections={timelineSections} selection={selection} positionSeconds={positionSeconds} playing={playing} disabled={changeActive} onSeek={onSeekTimeline} onSelect={selectTimelineRange} compositionTracks={[compositionEditor.composition]} selectedClipRef={selectedClipRef} onSelectClip={setSelectedClipRef} onEditClip={(operation, clipRef) => { setSelectedClipRef(clipRef); setEditOperation(operation) }} />
-      {selectedClipRef !== undefined && editOperation !== null ? <CompositionEditPanel clipRef={selectedClipRef} operation={editOperation} onApply={(edit) => { compositionEditor.edit(edit); setEditOperation(null) }} /> : null}
+      {selectedClipRef !== undefined && editOperation !== null ? <CompositionEditPanel clipRef={selectedClipRef} operation={editOperation} onApply={(edit) => { compositionEditor.editAndQueue(edit); setEditOperation(null) }} /> : null}
       <StudioAiComposer
         selectedSection={selection}
         run={studioChangeRun}
