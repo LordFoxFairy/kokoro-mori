@@ -1,6 +1,6 @@
 # Mori × Suno 能力对齐基线
 
-> 核验日期：2026-09-04  
+> 核验日期：2026-09-05
 > 目标：先对齐 Suno 已验证的核心用户任务，再发展 Mori 的可解释、可恢复、provider-neutral AI Music 工作流。
 
 ## 1. 对齐口径
@@ -63,7 +63,7 @@ Prompt / Upload
 | Cover / Extend / Replace / Remaster | 浏览器已对齐 | Arrangement Change Plan、typed snapshot、Take Lanes、Finish Remaster | 补真实执行验收；Mori 的 Balanced / Bold 是自有语言，不冒充 Suno 原词 |
 | Add vocals / Add instrumental / Lyrics revision | 浏览器 foundation 已对齐 | Voice & stems、Lyrics Revision、Studio 的 owner-confirmed Lyrics Draft seam | Lyrics runtime 由 Workspace owner 接通并做 recovery smoke；浏览器不再以 localStorage 冒充保存 |
 | Take audition / Commit / Current Version | 浏览器已对齐 | Open、Playing、Selected、Current 分离；Project-scoped CAS | **P0：Durable Project Memory 的 Version / Revision 一致性** |
-| 保存版本、刷新或跨设备继续 | 部分对齐 | Current/Mix/Release 有契约；Workspace projection、Open Version 同步与 Studio Lyrics Draft 保存状态机已落地浏览器 | **P0 首项：Durable Project Memory**；Create Smart Song Plan 写入与 BFF runtime recovery 仍待完成 |
+| 保存版本、刷新或跨设备继续 | 浏览器 foundation 已对齐 | Current/Mix/Release 有契约；Workspace projection、Open Version、Studio Lyrics Draft 与 Create Smart Song Plan 的 owner-confirmed 保存状态机已落地浏览器 | **P0 继续：真实 BFF runtime recovery 与 Song Plan 历史** |
 | Library / Workspace 搜索与素材复用 | 部分对齐 | Projects、Versions、Audio/Voice/Inspiration Sources、cursor/search/filter | 接入真实 Source 生命周期；Studio 内 Asset Dock 放入 P1 |
 | Song Editor 的 Split / Crop / Fade / Move | 缺失 | 当前时间线只支持段落/时间范围选择和生成式 Change | P1 多轨 Composition 的确定性命令，不伪装成 AI prompt |
 | 多轨 timeline、录音、loop、tempo | 部分对齐 | 现有 Timeline + Stem Mixer 是正确起点，但不是 clip composition | P1：revisioned Track / Clip / Placement 模型后渐进开放 |
@@ -136,9 +136,10 @@ ProjectWorkspaceProjection
 当前仍只算 **P0.1 browser foundation**，不是 Runtime 完成：Studio Lyrics 已移除 localStorage 保存，先把显式
 Studio URL 同步为用户的 Open Version，再通过 revisioned Workspace command 保存该 Version 的 Draft。文字在保存中锁定；
 只有 owner 返回完整且精确匹配的新 revision 后才显示 `Saved`；短暂网络失败复用原 `Idempotency-Key`，冲突要求刷新；
-切换 Version 时提供 Keep editing / Discard & open / Save & open，避免静默丢稿。Create 的 Smart Song Plan 仍须在生成前后
-写入同一条 revisioned 事实；真实 BFF owner 随后需实现 projection 组合、revision 存储、幂等 receipt 与 recovery smoke。
-preview Project 会明确标记为 preview，绝不以 `saved` 假装为用户的持久化事实。
+切换 Version 时提供 Keep editing / Discard & open / Save & open，避免静默丢稿。Create Smart 现在也先读取最新 Workspace，
+通过同一条 revisioned Song Plan command 保存用户复核后的计划，确认完整 projection 与 `song_plan_ref` 后才创建 Generation；
+生成阶段重试复用已确认的计划，不重复写入。真实 BFF owner 随后需实现 projection 组合、revision 存储、幂等 receipt 与
+recovery smoke。preview Project 会明确标记为 preview，绝不以 `saved` 假装为用户的持久化事实。
 
 以下两个浏览器侧连续性问题已修完：
 

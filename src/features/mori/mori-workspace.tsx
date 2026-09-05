@@ -11,9 +11,10 @@ import {
   type MoriCreativeSource,
   type MoriProject,
   type MoriProjectCreateInput,
+  type MoriProjectWorkspaceProjection,
   type NewSongGenerationSnapshot,
 } from "@/lib/mori-api"
-import { createMoriApiClient, MoriApiRequestError } from "@/lib/mori-api-client"
+import { createMoriApiClient, moriNetworkRequestError, MoriApiRequestError } from "@/lib/mori-api-client"
 import type { Candidate, CreationMode, GenerationStatus, SongPlan } from "./domain"
 import type { MoriCreativeLibrarySource, MoriCreativeSourceSelection } from "./creative-assets"
 import { listAllMoriCandidates } from "./candidate-pagination"
@@ -42,6 +43,14 @@ import {
   type CurrentVersionCommitRun,
   type PendingCurrentVersionCommand,
 } from "./current-version"
+import {
+  beginCurrentSongPlanSave,
+  confirmProjectWorkspaceSave,
+  failProjectWorkspaceSave,
+  idleProjectWorkspaceSaveRun,
+  retryProjectWorkspaceSave,
+  type ProjectWorkspaceSaveRun,
+} from "./project-workspace-memory"
 import { CreateCanvas, type CreationDraft } from "./components/create-canvas"
 import { InspectorPanel } from "./components/inspector-panel"
 import { useMoriApp } from "./components/mori-app-provider"
@@ -53,12 +62,41 @@ type MoriWorkspaceProps = {
   generationRef?: string
   initialPrompt?: string
   initialCreativeSource?: MoriCreativeSourceSelection
-  api?: Pick<MoriApi, "createSongPlan" | "createGeneration" | "getGeneration" | "getGenerationEvents" | "listCandidates" | "cancelGeneration"> & Partial<Pick<MoriApi, "createProject" | "getProject" | "putCurrentVersion" | "listCreativeSources" | "getCreativeSource">>
+  api?: Pick<MoriApi, "createGeneration" | "getGeneration" | "getGenerationEvents" | "listCandidates" | "cancelGeneration"> & Partial<Pick<MoriApi, "createSongPlan" | "createProject" | "getProject" | "putCurrentVersion" | "getProjectWorkspace" | "putCurrentSongPlan" | "listCreativeSources" | "getCreativeSource">>
 }
 
 type GenerationAttempt = {
   mode: CreationMode
   draft: CreationDraft
+  songPlanRef?: string
+}
+
+type PendingSongPlanSave = {
+  projectRef: string
+  plan: SongPlan
+  run: ProjectWorkspaceSaveRun
+}
+
+type SongPlanWorkspaceRefresh = {
+  token: number
+  plan: SongPlan | null
+}
+
+class SongPlanPersistenceError extends Error {
+  readonly retryable: boolean
+
+  constructor(message: string, retryable: boolean) {
+    super(message)
+    this.name = "SongPlanPersistenceError"
+    this.retryable = retryable
+  }
+}
+
+class StaleGenerationCommandError extends Error {
+  constructor() {
+    super("stale_generation_command")
+    this.name = "StaleGenerationCommandError"
+  }
 }
 
 type ProjectCreationAttempt = {
@@ -95,6 +133,9 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, generationRef: 
   const generationQueueHydrated = generationQueueHydratedRouteKey === generationQueueRouteKey
   const [lastGenerationAttempt, setLastGenerationAttempt] = useState<GenerationAttempt | null>(null)
   const [currentVersionCommitRun, setCurrentVersionCommitRun] = useState<CurrentVersionCommitRun>(idleCurrentVersionCommitRun)
+  const [songPlanSaveRun, setSongPlanSaveRun] = useState<ProjectWorkspaceSaveRun>(idleProjectWorkspaceSaveRun)
+  const [songPlanSaveLoading, setSongPlanSaveLoading] = useState(false)
+  const [songPlanWorkspaceRefresh, setSongPlanWorkspaceRefresh] = useState<SongPlanWorkspaceRefresh | null>(null)
   const [cancelPendingGenerationRef, setCancelPendingGenerationRef] = useState<string | null>(null)
   const [workspaceProjectTitle, setWorkspaceProjectTitle] = useState(initialProjectRef === null ? "New project" : initialProjectRef === previewProject.projectRef ? previewProject.title : "Project")
   const workspaceProjectRefMirror = useRef<string | null>(initialProjectRef)
@@ -105,6 +146,9 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, generationRef: 
   const generationObservationEpochRef = useRef(0)
   const recoveredGenerationSnapshotRef = useRef<NewSongGenerationSnapshot | null>(null)
   const cancelGenerationRequestRef = useRef<string | null>(null)
+  const pendingSongPlanSaveRef = useRef<PendingSongPlanSave | null>(null)
+  const songPlanWorkspaceRefreshTokenRef = useRef(0)
+  const [songPlanSaveProjectRef, setSongPlanSaveProjectRef] = useState<string | null>(initialProjectRef)
   const defaultApi = useMemo(() => createMoriApiClient(), [])
   const api = injectedApi ?? defaultApi
   const mode = modeOverride ?? preferences.defaultMode
@@ -337,41 +381,203 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, generationRef: 
     }
   }, [api])
 
-  const handleGenerate = useCallback(async (draft: CreationDraft, generationMode = mode) => {
+  const persistSongPlan = useCallback(async (
+    targetProjectRef: string,
+    draftPlan: SongPlan,
+    commandEpoch: number,
+  ): Promise<SongPlan> => {
+    const getProjectWorkspace = api.getProjectWorkspace
+    const putCurrentSongPlan = api.putCurrentSongPlan
+    setSongPlanSaveProjectRef(targetProjectRef)
+
+    if (targetProjectRef === previewProject.projectRef) {
+      // The legacy POST exists only for the local preview fixture. Live Projects use the revisioned Workspace command below.
+      pendingSongPlanSaveRef.current = null
+      setSongPlanSaveLoading(true)
+      try {
+        const createSongPlan = api.createSongPlan
+        if (createSongPlan === undefined) throw new SongPlanPersistenceError("Preview Song Plan is not available.", false)
+        const response = await createSongPlan(
+          targetProjectRef,
+          toSongPlanCreateInput(draftPlan),
+          `mori-plan-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        )
+        if (generationCommandEpochRef.current !== commandEpoch) throw new StaleGenerationCommandError()
+        const nextPlan = toDomainSongPlan(response.data)
+        setSongPlanSaveRun(idleProjectWorkspaceSaveRun)
+        return nextPlan
+      } finally {
+        setSongPlanSaveLoading(false)
+      }
+    }
+
+    if (getProjectWorkspace === undefined || putCurrentSongPlan === undefined) {
+      const failure = planSaveFailure("Project workspace saving is not connected. Refresh before trying again.", false)
+      setSongPlanSaveRun(failure)
+      throw new SongPlanPersistenceError(failure.message ?? "Project workspace saving is not connected.", false)
+    }
+
+    let run: ProjectWorkspaceSaveRun | null = null
+    const pending = pendingSongPlanSaveRef.current
+    if (pending !== null && pending.projectRef === targetProjectRef && songPlansMatch(pending.plan, draftPlan)) {
+      if (pending.run.status === "failed" && pending.run.retryable) {
+        const retry = retryProjectWorkspaceSave(pending.run)
+        if (retry.status === "saving") {
+          run = retry
+          pendingSongPlanSaveRef.current = { ...pending, run }
+        }
+      } else if (pending.run.status === "saving") {
+        throw new SongPlanPersistenceError("Mori is already saving this Project plan. Wait for the current save to finish.", true)
+      }
+    }
+
+    if (run === null) {
+      setSongPlanSaveLoading(true)
+      let workspace: MoriProjectWorkspaceProjection
+      try {
+        const response = await getProjectWorkspace(targetProjectRef)
+        workspace = response.data
+      } catch (error) {
+        const failure = songPlanWorkspaceLoadFailure(moriNetworkRequestError(error) ?? error)
+        if (generationCommandEpochRef.current === commandEpoch) setSongPlanSaveRun(failure)
+        throw new SongPlanPersistenceError(failure.message ?? "Mori could not load this Project plan.", failure.retryable)
+      } finally {
+        setSongPlanSaveLoading(false)
+      }
+
+      if (generationCommandEpochRef.current !== commandEpoch) throw new StaleGenerationCommandError()
+      if (workspace.project.project_ref !== targetProjectRef) {
+        const failure = planSaveFailure("Mori returned a different Project workspace. Refresh before trying again.", false)
+        setSongPlanSaveRun(failure)
+        throw new SongPlanPersistenceError(failure.message ?? "Mori returned a different Project workspace.", false)
+      }
+
+      const input = toSongPlanCreateInput(draftPlan)
+      const existingPlan = workspace.current_song_plan
+      if (existingPlan !== null && songPlanRevisionMatchesDraft(existingPlan, draftPlan, targetProjectRef)) {
+        const nextPlan = toDomainSongPlan(existingPlan)
+        if (pendingSongPlanSaveMatches(pendingSongPlanSaveRef.current, targetProjectRef, draftPlan)) pendingSongPlanSaveRef.current = null
+        setSongPlan(nextPlan)
+        setSongPlanSaveRun({
+          status: "saved",
+          command: null,
+          message: "This plan is already saved to the Project.",
+          retryable: false,
+        })
+        return nextPlan
+      }
+
+      run = beginCurrentSongPlanSave(
+        workspace,
+        input,
+        `mori-workspace-plan-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      )
+      pendingSongPlanSaveRef.current = { projectRef: targetProjectRef, plan: draftPlan, run }
+    }
+
+    if (run === null || run.status !== "saving" || run.command === null || run.command.kind !== "song_plan") {
+      throw new SongPlanPersistenceError("Mori could not prepare this Project plan save. Refresh before trying again.", false)
+    }
+    if (generationCommandEpochRef.current !== commandEpoch) throw new StaleGenerationCommandError()
+    setSongPlanSaveRun(run)
+
+    try {
+      const command = run.command
+      const response = await putCurrentSongPlan(command.projectRef, command.input, command.idempotencyKey)
+      const confirmed = confirmProjectWorkspaceSave(run, response.data)
+      if (confirmed.status !== "saved") {
+        if (pendingSongPlanSaveMatches(pendingSongPlanSaveRef.current, targetProjectRef, draftPlan, run)) pendingSongPlanSaveRef.current = null
+        if (generationCommandEpochRef.current === commandEpoch) setSongPlanSaveRun(confirmed)
+        throw new SongPlanPersistenceError(confirmed.message ?? "Mori did not confirm this Project plan save.", false)
+      }
+      const confirmedPlan = response.data.current_song_plan
+      if (confirmedPlan === null || !songPlanRevisionMatchesDraft(confirmedPlan, draftPlan, targetProjectRef)) {
+        if (pendingSongPlanSaveMatches(pendingSongPlanSaveRef.current, targetProjectRef, draftPlan, run)) pendingSongPlanSaveRef.current = null
+        const failure = planSaveFailure("Mori returned a workspace that did not confirm this plan. Refresh before trying again.", false)
+        if (generationCommandEpochRef.current === commandEpoch) setSongPlanSaveRun(failure)
+        throw new SongPlanPersistenceError(failure.message ?? "Mori did not confirm this Project plan save.", false)
+      }
+
+      const nextPlan = toDomainSongPlan(confirmedPlan)
+      if (pendingSongPlanSaveMatches(pendingSongPlanSaveRef.current, targetProjectRef, draftPlan, run)) pendingSongPlanSaveRef.current = null
+      if (generationCommandEpochRef.current === commandEpoch) {
+        setSongPlan(nextPlan)
+        setSongPlanSaveRun(confirmed)
+      }
+      return nextPlan
+    } catch (error) {
+      if (error instanceof StaleGenerationCommandError || error instanceof SongPlanPersistenceError) throw error
+      const failure = failProjectWorkspaceSave(run, moriNetworkRequestError(error) ?? error)
+      if (generationCommandEpochRef.current === commandEpoch) {
+        setSongPlanSaveRun(failure)
+        if (failure.retryable && failure.command !== null) {
+          const currentPending = pendingSongPlanSaveRef.current
+          if (currentPending === null || pendingSongPlanSaveMatches(currentPending, targetProjectRef, draftPlan, run)) {
+            pendingSongPlanSaveRef.current = { projectRef: targetProjectRef, plan: draftPlan, run: failure }
+          }
+        } else {
+          if (pendingSongPlanSaveMatches(pendingSongPlanSaveRef.current, targetProjectRef, draftPlan, run)) pendingSongPlanSaveRef.current = null
+        }
+      }
+      throw new SongPlanPersistenceError(failure.message ?? "Mori could not save this Project plan.", failure.retryable)
+    }
+  }, [api, setSongPlan])
+
+  const handleGenerate = useCallback(async (draft: CreationDraft, generationMode = mode, options: { reuseSongPlanRef?: string; retrySongPlanSave?: boolean } = {}) => {
     const commandEpoch = generationCommandEpochRef.current + 1
     generationCommandEpochRef.current = commandEpoch
     generationObservationEpochRef.current += 1
     cancelGenerationRequestRef.current = null
     setCancelPendingGenerationRef(null)
-    setLastGenerationAttempt({ mode: generationMode, draft })
+    setLastGenerationAttempt({
+      mode: generationMode,
+      draft,
+      ...(options.reuseSongPlanRef === undefined ? {} : { songPlanRef: options.reuseSongPlanRef }),
+    })
     setGenerationRef(null)
-    setHasGeneration(true)
-    setGenerationStatus("preparing")
-    setGenerationLabel(draft.prompt.trim() ? "Preparing your next direction" : "Preparing a new direction")
-    setProgress(8)
-    setPlaying(false)
-    setQueueOpen(true)
+    setHasGeneration(false)
     pendingCurrentVersionCommandRef.current = null
     setCurrentVersionCommitRun(idleCurrentVersionCommitRun)
     const localPlan = generationMode === "smart"
       ? draft.songPlan ?? buildSongPlan(workspaceProjectRefMirror.current ?? "project_pending", draft)
       : null
     setSongPlan(localPlan)
+    if (generationMode === "custom") {
+      pendingSongPlanSaveRef.current = null
+      setSongPlanSaveRun(idleProjectWorkspaceSaveRun)
+    } else if (options.reuseSongPlanRef === undefined && options.retrySongPlanSave !== true) {
+      setSongPlanSaveRun(idleProjectWorkspaceSaveRun)
+    }
+    let generationUiStarted = false
     try {
       const targetProjectRef = await ensureWorkspaceProject(draft)
       if (generationCommandEpochRef.current !== commandEpoch) return
-      let songPlanRef: string | undefined
+      let songPlanRef: string | undefined = options.reuseSongPlanRef
       if (generationMode === "smart") {
         const draftPlan = localPlan ?? buildSongPlan(targetProjectRef, draft)
-        const planResponse = await api.createSongPlan(
-          targetProjectRef,
-          toSongPlanCreateInput(draftPlan),
-          `mori-plan-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        )
-        songPlanRef = planResponse.data.song_plan_ref
+        if (songPlanRef === undefined) {
+          try {
+            const persistedPlan = await persistSongPlan(targetProjectRef, draftPlan, commandEpoch)
+            songPlanRef = persistedPlan.songPlanRef
+          } catch (error) {
+            if (error instanceof StaleGenerationCommandError || generationCommandEpochRef.current !== commandEpoch) return
+            setGenerationStatus("failed")
+            setGenerationLabel(error instanceof SongPlanPersistenceError ? "Plan needs attention" : generationFailureLabel(error))
+            setProgress(0)
+            return
+          }
+        }
         if (generationCommandEpochRef.current !== commandEpoch) return
-        setSongPlan(toDomainSongPlan(planResponse.data))
+        setLastGenerationAttempt({ mode: generationMode, draft, songPlanRef })
       }
+      if (generationCommandEpochRef.current !== commandEpoch) return
+      setHasGeneration(true)
+      setGenerationStatus("preparing")
+      setGenerationLabel(draft.prompt.trim() ? "Preparing your next direction" : "Preparing a new direction")
+      setProgress(8)
+      setPlaying(false)
+      setQueueOpen(true)
+      generationUiStarted = true
       const response = await api.createGeneration(
         targetProjectRef,
         createGenerationRequest({
@@ -412,6 +618,14 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, generationRef: 
       setProgress(response.data.status === "queued" ? 0 : 12)
     } catch (error) {
       if (generationCommandEpochRef.current !== commandEpoch) return
+      if (!generationUiStarted) {
+        setHasGeneration(true)
+        setGenerationStatus("failed")
+        setGenerationLabel(generationFailureLabel(error))
+        setProgress(0)
+        setQueueOpen(true)
+        return
+      }
       setGenerationStatus("failed")
       setGenerationLabel(generationFailureLabel(error))
       setProgress(0)
@@ -420,6 +634,7 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, generationRef: 
     api,
     ensureWorkspaceProject,
     mode,
+    persistSongPlan,
     setGenerationLabel,
     setGenerationRef,
     setGenerationStatus,
@@ -433,8 +648,56 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, generationRef: 
 
   const retryLastGeneration = useCallback(() => {
     if (lastGenerationAttempt === null) return
-    void handleGenerate(lastGenerationAttempt.draft, lastGenerationAttempt.mode)
+    void handleGenerate(lastGenerationAttempt.draft, lastGenerationAttempt.mode, {
+      ...(lastGenerationAttempt.songPlanRef === undefined ? {} : { reuseSongPlanRef: lastGenerationAttempt.songPlanRef }),
+    })
   }, [handleGenerate, lastGenerationAttempt])
+
+  const retrySongPlanSave = useCallback(() => {
+    if (lastGenerationAttempt === null || lastGenerationAttempt.mode !== "smart" || lastGenerationAttempt.songPlanRef !== undefined) return
+    if (songPlanSaveProjectRef === null || songPlanSaveProjectRef !== workspaceProjectRef || songPlanSaveRun.status !== "failed" || !songPlanSaveRun.retryable) return
+    void handleGenerate(lastGenerationAttempt.draft, lastGenerationAttempt.mode, { retrySongPlanSave: true })
+  }, [handleGenerate, lastGenerationAttempt, songPlanSaveProjectRef, songPlanSaveRun.retryable, songPlanSaveRun.status, workspaceProjectRef])
+
+  const refreshSongPlanWorkspace = useCallback(async () => {
+    pendingSongPlanSaveRef.current = null
+    setSongPlanSaveRun(idleProjectWorkspaceSaveRun)
+    setSongPlanSaveLoading(false)
+    const projectRef = workspaceProjectRefMirror.current
+    const getProjectWorkspace = api.getProjectWorkspace
+    const refreshToken = songPlanWorkspaceRefreshTokenRef.current + 1
+    songPlanWorkspaceRefreshTokenRef.current = refreshToken
+    generationCommandEpochRef.current += 1
+
+    if (projectRef === null || projectRef === previewProject.projectRef || getProjectWorkspace === undefined) {
+      setSongPlan(null)
+      setSongPlanWorkspaceRefresh({ token: refreshToken, plan: null })
+      return
+    }
+
+    const refreshEpoch = generationCommandEpochRef.current
+    setSongPlanSaveProjectRef(projectRef)
+    setSongPlanSaveLoading(true)
+    try {
+      const response = await getProjectWorkspace(projectRef)
+      if (generationCommandEpochRef.current !== refreshEpoch) return
+      if (response.data.project.project_ref !== projectRef) {
+        throw new SongPlanPersistenceError("Mori returned a different Project workspace. Refresh before trying again.", false)
+      }
+      const nextPlan = response.data.current_song_plan === null ? null : toDomainSongPlan(response.data.current_song_plan)
+      setSongPlan(nextPlan)
+      setSongPlanSaveRun(idleProjectWorkspaceSaveRun)
+      setSongPlanWorkspaceRefresh({ token: refreshToken, plan: nextPlan })
+    } catch (error) {
+      if (generationCommandEpochRef.current !== refreshEpoch) return
+      const failure = error instanceof SongPlanPersistenceError
+        ? planSaveFailure(error.message, error.retryable)
+        : songPlanWorkspaceLoadFailure(moriNetworkRequestError(error) ?? error)
+      setSongPlanSaveRun(failure)
+    } finally {
+      if (generationCommandEpochRef.current === refreshEpoch) setSongPlanSaveLoading(false)
+    }
+  }, [api, setSongPlan, workspaceProjectRefMirror])
 
   useEffect(() => {
     const getGeneration = api.getGeneration
@@ -714,7 +977,18 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, generationRef: 
   const generationFeedback = generationFeedbackFor(hasGeneration ? generationStatus : null)
   const visibleGenerationQueueItems = generationQueue.items.filter((item) => workspaceProjectRef === null || item.project_ref === workspaceProjectRef)
   const activeQueueItem = generationRef === null ? undefined : generationQueue.items.find((item) => item.generation_ref === generationRef)
-  const canRetryGeneration = activeQueueItem?.kind === "create" || (activeQueueItem === undefined && lastGenerationAttempt !== null)
+  const canRetryGeneration = activeQueueItem?.kind === "create" || (hasGeneration && activeQueueItem === undefined && lastGenerationAttempt !== null)
+  const canPersistSongPlan = workspaceProjectRef !== previewProject.projectRef
+    && api.getProjectWorkspace !== undefined
+    && api.putCurrentSongPlan !== undefined
+  const planPersistence = workspaceProjectRef === previewProject.projectRef
+    ? "preview"
+    : canPersistSongPlan
+      ? "workspace"
+      : "unavailable"
+  const currentSongPlanSaveRun = songPlanSaveProjectRef === workspaceProjectRef
+    ? songPlanSaveRun
+    : idleProjectWorkspaceSaveRun
 
   const selectQueuedGeneration = useCallback((nextGenerationRef: string) => {
     const item = generationQueueRef.current.items.find((candidate) => candidate.generation_ref === nextGenerationRef)
@@ -806,7 +1080,21 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, generationRef: 
               </div>
             </header>
             <div className={styles.canvasBody}>
-              <CreateCanvas projectRef={workspaceProjectRef ?? "project_pending"} mode={mode} initialPrompt={initialPrompt} initialCreativeSource={initialCreativeSource} creativeSources={creativeSources} onModeChange={setModeOverride} onGenerate={handleGenerate} />
+              <CreateCanvas
+                projectRef={workspaceProjectRef ?? "project_pending"}
+                mode={mode}
+                initialPrompt={initialPrompt}
+                initialCreativeSource={initialCreativeSource}
+                creativeSources={creativeSources}
+                planPersistence={planPersistence}
+                planSaveRun={planPersistence === "preview" ? idleProjectWorkspaceSaveRun : currentSongPlanSaveRun}
+                planSaveLoading={planPersistence !== "preview" && songPlanSaveLoading}
+                workspacePlanRefresh={songPlanWorkspaceRefresh ?? undefined}
+                onRetryPlanSave={retrySongPlanSave}
+                onRefreshPlanWorkspace={refreshSongPlanWorkspace}
+                onModeChange={setModeOverride}
+                onGenerate={handleGenerate}
+              />
             </div>
           </section>
           {queueOpen && queuePresentation === "pane" ? renderQueue("pane") : null}
@@ -881,6 +1169,63 @@ function generationLabelFor(status: GenerationStatus): string {
 function generationFailureLabel(error: unknown): string {
   if (error instanceof MoriApiRequestError && error.code === "mori_bff_unavailable") return "Mori is offline right now. Try again."
   return "We couldn't start this direction. Try again."
+}
+
+function songPlansMatch(left: SongPlan, right: SongPlan): boolean {
+  return left.prompt === right.prompt
+    && left.mood === right.mood
+    && left.tempoBpm === right.tempoBpm
+    && sameStringValues(left.structure, right.structure)
+    && sameStringValues(left.instruments, right.instruments)
+    && left.vocalDirection === right.vocalDirection
+    && left.lyricsIntent === right.lyricsIntent
+}
+
+function songPlanRevisionMatchesDraft(
+  revision: NonNullable<MoriProjectWorkspaceProjection["current_song_plan"]>,
+  draft: SongPlan,
+  projectRef: string,
+): boolean {
+  return revision.project_ref === projectRef
+    && revision.prompt === draft.prompt
+    && revision.mood === draft.mood
+    && revision.tempo_bpm === draft.tempoBpm
+    && sameStringValues(revision.structure, draft.structure)
+    && sameStringValues(revision.instruments, draft.instruments)
+    && revision.vocal_direction === draft.vocalDirection
+    && revision.lyrics_intent === draft.lyricsIntent
+}
+
+function sameStringValues(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index])
+}
+
+function planSaveFailure(message: string, retryable: boolean): ProjectWorkspaceSaveRun {
+  return { status: "failed", command: null, message, retryable }
+}
+
+function pendingSongPlanSaveMatches(
+  pending: PendingSongPlanSave | null,
+  projectRef: string,
+  plan: SongPlan,
+  run?: ProjectWorkspaceSaveRun,
+): boolean {
+  if (pending === null || pending.projectRef !== projectRef || !songPlansMatch(pending.plan, plan)) return false
+  if (run === undefined) return true
+  if (run.command === null || pending.run.command === null) return false
+  return run.command.kind === "song_plan"
+    && pending.run.command.kind === "song_plan"
+    && run.command.idempotencyKey === pending.run.command.idempotencyKey
+}
+
+function songPlanWorkspaceLoadFailure(error: unknown): ProjectWorkspaceSaveRun {
+  const retryable = error instanceof MoriApiRequestError && error.retryable
+  return planSaveFailure(
+    retryable
+      ? "Mori could not load this Project plan. Retry when ready."
+      : "Mori could not load this Project plan. Refresh before trying again.",
+    retryable,
+  )
 }
 
 function creationProjectInput(prompt: string): MoriProjectCreateInput {

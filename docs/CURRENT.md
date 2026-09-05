@@ -1,6 +1,6 @@
 # Mori 当前状态
 
-> 更新：2026-09-04
+> 更新：2026-09-05
 > 范围：本地 preview 产品壳、Create、Library、Project、Studio 与 Finish 工作面。
 
 ## 已实现
@@ -43,6 +43,10 @@
   Current Song Plan、用户 Open Version、该 Version 的 Lyrics Draft、最新 Mix 摘要与活动任务；Song Plan、Lyrics
   Draft、Open Version 的写入分别携带 revision 与 `Idempotency-Key`，只在完整返回投影精确确认下一 revision 后
   才可显示保存成功。Project Overview 已读取真实 Song Plan；本地 fixture 则明确标为 `Preview plan`，不冒充持久化结果。
+- Create Smart 已接入同一条 Workspace 写入边界：用户确认可编辑 Song Plan 后，浏览器先读取最新 projection，再以
+  `expected_revision` 和幂等键保存 Current Song Plan；只有返回的 `song_plan_ref`、revision 与全部字段精确确认后才提交
+  Generation。短暂失败保留原 command / 幂等键，生成重试复用已确认的 Song Plan，不重复创建 revision；preview Project
+  仍明确标为 preview。
 - Studio Lyrics 已接入该 Workspace foundation：不再读写浏览器 localStorage。显式 Studio URL 会优先同步为用户的
   Open Version，完成确认前不会允许把文字写到错误 Version；保存期间文字与 AI Apply 锁定，只有完整 owner projection
   被当前 Project / Version 接受后才显示 `Saved`。短暂故障复用原 `Idempotency-Key`，冲突转为 Refresh；在有未保存文字时
@@ -81,7 +85,7 @@
 ```text
 pnpm lint                         passed
 pnpm typecheck                    passed
-pnpm test                         passed: 63 files / 477 tests
+pnpm test                         passed: 63 files / 483 tests
 pnpm build                        passed
 ```
 
@@ -89,8 +93,8 @@ pnpm build                        passed
 
 - 当前页面仍保留 preview fallback；真实 provider 适配、持久化 Project/Version/Source 和公开 Product API
   由后续 owner contract 驱动，不在组件内伪造。Library 的浏览器契约已先固定投影形状，供后续同源 owner 接入。
-- Durable Project Memory 仍处于 browser foundation：Studio Lyrics 已通过 owner-confirmed Draft save 接入浏览器
-  seam，但 Create Smart Song Plan 尚未通过 Workspace command 落入 owner；BFF 也尚未提供 projection 组合、revision
-  存储、幂等 receipt 与 recovery smoke。因此不把 preview Workspace 计为跨刷新、跨设备的 Runtime 恢复证据。
+- Durable Project Memory 仍处于 browser foundation：Studio Lyrics 与 Create Smart Song Plan 已通过 owner-confirmed
+  Workspace command 接入浏览器 seam；BFF 仍尚未提供 projection 组合、revision 存储、幂等 receipt 与 recovery smoke。
+  因此不把 preview Workspace 计为跨刷新、跨设备的 Runtime 恢复证据。
 - `mori-workspace.module.css` 与部分历史组件仍有较大的聚合文件，后续按 shell、Studio surface、responsive responsibility 拆分，避免一次性重写导致视觉回归。
 - 新能力必须先补 component / request-builder / contract test，再接入真实同源 API；不要把 `reference`、`voice` 或 `provider` 私有字段扩散到 UI。

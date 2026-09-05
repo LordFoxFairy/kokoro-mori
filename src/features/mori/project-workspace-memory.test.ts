@@ -50,6 +50,14 @@ describe("Project Workspace durable memory state", () => {
         mood: "A stale remote edit",
       },
     }))).toMatchObject({ status: "failed", retryable: false })
+    expect(confirmProjectWorkspaceSave(run, workspaceProjection({
+      current_song_plan: {
+        ...currentSongPlan(),
+        revision: 4,
+        project_ref: "project_other",
+        mood: "Open · patient",
+      },
+    }))).toMatchObject({ status: "failed", retryable: false })
   })
 
   it("keeps a retryable write on the exact same idempotency identity", () => {

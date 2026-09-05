@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent, type KeyboardEvent } from "react"
-import { AudioLines, Check, Disc3, Mic2, SlidersHorizontal, Sparkles } from "lucide-react"
+import { AlertCircle, AudioLines, Check, Disc3, LoaderCircle, Mic2, RotateCcw, SlidersHorizontal, Sparkles } from "lucide-react"
 import type { CreationMode, LyricsMode, SongPlan } from "../domain"
 import { t } from "../copy"
 import {
@@ -12,6 +12,7 @@ import {
   type MoriInspirationPreset,
 } from "../creative-assets"
 import { buildSongPlan } from "../song-plan"
+import { idleProjectWorkspaceSaveRun, type ProjectWorkspaceSaveRun } from "../project-workspace-memory"
 import { CreativeSourceDock } from "./creative-source-dock"
 import { useMoriApp } from "./mori-app-provider"
 import styles from "../mori-workspace.module.css"
@@ -36,11 +37,17 @@ type CreateCanvasProps = {
   initialPrompt?: string
   initialCreativeSource?: MoriCreativeSourceSelection
   creativeSources?: readonly MoriCreativeLibrarySource[]
+  planPersistence?: "workspace" | "preview" | "unavailable"
+  planSaveRun?: ProjectWorkspaceSaveRun
+  planSaveLoading?: boolean
+  workspacePlanRefresh?: { token: number; plan: SongPlan | null }
   onModeChange: (mode: CreationMode) => void
-  onGenerate: (draft: CreationDraft) => void
+  onGenerate: (draft: CreationDraft) => void | Promise<void>
+  onRetryPlanSave?: () => void
+  onRefreshPlanWorkspace?: () => void | Promise<void>
 }
 
-export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeSource, creativeSources, onModeChange, onGenerate }: CreateCanvasProps) {
+export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeSource, creativeSources, planPersistence = "preview", planSaveRun = idleProjectWorkspaceSaveRun, planSaveLoading = false, workspacePlanRefresh, onModeChange, onGenerate, onRetryPlanSave, onRefreshPlanWorkspace }: CreateCanvasProps) {
   const { preferences } = useMoriApp()
   const sourceCatalog: readonly MoriCreativeLibrarySource[] = creativeSources ?? previewCreativeSources
   const initialVoiceProfile = initialCreativeSource?.kind === "voice"
@@ -75,10 +82,18 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
   const [planPreview, setPlanPreview] = useState<ReturnType<typeof buildSongPlan> | null>(null)
   const [planEditing, setPlanEditing] = useState(false)
   const [planBackup, setPlanBackup] = useState<SongPlan | null>(null)
+  const [planActionPending, setPlanActionPending] = useState(false)
+  const [planSubmitAttempted, setPlanSubmitAttempted] = useState(false)
+  const [planDirtySinceSave, setPlanDirtySinceSave] = useState(false)
+  const [planValidationError, setPlanValidationError] = useState<string | null>(null)
 
   const lyricsMode = lyricsModeOverride ?? preferences.lyricsMode
   const durationSeconds = durationOverride ?? preferences.durationSeconds
   const planPreviewVisible = planPreview !== null
+  const planBusy = planActionPending || planSaveLoading || planSaveRun.status === "saving"
+  const visiblePlanSaveRun = planSubmitAttempted ? planSaveRun : idleProjectWorkspaceSaveRun
+  const workspacePlanRefreshToken = workspacePlanRefresh?.token ?? null
+  const refreshedWorkspacePlan = workspacePlanRefresh?.plan ?? null
 
   useEffect(() => {
     if (initialCreativeSource === undefined) return
@@ -115,34 +130,61 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
     return () => window.cancelAnimationFrame(frame)
   }, [planPreviewVisible, preferences.reduceMotion])
 
+  useEffect(() => {
+    if (workspacePlanRefreshToken === null) return
+    const frame = window.requestAnimationFrame(() => {
+      setPlanPreview(refreshedWorkspacePlan)
+      setPlanEditing(false)
+      setPlanBackup(null)
+      setPlanSubmitAttempted(false)
+      setPlanDirtySinceSave(false)
+      setPlanValidationError(null)
+      if (refreshedWorkspacePlan === null) promptRef.current?.focus()
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [refreshedWorkspacePlan, workspacePlanRefreshToken])
+
   function clearPlanPreview() {
+    if (planBusy) return
     setPlanPreview(null)
     setPlanEditing(false)
     setPlanBackup(null)
+    setPlanSubmitAttempted(false)
+    setPlanDirtySinceSave(false)
+    setPlanValidationError(null)
   }
 
   function openPlanEditor() {
-    if (planPreview === null) return
+    if (planPreview === null || planBusy) return
     setPlanBackup(planPreview)
     setPlanEditing(true)
   }
 
   function returnToIdea() {
+    if (planBusy) return
     clearPlanPreview()
     window.requestAnimationFrame(() => promptRef.current?.focus())
   }
 
   function discardPlanEdits() {
+    if (planBusy) return
     if (planBackup !== null) setPlanPreview(planBackup)
     setPlanBackup(null)
     setPlanEditing(false)
+    setPlanDirtySinceSave(false)
+    setPlanValidationError(null)
   }
 
   function updatePlan(patch: Partial<SongPlan>) {
+    if (planBusy) return
+    setPlanSubmitAttempted(false)
+    setPlanDirtySinceSave(true)
+    setPlanValidationError(null)
     setPlanPreview((current) => current === null ? current : { ...current, ...patch })
   }
 
   function chooseOutput(nextLyricsMode: LyricsMode) {
+    if (planBusy) return
     setLyricsModeOverride(nextLyricsMode)
     clearPlanPreview()
   }
@@ -189,15 +231,49 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (planBusy) return
     if (mode === "smart" && planPreview === null) {
+      setPlanSubmitAttempted(false)
+      setPlanDirtySinceSave(false)
+      setPlanValidationError(null)
       setPlanPreview(buildSongPlan(projectRef, { prompt, lyricsMode, style, voice, durationSeconds }))
+      return
+    }
+    if (mode === "smart" && planPreview !== null) {
+      void confirmPlan()
       return
     }
     onGenerate(toCreationDraft())
   }
 
-  function confirmPlan() {
-    if (planPreview !== null) onGenerate(toCreationDraft(planPreview))
+  async function confirmPlan() {
+    if (planPreview === null || planBusy) return
+    const validationError = validateSongPlan(planPreview)
+    if (validationError !== null) {
+      setPlanValidationError(validationError)
+      setPlanSubmitAttempted(false)
+      return
+    }
+    setPlanValidationError(null)
+    setPlanSubmitAttempted(true)
+    setPlanDirtySinceSave(false)
+    setPlanActionPending(true)
+    try {
+      await onGenerate(toCreationDraft(planPreview))
+    } finally {
+      setPlanActionPending(false)
+    }
+  }
+
+  async function retryPlanSave() {
+    if (onRetryPlanSave === undefined || planBusy) return
+    setPlanSubmitAttempted(true)
+    setPlanActionPending(true)
+    try {
+      await onRetryPlanSave()
+    } finally {
+      setPlanActionPending(false)
+    }
   }
 
   function toCreationDraft(songPlan?: SongPlan): CreationDraft {
@@ -216,6 +292,7 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
   }
 
   function navigateMode(event: KeyboardEvent<HTMLButtonElement>, currentMode: CreationMode) {
+    if (planBusy) return
     const nextMode = modeForKey(event.key, currentMode)
     if (nextMode === null) return
     event.preventDefault()
@@ -235,10 +312,10 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
         <div className={styles.creationChoice}>
           <span className={styles.creationChoiceLabel}>Approach</span>
           <div className={styles.modeTabs} role="tablist" aria-label="Creation mode">
-            <button ref={smartTabRef} className={styles.modeTab} id="mori-mode-smart" type="button" role="tab" aria-selected={mode === "smart"} aria-controls="mori-create-panel" tabIndex={mode === "smart" ? 0 : -1} onKeyDown={(event) => navigateMode(event, "smart")} onClick={() => { onModeChange("smart"); clearPlanPreview() }}>
+            <button ref={smartTabRef} className={styles.modeTab} id="mori-mode-smart" type="button" role="tab" aria-selected={mode === "smart"} aria-controls="mori-create-panel" tabIndex={mode === "smart" ? 0 : -1} disabled={planBusy} onKeyDown={(event) => navigateMode(event, "smart")} onClick={() => { if (planBusy) return; onModeChange("smart"); clearPlanPreview() }}>
               <Sparkles size={13} /> {t("smartLabel")}
             </button>
-            <button ref={customTabRef} className={styles.modeTab} id="mori-mode-custom" type="button" role="tab" aria-selected={mode === "custom"} aria-controls="mori-create-panel" tabIndex={mode === "custom" ? 0 : -1} onKeyDown={(event) => navigateMode(event, "custom")} onClick={() => { onModeChange("custom"); clearPlanPreview() }}>
+            <button ref={customTabRef} className={styles.modeTab} id="mori-mode-custom" type="button" role="tab" aria-selected={mode === "custom"} aria-controls="mori-create-panel" tabIndex={mode === "custom" ? 0 : -1} disabled={planBusy} onKeyDown={(event) => navigateMode(event, "custom")} onClick={() => { if (planBusy) return; onModeChange("custom"); clearPlanPreview() }}>
               <SlidersHorizontal size={13} /> {t("customLabel")}
             </button>
           </div>
@@ -246,10 +323,10 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
         <div className={styles.creationChoice}>
           <span className={styles.creationChoiceLabel}>Output</span>
           <div className={styles.outputTabs} role="group" aria-label="Output type">
-            <button className={styles.outputTab} type="button" aria-pressed={lyricsMode === "lyrics"} onClick={() => chooseOutput("lyrics")}>
+            <button className={styles.outputTab} type="button" aria-pressed={lyricsMode === "lyrics"} disabled={planBusy} onClick={() => chooseOutput("lyrics")}>
               <Mic2 size={13} /> Song with lyrics
             </button>
-            <button className={styles.outputTab} type="button" aria-pressed={lyricsMode === "instrumental"} onClick={() => chooseOutput("instrumental")}>
+            <button className={styles.outputTab} type="button" aria-pressed={lyricsMode === "instrumental"} disabled={planBusy} onClick={() => chooseOutput("instrumental")}>
               <Disc3 size={13} /> Instrumental
             </button>
           </div>
@@ -325,16 +402,28 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
         </> : null}
 
         {planPreview !== null ? (
-          <section ref={planPreviewRef} className={styles.songPlanPreview} role="region" aria-label="Song plan preview" tabIndex={-1}>
+          <section ref={planPreviewRef} className={styles.songPlanPreview} role="region" aria-label="Song plan preview" tabIndex={-1} aria-busy={planBusy}>
             <header className={styles.songPlanPreviewHeader}>
               <div>
                 <div className={styles.songPlanKicker}><Sparkles size={13} /> AI draft</div>
                 <h2>Song plan</h2>
               </div>
               <div className={styles.songPlanHeaderActions}>
-                <span className={styles.songPlanReady}><Check size={13} /> {planEditing ? "Editing" : "Ready to review"}</span>
-                <button className={styles.planEditButton} type="button" onClick={returnToIdea}>Back to idea</button>
-                <button className={styles.planEditButton} type="button" onClick={planEditing ? discardPlanEdits : openPlanEditor}>
+                <span className={`${styles.songPlanReady} ${visiblePlanSaveRun.status === "failed" ? styles.songPlanReadyError : ""}`} role="status" aria-live="polite">
+                  {planSaveLoading || visiblePlanSaveRun.status === "saving"
+                    ? <><LoaderCircle size={13} /> Saving to project</>
+                    : visiblePlanSaveRun.status === "failed"
+                      ? <><AlertCircle size={13} /> Needs attention</>
+                      : visiblePlanSaveRun.status === "saved" && !planDirtySinceSave
+                        ? <><Check size={13} /> Saved to project</>
+                        : planPersistence === "workspace"
+                          ? <><Check size={13} /> Ready to save</>
+                          : planPersistence === "unavailable"
+                            ? <><AlertCircle size={13} /> Project save unavailable</>
+                            : <><Sparkles size={13} /> Preview plan</>}
+                </span>
+                <button className={styles.planEditButton} type="button" disabled={planBusy} onClick={returnToIdea}>Back to idea</button>
+                <button className={styles.planEditButton} type="button" disabled={planBusy} onClick={planEditing ? discardPlanEdits : openPlanEditor}>
                   {planEditing ? "Cancel edits" : "Edit plan"}
                 </button>
               </div>
@@ -344,28 +433,28 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
               <div className={styles.songPlanEditGrid}>
                 <label className={styles.songPlanEditField}>
                   <span>Mood</span>
-                  <input aria-label="Plan mood" className={styles.textInput} value={planPreview.mood} onChange={(event) => updatePlan({ mood: event.target.value })} />
+                  <input aria-label="Plan mood" className={styles.textInput} maxLength={120} value={planPreview.mood} disabled={planBusy} onChange={(event) => updatePlan({ mood: event.target.value })} />
                 </label>
                 <label className={styles.songPlanEditField}>
                   <span>Tempo (BPM)</span>
-                  <input aria-label="Plan tempo" className={styles.textInput} type="number" min={40} max={240} step={1} value={planPreview.tempoBpm} onChange={(event) => updatePlan({ tempoBpm: boundedTempo(event.target.value, planPreview.tempoBpm) })} />
+                  <input aria-label="Plan tempo" className={styles.textInput} type="number" min={40} max={240} step={1} value={planPreview.tempoBpm} disabled={planBusy} onChange={(event) => updatePlan({ tempoBpm: boundedTempo(event.target.value, planPreview.tempoBpm) })} />
                 </label>
                 <label className={`${styles.songPlanEditField} ${styles.songPlanEditFieldWide}`}>
                   <span>Structure</span>
-                  <input aria-label="Plan structure" className={styles.textInput} value={planPreview.structure.join(", ")} onChange={(event) => updatePlan({ structure: parsePlanList(event.target.value, planPreview.structure) })} />
+                  <input aria-label="Plan structure" className={styles.textInput} maxLength={1300} value={planPreview.structure.join(", ")} disabled={planBusy} onChange={(event) => updatePlan({ structure: parsePlanList(event.target.value, planPreview.structure) })} />
                   <small>Separate sections with commas.</small>
                 </label>
                 <label className={`${styles.songPlanEditField} ${styles.songPlanEditFieldWide}`}>
                   <span>Palette</span>
-                  <input aria-label="Plan palette" className={styles.textInput} value={planPreview.instruments.join(", ")} onChange={(event) => updatePlan({ instruments: parsePlanList(event.target.value, planPreview.instruments) })} />
+                  <input aria-label="Plan palette" className={styles.textInput} maxLength={1300} value={planPreview.instruments.join(", ")} disabled={planBusy} onChange={(event) => updatePlan({ instruments: parsePlanList(event.target.value, planPreview.instruments) })} />
                 </label>
                 <label className={`${styles.songPlanEditField} ${styles.songPlanEditFieldWide}`}>
                   <span>{lyricsMode === "instrumental" ? "Arrangement direction" : "Vocal direction"}</span>
-                  <textarea aria-label={lyricsMode === "instrumental" ? "Arrangement direction" : "Vocal direction"} className={styles.planEditArea} value={planPreview.vocalDirection} onChange={(event) => updatePlan({ vocalDirection: event.target.value })} />
+                  <textarea aria-label={lyricsMode === "instrumental" ? "Arrangement direction" : "Vocal direction"} className={styles.planEditArea} maxLength={500} value={planPreview.vocalDirection} disabled={planBusy} onChange={(event) => updatePlan({ vocalDirection: event.target.value })} />
                 </label>
                 <label className={`${styles.songPlanEditField} ${styles.songPlanEditFieldWide}`}>
                   <span>{lyricsMode === "instrumental" ? "Creative intent" : "Lyrics intent"}</span>
-                  <textarea aria-label={lyricsMode === "instrumental" ? "Creative intent" : "Lyrics intent"} className={styles.planEditArea} value={planPreview.lyricsIntent} onChange={(event) => updatePlan({ lyricsIntent: event.target.value })} />
+                  <textarea aria-label={lyricsMode === "instrumental" ? "Creative intent" : "Lyrics intent"} className={styles.planEditArea} maxLength={1000} value={planPreview.lyricsIntent} disabled={planBusy} onChange={(event) => updatePlan({ lyricsIntent: event.target.value })} />
                 </label>
               </div>
             ) : (
@@ -382,9 +471,28 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
                 <p className={styles.songPlanDirection}>{planPreview.vocalDirection}</p>
               </>
             )}
+            {planValidationError !== null ? <div className={styles.songPlanValidationNotice} role="alert">
+              <AlertCircle size={15} aria-hidden="true" />
+              <span>{planValidationError}</span>
+            </div> : null}
+            {planPersistence !== "preview" && visiblePlanSaveRun.status === "failed" ? <div className={styles.songPlanSaveNotice} role="alert">
+              <AlertCircle size={15} aria-hidden="true" />
+              <span>{visiblePlanSaveRun.message ?? "Mori could not save this Project plan."}</span>
+              {visiblePlanSaveRun.retryable && onRetryPlanSave !== undefined
+                ? <button type="button" disabled={planBusy} onClick={() => { void retryPlanSave() }}>Retry save <RotateCcw size={12} /></button>
+                : onRefreshPlanWorkspace !== undefined
+                  ? <button type="button" disabled={planBusy} onClick={() => { void onRefreshPlanWorkspace() }}>Refresh workspace <RotateCcw size={12} /></button>
+                  : null}
+            </div> : null}
             <footer className={styles.songPlanActions}>
-              {planEditing ? <span className={styles.planEditHint}>Changes apply to this creation only.</span> : null}
-              <button className={styles.generateButton} type="button" onClick={confirmPlan}><Check size={14} /> Create from this plan</button>
+              {planEditing ? <span className={styles.planEditHint}>{visiblePlanSaveRun.status === "saved" && !planDirtySinceSave ? "Saved as the current Project plan." : planPersistence === "preview" ? "Changes apply to this creation only." : "Changes will be saved to this Project when you create."}</span> : null}
+              {planPersistence === "preview" ? <span className={styles.planPersistenceHint}>Preview only · not saved to Project workspace.</span> : null}
+              {planPersistence === "unavailable" ? <span className={styles.planPersistenceHint}>Project workspace saving is not connected.</span> : null}
+              <button className={styles.generateButton} type="button" disabled={planBusy} onClick={() => { void confirmPlan() }}>
+                {planSaveLoading || visiblePlanSaveRun.status === "saving"
+                  ? <><LoaderCircle size={14} /> Saving plan…</>
+                  : <><Check size={14} /> Create from this plan</>}
+              </button>
             </footer>
           </section>
         ) : null}
@@ -411,6 +519,22 @@ function boundedTempo(value: string, fallback: number): number {
 function parsePlanList(value: string, fallback: readonly string[]): string[] {
   const items = value.split(",").map((item) => item.trim()).filter((item) => item !== "")
   return items.length > 0 ? items : [...fallback]
+}
+
+function validateSongPlan(plan: SongPlan): string | null {
+  if (plan.prompt.trim() === "") return "Add a song idea before creating."
+  if (plan.mood.trim() === "") return "Add a mood so Mori can shape the direction."
+  if (plan.mood.length > 120) return "Keep the mood under 120 characters."
+  if (!Number.isInteger(plan.tempoBpm) || plan.tempoBpm < 40 || plan.tempoBpm > 240) return "Set a tempo between 40 and 240 BPM."
+  if (plan.structure.length === 0 || plan.structure.some((item) => item.trim() === "" || item.length > 80)) return "Each structure section must be 1–80 characters."
+  if (plan.structure.length > 16) return "Keep the structure to 16 sections or fewer."
+  if (plan.instruments.some((item) => item.trim() === "" || item.length > 80)) return "Each palette item must be 1–80 characters."
+  if (plan.instruments.length > 16) return "Keep the palette to 16 items or fewer."
+  if (plan.vocalDirection.trim() === "") return "Add an arrangement or vocal direction."
+  if (plan.vocalDirection.length > 500) return "Keep the direction under 500 characters."
+  if (plan.lyricsIntent.trim() === "") return "Add a creative or lyrics intent."
+  if (plan.lyricsIntent.length > 1000) return "Keep the intent under 1,000 characters."
+  return null
 }
 
 function isAudioReference(file: File): boolean {

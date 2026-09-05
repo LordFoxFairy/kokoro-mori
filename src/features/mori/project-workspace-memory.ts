@@ -158,6 +158,7 @@ function songPlanRevisionMatchesInput(
 ): boolean {
   const revision = projection.current_song_plan
   return revision !== null
+    && revision.project_ref === projection.project.project_ref
     && revision.revision === nextRevision(input.expected_revision)
     && revision.prompt === input.prompt
     && revision.mood === input.mood

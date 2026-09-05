@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { useState } from "react"
 import { describe, expect, it, vi } from "vitest"
-import type { GenerationCreateInput, MoriApi } from "@/lib/mori-api"
+import type { GenerationCreateInput, MoriApi, MoriProjectWorkspaceProjection } from "@/lib/mori-api"
 import { MoriApiRequestError } from "@/lib/mori-api-client"
 import type { Candidate } from "./domain"
 import { MoriAppProvider, useMoriApp } from "./components/mori-app-provider"
@@ -1025,6 +1025,267 @@ describe("Mori workspace", () => {
     expect(createGeneration.mock.calls[0]?.[1].song_plan_ref).toMatch(/^song_plan_mori-plan-/u)
   })
 
+  it("persists a reviewed Smart plan through Project Workspace before starting generation", async () => {
+    const order: string[] = []
+    const createSongPlan = vi.fn<MoriApi["createSongPlan"]>(async () => {
+      throw new Error("preview Song Plan endpoint must not be used for a live workspace")
+    })
+    const getProjectWorkspace = vi.fn<MoriApi["getProjectWorkspace"]>(async () => ({
+      data: workspaceProjectionForPlan("project_live_plan"),
+      meta: { request_id: "request_live_plan_workspace" },
+    }))
+    const putCurrentSongPlan = vi.fn<MoriApi["putCurrentSongPlan"]>(async (_projectRef, input, idempotencyKey) => {
+      order.push("song_plan")
+      return {
+        data: workspaceProjectionForPlan("project_live_plan", {
+          song_plan_ref: "song_plan_live_revision_1",
+          project_ref: "project_live_plan",
+          revision: 1,
+          prompt: input.prompt,
+          mood: input.mood,
+          tempo_bpm: input.tempo_bpm,
+          structure: input.structure,
+          instruments: input.instruments,
+          vocal_direction: input.vocal_direction,
+          lyrics_intent: input.lyrics_intent,
+          created_at: "2026-09-05T14:00:00.000Z",
+        }),
+        meta: { request_id: `request_live_plan_save_${idempotencyKey}` },
+      }
+    })
+    const createGeneration = vi.fn<MoriApi["createGeneration"]>(async (_projectRef, input) => {
+      order.push("generation")
+      expect(input.song_plan_ref).toBe("song_plan_live_revision_1")
+      return { data: { generation_ref: "generation_live_plan", status: "queued" }, meta: { request_id: "request_live_plan_generation" } }
+    })
+    const api = {
+      ...createWorkspaceApi({ createSongPlan, createGeneration }),
+      getProjectWorkspace,
+      putCurrentSongPlan,
+      getGeneration: async () => ({
+        data: {
+          generation_ref: "generation_live_plan",
+          generation_kind: "new_song" as const,
+          project_ref: "project_live_plan",
+          song_plan_ref: "song_plan_live_revision_1",
+          mode: "smart" as const,
+          source_version_ref: null,
+          operation: null,
+          status: "queued" as const,
+          progress: 0,
+          candidate_refs: [],
+          created_at: "2026-09-05T14:00:00.000Z",
+        },
+        meta: { request_id: "request_live_plan_status" },
+      }),
+    }
+
+    render(<MoriAppProvider><MoriWorkspace projectRef="project_live_plan" api={api} /></MoriAppProvider>)
+    fireEvent.change(screen.getByRole("textbox", { name: "Song idea" }), { target: { value: "A quiet piano song for the first train home." } })
+    fireEvent.submit(screen.getByRole("textbox", { name: "Song idea" }).closest("form") as HTMLFormElement)
+    fireEvent.click(screen.getByRole("button", { name: "Edit plan" }))
+    fireEvent.change(screen.getByRole("textbox", { name: "Plan mood" }), { target: { value: "Quiet folk" } })
+    fireEvent.click(screen.getByRole("button", { name: "Create from this plan" }))
+
+    await waitFor(() => expect(createGeneration).toHaveBeenCalledOnce())
+    expect(getProjectWorkspace).toHaveBeenCalledWith("project_live_plan")
+    expect(putCurrentSongPlan).toHaveBeenCalledWith(
+      "project_live_plan",
+      expect.objectContaining({ mood: "Quiet folk", expected_revision: null }),
+      expect.stringMatching(/^mori-workspace-plan-/u),
+    )
+    expect(createSongPlan).not.toHaveBeenCalled()
+    expect(order).toEqual(["song_plan", "generation"])
+    expect(screen.getByText("Saved to project")).toBeInTheDocument()
+  })
+
+  it("keeps the reviewed plan and reuses its workspace command identity after a transient save failure", async () => {
+    const idempotencyKeys: string[] = []
+    let saveAttempt = 0
+    const putCurrentSongPlan = vi.fn<MoriApi["putCurrentSongPlan"]>(async (_projectRef, input, idempotencyKey) => {
+      idempotencyKeys.push(idempotencyKey)
+      saveAttempt += 1
+      if (saveAttempt === 1) throw new TypeError("Failed to fetch")
+      return {
+        data: workspaceProjectionForPlan("project_live_plan_retry", {
+          song_plan_ref: "song_plan_live_retry_1",
+          project_ref: "project_live_plan_retry",
+          revision: 1,
+          prompt: input.prompt,
+          mood: input.mood,
+          tempo_bpm: input.tempo_bpm,
+          structure: input.structure,
+          instruments: input.instruments,
+          vocal_direction: input.vocal_direction,
+          lyrics_intent: input.lyrics_intent,
+          created_at: "2026-09-05T14:05:00.000Z",
+        }),
+        meta: { request_id: "request_live_plan_retry_save" },
+      }
+    })
+    const createGeneration = vi.fn<MoriApi["createGeneration"]>(async () => ({
+      data: { generation_ref: "generation_live_plan_retry", status: "queued" },
+      meta: { request_id: "request_live_plan_retry_generation" },
+    }))
+    const api = {
+      ...createWorkspaceApi({ createGeneration }),
+      getProjectWorkspace: async () => ({ data: workspaceProjectionForPlan("project_live_plan_retry"), meta: { request_id: "request_live_plan_retry_workspace" } }),
+      putCurrentSongPlan,
+      getGeneration: async () => ({
+        data: {
+          generation_ref: "generation_live_plan_retry",
+          generation_kind: "new_song" as const,
+          project_ref: "project_live_plan_retry",
+          song_plan_ref: "song_plan_live_retry_1",
+          mode: "smart" as const,
+          source_version_ref: null,
+          operation: null,
+          status: "queued" as const,
+          progress: 0,
+          candidate_refs: [],
+          created_at: "2026-09-05T14:05:00.000Z",
+        },
+        meta: { request_id: "request_live_plan_retry_status" },
+      }),
+    }
+
+    render(<MoriAppProvider><MoriWorkspace projectRef="project_live_plan_retry" api={api} /></MoriAppProvider>)
+    fireEvent.submit(screen.getByRole("textbox", { name: "Song idea" }).closest("form") as HTMLFormElement)
+    fireEvent.click(screen.getByRole("button", { name: "Create from this plan" }))
+
+    const alert = await screen.findByRole("alert")
+    expect(alert).toHaveTextContent("Mori could not confirm this save. Retry when ready.")
+    expect(within(alert).getByRole("button", { name: "Retry save" })).toBeInTheDocument()
+    expect(createGeneration).not.toHaveBeenCalled()
+
+    fireEvent.click(within(alert).getByRole("button", { name: "Retry save" }))
+    await waitFor(() => expect(createGeneration).toHaveBeenCalledOnce())
+    expect(idempotencyKeys).toHaveLength(2)
+    expect(idempotencyKeys[0]).toBe(idempotencyKeys[1])
+  })
+
+  it("keeps generation idle while a Project plan is blocked, then reloads the remote plan on refresh", async () => {
+    let workspaceRead = 0
+    const getProjectWorkspace = vi.fn<MoriApi["getProjectWorkspace"]>(async () => {
+      workspaceRead += 1
+      return {
+        data: workspaceRead === 1
+          ? workspaceProjectionForPlan("project_live_plan_conflict")
+          : workspaceProjectionForPlan("project_live_plan_conflict", {
+            song_plan_ref: "song_plan_remote_revision_2",
+            project_ref: "project_live_plan_conflict",
+            revision: 2,
+            prompt: "A different remote direction.",
+            mood: "Remote · steady",
+            tempo_bpm: 96,
+            structure: ["Intro", "Verse", "Chorus", "Outro"],
+            instruments: ["Piano", "Cello"],
+            vocal_direction: "Close and restrained",
+            lyrics_intent: "A clear landing after the storm",
+            created_at: "2026-09-05T14:10:00.000Z",
+          }),
+        meta: { request_id: `request_plan_conflict_workspace_${workspaceRead}` },
+      }
+    })
+    const putCurrentSongPlan = vi.fn<MoriApi["putCurrentSongPlan"]>(async () => {
+      throw new MoriApiRequestError({ code: "song_plan_conflict", message: "The Project changed", retryable: false, details: null }, "request_plan_conflict", 409)
+    })
+    const createGeneration = vi.fn<MoriApi["createGeneration"]>(async () => ({
+      data: { generation_ref: "generation_should_not_start", status: "queued" },
+      meta: { request_id: "request_generation_should_not_start" },
+    }))
+    const api = {
+      ...createWorkspaceApi({ createGeneration }),
+      getProjectWorkspace,
+      putCurrentSongPlan,
+    }
+
+    render(<MoriAppProvider><MoriWorkspace projectRef="project_live_plan_conflict" api={api} /></MoriAppProvider>)
+    fireEvent.submit(screen.getByRole("textbox", { name: "Song idea" }).closest("form") as HTMLFormElement)
+    fireEvent.click(screen.getByRole("button", { name: "Create from this plan" }))
+
+    const alert = await screen.findByRole("alert")
+    expect(alert).toHaveTextContent("This project changed elsewhere. Refresh before saving again.")
+    expect(screen.getByRole("button", { name: "Open generation queue" })).toHaveAttribute("data-generation-feedback", "idle")
+    expect(createGeneration).not.toHaveBeenCalled()
+
+    fireEvent.click(within(alert).getByRole("button", { name: "Refresh workspace" }))
+    await waitFor(() => expect(getProjectWorkspace).toHaveBeenCalledTimes(2))
+    expect(await screen.findByText("Remote · steady")).toBeInTheDocument()
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument()
+  })
+
+  it("does not write a second Song Plan when generation retries after a confirmed save", async () => {
+    const putCurrentSongPlan = vi.fn<MoriApi["putCurrentSongPlan"]>(async (_projectRef, input) => ({
+      data: workspaceProjectionForPlan("project_live_generation_retry", {
+        song_plan_ref: "song_plan_live_generation_retry",
+        project_ref: "project_live_generation_retry",
+        revision: 1,
+        prompt: input.prompt,
+        mood: input.mood,
+        tempo_bpm: input.tempo_bpm,
+        structure: input.structure,
+        instruments: input.instruments,
+        vocal_direction: input.vocal_direction,
+        lyrics_intent: input.lyrics_intent,
+        created_at: "2026-09-05T14:15:00.000Z",
+      }),
+      meta: { request_id: "request_generation_retry_plan" },
+    }))
+    let generationAttempt = 0
+    const createGeneration = vi.fn<MoriApi["createGeneration"]>(async () => {
+      generationAttempt += 1
+      if (generationAttempt === 1) throw new Error("provider unavailable")
+      return { data: { generation_ref: "generation_retry_after_plan", status: "queued" }, meta: { request_id: `request_generation_retry_${generationAttempt}` } }
+    })
+    const api = {
+      ...createWorkspaceApi({ createGeneration }),
+      getProjectWorkspace: async () => ({ data: workspaceProjectionForPlan("project_live_generation_retry"), meta: { request_id: "request_generation_retry_workspace" } }),
+      putCurrentSongPlan,
+    }
+
+    render(<MoriAppProvider><MoriWorkspace projectRef="project_live_generation_retry" api={api} /></MoriAppProvider>)
+    fireEvent.submit(screen.getByRole("textbox", { name: "Song idea" }).closest("form") as HTMLFormElement)
+    fireEvent.click(screen.getByRole("button", { name: "Create from this plan" }))
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument())
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }))
+    await waitFor(() => expect(createGeneration).toHaveBeenCalledTimes(2))
+    expect(putCurrentSongPlan).toHaveBeenCalledOnce()
+  })
+
+  it("does not fall back to the legacy Song Plan endpoint for a live Project", async () => {
+    const createSongPlan = vi.fn<MoriApi["createSongPlan"]>(async () => {
+      throw new Error("legacy endpoint must not be used")
+    })
+    const createGeneration = vi.fn<MoriApi["createGeneration"]>(async () => ({
+      data: { generation_ref: "generation_without_workspace", status: "queued" },
+      meta: { request_id: "request_generation_without_workspace" },
+    }))
+    const api = createWorkspaceApi({ createSongPlan, createGeneration })
+
+    render(<MoriAppProvider><MoriWorkspace projectRef="project_live_without_workspace" api={api} /></MoriAppProvider>)
+    fireEvent.submit(screen.getByRole("textbox", { name: "Song idea" }).closest("form") as HTMLFormElement)
+    fireEvent.click(screen.getByRole("button", { name: "Create from this plan" }))
+
+    const alert = await screen.findByRole("alert")
+    expect(alert).toHaveTextContent("Project workspace saving is not connected.")
+    expect(createSongPlan).not.toHaveBeenCalled()
+    expect(createGeneration).not.toHaveBeenCalled()
+  })
+
+  it("validates a reviewed Song Plan before sending a creation command", () => {
+    const onGenerate = vi.fn<(draft: CreationDraft) => void>()
+    render(<MoriAppProvider><CreateCanvas projectRef="project_preview_first_light" mode="smart" onModeChange={() => undefined} onGenerate={onGenerate} /></MoriAppProvider>)
+    fireEvent.submit(screen.getByRole("textbox", { name: "Song idea" }).closest("form") as HTMLFormElement)
+    fireEvent.click(screen.getByRole("button", { name: "Edit plan" }))
+    fireEvent.change(screen.getByRole("textbox", { name: "Plan mood" }), { target: { value: "" } })
+    fireEvent.click(screen.getByRole("button", { name: "Create from this plan" }))
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Add a mood so Mori can shape the direction.")
+    expect(onGenerate).not.toHaveBeenCalled()
+  })
+
   it("opens Create with the defaults chosen in Mori settings", () => {
     function DefaultWorkspaceHarness() {
       const { updatePreferences } = useMoriApp()
@@ -1945,3 +2206,26 @@ describe("Mori workspace", () => {
     expect(screen.getByText("0 directions")).toBeInTheDocument()
   })
 })
+
+function workspaceProjectionForPlan(
+  projectRef: string,
+  currentSongPlan: NonNullable<MoriProjectWorkspaceProjection["current_song_plan"]> | null = null,
+): MoriProjectWorkspaceProjection {
+  return {
+    project: {
+      project_ref: projectRef,
+      title: "Window Seat",
+      description: "A quiet, forward-moving sketch.",
+      current_version_ref: null,
+      candidate_count: 0,
+      last_activity_at: "2026-09-05T14:00:00.000Z",
+    },
+    current_song_plan: currentSongPlan,
+    open_version: null,
+    latest_lyrics_draft: null,
+    latest_mix_revision: null,
+    active_tasks: [],
+    revision_cursor: `workspace_${projectRef}`,
+    observed_at: "2026-09-05T14:00:00.000Z",
+  }
+}
