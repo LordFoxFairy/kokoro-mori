@@ -4,7 +4,7 @@ import { useState } from "react"
 import type { CompositionEdit } from "../composition-editor"
 import styles from "./composition-edit-panel.module.css"
 
-export function CompositionEditPanel({ clipRef, operation, onApply }: { clipRef: string; operation: CompositionEdit["operation"]; onApply: (edit: CompositionEdit) => void }) {
+export function CompositionEditPanel({ clipRef, operation, onApply }: { clipRef: string; operation: Exclude<CompositionEdit["operation"], "crop" | "insert">; onApply: (edit: CompositionEdit) => void }) {
   const [value, setValue] = useState(0)
   const submit = () => {
     if (operation === "move") onApply({ operation, clipRef, startMs: value })
