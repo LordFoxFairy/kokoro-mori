@@ -27,7 +27,7 @@ type StudioTimelineProps = {
   compositionTracks?: CompositionTrack[]
   selectedClipRef?: string
   onSelectClip?: (clipRef: string) => void
-  onEditClip?: (operation: "move" | "trim" | "split" | "fade", clipRef: string) => void
+  onEditClip?: (operation: "move" | "trim" | "split" | "crop" | "fade", clipRef: string) => void
 }
 
 export function StudioTimeline({ candidate, sections, selection, positionSeconds, playing, disabled, onSeek, onSelect, compositionTracks = [], selectedClipRef, onSelectClip, onEditClip }: StudioTimelineProps) {

@@ -1984,7 +1984,7 @@ function ArrangementEditor({ compositionSave, compositionRevision, onRefreshWork
     clips: [{ clipRef: `${candidate.versionRef}:clip`, sourceRef: candidate.versionRef, startMs: 0, durationMs: Math.round(candidate.durationSeconds * 1_000), offsetMs: 0 }],
   }], [candidate.durationSeconds, candidate.versionRef])
   const compositionEditor = useCompositionEditor(compositionTracks[0] as CompositionTrack, async (input) => (await compositionSave(candidate.versionRef, input as MoriCompositionRevisionInput, `mori-composition-${candidate.versionRef}-${Date.now()}`)).data, compositionRevision)
-  const [editOperation, setEditOperation] = useState<"move" | "trim" | "split" | "fade" | null>(null)
+  const [editOperation, setEditOperation] = useState<"move" | "trim" | "split" | "crop" | "fade" | null>(null)
 
   if (selection === undefined) return null
 
