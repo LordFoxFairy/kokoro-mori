@@ -1750,6 +1750,34 @@ describe("Mori same-origin API client", () => {
       status: 200,
     })
   })
+
+  it("creates and uploads a creative source with opaque refs", async () => {
+    const requests: RequestInit[] = []
+    const api = createMoriApiClient({
+      fetchImpl: async (_input, init) => {
+        requests.push(init ?? {})
+        return requests.length === 1
+          ? jsonResponse({ data: { upload_ref: "upload_1", status: "creating", expires_at: "2026-09-06T00:00:00Z" }, meta: { request_id: "upload_create_1" } }, 202)
+          : jsonResponse({ data: { upload_ref: "upload_1", source_kind: "audio", status: "ready", bytes_received: 4, byte_size: 4, asset_ref: "asset_1", source_ref: "source_1", error: null, created_at: "2026-09-05T00:00:00Z", updated_at: "2026-09-05T00:00:01Z", expires_at: "2026-09-06T00:00:00Z" }, meta: { request_id: "upload_content_1" } })
+      },
+    })
+
+    const receipt = await api.createCreativeSourceUpload({ source_kind: "audio", file_name: "guide.wav", content_type: "audio/wav", byte_size: 4, project_ref: "project_1" }, "upload-key-1")
+    const uploaded = await api.uploadCreativeSourceContent(receipt.data.upload_ref, new Blob(["test"]), "audio/wav")
+
+    expect(receipt.data.status).toBe("creating")
+    expect(uploaded.data.asset_ref).toBe("asset_1")
+    expect(requests[0].headers).toMatchObject({ "Content-Type": "application/json", "Idempotency-Key": "upload-key-1" })
+    expect(requests[1].headers).toEqual({ "Content-Type": "audio/wav" })
+  })
+
+  it("rejects a ready upload without completed asset refs", async () => {
+    const api = createMoriApiClient({
+      fetchImpl: async () => jsonResponse({ data: { upload_ref: "upload_invalid", source_kind: "audio", status: "ready", bytes_received: 1, byte_size: 1, asset_ref: null, source_ref: null, error: null, created_at: "2026-09-05T00:00:00Z", updated_at: "2026-09-05T00:00:01Z", expires_at: "2026-09-06T00:00:00Z" }, meta: { request_id: "upload_invalid_1" } }),
+    })
+
+    await expect(api.getCreativeSourceUpload("upload_invalid")).rejects.toMatchObject({ code: "invalid_api_response" })
+  })
 })
 
 function jsonResponse(payload: unknown, status = 200): Response {
