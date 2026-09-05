@@ -1778,6 +1778,25 @@ describe("Mori same-origin API client", () => {
 
     await expect(api.getCreativeSourceUpload("upload_invalid")).rejects.toMatchObject({ code: "invalid_api_response" })
   })
+
+  it("publishes a release with the draft revision and idempotency key", async () => {
+    let capturedUrl = ""
+    let capturedInit: RequestInit | undefined
+    const api = createMoriApiClient({
+      fetchImpl: async (input, init) => {
+        capturedUrl = String(input)
+        capturedInit = init
+        return jsonResponse({ data: { release_ref: "release_1", version_ref: "version_1", status: "published", public_url: "https://mori.local/release/release_1", created_at: "2026-09-05T00:00:00Z" }, meta: { request_id: "publish_1" } }, 202)
+      },
+    })
+
+    const response = await api.publishRelease("version/1", { release_draft_ref: "draft_1", expected_draft_revision: 3 }, "publish-key-1")
+
+    expect(capturedUrl).toBe("/api/v1/mori/versions/version%2F1/release")
+    expect(capturedInit?.headers).toMatchObject({ "Content-Type": "application/json", "Idempotency-Key": "publish-key-1" })
+    expect(JSON.parse(String(capturedInit?.body))).toEqual({ release_draft_ref: "draft_1", expected_draft_revision: 3 })
+    expect(response.data.public_url).toBe("https://mori.local/release/release_1")
+  })
 })
 
 function jsonResponse(payload: unknown, status = 200): Response {
