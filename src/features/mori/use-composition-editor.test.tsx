@@ -24,4 +24,11 @@ describe("useCompositionEditor", () => {
     await act(async () => { await result.current.persist() })
     expect(result.current.saveState).toBe("saved")
   })
+  it("rebases pending edits on a refreshed projection", () => {
+    const { result } = renderHook(() => useCompositionEditor(track))
+    act(() => result.current.editAndQueue({ operation: "move", clipRef: "clip_1", startMs: 2000 }))
+    act(() => result.current.rebase({ ...track, clips: [{ ...track.clips[0], startMs: 1000 }] }, 6))
+    expect(result.current.composition.clips[0]?.startMs).toBe(2000)
+    expect(result.current.saveState).toBe("unsaved")
+  })
 })
