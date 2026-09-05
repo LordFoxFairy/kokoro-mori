@@ -31,4 +31,14 @@ describe("useCompositionEditor", () => {
     expect(result.current.composition.clips[0]?.startMs).toBe(2000)
     expect(result.current.saveState).toBe("unsaved")
   })
+  it("advances the revision cursor after a successful save", async () => {
+    const revisions: number[] = []
+    const save = async (input: { expected_revision: number; commands: unknown[] }) => { revisions.push(input.expected_revision) }
+    const { result } = renderHook(() => useCompositionEditor(track, save, 4))
+    act(() => result.current.editAndQueue({ operation: "move", clipRef: "clip_1", startMs: 1000 }))
+    await act(async () => { await result.current.persist() })
+    act(() => result.current.editAndQueue({ operation: "move", clipRef: "clip_1", startMs: 2000 }))
+    await act(async () => { await result.current.persist() })
+    expect(revisions).toEqual([4, 5])
+  })
 })

@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useState } from "react"
+import { useCallback, useRef, useState } from "react"
 import type { CompositionTrack } from "./composition"
 import { applyCompositionEdit, type CompositionEdit } from "./composition-editor"
 import { createCompositionHistory, redoComposition, undoComposition, type CompositionHistory } from "./composition-history"
@@ -11,15 +11,16 @@ export function useCompositionEditor(initial: CompositionTrack, save?: (input: C
   const [history, setHistory] = useState<CompositionHistory>(() => createCompositionHistory(initial))
   const [saveState, setSaveState] = useState<"saved" | "unsaved" | "saving" | "failed">("saved")
   const [pendingCommands, setPendingCommands] = useState<CompositionRevisionInput["commands"]>([])
+  const revisionRef = useRef(expectedRevision)
   const edit = useCallback((change: CompositionEdit) => setHistory((current) => applyCompositionEdit(current, change)), [])
   const editAndQueue = useCallback((change: CompositionEdit) => { edit(change); setPendingCommands((current) => [...current, compositionEditToCommand(change)]); setSaveState("unsaved") }, [edit])
   const persist = useCallback(async () => {
     if (save === undefined || pendingCommands.length === 0) return
     setSaveState("saving")
-    try { await save(createCompositionRevisionInput(expectedRevision, pendingCommands)); setPendingCommands([]); setSaveState("saved") } catch { setSaveState("failed") }
-  }, [expectedRevision, pendingCommands, save])
+    try { await save(createCompositionRevisionInput(revisionRef.current, pendingCommands)); revisionRef.current += 1; setPendingCommands([]); setSaveState("saved") } catch { setSaveState("failed") }
+  }, [pendingCommands, save])
   const rebase = useCallback((latest: CompositionTrack, nextRevision: number) => {
-    void nextRevision
+    revisionRef.current = nextRevision
     setHistory(createCompositionHistory(replayCompositionCommands(latest, pendingCommands)))
     setPendingCommands([])
     setSaveState("unsaved")
