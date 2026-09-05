@@ -149,6 +149,19 @@ export type MoriReleaseDraft = Omit<ReleaseDraftInput, "expected_revision"> & {
   updated_at: string
 }
 
+export type MoriReleaseStatus = "publishing" | "published" | "failed" | "unpublished"
+export type MoriRelease = {
+  release_ref: MoriRef
+  version_ref: MoriRef
+  release_draft_ref: MoriRef
+  status: MoriReleaseStatus
+  public_url: string | null
+  created_at: string
+  updated_at: string
+}
+export type PublishReleaseInput = { release_draft_ref: MoriRef; expected_draft_revision: number }
+export type PublishReleaseReceipt = Pick<MoriRelease, "release_ref" | "version_ref" | "status" | "public_url" | "created_at">
+
 export type StudioChangeInsertionScope = {
   type: "insertion_point"
   position_ms: number
@@ -764,6 +777,9 @@ export type MoriApi = {
   cancelArtworkGeneration: (artworkGenerationRef: MoriRef, idempotencyKey: string) => Promise<ApiSuccess<ArtworkGenerationCancelReceipt>>
   getReleaseDraft: (versionRef: MoriRef) => Promise<ApiSuccess<MoriReleaseDraft>>
   putReleaseDraft: (versionRef: MoriRef, input: ReleaseDraftInput, idempotencyKey: string) => Promise<ApiSuccess<MoriReleaseDraft>>
+  publishRelease: (versionRef: MoriRef, input: PublishReleaseInput, idempotencyKey: string) => Promise<ApiSuccess<PublishReleaseReceipt>>
+  getRelease: (releaseRef: MoriRef) => Promise<ApiSuccess<MoriRelease>>
+  unpublishRelease: (releaseRef: MoriRef, idempotencyKey: string) => Promise<ApiSuccess<MoriRelease>>
   createMixRevision: (versionRef: MoriRef, input: MixRevisionInput, idempotencyKey: string) => Promise<ApiSuccess<MoriMixRevision>>
   getMixRevision: (mixRevisionRef: MoriRef) => Promise<ApiSuccess<MoriMixRevision>>
   getGeneration: (generationRef: MoriRef) => Promise<ApiSuccess<GenerationSnapshot>>

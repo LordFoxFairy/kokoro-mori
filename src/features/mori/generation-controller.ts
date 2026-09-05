@@ -369,6 +369,15 @@ export const previewMoriApi: MoriApi = {
     previewReleaseDrafts.set(versionRef, saved)
     return { data: saved, meta: { request_id: `preview-release-save-request-${idempotencyKey}` } }
   },
+  async publishRelease(versionRef: MoriRef, input, idempotencyKey) {
+    return { data: { release_ref: `release_preview_${idempotencyKey}`, version_ref: versionRef, status: "published" as const, public_url: `https://mori.local/release/${idempotencyKey}`, created_at: "2026-09-05T12:00:00.000Z" }, meta: { request_id: `preview-release-publish-${idempotencyKey}` } }
+  },
+  async getRelease(releaseRef) {
+    return { data: { release_ref: releaseRef, version_ref: "version_preview_first_light_a", release_draft_ref: "release_draft_preview", status: "published" as const, public_url: `https://mori.local/release/${releaseRef}`, created_at: "2026-09-05T12:00:00.000Z", updated_at: "2026-09-05T12:00:00.000Z" }, meta: { request_id: `preview-release-${releaseRef}` } }
+  },
+  async unpublishRelease(releaseRef) {
+    return { data: { release_ref: releaseRef, version_ref: "version_preview_first_light_a", release_draft_ref: "release_draft_preview", status: "unpublished" as const, public_url: null, created_at: "2026-09-05T12:00:00.000Z", updated_at: "2026-09-05T12:00:00.000Z" }, meta: { request_id: `preview-release-unpublish-${releaseRef}` } }
+  },
   async createMixRevision(versionRef: MoriRef, input: MixRevisionInput, idempotencyKey: string) {
     return {
       data: {

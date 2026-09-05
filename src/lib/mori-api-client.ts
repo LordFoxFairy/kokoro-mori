@@ -14,6 +14,7 @@ import {
   type MoriCreativeSourceListOptions,
   type MoriCreativeSourceUploadInput,
   type MoriExportInput,
+  type PublishReleaseInput,
   type MoriLyricsRevisionEvent,
   type MoriStemSeparationEvent,
   type ReleaseDraftInput,
@@ -49,6 +50,8 @@ import {
   parseMoriProject,
   parseMoriProjectPage,
   parseMoriReleaseDraft,
+  parseMoriRelease,
+  parsePublishReleaseReceipt,
   parseMoriSongPlan,
   parseStemSeparationCancelReceipt,
   parseStemSeparationEventData,
@@ -442,6 +445,21 @@ export function createMoriApiClient(options: MoriApiClientOptions = {}): MoriApi
       const response = await fetchImpl(`${apiBasePath}/creative-source-uploads/${encodeURIComponent(uploadRef)}`)
       const payload = await readJson(response)
       return parseSuccessResponse(response, payload, parseMoriCreativeSourceUpload)
+    },
+    async publishRelease(versionRef, input: PublishReleaseInput, idempotencyKey) {
+      const response = await fetchImpl(`${apiBasePath}/versions/${encodeURIComponent(versionRef)}/release`, { method: "POST", headers: createMutationHeaders(idempotencyKey), body: JSON.stringify(input) })
+      const payload = await readJson(response)
+      return parseSuccessResponse(response, payload, parsePublishReleaseReceipt)
+    },
+    async getRelease(releaseRef) {
+      const response = await fetchImpl(`${apiBasePath}/releases/${encodeURIComponent(releaseRef)}`)
+      const payload = await readJson(response)
+      return parseSuccessResponse(response, payload, parseMoriRelease)
+    },
+    async unpublishRelease(releaseRef, idempotencyKey) {
+      const response = await fetchImpl(`${apiBasePath}/releases/${encodeURIComponent(releaseRef)}/unpublish`, { method: "POST", headers: createMutationHeaders(idempotencyKey) })
+      const payload = await readJson(response)
+      return parseSuccessResponse(response, payload, parseMoriRelease)
     },
     async cancelCreativeSourceUpload(uploadRef, idempotencyKey) {
       const response = await fetchImpl(`${apiBasePath}/creative-source-uploads/${encodeURIComponent(uploadRef)}/cancel`, {

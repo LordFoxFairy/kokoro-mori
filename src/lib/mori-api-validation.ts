@@ -57,6 +57,8 @@ import type {
   MoriProjectWorkspaceProjection,
   MoriProjectPage,
   MoriReleaseDraft,
+  MoriRelease,
+  PublishReleaseReceipt,
   MoriSongPlan,
   MoriStem,
   MoriStemSeparationEvent,
@@ -1130,6 +1132,17 @@ export function parseMoriCreativeSourceUpload(value: unknown): MoriCreativeSourc
     updated_at: value.updated_at,
     expires_at: value.expires_at,
   }
+}
+
+export function parsePublishReleaseReceipt(value: unknown): PublishReleaseReceipt | null {
+  if (!isRecord(value) || !nonEmptyString(value.release_ref) || !nonEmptyString(value.version_ref) || !nonEmptyString(value.status) || !["publishing", "published", "failed", "unpublished"].includes(value.status) || !nullableString(value.public_url) || !dateString(value.created_at)) return null
+  return { release_ref: value.release_ref, version_ref: value.version_ref, status: value.status as PublishReleaseReceipt["status"], public_url: value.public_url, created_at: value.created_at }
+}
+
+export function parseMoriRelease(value: unknown): MoriRelease | null {
+  const receipt = parsePublishReleaseReceipt(value)
+  if (receipt === null || !nonEmptyString((value as Record<string, unknown>).release_draft_ref) || !dateString((value as Record<string, unknown>).updated_at)) return null
+  return { ...receipt, release_draft_ref: (value as Record<string, string>).release_draft_ref, updated_at: (value as Record<string, string>).updated_at }
 }
 
 export function parseMoriExportReceipt(value: unknown): MoriExportReceipt | null {
