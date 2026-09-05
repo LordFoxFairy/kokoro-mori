@@ -591,7 +591,7 @@ BFF 必须按受信会话校验该 asset 与用户可见 Mori 资源的关联，
 
 ### P2 · 深度编辑（进行中）
 
-Composition 的第一组 provider-neutral 纯函数已落地到 `composition.ts`：Move、Trim、Split、Fade 只改变本地 Track / Clip / Placement；`composition-command.ts` 已固定 revisioned command 的 snake_case 输入边界，`composition-history.ts` 提供本地 Undo / Redo 历史，但尚未宣称已持久化
+Composition 的第一组 provider-neutral 纯函数已落地到 `composition.ts`：Move、Trim、Split、Fade 只改变本地 Track / Clip / Placement；`composition-command.ts` 已固定 revisioned command 的 snake_case 输入边界，`composition-history.ts` 与 `composition-editor.ts` 提供本地 Undo / Redo 与编辑分发，但尚未宣称已持久化
 投影，不直接写 owner 数据；后续接入 revisioned Composition command 前，UI 不展示“已保存”状态。
 
 - 已完成可拖选时间范围、动态时间标尺、全局播放头与段落联动；Custom range 直接复用既有
