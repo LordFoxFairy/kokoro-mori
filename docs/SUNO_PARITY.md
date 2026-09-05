@@ -65,8 +65,8 @@ Prompt / Upload
 | Take audition / Commit / Current Version | 浏览器已对齐 | Open、Playing、Selected、Current 分离；Project-scoped CAS | **P0：Durable Project Memory 的 Version / Revision 一致性** |
 | 保存版本、刷新或跨设备继续 | 浏览器 foundation 已对齐 | Current/Mix/Release 有契约；Workspace projection、Open Version、Studio Lyrics Draft 与 Create Smart Song Plan 的 owner-confirmed 保存状态机已落地浏览器 | **P0 继续：真实 BFF runtime recovery 与 Song Plan 历史** |
 | Library / Workspace 搜索与素材复用 | 部分对齐 | Projects、Versions、Audio/Voice/Inspiration Sources、cursor/search/filter | 接入真实 Source 生命周期；Studio 内 Asset Dock 放入 P1 |
-| Song Editor 的 Split / Crop / Fade / Move | 缺失 | 当前时间线只支持段落/时间范围选择和生成式 Change | P1 多轨 Composition 的确定性命令，不伪装成 AI prompt |
-| 多轨 timeline、录音、loop、tempo | 部分对齐 | 现有 Timeline + Stem Mixer 是正确起点，但不是 clip composition | P1：revisioned Track / Clip / Placement 模型后渐进开放 |
+| Song Editor 的 Split / Crop / Fade / Move | 浏览器 foundation 已对齐 | Composition track、Clip 编辑面板、Move / Trim / Split / Fade、Undo / Redo 与 revisioned command 已存在；真实 owner save 仍待接入 | P1 接入真实 Composition owner，并补 Crop / Insert |
+| 多轨 timeline、录音、loop、tempo | 部分对齐 | 当前已有 provider-neutral Track / Clip projection 与单轨浏览器编辑；录音、loop、tempo 和真实多轨 owner 尚缺 | P1：扩展 Track / Clip / Placement，并接入真实 owner |
 | Advanced Stems 与 mixer | 部分对齐 | Split intent、异步恢复、同步试听、Mute/Solo/Gain、Mix Revision | 补 Pan、真实 stem manifest 与 composition placement |
 | 整曲 / 选区 / 多轨 / MIDI 导出 | 部分对齐 | 现有 Export 仅 Full song MP3/WAV | P1：Selected range、Multitrack、artifact manifest |
 | Link-only 分享与 Public 发布 | 缺失 | Studio Copy link 只是编辑深链；Release 只有 draft | **P0：独立 Share / Publish 资源与权限** |
