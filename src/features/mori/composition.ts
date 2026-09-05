@@ -1,6 +1,6 @@
 import type { MoriRef } from "@/features/mori/domain"
 
-export type CompositionClip = { clipRef: MoriRef; sourceRef: MoriRef; startMs: number; durationMs: number; offsetMs: number }
+export type CompositionClip = { clipRef: MoriRef; sourceRef: MoriRef; startMs: number; durationMs: number; offsetMs: number; fadeInMs?: number; fadeOutMs?: number }
 export type CompositionTrack = { trackRef: MoriRef; kind: "vocals" | "instrumental" | "other"; name: string; clips: CompositionClip[] }
 
 export function moveClip(track: CompositionTrack, clipRef: MoriRef, startMs: number): CompositionTrack {
@@ -26,4 +26,12 @@ export function splitClip(track: CompositionTrack, clipRef: MoriRef, atMs: numbe
   const left = { ...clip, clipRef: `${clip.clipRef}:a`, durationMs: atMs }
   const right = { ...clip, clipRef: `${clip.clipRef}:b`, startMs: clip.startMs + atMs, offsetMs: clip.offsetMs + atMs, durationMs: clip.durationMs - atMs }
   return { ...track, clips: [...track.clips.slice(0, index), left, right, ...track.clips.slice(index + 1)] }
+}
+
+export function setClipFades(track: CompositionTrack, clipRef: MoriRef, fadeInMs: number, fadeOutMs: number): CompositionTrack {
+  if (![fadeInMs, fadeOutMs].every((value) => Number.isSafeInteger(value) && value >= 0)) throw new Error("composition_fade_invalid")
+  const clip = track.clips.find((item) => item.clipRef === clipRef)
+  if (clip === undefined) throw new Error("composition_clip_not_found")
+  if (fadeInMs + fadeOutMs > clip.durationMs) throw new Error("composition_fade_exceeds_clip")
+  return { ...track, clips: track.clips.map((item) => item.clipRef === clipRef ? { ...item, fadeInMs, fadeOutMs } : item) }
 }

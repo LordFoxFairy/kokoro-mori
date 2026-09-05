@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { moveClip, splitClip, trimClip, type CompositionTrack } from "./composition"
+import { moveClip, setClipFades, splitClip, trimClip, type CompositionTrack } from "./composition"
 
 const track: CompositionTrack = { trackRef: "track_1", kind: "vocals", name: "Lead", clips: [{ clipRef: "clip_1", sourceRef: "asset_1", startMs: 0, durationMs: 10000, offsetMs: 0 }] }
 
@@ -16,4 +16,8 @@ describe("composition primitives", () => {
     ])
   })
   it("rejects an invalid split boundary", () => expect(() => splitClip(track, "clip_1", 10000)).toThrow("composition_split_position_invalid"))
+  it("sets fades without allowing them to consume the clip", () => {
+    expect(setClipFades(track, "clip_1", 500, 750).clips[0]).toMatchObject({ fadeInMs: 500, fadeOutMs: 750 })
+    expect(() => setClipFades(track, "clip_1", 6000, 5000)).toThrow("composition_fade_exceeds_clip")
+  })
 })
