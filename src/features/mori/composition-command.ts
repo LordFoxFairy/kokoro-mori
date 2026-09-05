@@ -1,5 +1,5 @@
 import type { MoriRef } from "@/features/mori/domain"
-import type { CompositionClip } from "./composition"
+import { moveClip, setClipFades, splitClip, trimClip, type CompositionClip, type CompositionTrack } from "./composition"
 import type { CompositionEdit } from "./composition-editor"
 
 export type CompositionCommand =
@@ -30,4 +30,13 @@ export function compositionClipAt(clips: readonly CompositionClip[], clipRef: Mo
   const clip = clips.find((item) => item.clipRef === clipRef)
   if (clip === undefined) throw new Error("composition_clip_not_found")
   return clip
+}
+
+export function replayCompositionCommands(track: CompositionTrack, commands: readonly CompositionCommand[]): CompositionTrack {
+  return commands.reduce((current, command) => {
+    if (command.type === "move_clip") return moveClip(current, command.clip_ref, command.start_ms)
+    if (command.type === "trim_clip") return trimClip(current, command.clip_ref, command.duration_ms)
+    if (command.type === "split_clip") return splitClip(current, command.clip_ref, command.at_ms)
+    return setClipFades(current, command.clip_ref, command.fade_in_ms, command.fade_out_ms)
+  }, track)
 }
