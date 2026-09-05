@@ -10,7 +10,7 @@ import { createGenerationQueueState } from "./generation-queue"
 import { MoriWorkspace } from "./mori-workspace"
 import type { PlayerMediaFactory } from "./player-media"
 import { previewCandidates, previewProject } from "./preview-data"
-import { readGenerationQueueState, writeGenerationQueueState } from "./generation-queue-storage"
+import { generationQueueStorageKey, readGenerationQueueState, writeGenerationQueueState } from "./generation-queue-storage"
 
 type WorkspaceApi = Pick<MoriApi, "createSongPlan" | "createGeneration" | "getGeneration" | "getGenerationEvents" | "listCandidates" | "cancelGeneration">
   & Partial<Pick<MoriApi, "createProject" | "getProject" | "putCurrentVersion">>
@@ -224,6 +224,38 @@ describe("Mori workspace", () => {
     })
     expect(localStorage.getItem("mori-generation-queue-v1")).not.toContain("song_plan_route_only_create")
     expect(getGeneration).toHaveBeenCalledTimes(1)
+    localStorage.clear()
+  })
+
+  it("does not offer retry for a recovered generation without its original draft", async () => {
+    localStorage.clear()
+    const generationRef = "generation_route_failed_without_draft"
+    const getGeneration = vi.fn<MoriApi["getGeneration"]>(async () => ({
+      data: {
+        generation_ref: generationRef,
+        generation_kind: "new_song",
+        project_ref: "project_route_failed_without_draft",
+        song_plan_ref: "song_plan_route_failed_without_draft",
+        mode: "smart",
+        source_version_ref: null,
+        operation: null,
+        status: "failed",
+        progress: 0,
+        candidate_refs: [],
+        created_at: "2026-09-04T12:00:00.000Z",
+      },
+      meta: { request_id: "request_route_failed_without_draft" },
+    }))
+
+    render(<MoriAppProvider><MoriWorkspace
+      projectRef="project_route_failed_without_draft"
+      generationRef={generationRef}
+      api={createWorkspaceApi({ getGeneration })}
+    /></MoriAppProvider>)
+
+    await waitFor(() => expect(getGeneration).toHaveBeenCalledWith(generationRef))
+    fireEvent.click(screen.getByRole("button", { name: "Open generation queue" }))
+    expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument()
     localStorage.clear()
   })
 
@@ -785,7 +817,11 @@ describe("Mori workspace", () => {
       },
       meta: { request_id: "request_project_retry_home" },
     }))
-    const createGeneration = vi.fn<MoriApi["createGeneration"]>(async () => {
+    const generationIdempotencyKeys: string[] = []
+    const generationInputs: GenerationCreateInput[] = []
+    const createGeneration = vi.fn<MoriApi["createGeneration"]>(async (_projectRef, input, idempotencyKey) => {
+      generationIdempotencyKeys.push(idempotencyKey)
+      generationInputs.push({ ...input, reference_asset_refs: [...input.reference_asset_refs] })
       throw new Error("provider unavailable")
     })
     const api: Pick<MoriApi, "createProject" | "createSongPlan" | "createGeneration" | "getGeneration" | "getGenerationEvents" | "listCandidates" | "cancelGeneration"> = {
@@ -818,6 +854,184 @@ describe("Mori workspace", () => {
     await waitFor(() => expect(createGeneration).toHaveBeenCalledTimes(2))
     expect(createProject).toHaveBeenCalledOnce()
     expect(createGeneration.mock.calls.every(([projectRef]) => projectRef === "project_retry_home")).toBe(true)
+    expect(generationIdempotencyKeys[0]).toBe(generationIdempotencyKeys[1])
+    expect(generationInputs[1]).toEqual(generationInputs[0])
+  })
+
+  it("keeps a stale accepted receipt in the queue without stealing a newer active task", async () => {
+    let resolveFirst: (value: Awaited<ReturnType<MoriApi["createGeneration"]>>) => void = () => undefined
+    const firstResponse = new Promise<Awaited<ReturnType<MoriApi["createGeneration"]>>>((resolve) => { resolveFirst = resolve })
+    const generationPrompts: string[] = []
+    const createGeneration = vi.fn<MoriApi["createGeneration"]>(async (_projectRef, input) => {
+      generationPrompts.push(input.prompt)
+      if (generationPrompts.length === 1) return firstResponse
+      return { data: { generation_ref: "generation_second_receipt", status: "queued" }, meta: { request_id: "request_second_receipt" } }
+    })
+    const api = createWorkspaceApi({
+      createGeneration,
+      getGeneration: async (generationRef) => ({
+        data: {
+          generation_ref: generationRef,
+          generation_kind: "new_song" as const,
+          project_ref: "project_stale_receipt",
+          song_plan_ref: null,
+          mode: "custom" as const,
+          source_version_ref: null,
+          operation: null,
+          status: "queued" as const,
+          progress: 0,
+          candidate_refs: [],
+          created_at: "2026-09-05T14:25:00.000Z",
+        },
+        meta: { request_id: `request_${generationRef}` },
+      }),
+    })
+
+    render(<MoriAppProvider><MoriWorkspace projectRef="project_stale_receipt" api={api} /></MoriAppProvider>)
+    fireEvent.click(screen.getByRole("tab", { name: /custom/i }))
+    const idea = screen.getByRole("textbox", { name: "Song idea" })
+    fireEvent.change(idea, { target: { value: "First direction" } })
+    fireEvent.submit(idea.closest("form") as HTMLFormElement)
+    await waitFor(() => expect(createGeneration).toHaveBeenCalledTimes(1))
+
+    fireEvent.change(idea, { target: { value: "Second direction" } })
+    fireEvent.submit(idea.closest("form") as HTMLFormElement)
+    await waitFor(() => expect(createGeneration).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(readGenerationQueueState().active_generation_ref).toBe("generation_second_receipt"))
+
+    resolveFirst({ data: { generation_ref: "generation_first_receipt", status: "queued" }, meta: { request_id: "request_first_receipt" } })
+    await waitFor(() => expect(readGenerationQueueState().items.map((item) => item.generation_ref)).toEqual(expect.arrayContaining([
+      "generation_second_receipt",
+      "generation_first_receipt",
+    ])))
+    expect(readGenerationQueueState().items).toHaveLength(2)
+    expect(readGenerationQueueState().active_generation_ref).toBe("generation_second_receipt")
+    localStorage.clear()
+  })
+
+  it("keeps a stale accepted command recoverable when its queue receipt cannot be persisted", async () => {
+    localStorage.clear()
+    let resolveFirst: (value: Awaited<ReturnType<MoriApi["createGeneration"]>>) => void = () => undefined
+    const firstResponse = new Promise<Awaited<ReturnType<MoriApi["createGeneration"]>>>((resolve) => { resolveFirst = resolve })
+    const generationKeys: string[] = []
+    let generationAttempt = 0
+    const createGeneration = vi.fn<MoriApi["createGeneration"]>(async (_projectRef, _input, idempotencyKey) => {
+      generationKeys.push(idempotencyKey)
+      generationAttempt += 1
+      if (generationAttempt === 1) return firstResponse
+      return {
+        data: { generation_ref: generationAttempt === 2 ? "generation_storage_newer" : "generation_storage_stale", status: "queued" },
+        meta: { request_id: `request_storage_${generationAttempt}` },
+      }
+    })
+    const api = createWorkspaceApi({
+      createGeneration,
+      getGeneration: async (generationRef) => ({
+        data: {
+          generation_ref: generationRef,
+          generation_kind: "new_song" as const,
+          project_ref: "project_stale_storage",
+          song_plan_ref: null,
+          mode: "custom" as const,
+          source_version_ref: null,
+          operation: null,
+          status: generationRef === "generation_storage_stale" ? "failed" as const : "queued" as const,
+          progress: 0,
+          candidate_refs: [],
+          created_at: "2026-09-05T14:35:00.000Z",
+        },
+        meta: { request_id: `request_status_${generationRef}` },
+      }),
+    })
+    const originalSetItem = Storage.prototype.setItem
+    let failQueuePersistence = false
+    const setItem = vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (this: Storage, key, value) {
+      if (failQueuePersistence && key === generationQueueStorageKey) throw new Error("storage is full")
+      originalSetItem.call(this, key, value)
+    })
+
+    try {
+      render(<MoriAppProvider><MoriWorkspace projectRef="project_stale_storage" api={api} /></MoriAppProvider>)
+      fireEvent.click(screen.getByRole("tab", { name: /custom/i }))
+      const idea = screen.getByRole("textbox", { name: "Song idea" })
+      fireEvent.change(idea, { target: { value: "First storage direction" } })
+      fireEvent.submit(idea.closest("form") as HTMLFormElement)
+      await waitFor(() => expect(createGeneration).toHaveBeenCalledTimes(1))
+
+      fireEvent.change(idea, { target: { value: "Second storage direction" } })
+      fireEvent.submit(idea.closest("form") as HTMLFormElement)
+      await waitFor(() => expect(createGeneration).toHaveBeenCalledTimes(2))
+      await waitFor(() => expect(readGenerationQueueState().active_generation_ref).toBe("generation_storage_newer"))
+
+      failQueuePersistence = true
+      resolveFirst({ data: { generation_ref: "generation_storage_stale", status: "queued" }, meta: { request_id: "request_storage_stale" } })
+      await waitFor(() => expect(screen.getByText("2 tasks")).toBeInTheDocument())
+      expect(readGenerationQueueState().active_generation_ref).toBe("generation_storage_newer")
+      failQueuePersistence = false
+
+      const allTasks = screen.getAllByRole("button", { name: /Custom direction/u })
+      expect(allTasks).toHaveLength(2)
+      const staleTask = allTasks.find((task) => task.getAttribute("aria-current") !== "true")
+      expect(staleTask).toBeDefined()
+      fireEvent.click(staleTask as HTMLElement)
+      await waitFor(() => expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument())
+      fireEvent.click(screen.getByRole("button", { name: "Try again" }))
+      await waitFor(() => expect(createGeneration).toHaveBeenCalledTimes(3))
+      expect(generationKeys[2]).toBe(generationKeys[0])
+    } finally {
+      failQueuePersistence = false
+      setItem.mockRestore()
+      localStorage.clear()
+    }
+  })
+
+  it("keeps the accepted generation key when the browser cannot persist its queue receipt", async () => {
+    localStorage.clear()
+    const generationIdempotencyKeys: string[] = []
+    const createGeneration = vi.fn<MoriApi["createGeneration"]>(async (_projectRef, _input, idempotencyKey) => {
+      generationIdempotencyKeys.push(idempotencyKey)
+      return { data: { generation_ref: "generation_queue_storage_retry", status: "queued" }, meta: { request_id: "request_queue_storage_retry" } }
+    })
+    const api = createWorkspaceApi({
+      createGeneration,
+      getGeneration: async () => ({
+        data: {
+          generation_ref: "generation_queue_storage_retry",
+          generation_kind: "new_song" as const,
+          project_ref: "project_queue_storage_retry",
+          song_plan_ref: null,
+          mode: "custom" as const,
+          source_version_ref: null,
+          operation: null,
+          status: "queued" as const,
+          progress: 0,
+          candidate_refs: [],
+          created_at: "2026-09-05T14:30:00.000Z",
+        },
+        meta: { request_id: "request_queue_storage_retry_status" },
+      }),
+    })
+    const originalSetItem = Storage.prototype.setItem
+    const setItem = vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (this: Storage, key, value) {
+      if (key === generationQueueStorageKey) throw new Error("storage is full")
+      originalSetItem.call(this, key, value)
+    })
+
+    try {
+      render(<MoriAppProvider><MoriWorkspace projectRef="project_queue_storage_retry" api={api} /></MoriAppProvider>)
+      fireEvent.click(screen.getByRole("tab", { name: /custom/i }))
+      fireEvent.submit(screen.getByRole("textbox", { name: "Song idea" }).closest("form") as HTMLFormElement)
+
+      const queueSyncAlert = await screen.findByText("Queue sync needs attention")
+      expect(queueSyncAlert).toBeInTheDocument()
+      fireEvent.click(screen.getByRole("button", { name: "Try again" }))
+    } finally {
+      setItem.mockRestore()
+    }
+
+    await waitFor(() => expect(createGeneration).toHaveBeenCalledTimes(2))
+    expect(generationIdempotencyKeys[0]).toBe(generationIdempotencyKeys[1])
+    localStorage.clear()
   })
 
   it("keeps generation commands inside the requested project", async () => {
@@ -1233,7 +1447,11 @@ describe("Mori workspace", () => {
       meta: { request_id: "request_generation_retry_plan" },
     }))
     let generationAttempt = 0
-    const createGeneration = vi.fn<MoriApi["createGeneration"]>(async () => {
+    const generationIdempotencyKeys: string[] = []
+    const generationInputs: GenerationCreateInput[] = []
+    const createGeneration = vi.fn<MoriApi["createGeneration"]>(async (_projectRef, input, idempotencyKey) => {
+      generationIdempotencyKeys.push(idempotencyKey)
+      generationInputs.push({ ...input, reference_asset_refs: [...input.reference_asset_refs] })
       generationAttempt += 1
       if (generationAttempt === 1) throw new Error("provider unavailable")
       return { data: { generation_ref: "generation_retry_after_plan", status: "queued" }, meta: { request_id: `request_generation_retry_${generationAttempt}` } }
@@ -1252,6 +1470,49 @@ describe("Mori workspace", () => {
     fireEvent.click(screen.getByRole("button", { name: "Try again" }))
     await waitFor(() => expect(createGeneration).toHaveBeenCalledTimes(2))
     expect(putCurrentSongPlan).toHaveBeenCalledOnce()
+    expect(generationIdempotencyKeys[0]).toBe(generationIdempotencyKeys[1])
+    expect(generationInputs[1]).toEqual(generationInputs[0])
+  })
+
+  it("uses a new generation command identity after a definitive request failure", async () => {
+    const generationIdempotencyKeys: string[] = []
+    let generationAttempt = 0
+    const createGeneration = vi.fn<MoriApi["createGeneration"]>(async (_projectRef, _input, idempotencyKey) => {
+      generationIdempotencyKeys.push(idempotencyKey)
+      generationAttempt += 1
+      if (generationAttempt === 1) {
+        throw new MoriApiRequestError({ code: "generation_rejected", message: "The request is not valid", retryable: false, details: null }, "request_generation_rejected", 422)
+      }
+      return { data: { generation_ref: "generation_after_definitive_failure", status: "queued" }, meta: { request_id: "request_generation_after_definitive_failure" } }
+    })
+    const api = createWorkspaceApi({
+      createGeneration,
+      getGeneration: async () => ({
+        data: {
+          generation_ref: "generation_after_definitive_failure",
+          generation_kind: "new_song" as const,
+          project_ref: "project_definitive_failure",
+          song_plan_ref: null,
+          mode: "custom" as const,
+          source_version_ref: null,
+          operation: null,
+          status: "queued" as const,
+          progress: 0,
+          candidate_refs: [],
+          created_at: "2026-09-05T14:20:00.000Z",
+        },
+        meta: { request_id: "request_generation_after_definitive_failure_status" },
+      }),
+    })
+
+    render(<MoriAppProvider><MoriWorkspace projectRef="project_definitive_failure" api={api} /></MoriAppProvider>)
+    fireEvent.click(screen.getByRole("tab", { name: /custom/i }))
+    fireEvent.submit(screen.getByRole("textbox", { name: "Song idea" }).closest("form") as HTMLFormElement)
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument())
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }))
+    await waitFor(() => expect(createGeneration).toHaveBeenCalledTimes(2))
+    expect(generationIdempotencyKeys[0]).not.toBe(generationIdempotencyKeys[1])
   })
 
   it("does not fall back to the legacy Song Plan endpoint for a live Project", async () => {

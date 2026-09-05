@@ -12,6 +12,20 @@ export const generationQueueStorageEvent = "mori-generation-queue-updated"
 const generationQueueMutationLock = "mori-generation-queue-mutation-v1"
 let fallbackMutationTail: Promise<void> = Promise.resolve()
 
+export type GenerationQueueMutationOptions = {
+  requirePersistence?: boolean
+}
+
+export class GenerationQueuePersistenceError extends Error {
+  readonly state: GenerationQueueState
+
+  constructor(state: GenerationQueueState) {
+    super("generation_queue_persistence_failed")
+    this.name = "GenerationQueuePersistenceError"
+    this.state = state
+  }
+}
+
 /** Read the browser-owned task summary; SSR and storage failures stay neutral. */
 export function readGenerationQueueState(): GenerationQueueState {
   if (typeof window === "undefined") return emptyGenerationQueueState()
@@ -26,26 +40,41 @@ export function readGenerationQueueState(): GenerationQueueState {
 }
 
 /** Persist only the queue domain's explicit allow-list. */
-export function writeGenerationQueueState(state: GenerationQueueState): void {
-  if (typeof window === "undefined") return
+export function writeGenerationQueueState(state: GenerationQueueState): boolean {
+  if (typeof window === "undefined") return false
 
   try {
     const serialized = serializeGenerationQueueState(state)
-    if (window.localStorage.getItem(generationQueueStorageKey) === serialized) return
+    if (window.localStorage.getItem(generationQueueStorageKey) === serialized) return true
     window.localStorage.setItem(generationQueueStorageKey, serialized)
     window.dispatchEvent(new Event(generationQueueStorageEvent))
+    return true
   } catch {
     // A blocked or full local store must not interrupt a generation.
+    return false
+  }
+}
+
+/** Check whether the current browser store contains this exact queue state. */
+export function isGenerationQueueStatePersisted(state: GenerationQueueState): boolean {
+  if (typeof window === "undefined") return false
+
+  try {
+    return window.localStorage.getItem(generationQueueStorageKey) === serializeGenerationQueueState(state)
+  } catch {
+    return false
   }
 }
 
 /** Read the latest value immediately before applying one browser-owned mutation. */
 export function updateStoredGenerationQueueState(
   transform: (current: GenerationQueueState) => GenerationQueueState,
+  options: GenerationQueueMutationOptions = {},
 ): Promise<GenerationQueueState> {
   const mutate = () => {
     const next = transform(readGenerationQueueState())
-    writeGenerationQueueState(next)
+    const persisted = writeGenerationQueueState(next)
+    if (options.requirePersistence && !persisted) throw new GenerationQueuePersistenceError(next)
     return next
   }
   if (typeof navigator !== "undefined" && navigator.locks !== undefined) {

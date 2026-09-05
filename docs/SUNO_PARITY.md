@@ -138,8 +138,10 @@ Studio URL 同步为用户的 Open Version，再通过 revisioned Workspace comm
 只有 owner 返回完整且精确匹配的新 revision 后才显示 `Saved`；短暂网络失败复用原 `Idempotency-Key`，冲突要求刷新；
 切换 Version 时提供 Keep editing / Discard & open / Save & open，避免静默丢稿。Create Smart 现在也先读取最新 Workspace，
 通过同一条 revisioned Song Plan command 保存用户复核后的计划，确认完整 projection 与 `song_plan_ref` 后才创建 Generation；
-生成阶段重试复用已确认的计划，不重复写入。真实 BFF owner 随后需实现 projection 组合、revision 存储、幂等 receipt 与
-recovery smoke。preview Project 会明确标记为 preview，绝不以 `saved` 假装为用户的持久化事实。
+生成阶段重试复用已确认的计划，不重复写入；Generation 响应不确定时复用原 request / 幂等键，确定性拒绝后才创建新的
+command identity；live Project 不回退到 legacy Song Plan POST。只有本地 preview Project
+保留 legacy POST 作为演示分支，并明确标记为 preview，绝不以 `saved` 假装为用户的持久化事实。真实 BFF owner 随后需实现
+projection 组合、revision 存储、幂等 receipt 与 recovery smoke。
 
 以下两个浏览器侧连续性问题已修完：
 

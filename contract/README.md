@@ -71,6 +71,9 @@ Studio Change 不建立第二套异步任务状态机。它通过
 Generation snapshot、SSE replay、cancel 和 Candidate 输出。这样 Create 与 Studio 都产生 Candidate，
 但入口上下文和请求 Schema 各自保持明确。
 
+Create 的 Generation command 必须携带幂等键；创建响应不确定或本地 receipt 落盘失败时，消费者复用同一请求输入与
+`Idempotency-Key`，避免 provider 重复执行。收到确定性的输入/权限拒绝后，下一次用户重试才创建新的 command identity。
+
 Add Vocals / Add Instrumental 仍是 `add_part` 的二层意图，不扩张 Studio 的一层 operation 集合。时间线插入继续
 使用 `insertion_point`；整首图层使用 `whole_version`，并显式携带 `part_kind`、`lyrics` 与 `voice_ref`。
 Vocal layer 要求非空歌词，Voice profile 可选；Instrumental layer 的 `lyrics` 与 `voice_ref` 固定为 `null`。

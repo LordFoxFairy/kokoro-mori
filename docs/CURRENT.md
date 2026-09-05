@@ -45,8 +45,8 @@
   才可显示保存成功。Project Overview 已读取真实 Song Plan；本地 fixture 则明确标为 `Preview plan`，不冒充持久化结果。
 - Create Smart 已接入同一条 Workspace 写入边界：用户确认可编辑 Song Plan 后，浏览器先读取最新 projection，再以
   `expected_revision` 和幂等键保存 Current Song Plan；只有返回的 `song_plan_ref`、revision 与全部字段精确确认后才提交
-  Generation。短暂失败保留原 command / 幂等键，生成重试复用已确认的 Song Plan，不重复创建 revision；preview Project
-  仍明确标为 preview。
+  Generation。Song Plan 短暂失败保留原 command / 幂等键；Generation 响应不确定或队列 receipt 暂时无法落盘时也保留精确 request / 幂等键，生成重试复用已确认的 Song Plan，避免重复执行；live Project
+  不回退到旧的 Song Plan POST。唯一例外是本地 preview Project：它仍可用 legacy POST 演示流程，并明确标为 preview。
 - Studio Lyrics 已接入该 Workspace foundation：不再读写浏览器 localStorage。显式 Studio URL 会优先同步为用户的
   Open Version，完成确认前不会允许把文字写到错误 Version；保存期间文字与 AI Apply 锁定，只有完整 owner projection
   被当前 Project / Version 接受后才显示 `Saved`。短暂故障复用原 `Idempotency-Key`，冲突转为 Refresh；在有未保存文字时
@@ -85,7 +85,7 @@
 ```text
 pnpm lint                         passed
 pnpm typecheck                    passed
-pnpm test                         passed: 63 files / 483 tests
+pnpm test                         passed: 63 files / 489 tests
 pnpm build                        passed
 ```
 

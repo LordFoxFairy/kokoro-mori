@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest"
 import { createGenerationQueueState, emptyGenerationQueueState, serializeGenerationQueueState } from "./generation-queue"
 import {
   generationQueueStorageKey,
+  GenerationQueuePersistenceError,
   readGenerationQueueState,
   subscribeGenerationQueueState,
   updateStoredGenerationQueueState,
@@ -66,6 +67,23 @@ describe("generation queue storage boundary", () => {
 
     expect(next.items.map((item) => item.generation_ref)).toEqual(["generation-local", "generation-external"])
     expect(readGenerationQueueState()).toEqual(next)
+  })
+
+  it("reports required persistence failures without losing the next in-memory state", async () => {
+    localStorage.clear()
+    const nextState = createGenerationQueueState({ items: [queueItem("generation_persistence_failure", "2026-09-04T12:00:00.000Z")] })
+    const setItem = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("storage is full")
+    })
+
+    try {
+      await expect(updateStoredGenerationQueueState(() => nextState, { requirePersistence: true }))
+        .rejects.toBeInstanceOf(GenerationQueuePersistenceError)
+      await expect(updateStoredGenerationQueueState(() => nextState, { requirePersistence: true }))
+        .rejects.toMatchObject({ state: nextState })
+    } finally {
+      setItem.mockRestore()
+    }
   })
 
   it("reconciles the overwritten and incoming values from a cross-tab storage race", async () => {

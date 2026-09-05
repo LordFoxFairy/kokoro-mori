@@ -447,8 +447,9 @@ Song Plan、Lyrics Draft 与 Open Version 各自带自己的 `expected_revision`
 优先于保存的 Open Version；Open、Playing、Selected 与 Current 永远不合并。机器事实源见
 [`contract/openapi/mori-project-workspace.v1.json`](../contract/openapi/mori-project-workspace.v1.json)。
 
-当前浏览器接入顺序固定为：Create Smart 读取 Workspace → 保存用户确认的 Song Plan → 创建 Generation；Studio 再将 URL
-指定的 Version 作为 Open Version 精确确认 → 打开该 Version 的 Lyrics Draft → 执行 owner-confirmed 保存。Studio 顶栏只展示当前 Workspace command 的 Saving / Saved / Retry；
+当前 live Project 的浏览器接入顺序固定为：Create Smart 读取 Workspace → 保存用户确认的 Song Plan → 创建 Generation；本地
+preview Project 仅保留 legacy Song Plan POST 演示分支。Studio 再将 URL 指定的 Version 作为 Open Version 精确确认 → 打开该
+Version 的 Lyrics Draft → 执行 owner-confirmed 保存。Studio 顶栏只展示当前 Workspace command 的 Saving / Saved / Retry；
 任何新的未保存编辑都会覆盖旧的 `Saved` 提示。Save 响应先进入 projection context check，旧 Project / Version 的
 迟到响应不得改变当前编辑面。这样即使用户在多个 Studio 窗口间切换，也不会把歌词写到另一个 Version 或由旧响应覆盖。
 
