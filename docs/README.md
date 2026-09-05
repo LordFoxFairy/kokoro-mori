@@ -11,6 +11,7 @@
 - [Creative Source Ingest OpenAPI](../contract/openapi/mori-creative-source-ingest.v1.json)
 - [Mori 音乐能力模型](./MUSIC_CAPABILITIES.md)
 - [Creative Source Ingest 设计](./CREATIVE_SOURCE_INGEST.md)
+- [Release / Share / Publish 设计](./RELEASE_SHARE_PUBLISH.md)
 - [Mori 产品形态基线](./PRODUCT_SHAPE.md)
 - [Suno / Tad 竞品与供应商研究](./COMPETITIVE_RESEARCH.md)
 
