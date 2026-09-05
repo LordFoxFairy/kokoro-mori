@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { cropClip, moveClip, setClipFades, splitClip, trimClip, type CompositionTrack } from "./composition"
+import { cropClip, insertClip, moveClip, setClipFades, splitClip, trimClip, type CompositionTrack } from "./composition"
 
 const track: CompositionTrack = { trackRef: "track_1", kind: "vocals", name: "Lead", clips: [{ clipRef: "clip_1", sourceRef: "asset_1", startMs: 0, durationMs: 10000, offsetMs: 0 }] }
 
@@ -22,5 +22,9 @@ describe("composition primitives", () => {
   })
   it("crops both edges while preserving source offset", () => {
     expect(cropClip(track, "clip_1", 1000, 2000).clips[0]).toMatchObject({ startMs: 1000, offsetMs: 1000, durationMs: 7000 })
+  })
+  it("inserts a new clip in timeline order", () => {
+    expect(insertClip(track, { clipRef: "clip_2", sourceRef: "asset_2", startMs: 12000, durationMs: 1000, offsetMs: 0 }).clips.at(-1)?.clipRef).toBe("clip_2")
+    expect(() => insertClip(track, { clipRef: "clip_1", sourceRef: "asset_2", startMs: 1, durationMs: 1, offsetMs: 0 })).toThrow("composition_clip_exists")
   })
 })

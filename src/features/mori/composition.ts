@@ -3,6 +3,12 @@ import type { MoriRef } from "@/features/mori/domain"
 export type CompositionClip = { clipRef: MoriRef; sourceRef: MoriRef; startMs: number; durationMs: number; offsetMs: number; fadeInMs?: number; fadeOutMs?: number }
 export type CompositionTrack = { trackRef: MoriRef; kind: "vocals" | "instrumental" | "other"; name: string; clips: CompositionClip[] }
 
+export function insertClip(track: CompositionTrack, clip: CompositionClip): CompositionTrack {
+  if (clip.startMs < 0 || clip.durationMs < 1 || clip.offsetMs < 0) throw new Error("composition_clip_invalid")
+  if (track.clips.some((item) => item.clipRef === clip.clipRef)) throw new Error("composition_clip_exists")
+  return { ...track, clips: [...track.clips, { ...clip }].sort((left, right) => left.startMs - right.startMs) }
+}
+
 export function moveClip(track: CompositionTrack, clipRef: MoriRef, startMs: number): CompositionTrack {
   if (!Number.isSafeInteger(startMs) || startMs < 0) throw new Error("composition_start_invalid")
   const clip = track.clips.find((item) => item.clipRef === clipRef)
