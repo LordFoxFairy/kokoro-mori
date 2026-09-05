@@ -17,8 +17,8 @@ describe("useCompositionEditor", () => {
     expect(result.current.composition.clips[0]?.startMs).toBe(2_000)
   })
   it("queues an edit and persists it through an injected owner seam", async () => {
-    const save = async (input: { expected_revision: number; commands: unknown[] }) => { expect(input.commands).toHaveLength(1) }
-    const { result } = renderHook(() => useCompositionEditor(track, save))
+    const save = async (input: { expected_revision: number; commands: unknown[] }) => { expect(input.expected_revision).toBe(4); expect(input.commands).toHaveLength(1) }
+    const { result } = renderHook(() => useCompositionEditor(track, save, 4))
     act(() => result.current.editAndQueue({ operation: "split", clipRef: "clip_1", atMs: 2000 }))
     expect(result.current.saveState).toBe("unsaved")
     await act(async () => { await result.current.persist() })

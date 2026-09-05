@@ -7,7 +7,7 @@ import { createCompositionHistory, redoComposition, undoComposition, type Compos
 import { createCompositionRevisionInput, compositionEditToCommand } from "./composition-command"
 import type { CompositionRevisionInput } from "./composition-command"
 
-export function useCompositionEditor(initial: CompositionTrack, save?: (input: CompositionRevisionInput) => Promise<void>) {
+export function useCompositionEditor(initial: CompositionTrack, save?: (input: CompositionRevisionInput) => Promise<void>, expectedRevision = 0) {
   const [history, setHistory] = useState<CompositionHistory>(() => createCompositionHistory(initial))
   const [saveState, setSaveState] = useState<"saved" | "unsaved" | "saving" | "failed">("saved")
   const [pendingCommands, setPendingCommands] = useState<CompositionRevisionInput["commands"]>([])
@@ -16,8 +16,8 @@ export function useCompositionEditor(initial: CompositionTrack, save?: (input: C
   const persist = useCallback(async () => {
     if (save === undefined || pendingCommands.length === 0) return
     setSaveState("saving")
-    try { await save(createCompositionRevisionInput(0, pendingCommands)); setPendingCommands([]); setSaveState("saved") } catch { setSaveState("failed") }
-  }, [pendingCommands, save])
+    try { await save(createCompositionRevisionInput(expectedRevision, pendingCommands)); setPendingCommands([]); setSaveState("saved") } catch { setSaveState("failed") }
+  }, [expectedRevision, pendingCommands, save])
   const undo = useCallback(() => setHistory((current) => undoComposition(current)), [])
   const redo = useCallback(() => setHistory((current) => redoComposition(current)), [])
   return { composition: history.present, canUndo: history.past.length > 0, canRedo: history.future.length > 0, edit, editAndQueue, undo, redo, saveState, persist }
