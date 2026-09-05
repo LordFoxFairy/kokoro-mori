@@ -14,6 +14,7 @@ import {
   type MoriCreativeSourceListOptions,
   type MoriCreativeSourceUploadInput,
   type MoriExportInput,
+  type MoriCompositionRevisionInput,
   type PublishReleaseInput,
   type MoriLyricsRevisionEvent,
   type MoriStemSeparationEvent,
@@ -483,7 +484,19 @@ export function createMoriApiClient(options: MoriApiClientOptions = {}): MoriApi
       const payload = await readJson(response)
       return parseSuccessResponse(response, payload, parseMoriExportSnapshot)
     },
+    async createCompositionRevision(versionRef: MoriRef, input: MoriCompositionRevisionInput, idempotencyKey: string) {
+      const response = await fetchImpl(`${apiBasePath}/versions/${encodeURIComponent(versionRef)}/composition`, { method: "PUT", headers: createMutationHeaders(idempotencyKey), body: JSON.stringify(input) })
+      const payload = await readJson(response)
+      return parseSuccessResponse(response, payload, parseCompositionRevision)
+    },
   }
+}
+
+function parseCompositionRevision(value: unknown) {
+  if (typeof value !== "object" || value === null) throw new Error("composition_response_invalid")
+  const candidate = value as { version_ref?: unknown; revision?: unknown; tracks?: unknown }
+  if (typeof candidate.version_ref !== "string" || typeof candidate.revision !== "number" || !Number.isSafeInteger(candidate.revision) || candidate.revision < 1 || !Array.isArray(candidate.tracks)) throw new Error("composition_response_invalid")
+  return { version_ref: candidate.version_ref, revision: candidate.revision, tracks: candidate.tracks }
 }
 
 async function fetchGenerationSnapshot(fetchImpl: typeof fetch, url: string): Promise<Response> {

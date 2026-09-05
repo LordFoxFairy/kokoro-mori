@@ -723,6 +723,10 @@ export type MoriCreativeSourceUploadReceipt = Pick<MoriCreativeSourceUpload, "up
 
 export type MoriExportStatus = "queued" | "processing" | "succeeded" | "failed"
 
+export type MoriCompositionCommand = Record<string, string | number>
+export type MoriCompositionRevisionInput = { expected_revision: number; commands: MoriCompositionCommand[] }
+export type MoriCompositionRevision = { version_ref: MoriRef; revision: number; tracks: unknown[] }
+
 export type MoriExportFormat = "mp3" | "wav"
 
 export type MoriExportSource =
@@ -798,6 +802,7 @@ export type MoriApi = {
   cancelCreativeSourceUpload: (uploadRef: MoriRef, idempotencyKey: string) => Promise<ApiSuccess<MoriCreativeSourceUpload>>
   createExport: (versionRef: MoriRef, input: MoriExportInput, idempotencyKey: string) => Promise<ApiSuccess<MoriExportReceipt>>
   getExport: (exportRef: MoriRef) => Promise<ApiSuccess<MoriExportSnapshot>>
+  createCompositionRevision: (versionRef: MoriRef, input: MoriCompositionRevisionInput, idempotencyKey: string) => Promise<ApiSuccess<MoriCompositionRevision>>
 }
 
 export type MoriGenerationDraft = {
