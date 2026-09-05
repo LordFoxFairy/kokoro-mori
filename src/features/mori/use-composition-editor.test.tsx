@@ -41,4 +41,17 @@ describe("useCompositionEditor", () => {
     await act(async () => { await result.current.persist() })
     expect(revisions).toEqual([4, 5])
   })
+  it("adopts the owner revision returned by a save", async () => {
+    const revisions: number[] = []
+    const save = async (input: { expected_revision: number; commands: unknown[] }) => {
+      revisions.push(input.expected_revision)
+      return { revision: 12 }
+    }
+    const { result } = renderHook(() => useCompositionEditor(track, save, 4))
+    act(() => result.current.editAndQueue({ operation: "move", clipRef: "clip_1", startMs: 1000 }))
+    await act(async () => { await result.current.persist() })
+    act(() => result.current.editAndQueue({ operation: "move", clipRef: "clip_1", startMs: 2000 }))
+    await act(async () => { await result.current.persist() })
+    expect(revisions).toEqual([4, 12])
+  })
 })

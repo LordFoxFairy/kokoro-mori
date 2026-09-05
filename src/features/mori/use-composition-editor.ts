@@ -7,7 +7,7 @@ import { createCompositionHistory, redoComposition, undoComposition, type Compos
 import { createCompositionRevisionInput, compositionEditToCommand, replayCompositionCommands } from "./composition-command"
 import type { CompositionRevisionInput } from "./composition-command"
 
-export function useCompositionEditor(initial: CompositionTrack, save?: (input: CompositionRevisionInput) => Promise<void>, expectedRevision = 0) {
+export function useCompositionEditor(initial: CompositionTrack, save?: (input: CompositionRevisionInput) => Promise<{ revision: number } | void>, expectedRevision = 0) {
   const [history, setHistory] = useState<CompositionHistory>(() => createCompositionHistory(initial))
   const [saveState, setSaveState] = useState<"saved" | "unsaved" | "saving" | "failed">("saved")
   const [pendingCommands, setPendingCommands] = useState<CompositionRevisionInput["commands"]>([])
@@ -17,7 +17,12 @@ export function useCompositionEditor(initial: CompositionTrack, save?: (input: C
   const persist = useCallback(async () => {
     if (save === undefined || pendingCommands.length === 0) return
     setSaveState("saving")
-    try { await save(createCompositionRevisionInput(revisionRef.current, pendingCommands)); revisionRef.current += 1; setPendingCommands([]); setSaveState("saved") } catch { setSaveState("failed") }
+    try {
+      const response = await save(createCompositionRevisionInput(revisionRef.current, pendingCommands))
+      revisionRef.current = response?.revision ?? revisionRef.current + 1
+      setPendingCommands([])
+      setSaveState("saved")
+    } catch { setSaveState("failed") }
   }, [pendingCommands, save])
   const rebase = useCallback((latest: CompositionTrack, nextRevision: number) => {
     revisionRef.current = nextRevision
