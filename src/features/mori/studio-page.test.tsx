@@ -750,10 +750,10 @@ describe("Mori studio page", () => {
 
     releaseSelection()
 
-    await waitFor(() => expect(within(secondTake).getByText("Current version")).toBeInTheDocument())
+    await waitFor(() => expect(within(screen.getByRole("article", { name: "Take 2: First Light · Afterglow" })).getByText("Current version")).toBeInTheDocument())
     expect(window.location.pathname).toBe("/projects/project_preview_first_light/studio/version_preview_first_light_b")
     expect(window.location.search).toBe("?surface=arrangement")
-    expect(within(firstTake).getByRole("button", { name: "Use First Light as current" })).toBeInTheDocument()
+    expect(within(screen.getByRole("article", { name: "Take 1: First Light" })).getByRole("button", { name: "Use First Light as current" })).toBeInTheDocument()
     const history = screen.getByRole("complementary", { name: "Version history" })
     expect(within(history).getByRole("link", { name: /First Light · Afterglow, Current/u })).toHaveAttribute("aria-current", "page")
     expect(within(history).getByRole("link", { name: /^First Light, Draft/u })).not.toHaveAttribute("aria-current")
