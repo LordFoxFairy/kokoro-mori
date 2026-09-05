@@ -1594,7 +1594,7 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
         <section className={styles.studioCanvas} aria-label="Studio editor">
           <div className={styles.studioCanvasTop}><div><span className={styles.eyebrow}><span className={styles.eyebrowDot} />Editing with intention</span><h2>Shape the feeling.</h2></div></div>
           <div id="mori-studio-panel-arrangement" role="tabpanel" aria-labelledby="mori-studio-tool-arrangement" hidden={activeTool !== "arrangement"}>
-            {activeTool === "arrangement" ? <ArrangementEditor key={activeCandidate.versionRef} compositionSave={(api !== undefined && "createCompositionRevision" in api ? api.createCompositionRevision : studioApi.createCompositionRevision) as MoriApi["createCompositionRevision"]} compositionRevision={projectWorkspaceMemory.projection?.open_version?.revision ?? 0} candidate={activeCandidate} takes={studioCandidates} structure={hasPreviewProjectContent ? previewSongPlan.structure : wholeSongStructure} lyricsPreview={initialStudioLyrics} currentVersionRef={currentVersionRef} playerVersionRef={playerCandidate?.versionRef ?? ""} positionSeconds={playerCandidate?.versionRef === activeCandidate.versionRef ? positionSeconds : 0} playing={playerCandidate?.versionRef === activeCandidate.versionRef && playing} initialIntent={initialIntent} studioChangeRun={studioChangeRun} currentVersionCommitRun={currentVersionCommitRun} onSeekTimeline={(nextPositionSeconds) => seekTimeline(activeCandidate, nextPositionSeconds)} onGenerateStudioChange={(plan) => { void generateStudioChange(plan) }} onCancelStudioChange={() => { void cancelStudioChange() }} onResetStudioChange={resetStudioChange} onSelectTake={selectTake} onPreviewTake={previewTake} onPromoteTake={(take) => { void commitCurrentVersion(take) }} onRetryCurrentVersion={retryCurrentVersionCommit} onDismissCurrentVersion={dismissCurrentVersionCommit} onOpenLyrics={() => {
+            {activeTool === "arrangement" ? <ArrangementEditor key={`${activeCandidate.versionRef}:${projectWorkspaceMemory.projection?.open_version?.revision ?? 0}`} compositionSave={(api !== undefined && "createCompositionRevision" in api ? api.createCompositionRevision : studioApi.createCompositionRevision) as MoriApi["createCompositionRevision"]} compositionRevision={projectWorkspaceMemory.projection?.open_version?.revision ?? 0} onRefreshWorkspace={projectWorkspaceMemory.refresh} candidate={activeCandidate} takes={studioCandidates} structure={hasPreviewProjectContent ? previewSongPlan.structure : wholeSongStructure} lyricsPreview={initialStudioLyrics} currentVersionRef={currentVersionRef} playerVersionRef={playerCandidate?.versionRef ?? ""} positionSeconds={playerCandidate?.versionRef === activeCandidate.versionRef ? positionSeconds : 0} playing={playerCandidate?.versionRef === activeCandidate.versionRef && playing} initialIntent={initialIntent} studioChangeRun={studioChangeRun} currentVersionCommitRun={currentVersionCommitRun} onSeekTimeline={(nextPositionSeconds) => seekTimeline(activeCandidate, nextPositionSeconds)} onGenerateStudioChange={(plan) => { void generateStudioChange(plan) }} onCancelStudioChange={() => { void cancelStudioChange() }} onResetStudioChange={resetStudioChange} onSelectTake={selectTake} onPreviewTake={previewTake} onPromoteTake={(take) => { void commitCurrentVersion(take) }} onRetryCurrentVersion={retryCurrentVersionCommit} onDismissCurrentVersion={dismissCurrentVersionCommit} onOpenLyrics={() => {
               setActiveTool("lyrics")
               window.requestAnimationFrame(() => document.getElementById("mori-studio-tool-lyrics")?.focus())
             }} /> : null}
@@ -1943,6 +1943,7 @@ function stemSeparationTerminalMessage(status: "failed" | "cancelled" | "expired
 type ArrangementEditorProps = {
   compositionSave: MoriApi["createCompositionRevision"]
   compositionRevision: number
+  onRefreshWorkspace: () => void
   candidate: Candidate
   takes: Candidate[]
   structure: readonly string[]
@@ -1966,7 +1967,7 @@ type ArrangementEditorProps = {
   onOpenLyrics: () => void
 }
 
-function ArrangementEditor({ compositionSave, compositionRevision, candidate, takes, structure, lyricsPreview, currentVersionRef, playerVersionRef, positionSeconds, playing, initialIntent, studioChangeRun, currentVersionCommitRun, onSeekTimeline, onGenerateStudioChange, onCancelStudioChange, onResetStudioChange, onSelectTake, onPreviewTake, onPromoteTake, onRetryCurrentVersion, onDismissCurrentVersion, onOpenLyrics }: ArrangementEditorProps) {
+function ArrangementEditor({ compositionSave, compositionRevision, onRefreshWorkspace, candidate, takes, structure, lyricsPreview, currentVersionRef, playerVersionRef, positionSeconds, playing, initialIntent, studioChangeRun, currentVersionCommitRun, onSeekTimeline, onGenerateStudioChange, onCancelStudioChange, onResetStudioChange, onSelectTake, onPreviewTake, onPromoteTake, onRetryCurrentVersion, onDismissCurrentVersion, onOpenLyrics }: ArrangementEditorProps) {
   const timelineSections = useMemo(() => buildStudioTimelineSections(structure, candidate.durationSeconds), [candidate.durationSeconds, structure])
   const defaultSection = studioChangeRun.plan?.selection
     ?? timelineSections.find((item) => item.label.toLowerCase() === "chorus")
@@ -2000,8 +2001,8 @@ function ArrangementEditor({ compositionSave, compositionRevision, candidate, ta
         <button
           className={styles.arrangementSaveButton}
           type="button"
-          disabled={compositionEditor.saveState === "saved" || compositionEditor.saveState === "saving" || compositionEditor.saveState === "conflict"}
-          onClick={() => { void compositionEditor.persist() }}
+          disabled={compositionEditor.saveState === "saved" || compositionEditor.saveState === "saving"}
+          onClick={() => { if (compositionEditor.saveState === "conflict") onRefreshWorkspace(); else void compositionEditor.persist() }}
         >
           {compositionEditor.saveState === "saving" ? <LoaderCircle className={styles.spinner} size={14} /> : <Check size={14} />}
           {compositionEditor.saveState === "conflict" ? "Refresh to resolve" : compositionEditor.saveState === "failed" ? "Retry save" : "Save arrangement"}
