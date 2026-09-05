@@ -66,6 +66,7 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
   const promptRef = useRef<HTMLTextAreaElement>(null)
   const referenceInputRef = useRef<HTMLInputElement>(null)
   const planPreviewRef = useRef<HTMLElement>(null)
+  const referenceUploadEpochRef = useRef(0)
   const [prompt, setPrompt] = useState(() => initialPrompt?.trim() || DEFAULT_PROMPT)
   const [lyrics, setLyrics] = useState("")
   const [lyricsModeOverride, setLyricsModeOverride] = useState<LyricsMode | null>(initialVoiceProfile === null ? null : "lyrics")
@@ -213,6 +214,8 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
 
     setReferenceError(null)
     clearPlanPreview()
+    const uploadEpoch = referenceUploadEpochRef.current + 1
+    referenceUploadEpochRef.current = uploadEpoch
     const createUpload = api?.createCreativeSourceUpload
     const uploadContent = api?.uploadCreativeSourceContent
     if (projectRef === "project_preview_first_light" || projectRef === "project_pending" || createUpload === undefined || uploadContent === undefined) {
@@ -223,15 +226,18 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
     setReferenceUploadStatus("creating")
     try {
       const receipt = await createUpload({ source_kind: "audio", file_name: file.name, content_type: file.type || "application/octet-stream", byte_size: file.size, project_ref: projectRef }, `mori-upload-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
+      if (referenceUploadEpochRef.current !== uploadEpoch) return
       setReferenceUploadRef(receipt.data.upload_ref)
       setReferenceUploadStatus("uploading")
       let upload = await uploadContent(receipt.data.upload_ref, file, file.type || "application/octet-stream")
+      if (referenceUploadEpochRef.current !== uploadEpoch) return
       for (let attempt = 0; upload.data.status === "processing" && attempt < 8; attempt += 1) {
         setReferenceUploadStatus("processing")
         await new Promise((resolve) => window.setTimeout(resolve, 350))
         const status = api?.getCreativeSourceUpload
         if (status === undefined) break
         upload = await status(receipt.data.upload_ref)
+        if (referenceUploadEpochRef.current !== uploadEpoch) return
       }
       setReferenceUploadStatus(upload.data.status)
       if (upload.data.status !== "ready" || upload.data.asset_ref === null) {
@@ -240,12 +246,14 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
       }
       setReferenceSource({ ref: upload.data.asset_ref, name: file.name, detail: `${formatFileSize(file.size)} · ready to guide this direction` })
     } catch {
+      if (referenceUploadEpochRef.current !== uploadEpoch) return
       setReferenceUploadStatus("failed")
       setReferenceError("Audio reference upload failed. Try again.")
     }
   }
 
   function removeReference() {
+    referenceUploadEpochRef.current += 1
     const uploadRef = referenceUploadRef
     if (uploadRef !== null && api?.cancelCreativeSourceUpload !== undefined && referenceUploadStatus !== "ready") void api.cancelCreativeSourceUpload(uploadRef, `mori-upload-cancel-${Date.now()}`).catch(() => undefined)
     setReferenceSource(null)
