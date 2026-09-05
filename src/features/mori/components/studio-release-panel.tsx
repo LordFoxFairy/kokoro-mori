@@ -77,6 +77,7 @@ export function StudioReleasePanel({
 }: StudioReleasePanelProps) {
   const titleId = useId()
   const [reviewedArtworkPlan, setReviewedArtworkPlan] = useState<StudioArtworkPlan | null>(null)
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle")
   const artworkBusy = isActiveArtworkGenerationStatus(artworkRun.status)
   const artworkRetryable = artworkRun.plan !== null && (artworkRun.status === "failed" || artworkRun.status === "cancelled" || artworkRun.status === "expired")
   const artworkReady = artworkRun.status === "succeeded" && artworkRun.candidates.length > 0
@@ -250,7 +251,7 @@ export function StudioReleasePanel({
         </button>
         {saveState.status === "saved" && onPublish !== undefined && publishState?.status !== "published" ? <button className={styles.saveButton} type="button" disabled={publishState?.status === "publishing"} onClick={onPublish}>{publishState?.status === "publishing" ? "Publishing…" : "Publish release"}</button> : null}
         {publishState?.status === "published" && onUnpublish !== undefined ? <button className={styles.textButton} type="button" onClick={onUnpublish}>Unpublish</button> : null}
-        {publishState?.status === "published" && publishState.publicUrl ? <span role="status">Published · {publishState.publicUrl}</span> : null}
+        {publishState?.status === "published" && publishState.publicUrl ? <span role="status">Published · {publishState.publicUrl} <button className={styles.textButton} type="button" onClick={() => { void navigator.clipboard.writeText(publishState.publicUrl!).then(() => setCopyState("copied")).catch(() => setCopyState("failed")) }}>{copyState === "copied" ? "Copied" : copyState === "failed" ? "Try copy again" : "Copy public link"}</button></span> : null}
         {publishState?.status === "failed" ? <span role="alert">{publishState.message} {onPublish !== undefined ? <button className={styles.textButton} type="button" onClick={onPublish}>Try again</button> : null}</span> : null}
       </footer>
     </form>
