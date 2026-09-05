@@ -1,0 +1,7 @@
+.indicator { display:inline-flex; align-items:center; gap:6px; color:var(--mori-muted); font-size:10px; font-weight:650; }
+.indicator i { width:6px; height:6px; border-radius:50%; background:#35a875; }
+.indicator[data-state="unsaved"] i { background:#d59575; }
+.indicator[data-state="saving"] i { background:var(--mori-primary); animation:pulse 1.2s ease-in-out infinite; }
+.indicator[data-state="conflict"] i, .indicator[data-state="failed"] i { background:#d35d68; }
+@keyframes pulse { 50% { opacity:.35; transform:scale(.7); } }
+@media (prefers-reduced-motion: reduce) { .indicator[data-state="saving"] i { animation:none; } }
