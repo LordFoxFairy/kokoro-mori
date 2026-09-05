@@ -21,10 +21,12 @@
     },
     "schemas": {
       "CompositionCommand": { "oneOf": [
-        { "$ref": "#/components/schemas/MoveClip" }, { "$ref": "#/components/schemas/TrimClip" },
+        { "$ref": "#/components/schemas/MoveClip" }, { "$ref": "#/components/schemas/TrimClip" }, { "$ref": "#/components/schemas/CropClip" }, { "$ref": "#/components/schemas/InsertClip" },
         { "$ref": "#/components/schemas/SplitClip" }, { "$ref": "#/components/schemas/SetFades" }
       ], "discriminator": { "propertyName": "type" } },
       "MoveClip": { "type": "object", "additionalProperties": false, "required": ["type", "clip_ref", "start_ms"], "properties": { "type": { "const": "move_clip" }, "clip_ref": { "type": "string", "minLength": 1 }, "start_ms": { "type": "integer", "minimum": 0 } } },
+      "CropClip": { "type": "object", "additionalProperties": false, "required": ["type", "clip_ref", "start_offset_ms", "end_offset_ms"], "properties": { "type": { "const": "crop_clip" }, "clip_ref": { "type": "string", "minLength": 1 }, "start_offset_ms": { "type": "integer", "minimum": 0 }, "end_offset_ms": { "type": "integer", "minimum": 0 } } },
+      "InsertClip": { "type": "object", "additionalProperties": false, "required": ["type", "clip_ref", "source_ref", "start_ms", "duration_ms", "offset_ms"], "properties": { "type": { "const": "insert_clip" }, "clip_ref": { "type": "string", "minLength": 1 }, "source_ref": { "type": "string", "minLength": 1 }, "start_ms": { "type": "integer", "minimum": 0 }, "duration_ms": { "type": "integer", "minimum": 1 }, "offset_ms": { "type": "integer", "minimum": 0 } } },
       "TrimClip": { "type": "object", "additionalProperties": false, "required": ["type", "clip_ref", "duration_ms"], "properties": { "type": { "const": "trim_clip" }, "clip_ref": { "type": "string", "minLength": 1 }, "duration_ms": { "type": "integer", "minimum": 1 } } },
       "SplitClip": { "type": "object", "additionalProperties": false, "required": ["type", "clip_ref", "at_ms"], "properties": { "type": { "const": "split_clip" }, "clip_ref": { "type": "string", "minLength": 1 }, "at_ms": { "type": "integer", "minimum": 1 } } },
       "SetFades": { "type": "object", "additionalProperties": false, "required": ["type", "clip_ref", "fade_in_ms", "fade_out_ms"], "properties": { "type": { "const": "set_fades" }, "clip_ref": { "type": "string", "minLength": 1 }, "fade_in_ms": { "type": "integer", "minimum": 0 }, "fade_out_ms": { "type": "integer", "minimum": 0 } } },
