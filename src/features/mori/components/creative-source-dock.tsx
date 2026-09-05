@@ -19,6 +19,7 @@ type CreativeSourceDockProps = {
   inspirationRef: string | null
   onChooseReference: () => void
   onRemoveReference: () => void
+  onRetryReference?: () => void
   onVoiceChange: (voiceRef: string | null) => void
   onInspirationChange: (preset: MoriInspirationPreset | null) => void
   creativeSources?: readonly MoriCreativeLibrarySource[]
@@ -37,7 +38,7 @@ export function CreativeSourceDock({
   onRemoveReference,
   onVoiceChange,
   onInspirationChange,
-  creativeSources, referenceUploadStatus = null,
+  creativeSources, referenceUploadStatus = null, onRetryReference,
 }: CreativeSourceDockProps) {
   const [openPicker, setOpenPicker] = useState<OpenPicker>(null)
   const sourceCatalog: readonly MoriCreativeLibrarySource[] = creativeSources ?? previewCreativeSources
@@ -123,7 +124,7 @@ export function CreativeSourceDock({
         </div>
       </div>
 
-      {referenceError !== null ? <p className={styles.sourceError} role="alert">{referenceError}</p> : null}
+      {referenceError !== null ? <p className={styles.sourceError} role="alert">{referenceError}{referenceUploadStatus === "failed" && onRetryReference !== undefined ? <button type="button" onClick={onRetryReference}>Try again</button> : null}</p> : null}
 
       {voiceEnabled && openPicker === "voice" ? (
         <section className={styles.pickerPanel} aria-label="Voice profiles">

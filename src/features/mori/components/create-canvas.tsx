@@ -426,6 +426,7 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
             key={lyricsMode}
             referenceSource={referenceSource}
             referenceUploadStatus={referenceUploadStatus}
+            onRetryReference={() => referenceInputRef.current?.click()}
             referenceError={referenceError}
             voiceRef={voiceProfileRef}
             voiceEnabled={lyricsMode === "lyrics"}
