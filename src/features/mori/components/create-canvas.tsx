@@ -19,6 +19,7 @@ import { useMoriApp } from "./mori-app-provider"
 import styles from "../mori-workspace.module.css"
 
 const DEFAULT_PROMPT = "A warm, late-night track for the drive home, slowly opening into sunrise."
+const creativeUploadRecoveryKey = "mori-creative-upload-recovery-v1"
 
 export type CreationDraft = {
   prompt: string
@@ -99,6 +100,27 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
   const visiblePlanSaveRun = planSubmitAttempted ? planSaveRun : idleProjectWorkspaceSaveRun
   const workspacePlanRefreshToken = workspacePlanRefresh?.token ?? null
   const refreshedWorkspacePlan = workspacePlanRefresh?.plan ?? null
+
+  useEffect(() => {
+    if (projectRef === "project_preview_first_light" || api?.getCreativeSourceUpload === undefined) return
+    try {
+      const stored = JSON.parse(window.localStorage.getItem(creativeUploadRecoveryKey) ?? "null") as { projectRef?: string; uploadRef?: string; name?: string } | null
+      if (stored?.projectRef !== projectRef || stored.uploadRef === undefined || stored.name === undefined) return
+      const uploadRef = stored.uploadRef
+      const uploadName = stored.name
+      let disposed = false
+      void api.getCreativeSourceUpload(uploadRef).then((response) => {
+        if (disposed) return
+        setReferenceUploadRef(uploadRef)
+        setReferenceUploadStatus(response.data.status)
+        if (response.data.status === "ready" && response.data.asset_ref !== null) setReferenceSource({ ref: response.data.asset_ref, name: uploadName, detail: "Recovered from this browser · ready to guide this direction" })
+        if (["failed", "cancelled", "expired"].includes(response.data.status)) setReferenceError(response.data.error?.message ?? "Audio reference needs attention. Try again.")
+      }).catch(() => { if (!disposed) setReferenceError("Audio reference status could not be restored. Try again.") })
+      return () => { disposed = true }
+    } catch {
+      window.localStorage.removeItem(creativeUploadRecoveryKey)
+    }
+  }, [api, projectRef])
 
   useEffect(() => {
     if (initialCreativeSource === undefined) return
@@ -228,6 +250,7 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
       const receipt = await createUpload({ source_kind: "audio", file_name: file.name, content_type: file.type || "application/octet-stream", byte_size: file.size, project_ref: projectRef }, `mori-upload-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
       if (referenceUploadEpochRef.current !== uploadEpoch) return
       setReferenceUploadRef(receipt.data.upload_ref)
+      window.localStorage.setItem(creativeUploadRecoveryKey, JSON.stringify({ projectRef, uploadRef: receipt.data.upload_ref, name: file.name }))
       setReferenceUploadStatus("uploading")
       let upload = await uploadContent(receipt.data.upload_ref, file, file.type || "application/octet-stream")
       if (referenceUploadEpochRef.current !== uploadEpoch) return
@@ -245,6 +268,7 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
         return
       }
       setReferenceSource({ ref: upload.data.asset_ref, name: file.name, detail: `${formatFileSize(file.size)} · ready to guide this direction` })
+      window.localStorage.removeItem(creativeUploadRecoveryKey)
     } catch {
       if (referenceUploadEpochRef.current !== uploadEpoch) return
       setReferenceUploadStatus("failed")
@@ -259,6 +283,7 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
     setReferenceSource(null)
     setReferenceUploadRef(null)
     setReferenceUploadStatus(null)
+    window.localStorage.removeItem(creativeUploadRecoveryKey)
     setReferenceError(null)
     if (referenceInputRef.current !== null) referenceInputRef.current.value = ""
     clearPlanPreview()
