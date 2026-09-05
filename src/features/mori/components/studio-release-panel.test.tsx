@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { useState } from "react"
 import { describe, expect, it, vi } from "vitest"
 import type { MoriArtworkCandidate } from "@/lib/mori-api"
@@ -11,6 +11,7 @@ import {
   type StudioArtworkRunState,
   type StudioReleaseDraft,
   type StudioReleaseSaveState,
+  type StudioReleasePublishState,
 } from "../studio-release"
 import { StudioReleasePanel } from "./studio-release-panel"
 
@@ -49,6 +50,15 @@ describe("Studio Release panel", () => {
       artwork: { type: "current" },
     })
     expect(screen.getByText(/Saving this draft does not publish/u)).toBeInTheDocument()
+  })
+
+  it("copies only the published public link", async () => {
+    const writeText = vi.fn(async () => undefined)
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } })
+    render(<ReleaseHarness saveState={{ status: "saved", snapshot: null, message: null }} publishState={{ status: "published", releaseRef: "release_1", publicUrl: "https://mori.local/release/release_1", message: null }} />)
+    expect(screen.getByRole("button", { name: "Copy public link" })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: "Copy public link" }))
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith("https://mori.local/release/release_1"))
   })
 
   it("reviews a fixed four-concept artwork plan before generation", () => {
@@ -151,6 +161,7 @@ type ReleaseHarnessProps = {
   onGenerateArtwork?: (plan: StudioArtworkPlan) => void
   onCancelArtwork?: () => void
   onSave?: (draft: StudioReleaseDraft) => void
+  publishState?: StudioReleasePublishState
 }
 
 function ReleaseHarness({
@@ -160,6 +171,7 @@ function ReleaseHarness({
   onGenerateArtwork = vi.fn(),
   onCancelArtwork = vi.fn(),
   onSave = vi.fn(),
+  publishState,
 }: ReleaseHarnessProps) {
   const [draft, setDraft] = useState<StudioReleaseDraft>(() => createInitialStudioReleaseDraft(initialTitle))
   const [artworkDraft, setArtworkDraft] = useState<StudioArtworkDraft>({ prompt: "", style: "abstract", palette: "warm_dawn" })
@@ -176,6 +188,7 @@ function ReleaseHarness({
       onCancelArtwork={onCancelArtwork}
       onResetArtwork={vi.fn()}
       onSave={onSave}
+      publishState={publishState}
     />
   )
 }
