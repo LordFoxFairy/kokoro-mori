@@ -207,7 +207,7 @@ source 或 strength 与 Review Plan 不一致时不会挂接任何 Candidate。�
 
 ### Finish / Release 的完成信息模型
 
-Release 与 Remaster 共用 Studio 的 Finish 入口，但它保存的是当前 Version 的发布意图，不执行发布：
+Release 与 Remaster 共用 Studio 的 Finish 入口。Release 先保存当前 Version 的发布意图，再通过独立 Publish command 完成发布：
 
 ```text
 Identity     Title + Description + Artwork
@@ -215,7 +215,7 @@ Visibility   Private（默认） | Link only | Public
 Permissions  Allow remixes（与 Visibility 独立）
 Disclosure   Explicit content
 Persistence  Save release draft + expected revision
-Publish      当前没有命令
+ Publish      Draft revision 确认后显式 Publish / Unpublish
 ```
 
 Artwork 是视觉身份，不等于 Tad 所称的音乐 Cover。用户可以沿用当前图片，或输入 brief，选择
@@ -615,8 +615,7 @@ BFF 必须按受信会话校验该 asset 与用户可见 Mori 资源的关联，
 - 已完成浏览器侧第二刀：Studio 顶部 Finish 提供 Version / 最新 Mix Revision 来源与 Subtle / Balanced / Bold
   Remaster strength；先 Review 再复用 typed `transform + intent: remaster` Generation，snapshot 严格回显来源与强度，
   结果固定为两个非破坏式 Takes。关闭窗口不丢运行态，也不自动替换 Current。
-- 已完成浏览器侧第三刀：Finish 的 Release 页签保存 version-scoped draft，Private 默认、Visibility / Remix 权限独立，
-  不提供 Publish command；Artwork 可沿用当前图，或通过固定 1:1、无文字、四候选的异步流程生成和选择。Artwork
+- 已完成浏览器侧第三刀：Finish 的 Release 页签保存 version-scoped draft，Private 默认、Visibility / Remix 权限独立；保存确认后提供独立 Publish / Unpublish command。Artwork 可沿用当前图，或通过固定 1:1、无文字、四候选的异步流程生成和选择。Artwork
   只进入 Release draft，不进入音频 Take Lanes；窗口关闭、页签切换与任务恢复保持上下文，切换 Version 会清理旧草稿。
 - 已完成浏览器侧第四刀：Studio Transform 中的 Restyle / Cover 使用命名意图和严格 typed snapshot；Cover 与
   Release artwork 完全分离，Vocal / Instrumental 模式只暴露必要控制，结果保持非破坏式。
@@ -624,7 +623,7 @@ BFF 必须按受信会话校验该 asset 与用户可见 Mori 资源的关联，
   Version ref 当作用户信息；Remaster、Release draft 与文件导出的职责仍保持分离。
 - 已完成浏览器侧第六刀：Create 移除没有持久化分享对象的 Share；Studio 将深链动作明确命名为 Copy link，
   以 pending / success / failure 状态反映真实 Clipboard 结果，失败可再次点击重试，不提前宣称成功。
-- 下一步：选区/多轨渲染；等待真实多轨 artifact contract 后再开放。
+- 下一步：选区/多轨渲染；等待真实多轨 artifact contract 后再开放。Release Publish 的真实 owner integration smoke 仍待 BFF / Storage 接通。
 - AI MV 作为完成歌曲的后置流程，不抢占创作主路径。
 
 ## 6. 体验门禁
