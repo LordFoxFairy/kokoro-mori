@@ -27,9 +27,10 @@ type StudioTimelineProps = {
   compositionTracks?: CompositionTrack[]
   selectedClipRef?: string
   onSelectClip?: (clipRef: string) => void
+  onEditClip?: (operation: "move" | "trim" | "split" | "fade", clipRef: string) => void
 }
 
-export function StudioTimeline({ candidate, sections, selection, positionSeconds, playing, disabled, onSeek, onSelect, compositionTracks = [], selectedClipRef, onSelectClip }: StudioTimelineProps) {
+export function StudioTimeline({ candidate, sections, selection, positionSeconds, playing, disabled, onSeek, onSelect, compositionTracks = [], selectedClipRef, onSelectClip, onEditClip }: StudioTimelineProps) {
   const sectionHintId = useId()
   const durationMs = Math.max(minimumStudioTimelineSelectionMs, Math.round(candidate.durationSeconds * 1_000))
   const positionMs = Math.max(0, Math.min(durationMs, Math.round(positionSeconds * 1_000)))
@@ -84,7 +85,7 @@ export function StudioTimeline({ candidate, sections, selection, positionSeconds
         />
       </div>
 
-      {compositionTracks.length > 0 ? <CompositionLane tracks={compositionTracks} durationMs={durationMs} selectedClipRef={selectedClipRef} onSelectClip={onSelectClip} /> : null}
+      {compositionTracks.length > 0 ? <CompositionLane tracks={compositionTracks} durationMs={durationMs} selectedClipRef={selectedClipRef} onSelectClip={onSelectClip} onEditClip={onEditClip} /> : null}
 
       <div className={styles.segmentRail}>
         <div

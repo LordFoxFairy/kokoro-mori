@@ -37,6 +37,7 @@ import { StudioStemsEditor, type StudioStemSeparationRunState } from "./componen
 import { StudioGenerationQueue } from "./components/studio-generation-queue"
 import { StudioTimeline } from "./components/studio-timeline"
 import { CompositionSaveIndicator } from "./components/composition-save-indicator"
+import { CompositionEditPanel } from "./components/composition-edit-panel"
 import { StudioUnsavedLyricsDialog } from "./components/studio-unsaved-lyrics-dialog"
 import { StudioVersionHistoryDrawer, StudioVersionHistoryRail } from "./components/studio-version-history"
 import { StudioWorkspaceSaveStatus } from "./components/studio-workspace-save-status"
@@ -45,6 +46,7 @@ import { Waveform } from "./components/waveform"
 import { previewCandidates, previewProject, previewSongPlan } from "./preview-data"
 import type { StudioEntryIntent, StudioEntrySurface } from "./studio-entry"
 import type { CompositionTrack } from "./composition"
+import { useCompositionEditor } from "./use-composition-editor"
 import { buildStudioTimelineSections, isActiveStudioChangeStatus, type StudioChangePlan, type StudioTimelineSection } from "./studio-change"
 import { createStudioLyricsRevisionDraft, defaultStudioLyrics, isActiveLyricsRevisionStatus, studioLyricsScopeLabel, type StudioLyricsPlan } from "./studio-lyrics"
 import { isStudioRemasterPlan, isStudioRemasterSnapshot } from "./studio-remaster"
@@ -1977,6 +1979,8 @@ function ArrangementEditor({ candidate, takes, structure, lyricsPreview, current
     trackRef: `${candidate.versionRef}:main`, kind: "other", name: "Main version",
     clips: [{ clipRef: `${candidate.versionRef}:clip`, sourceRef: candidate.versionRef, startMs: 0, durationMs: Math.round(candidate.durationSeconds * 1_000), offsetMs: 0 }],
   }], [candidate.durationSeconds, candidate.versionRef])
+  const compositionEditor = useCompositionEditor(compositionTracks[0] as CompositionTrack)
+  const [editOperation, setEditOperation] = useState<"move" | "trim" | "split" | "fade" | null>(null)
 
   if (selection === undefined) return null
 
@@ -1988,8 +1992,9 @@ function ArrangementEditor({ candidate, takes, structure, lyricsPreview, current
 
   return (
     <section aria-label="Arrangement editor">
-      <div className={styles.arrangementTimelineHeader}><CompositionSaveIndicator state="saved" /></div>
-      <StudioTimeline candidate={candidate} sections={timelineSections} selection={selection} positionSeconds={positionSeconds} playing={playing} disabled={changeActive} onSeek={onSeekTimeline} onSelect={selectTimelineRange} compositionTracks={compositionTracks} selectedClipRef={selectedClipRef} onSelectClip={setSelectedClipRef} />
+      <div className={styles.arrangementTimelineHeader}><CompositionSaveIndicator state={compositionEditor.canUndo ? "unsaved" : "saved"} /></div>
+      <StudioTimeline candidate={candidate} sections={timelineSections} selection={selection} positionSeconds={positionSeconds} playing={playing} disabled={changeActive} onSeek={onSeekTimeline} onSelect={selectTimelineRange} compositionTracks={[compositionEditor.composition]} selectedClipRef={selectedClipRef} onSelectClip={setSelectedClipRef} onEditClip={(operation, clipRef) => { setSelectedClipRef(clipRef); setEditOperation(operation) }} />
+      {selectedClipRef !== undefined && editOperation !== null ? <CompositionEditPanel clipRef={selectedClipRef} operation={editOperation} onApply={(edit) => { compositionEditor.edit(edit); setEditOperation(null) }} /> : null}
       <StudioAiComposer
         selectedSection={selection}
         run={studioChangeRun}
