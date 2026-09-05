@@ -4966,6 +4966,8 @@
   min-height: 100%;
 }
 
+.arrangementTimelineHeader { display:flex; justify-content:flex-end; min-height:18px; margin:0 0 6px; }
+
 .studioPage .studioHeader {
   min-height: 68px;
   padding: 0 32px;
