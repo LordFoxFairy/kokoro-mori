@@ -33,6 +33,7 @@ type StudioReleaseApi = Pick<
   | "getReleaseDraft"
   | "putReleaseDraft"
   | "publishRelease"
+  | "getRelease"
   | "unpublishRelease"
 >
 
@@ -41,6 +42,7 @@ type PendingReleaseCommand = {
   input: ReleaseDraftInput
   idempotencyKey: string
 }
+const releasePublishRecoveryKey = "mori-release-publish-recovery-v1"
 
 type UseStudioReleaseWorkflowInput = {
   versionRef: string | null
@@ -128,6 +130,22 @@ export function useStudioReleaseWorkflow({ versionRef, versionTitle, api }: UseS
     return () => {
       disposed = true
     }
+  }, [api, versionRef])
+
+  useEffect(() => {
+    if (versionRef === null || api.getRelease === undefined) return
+    let disposed = false
+    try {
+      const stored = JSON.parse(window.localStorage.getItem(releasePublishRecoveryKey) ?? "null") as { versionRef?: string; releaseRef?: string } | null
+      if (stored?.versionRef !== versionRef || stored.releaseRef === undefined) return
+      void api.getRelease(stored.releaseRef).then((response) => {
+        if (disposed || activeVersionRef.current !== versionRef) return
+        setReleasePublish({ status: response.data.status, releaseRef: response.data.release_ref, publicUrl: response.data.public_url, message: null })
+      }).catch(() => undefined)
+    } catch {
+      window.localStorage.removeItem(releasePublishRecoveryKey)
+    }
+    return () => { disposed = true }
   }, [api, versionRef])
 
   const generateArtwork = async (plan: StudioArtworkPlan) => {
@@ -387,6 +405,7 @@ export function useStudioReleaseWorkflow({ versionRef, versionTitle, api }: UseS
       const response = await api.publishRelease(sourceVersionRef, { release_draft_ref: command.draftRef, expected_draft_revision: command.revision }, command.idempotencyKey)
       pendingPublishCommand.current = null
       setReleasePublish({ status: response.data.status, releaseRef: response.data.release_ref, publicUrl: response.data.public_url, message: null })
+      window.localStorage.setItem(releasePublishRecoveryKey, JSON.stringify({ versionRef: sourceVersionRef, releaseRef: response.data.release_ref }))
     } catch { setReleasePublish((current) => ({ ...current, status: "failed", message: "Publish needs another try." })) }
   }
 
@@ -395,6 +414,7 @@ export function useStudioReleaseWorkflow({ versionRef, versionTitle, api }: UseS
     try {
       const response = await api.unpublishRelease(releasePublish.releaseRef, `mori-unpublish-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
       setReleasePublish((current) => ({ ...current, status: response.data.status, publicUrl: response.data.public_url, message: null }))
+      window.localStorage.removeItem(releasePublishRecoveryKey)
     } catch { setReleasePublish((current) => ({ ...current, status: "failed", message: "Unpublish needs another try." })) }
   }
 
