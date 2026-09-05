@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent, type KeyboardEvent } from "react"
 import { AlertCircle, AudioLines, Check, Disc3, LoaderCircle, Mic2, RotateCcw, SlidersHorizontal, Sparkles } from "lucide-react"
 import type { CreationMode, LyricsMode, SongPlan } from "../domain"
+import type { MoriApi, MoriCreativeSourceUploadStatus } from "@/lib/mori-api"
 import { t } from "../copy"
 import {
   previewCreativeSources,
@@ -45,9 +46,10 @@ type CreateCanvasProps = {
   onGenerate: (draft: CreationDraft) => void | Promise<void>
   onRetryPlanSave?: () => void
   onRefreshPlanWorkspace?: () => void | Promise<void>
+  api?: Partial<Pick<MoriApi, "createCreativeSourceUpload" | "uploadCreativeSourceContent" | "getCreativeSourceUpload" | "cancelCreativeSourceUpload">>
 }
 
-export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeSource, creativeSources, planPersistence = "preview", planSaveRun = idleProjectWorkspaceSaveRun, planSaveLoading = false, workspacePlanRefresh, onModeChange, onGenerate, onRetryPlanSave, onRefreshPlanWorkspace }: CreateCanvasProps) {
+export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeSource, creativeSources, planPersistence = "preview", planSaveRun = idleProjectWorkspaceSaveRun, planSaveLoading = false, workspacePlanRefresh, onModeChange, onGenerate, onRetryPlanSave, onRefreshPlanWorkspace, api }: CreateCanvasProps) {
   const { preferences } = useMoriApp()
   const sourceCatalog: readonly MoriCreativeLibrarySource[] = creativeSources ?? previewCreativeSources
   const initialVoiceProfile = initialCreativeSource?.kind === "voice"
@@ -79,6 +81,8 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
   })
   const initialSourceAppliedRef = useRef<string | null>(null)
   const [referenceError, setReferenceError] = useState<string | null>(null)
+  const [referenceUploadStatus, setReferenceUploadStatus] = useState<MoriCreativeSourceUploadStatus | null>(null)
+  const [referenceUploadRef, setReferenceUploadRef] = useState<string | null>(null)
   const [planPreview, setPlanPreview] = useState<ReturnType<typeof buildSongPlan> | null>(null)
   const [planEditing, setPlanEditing] = useState(false)
   const [planBackup, setPlanBackup] = useState<SongPlan | null>(null)
@@ -193,7 +197,7 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
     referenceInputRef.current?.click()
   }
 
-  function changeReference(event: ChangeEvent<HTMLInputElement>) {
+  async function changeReference(event: ChangeEvent<HTMLInputElement>) {
     const file = event.currentTarget.files?.[0]
     if (file === undefined) return
     if (!isAudioReference(file)) {
@@ -207,17 +211,46 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
       return
     }
 
-    setReferenceSource({
-      ref: "asset_preview_reference",
-      name: file.name,
-      detail: `${formatFileSize(file.size)} · selected for this direction`,
-    })
     setReferenceError(null)
     clearPlanPreview()
+    const createUpload = api?.createCreativeSourceUpload
+    const uploadContent = api?.uploadCreativeSourceContent
+    if (projectRef === "project_preview_first_light" || projectRef === "project_pending" || createUpload === undefined || uploadContent === undefined) {
+      setReferenceSource({ ref: "asset_preview_reference", name: file.name, detail: `${formatFileSize(file.size)} · selected for this direction` })
+      return
+    }
+    setReferenceSource(null)
+    setReferenceUploadStatus("creating")
+    try {
+      const receipt = await createUpload({ source_kind: "audio", file_name: file.name, content_type: file.type || "application/octet-stream", byte_size: file.size, project_ref: projectRef }, `mori-upload-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
+      setReferenceUploadRef(receipt.data.upload_ref)
+      setReferenceUploadStatus("uploading")
+      let upload = await uploadContent(receipt.data.upload_ref, file, file.type || "application/octet-stream")
+      for (let attempt = 0; upload.data.status === "processing" && attempt < 8; attempt += 1) {
+        setReferenceUploadStatus("processing")
+        await new Promise((resolve) => window.setTimeout(resolve, 350))
+        const status = api?.getCreativeSourceUpload
+        if (status === undefined) break
+        upload = await status(receipt.data.upload_ref)
+      }
+      setReferenceUploadStatus(upload.data.status)
+      if (upload.data.status !== "ready" || upload.data.asset_ref === null) {
+        setReferenceError(upload.data.error?.message ?? "Audio reference could not be prepared.")
+        return
+      }
+      setReferenceSource({ ref: upload.data.asset_ref, name: file.name, detail: `${formatFileSize(file.size)} · ready to guide this direction` })
+    } catch {
+      setReferenceUploadStatus("failed")
+      setReferenceError("Audio reference upload failed. Try again.")
+    }
   }
 
   function removeReference() {
+    const uploadRef = referenceUploadRef
+    if (uploadRef !== null && api?.cancelCreativeSourceUpload !== undefined && referenceUploadStatus !== "ready") void api.cancelCreativeSourceUpload(uploadRef, `mori-upload-cancel-${Date.now()}`).catch(() => undefined)
     setReferenceSource(null)
+    setReferenceUploadRef(null)
+    setReferenceUploadStatus(null)
     setReferenceError(null)
     if (referenceInputRef.current !== null) referenceInputRef.current.value = ""
     clearPlanPreview()
@@ -384,6 +417,7 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
           <CreativeSourceDock
             key={lyricsMode}
             referenceSource={referenceSource}
+            referenceUploadStatus={referenceUploadStatus}
             referenceError={referenceError}
             voiceRef={voiceProfileRef}
             voiceEnabled={lyricsMode === "lyrics"}

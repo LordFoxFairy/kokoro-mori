@@ -8,6 +8,7 @@ import {
   type MoriCreativeLibrarySource,
   type MoriInspirationPreset,
 } from "../creative-assets"
+import type { MoriCreativeSourceUploadStatus } from "@/lib/mori-api"
 import styles from "./creative-source-dock.module.css"
 
 type CreativeSourceDockProps = {
@@ -21,6 +22,7 @@ type CreativeSourceDockProps = {
   onVoiceChange: (voiceRef: string | null) => void
   onInspirationChange: (preset: MoriInspirationPreset | null) => void
   creativeSources?: readonly MoriCreativeLibrarySource[]
+  referenceUploadStatus?: MoriCreativeSourceUploadStatus | null
 }
 
 type OpenPicker = "voice" | "inspiration" | null
@@ -35,7 +37,7 @@ export function CreativeSourceDock({
   onRemoveReference,
   onVoiceChange,
   onInspirationChange,
-  creativeSources,
+  creativeSources, referenceUploadStatus = null,
 }: CreativeSourceDockProps) {
   const [openPicker, setOpenPicker] = useState<OpenPicker>(null)
   const sourceCatalog: readonly MoriCreativeLibrarySource[] = creativeSources ?? previewCreativeSources
@@ -75,7 +77,7 @@ export function CreativeSourceDock({
             <span className={styles.sourceIcon}><FileAudio /></span>
             <span className={styles.sourceCopy}>
               <strong>{referenceSource?.name ?? "Audio reference"}</strong>
-              <small>{referenceSource?.detail ?? "Guide rhythm, melody, or texture"}</small>
+              <small>{referenceSource?.detail ?? (referenceUploadStatus === null ? "Guide rhythm, melody, or texture" : `${referenceUploadStatus} · preparing your reference`)}</small>
             </span>
             {referenceSource === null ? <Plus className={styles.sourceChevron} /> : null}
           </button>

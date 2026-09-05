@@ -66,7 +66,7 @@ type MoriWorkspaceProps = {
   generationRef?: string
   initialPrompt?: string
   initialCreativeSource?: MoriCreativeSourceSelection
-  api?: Pick<MoriApi, "createGeneration" | "getGeneration" | "getGenerationEvents" | "listCandidates" | "cancelGeneration"> & Partial<Pick<MoriApi, "createSongPlan" | "createProject" | "getProject" | "putCurrentVersion" | "getProjectWorkspace" | "putCurrentSongPlan" | "listCreativeSources" | "getCreativeSource">>
+  api?: Pick<MoriApi, "createGeneration" | "getGeneration" | "getGenerationEvents" | "listCandidates" | "cancelGeneration"> & Partial<Pick<MoriApi, "createSongPlan" | "createProject" | "getProject" | "putCurrentVersion" | "getProjectWorkspace" | "putCurrentSongPlan" | "listCreativeSources" | "getCreativeSource" | "createCreativeSourceUpload" | "uploadCreativeSourceContent" | "getCreativeSourceUpload" | "cancelCreativeSourceUpload">>
 }
 
 type GenerationAttempt = {
@@ -1201,6 +1201,7 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, generationRef: 
             </header>
             <div className={styles.canvasBody}>
               <CreateCanvas
+                api={api}
                 projectRef={workspaceProjectRef ?? "project_pending"}
                 mode={mode}
                 initialPrompt={initialPrompt}
