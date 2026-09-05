@@ -8,6 +8,7 @@
 - [Mori × Suno 能力对齐基线](./SUNO_PARITY.md)
 - [Mori Studio Change OpenAPI](../contract/openapi/mori-studio-change.v1.json)
 - [Mori Library Sources OpenAPI](../contract/openapi/mori-library-sources.v1.json)
+- [Creative Source Ingest OpenAPI](../contract/openapi/mori-creative-source-ingest.v1.json)
 - [Mori 音乐能力模型](./MUSIC_CAPABILITIES.md)
 - [Creative Source Ingest 设计](./CREATIVE_SOURCE_INGEST.md)
 - [Mori 产品形态基线](./PRODUCT_SHAPE.md)

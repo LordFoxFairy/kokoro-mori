@@ -1,0 +1,43 @@
+{
+  "openapi": "3.1.0",
+  "info": { "title": "Mori Creative Source Ingest API", "version": "0.1.0", "description": "Provider-neutral upload sessions for reusable audio references." },
+  "paths": {
+    "/api/v1/mori/creative-source-uploads": {
+      "post": {
+        "operationId": "createMoriCreativeSourceUpload",
+        "security": [{ "moriSession": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateUpload" } } } },
+        "responses": { "202": { "description": "Upload session created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiUploadReceipt" } } } }, "400": { "$ref": "#/components/responses/ApiError" }, "401": { "$ref": "#/components/responses/ApiError" } }
+      }
+    },
+    "/api/v1/mori/creative-source-uploads/{upload_ref}": {
+      "parameters": [{ "$ref": "#/components/parameters/UploadRef" }],
+      "get": { "operationId": "getMoriCreativeSourceUpload", "security": [{ "moriSession": [] }], "responses": { "200": { "description": "Upload state", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiUpload" } } } }, "404": { "$ref": "#/components/responses/ApiError" } } }
+    },
+    "/api/v1/mori/creative-source-uploads/{upload_ref}/content": {
+      "parameters": [{ "$ref": "#/components/parameters/UploadRef" }],
+      "put": { "operationId": "uploadMoriCreativeSourceContent", "security": [{ "moriSession": [] }], "requestBody": { "required": true, "content": { "audio/*": { "schema": { "type": "string", "format": "binary" } } } }, "responses": { "200": { "description": "Upload state", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiUpload" } } } }, "409": { "$ref": "#/components/responses/ApiError" } } }
+    },
+    "/api/v1/mori/creative-source-uploads/{upload_ref}/cancel": {
+      "parameters": [{ "$ref": "#/components/parameters/UploadRef" }],
+      "post": { "operationId": "cancelMoriCreativeSourceUpload", "security": [{ "moriSession": [] }], "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }], "responses": { "200": { "description": "Cancelled upload", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiUpload" } } } }, "409": { "$ref": "#/components/responses/ApiError" } } }
+    }
+  },
+  "components": {
+    "securitySchemes": { "moriSession": { "type": "apiKey", "in": "cookie", "name": "kokoro_session" } },
+    "parameters": {
+      "UploadRef": { "name": "upload_ref", "in": "path", "required": true, "schema": { "type": "string", "minLength": 1, "maxLength": 500 } },
+      "IdempotencyKey": { "name": "Idempotency-Key", "in": "header", "required": true, "schema": { "type": "string", "minLength": 1, "maxLength": 200 } }
+    },
+    "schemas": {
+      "CreateUpload": { "type": "object", "additionalProperties": false, "required": ["source_kind", "file_name", "content_type", "byte_size", "project_ref"], "properties": { "source_kind": { "const": "audio" }, "file_name": { "type": "string", "minLength": 1, "maxLength": 255 }, "content_type": { "type": "string", "minLength": 1, "maxLength": 127 }, "byte_size": { "type": "integer", "minimum": 1 }, "project_ref": { "type": "string", "minLength": 1 } } },
+      "ApiUploadReceipt": { "type": "object", "required": ["data", "meta"], "properties": { "data": { "type": "object", "required": ["upload_ref", "status", "expires_at"], "properties": { "upload_ref": { "type": "string" }, "status": { "const": "creating" }, "expires_at": { "type": "string", "format": "date-time" } } }, "meta": { "$ref": "#/components/schemas/Meta" } } },
+      "ApiUpload": { "type": "object", "required": ["data", "meta"], "properties": { "data": { "$ref": "#/components/schemas/Upload" }, "meta": { "$ref": "#/components/schemas/Meta" } } },
+      "Upload": { "type": "object", "required": ["upload_ref", "source_kind", "status", "bytes_received", "byte_size", "asset_ref", "source_ref", "error", "created_at", "updated_at", "expires_at"], "properties": { "upload_ref": { "type": "string" }, "source_kind": { "const": "audio" }, "status": { "enum": ["creating", "uploading", "processing", "ready", "failed", "cancelled", "expired"] }, "bytes_received": { "type": "integer", "minimum": 0 }, "byte_size": { "type": "integer", "minimum": 1 }, "asset_ref": { "type": ["string", "null"] }, "source_ref": { "type": ["string", "null"] }, "error": { "type": ["object", "null"] }, "created_at": { "type": "string", "format": "date-time" }, "updated_at": { "type": "string", "format": "date-time" }, "expires_at": { "type": "string", "format": "date-time" } } },
+      "Meta": { "type": "object", "required": ["request_id"], "properties": { "request_id": { "type": "string" } } },
+      "ErrorBody": { "type": "object", "required": ["error", "meta"], "properties": { "error": { "type": "object" }, "meta": { "$ref": "#/components/schemas/Meta" } } }
+    },
+    "responses": { "ApiError": { "description": "Mori API error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorBody" } } } } }
+  }
+}
