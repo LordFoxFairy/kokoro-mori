@@ -18,6 +18,14 @@ export function trimClip(track: CompositionTrack, clipRef: MoriRef, durationMs: 
   return { ...track, clips: track.clips.map((item) => item.clipRef === clipRef ? { ...item, durationMs } : item) }
 }
 
+export function cropClip(track: CompositionTrack, clipRef: MoriRef, startOffsetMs: number, endOffsetMs: number): CompositionTrack {
+  if (![startOffsetMs, endOffsetMs].every((value) => Number.isSafeInteger(value) && value >= 0)) throw new Error("composition_crop_invalid")
+  const clip = track.clips.find((item) => item.clipRef === clipRef)
+  if (clip === undefined) throw new Error("composition_clip_not_found")
+  if (startOffsetMs + endOffsetMs >= clip.durationMs) throw new Error("composition_crop_exceeds_clip")
+  return { ...track, clips: track.clips.map((item) => item.clipRef === clipRef ? { ...item, startMs: item.startMs + startOffsetMs, offsetMs: item.offsetMs + startOffsetMs, durationMs: item.durationMs - startOffsetMs - endOffsetMs } : item) }
+}
+
 export function splitClip(track: CompositionTrack, clipRef: MoriRef, atMs: number): CompositionTrack {
   const clip = track.clips.find((item) => item.clipRef === clipRef)
   if (clip === undefined) throw new Error("composition_clip_not_found")
