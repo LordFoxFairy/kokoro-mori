@@ -57,6 +57,8 @@ music owner、BFF 或其他 Kokoro 子仓的内部模型。
   创建异步全曲渲染；请求显式携带 source、scope 与 MP3/WAV format，snapshot 回显完整渲染上下文。
 - [`tests/mori-export.contract.test.ts`](./tests/mori-export.contract.test.ts)：检查 `202` 创建、幂等 Header、
   Version / Mix Revision 来源分支、仅已实现的 full-song scope、异步读取与 provider-neutral 边界。
+- [`openapi/mori-composition.v1.json`](./openapi/mori-composition.v1.json)：Version-scoped、带 revision 与幂等键的
+  确定性 Composition command；Move / Trim / Split / Fade 使用 provider-neutral discriminated union，冲突返回 `409`。
 - [`openapi/mori-artwork-generation.v1.json`](./openapi/mori-artwork-generation.v1.json)：从路径 Version
   创建异步 Release artwork；固定方形、无文字和四个候选，并提供 snapshot、SSE replay 与 cancel。
 - [`tests/mori-artwork-generation.contract.test.ts`](./tests/mori-artwork-generation.contract.test.ts)：检查四种 style、

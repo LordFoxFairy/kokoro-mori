@@ -1,0 +1,37 @@
+{
+  "openapi": "3.1.0",
+  "info": { "title": "Mori Composition API", "version": "0.1.0", "description": "Versioned, provider-neutral deterministic edits for Studio tracks and clips." },
+  "paths": {
+    "/api/v1/mori/versions/{version_ref}/composition": {
+      "parameters": [{ "$ref": "#/components/parameters/VersionRef" }],
+      "put": {
+        "operationId": "applyMoriCompositionRevision",
+        "security": [{ "moriSession": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CompositionRevisionInput" } } } },
+        "responses": { "200": { "description": "Composition revision applied", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CompositionRevision" } } } }, "409": { "$ref": "#/components/responses/ApiError" } }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": { "moriSession": { "type": "apiKey", "in": "cookie", "name": "kokoro_session" } },
+    "parameters": {
+      "VersionRef": { "name": "version_ref", "in": "path", "required": true, "schema": { "type": "string", "minLength": 1 } },
+      "IdempotencyKey": { "name": "Idempotency-Key", "in": "header", "required": true, "schema": { "type": "string", "minLength": 1, "maxLength": 200 } }
+    },
+    "schemas": {
+      "CompositionCommand": { "oneOf": [
+        { "$ref": "#/components/schemas/MoveClip" }, { "$ref": "#/components/schemas/TrimClip" },
+        { "$ref": "#/components/schemas/SplitClip" }, { "$ref": "#/components/schemas/SetFades" }
+      ], "discriminator": { "propertyName": "type" } },
+      "MoveClip": { "type": "object", "additionalProperties": false, "required": ["type", "clip_ref", "start_ms"], "properties": { "type": { "const": "move_clip" }, "clip_ref": { "type": "string", "minLength": 1 }, "start_ms": { "type": "integer", "minimum": 0 } } },
+      "TrimClip": { "type": "object", "additionalProperties": false, "required": ["type", "clip_ref", "duration_ms"], "properties": { "type": { "const": "trim_clip" }, "clip_ref": { "type": "string", "minLength": 1 }, "duration_ms": { "type": "integer", "minimum": 1 } } },
+      "SplitClip": { "type": "object", "additionalProperties": false, "required": ["type", "clip_ref", "at_ms"], "properties": { "type": { "const": "split_clip" }, "clip_ref": { "type": "string", "minLength": 1 }, "at_ms": { "type": "integer", "minimum": 1 } } },
+      "SetFades": { "type": "object", "additionalProperties": false, "required": ["type", "clip_ref", "fade_in_ms", "fade_out_ms"], "properties": { "type": { "const": "set_fades" }, "clip_ref": { "type": "string", "minLength": 1 }, "fade_in_ms": { "type": "integer", "minimum": 0 }, "fade_out_ms": { "type": "integer", "minimum": 0 } } },
+      "CompositionRevisionInput": { "type": "object", "additionalProperties": false, "required": ["expected_revision", "commands"], "properties": { "expected_revision": { "type": "integer", "minimum": 0 }, "commands": { "type": "array", "minItems": 1, "items": { "$ref": "#/components/schemas/CompositionCommand" } } } },
+      "CompositionRevision": { "type": "object", "required": ["version_ref", "revision", "tracks"], "properties": { "version_ref": { "type": "string" }, "revision": { "type": "integer", "minimum": 1 }, "tracks": { "type": "array", "items": { "type": "object" } } } },
+      "ErrorBody": { "type": "object", "required": ["error", "meta"], "properties": { "error": { "type": "object" }, "meta": { "type": "object" } } }
+    },
+    "responses": { "ApiError": { "description": "Mori API error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorBody" } } } } }
+  }
+}
