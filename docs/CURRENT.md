@@ -10,7 +10,7 @@
 - 全局 Player 的 `Up next` 在桌面作为上下文面板，在移动端作为 modal sheet；支持 Escape、焦点恢复和移动端焦点循环。
 - Create → Generation Queue → Candidate → Project / Version → Studio → Take Lanes → Current Version 的本地闭环。
 - Studio Arrangement / Lyrics / Stems / Finish 工作面，以及 Add part、Replace section、Extend、Transform（Restyle / Cover）的一层 AI 意图模型。
-- Studio Arrangement 已挂载 Composition track 与 Clip 编辑面板；Move / Trim / Split / Fade 通过本地 history、revisioned command、保存状态和冲突 rebase 串成浏览器侧闭环，同源 Composition revision client 已接入；真实 owner 持久化与 projection 仍待接入。
+- Studio Arrangement 已挂载 Composition track 与 Clip 编辑面板；Move / Trim / Split / Crop / Fade 通过本地 history、revisioned command、保存状态和冲突 rebase 串成浏览器侧闭环，同源 Composition revision client 已接入；真实 owner 持久化与 projection 仍待接入。
 - Composition API seam 已固定 Version ref、幂等键与 revisioned input 的分离，并已提供同源 revision client；真实 owner projection / persistence 仍待接入，当前保存按钮仅在 owner seam 可用时提交。
 - Studio Change 在 Review Plan 后才生成；请求 builder 统一 snake_case、范围、保护项、references 和输出数量，并保持当前 Version 非破坏式。
 - Mori API 与公共 Web package 保持本仓边界；未修改 Root、BFF 或 sibling service。
