@@ -10,4 +10,13 @@ describe("CompositionEditPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Apply trim" }))
     expect(onApply).toHaveBeenCalledWith({ operation: "trim", clipRef: "clip_1", durationMs: 4000 })
   })
+  it("captures both crop boundaries", () => {
+    const onApply = vi.fn()
+    render(<CompositionEditPanel clipRef="clip_1" operation="crop" onApply={onApply} />)
+    const inputs = screen.getAllByRole("spinbutton")
+    fireEvent.change(inputs[0], { target: { value: "500" } })
+    fireEvent.change(inputs[1], { target: { value: "700" } })
+    fireEvent.click(screen.getByRole("button", { name: "Apply crop" }))
+    expect(onApply).toHaveBeenCalledWith({ operation: "crop", clipRef: "clip_1", startOffsetMs: 500, endOffsetMs: 700 })
+  })
 })
