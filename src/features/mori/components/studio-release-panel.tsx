@@ -12,6 +12,7 @@ import {
   type StudioArtworkRunState,
   type StudioReleaseDraft,
   type StudioReleaseSaveState,
+  type StudioReleasePublishState,
 } from "../studio-release"
 import styles from "./studio-release-panel.module.css"
 
@@ -27,6 +28,9 @@ export type StudioReleasePanelProps = {
   onCancelArtwork: () => void
   onResetArtwork: () => void
   onSave: (draft: StudioReleaseDraft) => void
+  publishState?: StudioReleasePublishState
+  onPublish?: () => void
+  onUnpublish?: () => void
 }
 
 const styleOptions: ReadonlyArray<{ id: ArtworkStyle; label: string }> = [
@@ -69,7 +73,7 @@ export function StudioReleasePanel({
   onGenerateArtwork,
   onCancelArtwork,
   onResetArtwork,
-  onSave,
+  onSave, publishState, onPublish, onUnpublish,
 }: StudioReleasePanelProps) {
   const titleId = useId()
   const [reviewedArtworkPlan, setReviewedArtworkPlan] = useState<StudioArtworkPlan | null>(null)
@@ -244,6 +248,10 @@ export function StudioReleasePanel({
           {saveState.status === "saving" ? <LoaderCircle className={styles.spinner} size={14} /> : <Check size={14} />}
           Save release draft
         </button>
+        {saveState.status === "saved" && onPublish !== undefined && publishState?.status !== "published" ? <button className={styles.saveButton} type="button" disabled={publishState?.status === "publishing"} onClick={onPublish}>{publishState?.status === "publishing" ? "Publishing…" : "Publish release"}</button> : null}
+        {publishState?.status === "published" && onUnpublish !== undefined ? <button className={styles.textButton} type="button" onClick={onUnpublish}>Unpublish</button> : null}
+        {publishState?.status === "published" && publishState.publicUrl ? <span role="status">Published · {publishState.publicUrl}</span> : null}
+        {publishState?.status === "failed" ? <span role="alert">{publishState.message}</span> : null}
       </footer>
     </form>
   )

@@ -1661,6 +1661,9 @@ export function StudioPageContent({ candidate, projectRef, versionRef, initialSu
           onCancelArtwork: () => { void releaseWorkflow.cancelArtwork() },
           onResetArtwork: releaseWorkflow.resetArtwork,
           onSave: (draft) => { void releaseWorkflow.saveReleaseDraft(draft) },
+          publishState: releaseWorkflow.releasePublish,
+          onPublish: () => { void releaseWorkflow.publishRelease() },
+          onUnpublish: () => { void releaseWorkflow.unpublishRelease() },
         }}
         onClose={() => setFinishDialogOpen(false)}
         onReset={resetStudioChange}

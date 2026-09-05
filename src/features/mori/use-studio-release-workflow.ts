@@ -19,6 +19,8 @@ import {
   type StudioArtworkRunState,
   type StudioReleaseDraft,
   type StudioReleaseSaveState,
+  idleStudioReleasePublish,
+  type StudioReleasePublishState,
   type TrackedArtworkGeneration,
 } from "./studio-release"
 
@@ -30,6 +32,8 @@ type StudioReleaseApi = Pick<
   | "cancelArtworkGeneration"
   | "getReleaseDraft"
   | "putReleaseDraft"
+  | "publishRelease"
+  | "unpublishRelease"
 >
 
 type PendingReleaseCommand = {
@@ -51,6 +55,7 @@ export type StudioReleaseWorkflow = {
   artworkDraft: StudioArtworkDraft
   artworkRun: StudioArtworkRunState
   releaseSave: StudioReleaseSaveState
+  releasePublish: StudioReleasePublishState
   active: boolean
   activityDescription: string | null
   updateReleaseDraft: (draft: StudioReleaseDraft) => void
@@ -59,6 +64,8 @@ export type StudioReleaseWorkflow = {
   cancelArtwork: () => Promise<void>
   resetArtwork: () => void
   saveReleaseDraft: (draft: StudioReleaseDraft) => Promise<void>
+  publishRelease: () => Promise<void>
+  unpublishRelease: () => Promise<void>
 }
 
 export function useStudioReleaseWorkflow({ versionRef, versionTitle, api }: UseStudioReleaseWorkflowInput): StudioReleaseWorkflow {
@@ -68,6 +75,7 @@ export function useStudioReleaseWorkflow({ versionRef, versionTitle, api }: UseS
   const [artworkRun, setArtworkRun] = useState<StudioArtworkRunState>(idleStudioArtworkRun)
   const [trackedArtworkGeneration, setTrackedArtworkGeneration] = useState<TrackedArtworkGeneration | null>(null)
   const [releaseSave, setReleaseSave] = useState<StudioReleaseSaveState>(idleStudioReleaseSave)
+  const [releasePublish, setReleasePublish] = useState<StudioReleasePublishState>(idleStudioReleasePublish)
   const activeVersionRef = useRef(versionRef)
   const versionContextEpoch = useRef(0)
   const artworkCommandEpoch = useRef(0)
@@ -91,6 +99,7 @@ export function useStudioReleaseWorkflow({ versionRef, versionTitle, api }: UseS
     setArtworkRun(idleStudioArtworkRun)
     setTrackedArtworkGeneration(null)
     setReleaseSave(idleStudioReleaseSave)
+    setReleasePublish(idleStudioReleasePublish)
   }, [versionRef, versionTitle])
 
   useEffect(() => {
@@ -362,6 +371,25 @@ export function useStudioReleaseWorkflow({ versionRef, versionTitle, api }: UseS
     }
   }
 
+  const publishRelease = async () => {
+    const sourceVersionRef = activeVersionRef.current
+    const snapshot = releaseSave.snapshot
+    if (sourceVersionRef === null || snapshot === null || releaseSave.status !== "saved" || api.publishRelease === undefined) return
+    setReleasePublish((current) => ({ ...current, status: "publishing", message: null }))
+    try {
+      const response = await api.publishRelease(sourceVersionRef, { release_draft_ref: snapshot.release_draft_ref, expected_draft_revision: snapshot.revision }, `mori-publish-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
+      setReleasePublish({ status: response.data.status, releaseRef: response.data.release_ref, publicUrl: response.data.public_url, message: null })
+    } catch { setReleasePublish((current) => ({ ...current, status: "failed", message: "Publish needs another try." })) }
+  }
+
+  const unpublishRelease = async () => {
+    if (releasePublish.releaseRef === null || api.unpublishRelease === undefined) return
+    try {
+      const response = await api.unpublishRelease(releasePublish.releaseRef, `mori-unpublish-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
+      setReleasePublish((current) => ({ ...current, status: response.data.status, publicUrl: response.data.public_url, message: null }))
+    } catch { setReleasePublish((current) => ({ ...current, status: "failed", message: "Unpublish needs another try." })) }
+  }
+
   const active = isActiveArtworkGenerationStatus(artworkRun.status) || releaseSave.status === "saving"
   const activityDescription = isActiveArtworkGenerationStatus(artworkRun.status)
     ? "Release artwork is being created"
@@ -376,6 +404,7 @@ export function useStudioReleaseWorkflow({ versionRef, versionTitle, api }: UseS
     artworkDraft,
     artworkRun,
     releaseSave,
+    releasePublish,
     active,
     activityDescription,
     updateReleaseDraft,
@@ -384,6 +413,8 @@ export function useStudioReleaseWorkflow({ versionRef, versionTitle, api }: UseS
     cancelArtwork,
     resetArtwork,
     saveReleaseDraft,
+    publishRelease,
+    unpublishRelease,
   }
 }
 
