@@ -251,7 +251,7 @@ export function StudioReleasePanel({
         {saveState.status === "saved" && onPublish !== undefined && publishState?.status !== "published" ? <button className={styles.saveButton} type="button" disabled={publishState?.status === "publishing"} onClick={onPublish}>{publishState?.status === "publishing" ? "Publishing…" : "Publish release"}</button> : null}
         {publishState?.status === "published" && onUnpublish !== undefined ? <button className={styles.textButton} type="button" onClick={onUnpublish}>Unpublish</button> : null}
         {publishState?.status === "published" && publishState.publicUrl ? <span role="status">Published · {publishState.publicUrl}</span> : null}
-        {publishState?.status === "failed" ? <span role="alert">{publishState.message}</span> : null}
+        {publishState?.status === "failed" ? <span role="alert">{publishState.message} {onPublish !== undefined ? <button className={styles.textButton} type="button" onClick={onPublish}>Try again</button> : null}</span> : null}
       </footer>
     </form>
   )

@@ -82,6 +82,7 @@ export function useStudioReleaseWorkflow({ versionRef, versionTitle, api }: UseS
   const releaseCommandEpoch = useRef(0)
   const releaseDraftDirty = useRef(false)
   const pendingReleaseCommand = useRef<PendingReleaseCommand | null>(null)
+  const pendingPublishCommand = useRef<{ versionRef: string; draftRef: string; revision: number; idempotencyKey: string } | null>(null)
   const activeArtworkEventRequest = useRef<{ artworkGenerationRef: string; controller: AbortController } | null>(null)
   activeVersionRef.current = versionRef
 
@@ -91,6 +92,7 @@ export function useStudioReleaseWorkflow({ versionRef, versionTitle, api }: UseS
     releaseCommandEpoch.current += 1
     releaseDraftDirty.current = false
     pendingReleaseCommand.current = null
+    pendingPublishCommand.current = null
     activeArtworkEventRequest.current?.controller.abort()
     activeArtworkEventRequest.current = null
     setFinishView("remaster")
@@ -377,7 +379,13 @@ export function useStudioReleaseWorkflow({ versionRef, versionTitle, api }: UseS
     if (sourceVersionRef === null || snapshot === null || releaseSave.status !== "saved" || api.publishRelease === undefined) return
     setReleasePublish((current) => ({ ...current, status: "publishing", message: null }))
     try {
-      const response = await api.publishRelease(sourceVersionRef, { release_draft_ref: snapshot.release_draft_ref, expected_draft_revision: snapshot.revision }, `mori-publish-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
+      const previous = pendingPublishCommand.current
+      const command = previous !== null && previous.versionRef === sourceVersionRef && previous.draftRef === snapshot.release_draft_ref && previous.revision === snapshot.revision
+        ? previous
+        : { versionRef: sourceVersionRef, draftRef: snapshot.release_draft_ref, revision: snapshot.revision, idempotencyKey: `mori-publish-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` }
+      pendingPublishCommand.current = command
+      const response = await api.publishRelease(sourceVersionRef, { release_draft_ref: command.draftRef, expected_draft_revision: command.revision }, command.idempotencyKey)
+      pendingPublishCommand.current = null
       setReleasePublish({ status: response.data.status, releaseRef: response.data.release_ref, publicUrl: response.data.public_url, message: null })
     } catch { setReleasePublish((current) => ({ ...current, status: "failed", message: "Publish needs another try." })) }
   }
