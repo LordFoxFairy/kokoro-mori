@@ -19,4 +19,10 @@ describe("CompositionEditPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Apply crop" }))
     expect(onApply).toHaveBeenCalledWith({ operation: "crop", clipRef: "clip_1", startOffsetMs: 500, endOffsetMs: 700 })
   })
+  it("keeps an invalid edit in the panel with actionable feedback", () => {
+    const onApply = vi.fn(() => { throw new Error("composition_crop_exceeds_clip") })
+    render(<CompositionEditPanel clipRef="clip_1" operation="crop" onApply={onApply} />)
+    fireEvent.click(screen.getByRole("button", { name: "Apply crop" }))
+    expect(screen.getByRole("alert")).toHaveTextContent("does not fit")
+  })
 })
