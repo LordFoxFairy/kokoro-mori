@@ -52,6 +52,33 @@ describe("Mori application navigation", () => {
     expect(screen.queryByRole("button", { name: "Open playback queue" })).not.toBeInTheDocument()
   })
 
+  it("toggles the desktop rail without changing the current surface", async () => {
+    const originalWidth = window.innerWidth
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 1280 })
+    localStorage.removeItem("mori.rail.v1")
+
+    try {
+      render(
+        <MoriAppProvider>
+          <MoriCatalogShell activeKey="create" ariaLabel="Create">
+            <div>Create content</div>
+          </MoriCatalogShell>
+        </MoriAppProvider>,
+      )
+
+      await waitFor(() => expect(screen.getByRole("button", { name: "Collapse sidebar" })).toBeInTheDocument())
+      const shell = document.querySelector('[data-mori-app-shell="true"]')
+      expect(shell).toHaveAttribute("data-rail-collapsed", "false")
+      fireEvent.click(screen.getByRole("button", { name: "Collapse sidebar" }))
+      await waitFor(() => expect(screen.getByRole("button", { name: "Expand sidebar" })).toBeInTheDocument())
+      expect(shell).toHaveAttribute("data-rail-collapsed", "true")
+      expect(screen.getByRole("link", { name: "Create" })).toHaveAttribute("aria-current", "page")
+    } finally {
+      localStorage.removeItem("mori.rail.v1")
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: originalWidth })
+    }
+  })
+
   it("supports a spacebar playback shortcut without hijacking text entry", () => {
     render(
       <MoriAppProvider>
