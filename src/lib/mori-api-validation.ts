@@ -1199,6 +1199,14 @@ function parseMoriExportSource(value: unknown): MoriExportSource | null {
 }
 
 function parseMoriExportScope(value: unknown): MoriExportScope | null {
-  if (!isRecord(value) || value.type !== "full_song" || Object.keys(value).length !== 1) return null
-  return { type: "full_song" }
+  if (!isRecord(value)) return null
+  if (value.type === "full_song") return Object.keys(value).length === 1 ? { type: "full_song" } : null
+  if (
+    value.type !== "time_range"
+    || Object.keys(value).length !== 3
+    || !integer(value.start_ms)
+    || !integer(value.end_ms, 1)
+    || value.end_ms <= value.start_ms
+  ) return null
+  return { type: "time_range", start_ms: value.start_ms, end_ms: value.end_ms }
 }

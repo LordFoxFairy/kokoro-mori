@@ -244,7 +244,7 @@
   gap: 12px;
 }
 
-.scopeCard,
+.scopeFieldset,
 .formatFieldset {
   min-height: 108px;
   padding: 14px;
@@ -253,24 +253,44 @@
   background: rgba(250, 249, 248, 0.72);
 }
 
-.scopeCard > div {
-  display: flex;
-  align-items: center;
+.scopeFieldset > legend {
+  margin: 0;
+  padding: 0 4px;
+}
+
+.scopeOptions {
+  display: grid;
   gap: 7px;
-  margin-top: 9px;
-  color: var(--mori-primary);
+  margin-top: 5px;
 }
 
-.scopeCard strong {
-  color: var(--mori-foreground);
-  font-size: 11px;
+.scopeChoice {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 9px;
+  min-height: 70px;
+  align-items: start;
+  padding: 9px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.7);
+  transition: border-color var(--mori-motion-fast) ease, box-shadow var(--mori-motion-fast) ease, background var(--mori-motion-fast) ease;
 }
 
-.scopeCard p {
-  margin: 7px 0 0;
-  color: var(--mori-muted);
-  font-size: 9px;
-  line-height: 1.45;
+.scopeChoice:hover,
+.scopeChoice:focus-within {
+  border-color: rgba(109, 92, 231, 0.24);
+}
+
+.scopeChoice:focus-within {
+  box-shadow: 0 0 0 3px rgba(109, 92, 231, 0.09);
+}
+
+.scopeChoiceDisabled {
+  cursor: default;
+  opacity: 0.56;
 }
 
 .formatFieldset > legend {
@@ -447,6 +467,7 @@
 }
 
 .fieldset:disabled .sourceChoice,
+.fieldset:disabled .scopeChoice,
 .fieldset:disabled .formatChoice {
   cursor: default;
   transform: none;

@@ -3,13 +3,13 @@
   "info": {
     "title": "Mori Export API",
     "version": "0.1.0",
-    "description": "Asynchronous full-song rendering from one immutable Version or a Mix Revision owned by that Version."
+    "description": "Asynchronous rendering from one immutable Version or a Mix Revision owned by that Version, either as a full song or a selected timeline range."
   },
   "paths": {
     "/api/v1/mori/versions/{version_ref}/exports": {
       "post": {
         "operationId": "createVersionExport",
-        "summary": "Queue a full-song render from a Version context",
+        "summary": "Queue an audio render from a Version context",
         "parameters": [
           {
             "name": "version_ref",
@@ -143,13 +143,31 @@
           "type": { "const": "full_song" }
         }
       },
+      "TimeRangeExportScope": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "start_ms", "end_ms"],
+        "properties": {
+          "type": { "const": "time_range" },
+          "start_ms": { "type": "integer", "minimum": 0 },
+          "end_ms": { "type": "integer", "minimum": 1 }
+        },
+        "description": "Selected timeline range in milliseconds. The end must be greater than the start."
+      },
+      "ExportScope": {
+        "oneOf": [
+          { "$ref": "#/components/schemas/FullSongExportScope" },
+          { "$ref": "#/components/schemas/TimeRangeExportScope" }
+        ],
+        "discriminator": { "propertyName": "type" }
+      },
       "ExportInput": {
         "type": "object",
         "additionalProperties": false,
         "required": ["source", "scope", "format"],
         "properties": {
           "source": { "$ref": "#/components/schemas/ExportSource" },
-          "scope": { "$ref": "#/components/schemas/FullSongExportScope" },
+          "scope": { "$ref": "#/components/schemas/ExportScope" },
           "format": { "type": "string", "enum": ["mp3", "wav"] }
         }
       },
@@ -185,7 +203,7 @@
           "project_ref": { "type": "string", "minLength": 1 },
           "version_ref": { "type": "string", "minLength": 1 },
           "source": { "$ref": "#/components/schemas/ExportSource" },
-          "scope": { "$ref": "#/components/schemas/FullSongExportScope" },
+          "scope": { "$ref": "#/components/schemas/ExportScope" },
           "format": { "type": "string", "enum": ["mp3", "wav"] },
           "status": { "type": "string", "enum": ["queued", "processing", "succeeded", "failed"] },
           "download_url": {

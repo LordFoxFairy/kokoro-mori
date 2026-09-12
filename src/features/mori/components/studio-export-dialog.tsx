@@ -1,6 +1,6 @@
 "use client"
 
-import { Check, Download, FileAudio, Layers3, LoaderCircle, Music2, X } from "lucide-react"
+import { AudioWaveform, Check, Download, FileAudio, Layers3, LoaderCircle, Music2, X } from "lucide-react"
 import { useEffect, useId, useRef, useState, type FormEvent } from "react"
 import { createPortal } from "react-dom"
 import { createExportRequest, type MoriExportFormat, type MoriExportInput, type MoriExportSnapshot, type MoriExportStatus, type MoriMixRevision } from "@/lib/mori-api"
@@ -12,6 +12,7 @@ type StudioExportDialogProps = {
   latestMixRevision: MoriMixRevision | null
   status: "idle" | MoriExportStatus
   activeInput: MoriExportInput | null
+  selectedRange?: StudioExportRange
   snapshot: MoriExportSnapshot | null
   message: string | null
   onClose: () => void
@@ -19,12 +20,21 @@ type StudioExportDialogProps = {
   onSubmit: (input: MoriExportInput) => void
 }
 
+export type StudioExportRange = {
+  label: string
+  startMs: number
+  endMs: number
+}
+
+type ExportScopeType = "full_song" | "time_range"
+
 export function StudioExportDialog({
   versionTitle,
   durationSeconds,
   latestMixRevision,
   status,
   activeInput,
+  selectedRange,
   snapshot,
   message,
   onClose,
@@ -39,9 +49,20 @@ export function StudioExportDialog({
   const sourceRef = useRef<HTMLInputElement>(null)
   const [sourceType, setSourceType] = useState<"version" | "mix_revision">(initialSource)
   const [format, setFormat] = useState<MoriExportFormat>(activeInput?.format ?? "mp3")
+  const initialScope = activeInput?.scope.type ?? "full_song"
+  const [scopeType, setScopeType] = useState<ExportScopeType>(initialScope)
   const busy = status === "queued" || status === "processing"
   const readySnapshot = status === "succeeded" && snapshot?.download_url !== null && snapshot?.download_url !== undefined ? snapshot : null
   const ready = readySnapshot !== null
+  const inputRange = activeInput?.scope.type === "time_range"
+    ? { label: "Selected range", startMs: activeInput.scope.start_ms, endMs: activeInput.scope.end_ms }
+    : undefined
+  const activeRange = inputRange === undefined
+    ? selectedRange
+    : selectedRange?.startMs === inputRange.startMs && selectedRange.endMs === inputRange.endMs
+      ? selectedRange
+      : inputRange
+  const canSelectRange = activeRange !== undefined && activeRange.endMs > activeRange.startMs
 
   useEffect(() => {
     onCloseRef.current = onClose
@@ -101,11 +122,14 @@ export function StudioExportDialog({
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (busy || ready) return
+    const selectedScope = scopeType === "time_range" && activeRange !== undefined
+      ? { type: "time_range" as const, start_ms: activeRange.startMs, end_ms: activeRange.endMs }
+      : { type: "full_song" as const }
     const input = createExportRequest({
       source: sourceType === "mix_revision" && latestMixRevision !== null
         ? { type: "mix_revision", mixRevisionRef: latestMixRevision.mix_revision_ref }
         : { type: "version" },
-      scope: { type: "full_song" },
+      scope: selectedScope,
       format,
     })
     onSubmit(input)
@@ -187,11 +211,49 @@ export function StudioExportDialog({
             </fieldset>
 
             <div className={styles.optionsRow}>
-              <section className={styles.scopeCard} aria-label="Export scope">
-                <span className={styles.optionLabel}>Scope</span>
-                <div><Music2 size={15} /><strong>Full song</strong></div>
-                <p>Render the complete timeline as one mastered file.</p>
-              </section>
+              <fieldset className={`${styles.fieldset} ${styles.scopeFieldset}`} disabled={busy || ready}>
+                <legend>Render scope</legend>
+                <div className={styles.scopeOptions}>
+                  <label className={`${styles.scopeChoice} ${scopeType === "full_song" ? styles.choiceActive : ""}`}>
+                    <input
+                      className={styles.radioInput}
+                      type="radio"
+                      name="export-scope"
+                      value="full_song"
+                      aria-label="Full song"
+                      checked={scopeType === "full_song"}
+                      onChange={() => setScopeType("full_song")}
+                    />
+                    <span className={styles.choiceIcon}><Music2 size={16} /></span>
+                    <span className={styles.choiceCopy}>
+                      <strong>Full song</strong>
+                      <small>{versionTitle} · {formatDuration(durationSeconds)}</small>
+                      <span className={styles.choiceMeta}>Render the complete timeline.</span>
+                    </span>
+                    <span className={styles.choiceCheck} aria-hidden="true"><Check size={13} /></span>
+                  </label>
+
+                  <label className={`${styles.scopeChoice} ${scopeType === "time_range" ? styles.choiceActive : ""} ${!canSelectRange ? styles.scopeChoiceDisabled : ""}`}>
+                    <input
+                      className={styles.radioInput}
+                      type="radio"
+                      name="export-scope"
+                      value="time_range"
+                      aria-label={activeRange === undefined ? "Selected range" : `Selected range · ${activeRange.label}`}
+                      checked={scopeType === "time_range"}
+                      disabled={!canSelectRange}
+                      onChange={() => setScopeType("time_range")}
+                    />
+                    <span className={styles.choiceIcon}><AudioWaveform size={16} /></span>
+                    <span className={styles.choiceCopy}>
+                      <strong>Selected range</strong>
+                      <small>{activeRange === undefined ? "Select a range in Arrangement first" : `${activeRange.label} · ${formatRangeTime(activeRange.startMs)}–${formatRangeTime(activeRange.endMs)}`}</small>
+                      <span className={styles.choiceMeta}>Render only the selected timeline window.</span>
+                    </span>
+                    <span className={styles.choiceCheck} aria-hidden="true"><Check size={13} /></span>
+                  </label>
+                </div>
+              </fieldset>
 
               <fieldset className={`${styles.fieldset} ${styles.formatFieldset}`} disabled={busy || ready}>
                 <legend>Format</legend>
@@ -223,7 +285,7 @@ export function StudioExportDialog({
           {readySnapshot !== null ? (
             <div className={styles.readyState} role="status">
               <span className={styles.readyIcon}><Check size={17} /></span>
-              <div><strong>Your full song is ready.</strong><p>{exportSourceLabel(readySnapshot.source)} · {readySnapshot.format.toUpperCase()}</p></div>
+              <div><strong>{readySnapshot.scope.type === "full_song" ? "Your full song" : "Your selected range"} is ready.</strong><p>{exportSourceLabel(readySnapshot.source)} · {readySnapshot.format.toUpperCase()}</p></div>
             </div>
           ) : null}
 
@@ -256,6 +318,10 @@ function formatDuration(durationSeconds: number): string {
   const minutes = Math.floor(safeDuration / 60)
   const seconds = safeDuration % 60
   return `${minutes}:${seconds.toString().padStart(2, "0")}`
+}
+
+function formatRangeTime(milliseconds: number): string {
+  return formatDuration(milliseconds / 1_000)
 }
 
 function getFocusableElements(container: HTMLElement): HTMLElement[] {

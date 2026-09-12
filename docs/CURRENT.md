@@ -12,6 +12,7 @@
 - Studio Arrangement / Lyrics / Stems / Finish 工作面，以及 Add part、Replace section、Extend、Transform（Restyle / Cover）的一层 AI 意图模型。
 - Studio Arrangement 已挂载 `Composition { tracks[] }` 文档与 Clip 编辑面板；每个 Move / Trim / Split / Crop / Fade / Insert 命令都显式绑定 `track_ref`，通过本地 history、revisioned command、保存状态和冲突 rebase 串成浏览器侧闭环，并支持从候选 Take 将 Clip 插入已选时间范围、从已选 Clip Duplicate 到时间线末端；时间线用 Take / Source 标题替代内部 ref，选中 Clip 会显示轨道、来源与时间范围，且明确不改变 AI Scope；同源 GET/PUT Composition seam 已接入，加载到的多轨 owner projection 会成为本地基线，组合 revision 独立于 Workspace Open Version revision；空 projection 与暂时不可用会明确标注，才保留 Main track fallback。
 - Studio Arrangement 已增加 Asset Dock v1：在当前时间线上下文内搜索并按 All / Audio / Voices / Inspiration 筛选 Creative Source；Library Audio 可复用同一个全局 Player 试听，插入动作明确绑定当前 Track、选区和 `source_ref` 并生成新的 Composition revision；Voice / Inspiration 显示为 Arrangement 中的 reference-only，避免把不可插入来源伪装成音频素材。
+- Studio Export 已支持 Full song 或当前 Arrangement 选区：默认仍导出整曲，用户在同一窗口选择 `Selected range` 后，选区的 `start_ms` / `end_ms` 会随 Version 或 Mix Revision 一起进入异步 render request 与 snapshot；多轨 / MIDI 仍未暴露。
 - Studio Arrangement 的当前 AI edit range 现在可以直接通过全局 Player 试听：Preview selection 复用同一个媒体通道，从选区起点开始并在终点自动暂停、回到起点；Player 显示 Range audition 上下文，普通整曲试听、Take 切换和 AI Scope 仍保持独立，不创建第二个播放器。
 - 多 Take 对比现在是 Studio 的可达主路径：当 Version 有多个候选时，顶栏显示带数量的 `Takes` 入口，点击会滚动到 Take Lanes、把焦点交给对比区域，并为固定底部 Player 保留滚动安全区；单候选时不显示无意义入口。
 - Creative Source ingest 的浏览器 foundation 已收紧：live Project 不再把缺失的上传能力伪装成 preview asset；上传 command 在首个请求前生成稳定幂等键，同一文件失败重试会复用会话，并持续以退避轮询 processing 状态直到 owner 返回终态；Generate 在上传进行中保持禁用。
@@ -98,7 +99,7 @@
 ```text
 pnpm lint                         passed
 pnpm typecheck                    passed
-pnpm test                         passed: 79 files / 574 tests
+pnpm test                         passed: 79 files / 577 tests
 pnpm build                        passed
 ```
 

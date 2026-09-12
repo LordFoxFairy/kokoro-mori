@@ -3539,6 +3539,31 @@ describe("Mori studio page", () => {
     expect(exportingButton.querySelector('[data-export-icon="queued"]')).toBeInTheDocument()
   })
 
+  it("carries the selected Arrangement range into the export request", async () => {
+    let exportedInput: MoriExportInput | null = null
+    renderStudio({
+      createExport: async (_versionRef, input) => {
+        exportedInput = input
+        return { data: { export_ref: "export_range_1", status: "queued" }, meta: { request_id: "request_export_range_1" } }
+      },
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: "Select Chorus section" }))
+    fireEvent.click(screen.getByRole("button", { name: "Export" }))
+    const dialog = screen.getByRole("dialog", { name: "Export First Light" })
+    const selectedRange = within(dialog).getByRole("radio", { name: /Selected range · Chorus/u })
+    expect(selectedRange).not.toBeDisabled()
+    fireEvent.click(selectedRange)
+    fireEvent.click(within(dialog).getByRole("button", { name: "Start export" }))
+
+    expect(exportedInput).toEqual({
+      source: { type: "version" },
+      scope: { type: "time_range", start_ms: 104_271, end_ms: 153_563 },
+      format: "mp3",
+    })
+    expect(await within(dialog).findByRole("status")).toHaveTextContent("Waiting to render MP3")
+  })
+
   it("exports the open Take without implying that it was promoted to Current", async () => {
     let exportedVersion = ""
     renderStudio({

@@ -64,7 +64,7 @@ describe("Studio export dialog", () => {
     expect(dialog).toHaveAttribute("aria-modal", "true")
     expect(versionSource).toBeChecked()
     expect(versionSource).toHaveFocus()
-    expect(within(dialog).getByText("First Light · 3:02")).toBeInTheDocument()
+    expect(within(versionSource.closest("label") as HTMLElement).getByText("First Light · 3:02")).toBeInTheDocument()
     expect(within(dialog).getByText("Base audio before saved mixer changes")).toBeInTheDocument()
     expect(within(dialog).queryByText("version_1")).not.toBeInTheDocument()
     expect(within(dialog).getByText("Full song")).toBeInTheDocument()
@@ -82,6 +82,39 @@ describe("Studio export dialog", () => {
     view.unmount()
     expect(launcher).toHaveFocus()
     launcher.remove()
+  })
+
+  it("keeps full song as the default and submits the selected Arrangement range when chosen", () => {
+    const onSubmit = vi.fn()
+    render(
+      <StudioExportDialog
+        versionTitle="First Light"
+        durationSeconds={182}
+        latestMixRevision={null}
+        status="idle"
+        activeInput={null}
+        selectedRange={{ label: "Chorus", startMs: 42_000, endMs: 72_000 }}
+        snapshot={null}
+        message={null}
+        onClose={vi.fn()}
+        onReset={vi.fn()}
+        onSubmit={onSubmit}
+      />,
+    )
+
+    const dialog = screen.getByRole("dialog", { name: "Export First Light" })
+    expect(within(dialog).getByRole("radio", { name: "Full song" })).toBeChecked()
+    const selectedRange = within(dialog).getByRole("radio", { name: /Selected range · Chorus/u })
+    expect(selectedRange).not.toBeDisabled()
+    fireEvent.click(selectedRange)
+    expect(within(dialog).getByText("Chorus · 0:42–1:12")).toBeInTheDocument()
+    fireEvent.click(within(dialog).getByRole("button", { name: "Start export" }))
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      source: { type: "version" },
+      scope: { type: "time_range", start_ms: 42_000, end_ms: 72_000 },
+      format: "mp3",
+    })
   })
 
   it("prefers the latest saved Mix Revision and lets the user choose WAV", () => {

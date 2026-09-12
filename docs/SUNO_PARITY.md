@@ -68,7 +68,7 @@ Prompt / Upload
 | Song Editor 的 Split / Crop / Fade / Move | 浏览器 foundation 已对齐 | `Composition { tracks[] }`、轨道上下文选择、空轨道选择、可读的 Take / Source Clip 标签、Clip 时间范围摘要、Clip 与 AI Scope 的显式分离、Clip 编辑面板与 Move / Trim / Split / Crop / Fade / Insert 原语、Undo / Redo 已存在；候选 Take 可以插入已选时间范围；命令均有 `track_ref`、revision 与 owner seam，Studio 已能加载非空多轨 projection；无 owner projection 时保留 Main track fallback | P1 接入真实 Composition owner persistence，并扩展 Track / Placement projection |
 | 多轨 timeline、录音、loop、tempo | 部分对齐 | 当前已有 provider-neutral Track / Clip projection 与单轨浏览器编辑；录音、loop、tempo 和真实多轨 owner 尚缺 | P1：扩展 Track / Clip / Placement，并接入真实 owner |
 | Advanced Stems 与 mixer | 部分对齐 | Split intent、异步恢复、同步试听、Mute/Solo/Gain、Mix Revision | 补 Pan、真实 stem manifest 与 composition placement |
-| 整曲 / 选区 / 多轨 / MIDI 导出 | 部分对齐 | 现有 Export 仅 Full song MP3/WAV | P1：Selected range、Multitrack、artifact manifest |
+| 整曲 / 选区 / 多轨 / MIDI 导出 | 部分对齐 | Export 已支持默认 Full song 与 Arrangement 当前 selected time range 的 MP3/WAV；snapshot 严格回显范围 | P1：Multitrack、单 clip、MIDI 与 artifact manifest |
 | Link-only 分享与 Public 发布 | 浏览器已对齐 | Release draft、独立 Share/Publish/Unpublish 命令、Copy share/public link；真实 owner 权限与 URL smoke 待接通 | **P0：完成真实 Share / Publish owner 集成** |
 | MIDI、Effects、Automation、Synth | 缺失 | 无可靠 Composition Revision 承载 | P1 后段；先做最小 track inspector 与 automation lane |
 | AI 自定义插件、Web MIDI controller | 后置 | 不影响核心创作到交付闭环 | 暂不追逐功能数量 |
@@ -106,7 +106,7 @@ Prompt / Upload
 ### P1 · Professional Workflow
 
 1. **Composition + Studio Asset Dock**：revisioned Track / Clip / Placement；move、split、trim、fade、insert、undo；Asset Dock v1 的搜索、全局试听、当前 Track / Range 插入已完成浏览器侧，真实 owner persistence 与拖放仍待接入。
-2. **Selected range / Multitrack Export**：扩展现有 Export，不另建一次性工具页。
+2. **Selected range / Multitrack Export**：Selected range 已扩展现有 Export；下一刀是等待真实 artifact contract 后接入 Multitrack，不另建一次性工具页。
 3. **Mixer / Effects / Automation / MIDI**：从单轨 inspector、一条 automation lane 和独立 MIDI clip editor 开始。
 4. **Recording / Loop / Tempo**：建立在真实 composition clock 与 input-device 边界上。
 

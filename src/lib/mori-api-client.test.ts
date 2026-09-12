@@ -1545,6 +1545,24 @@ describe("Mori same-origin API client", () => {
     })
   })
 
+  it("normalizes a selected export range and rejects an empty window", () => {
+    expect(createExportRequest({
+      source: { type: "version" },
+      scope: { type: "time_range", start_ms: 42_000.4, end_ms: 72_000.4 },
+      format: "mp3",
+    })).toEqual({
+      source: { type: "version" },
+      scope: { type: "time_range", start_ms: 42_000, end_ms: 72_000 },
+      format: "mp3",
+    })
+
+    expect(() => createExportRequest({
+      source: { type: "version" },
+      scope: { type: "time_range", start_ms: 72_000, end_ms: 72_000 },
+      format: "mp3",
+    })).toThrow("export_scope_invalid")
+  })
+
   it("creates, reads, replays, and cancels a version-bound artwork generation", async () => {
     const calls: Array<{ url: string; method: string | undefined; headers: HeadersInit | undefined; body: unknown }> = []
     const api = createMoriApiClient({
@@ -1715,6 +1733,25 @@ describe("Mori same-origin API client", () => {
     })
 
     await expect(api.getExport("export_invalid")).rejects.toMatchObject({ code: "invalid_api_response" })
+
+    const invalidRangeApi = createMoriApiClient({
+      fetchImpl: async () => jsonResponse({
+        data: {
+          export_ref: "export_invalid_range",
+          project_ref: "project_preview_first_light",
+          version_ref: "version_preview_first_light_a",
+          source: { type: "version" },
+          scope: { type: "time_range", start_ms: 96_000, end_ms: 96_000 },
+          format: "mp3",
+          status: "failed",
+          download_url: null,
+          created_at: "2026-09-02T12:00:00.000Z",
+        },
+        meta: { request_id: "request_export_invalid_range" },
+      }),
+    })
+
+    await expect(invalidRangeApi.getExport("export_invalid_range")).rejects.toMatchObject({ code: "invalid_api_response" })
   })
 
   it("rejects a malformed success payload instead of trusting a type assertion", async () => {

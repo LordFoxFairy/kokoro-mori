@@ -31,8 +31,12 @@ describe("Mori Export OpenAPI contract", () => {
     const mixSource = recordValue(schemas.MixRevisionExportSource, "MixRevisionExportSource")
     expect(arrayValue(mixSource.required, "mix source required")).toEqual(["type", "mix_revision_ref"])
 
-    const scope = recordValue(schemas.FullSongExportScope, "FullSongExportScope")
-    expect(recordValue(recordValue(scope.properties, "scope properties").type, "scope type").const).toBe("full_song")
+    const fullSongScope = recordValue(schemas.FullSongExportScope, "FullSongExportScope")
+    expect(recordValue(recordValue(fullSongScope.properties, "full-song scope properties").type, "scope type").const).toBe("full_song")
+    const timeRangeScope = recordValue(schemas.TimeRangeExportScope, "TimeRangeExportScope")
+    expect(arrayValue(timeRangeScope.required, "time-range scope required")).toEqual(["type", "start_ms", "end_ms"])
+    expect(recordValue(recordValue(timeRangeScope.properties, "time-range scope properties").type, "range scope type").const).toBe("time_range")
+    expect(arrayValue(recordValue(schemas.ExportScope, "ExportScope").oneOf, "export scope variants")).toHaveLength(2)
     expect(JSON.stringify(schemas)).not.toMatch(/selected_range|multitrack/u)
 
     const format = recordValue(recordValue(input.properties, "input properties").format, "format")

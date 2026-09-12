@@ -622,10 +622,10 @@ Composition 的第一组 provider-neutral 纯函数已落地到 `composition.ts`
 
 ### P3 · 完成与发布
 
-- 已完成浏览器侧第一刀：显式选择 Studio 当前打开的 Version / 最新 Mix Revision、Full song、MP3/WAV；异步 render snapshot
+- 已完成浏览器侧第一刀：显式选择 Studio 当前打开的 Version / 最新 Mix Revision、Full song 或当前 Arrangement 选区、MP3/WAV；异步 render snapshot
   回显完整 Project/Version/source/scope/format 上下文，创建不确定时复用幂等键，瞬时读取失败继续跟踪原任务，失败保留选择，
   成功后下载。关闭窗口后顶栏仍持续显示 Exporting / Ready / Needs attention，移动端以加载、成功、失败图标保留反馈；
-  界面只呈现真实已发布能力，不放选区/多轨死入口。
+  选区导出默认保持整曲心智，并严格携带 Arrangement 当前 `start_ms` / `end_ms`；多轨 / MIDI 仍等待真实 artifact contract。
 - 已完成浏览器侧第二刀：Studio 顶部 Finish 提供 Version / 最新 Mix Revision 来源与 Subtle / Balanced / Bold
   Remaster strength；先 Review 再复用 typed `transform + intent: remaster` Generation，snapshot 严格回显来源与强度，
   结果固定为两个非破坏式 Takes。关闭窗口不丢运行态，也不自动替换 Current。
@@ -639,7 +639,8 @@ Composition 的第一组 provider-neutral 纯函数已落地到 `composition.ts`
   以 pending / success / failure 状态反映真实 Clipboard 结果，失败可再次点击重试，不提前宣称成功。
 - 已完成浏览器侧第七刀：Finish 将 link-only Share 与 Public Release 拆成独立的创建、恢复、复制和撤销路径；
   两者分别绑定已保存的 Release Draft revision，不持有 share token，也不把编辑深链冒充外部链接。
-- 下一步：选区/多轨渲染；等待真实多轨 artifact contract 后再开放。Release Publish 的真实 owner integration smoke 仍待 BFF / Storage 接通。
+- 已完成浏览器侧第八刀：Export 在同一个确认窗口内接入 Arrangement 当前选区，Full song 仍是默认；`time_range` 通过 OpenAPI、request builder、snapshot parser 和 Studio 状态核对完整传递，避免导出旧选区或错误 Version。
+- 下一步：多轨渲染；等待真实多轨 artifact contract 后再开放。Release Publish 的真实 owner integration smoke 仍待 BFF / Storage 接通。
 - AI MV 作为完成歌曲的后置流程，不抢占创作主路径。
 
 ## 6. 体验门禁

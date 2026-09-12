@@ -754,7 +754,9 @@ export type MoriExportSource =
   | { type: "version" }
   | { type: "mix_revision"; mix_revision_ref: MoriRef }
 
-export type MoriExportScope = { type: "full_song" }
+export type MoriExportScope =
+  | { type: "full_song" }
+  | { type: "time_range"; start_ms: number; end_ms: number }
 
 export type MoriExportInput = {
   source: MoriExportSource
@@ -1188,7 +1190,7 @@ export function createMixRevisionRequest(draft: MoriMixRevisionDraft): MixRevisi
 }
 
 export function createExportRequest(draft: MoriExportDraft): MoriExportInput {
-  if (draft.scope.type !== "full_song") throw new Error("export_scope_invalid")
+  const scope = normalizeExportScope(draft.scope)
   if (draft.format !== "mp3" && draft.format !== "wav") throw new Error("export_format_invalid")
 
   const source: MoriExportSource = draft.source.type === "version"
@@ -1200,9 +1202,22 @@ export function createExportRequest(draft: MoriExportDraft): MoriExportInput {
 
   return {
     source,
-    scope: { type: "full_song" },
+    scope,
     format: draft.format,
   }
+}
+
+function normalizeExportScope(scope: MoriExportScope): MoriExportScope {
+  if (scope.type === "full_song") return { type: "full_song" }
+  const startMs = Math.round(scope.start_ms)
+  const endMs = Math.round(scope.end_ms)
+  if (
+    !Number.isSafeInteger(startMs)
+    || !Number.isSafeInteger(endMs)
+    || startMs < 0
+    || endMs <= startMs
+  ) throw new Error("export_scope_invalid")
+  return { type: "time_range", start_ms: startMs, end_ms: endMs }
 }
 
 export function createMutationHeaders(idempotencyKey: string): MoriMutationHeaders {

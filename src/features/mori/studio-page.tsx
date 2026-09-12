@@ -34,7 +34,7 @@ import { readGenerationQueueState, updateStoredGenerationQueueState } from "./ge
 import { getGenerationForRecovery } from "./generation-recovery"
 import { MoriStudioShell } from "./components/mori-studio-shell"
 import { StudioAiComposer, type StudioAiRunState } from "./components/studio-ai-composer"
-import { StudioExportDialog } from "./components/studio-export-dialog"
+import { StudioExportDialog, type StudioExportRange } from "./components/studio-export-dialog"
 import { StudioFinishDialog } from "./components/studio-finish-dialog"
 import { StudioLyricsEditor, type StudioLyricsDraftSource, type StudioLyricsDraftState, type StudioLyricsRunState } from "./components/studio-lyrics-editor"
 import { StudioStemsEditor, type StudioStemSeparationRunState } from "./components/studio-stems-editor"
@@ -250,6 +250,7 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
   const [exportDialogOpen, setExportDialogOpen] = useState(false)
   const [exportFeedback, setExportFeedback] = useState<StudioExportFeedback>("idle")
   const [exportInput, setExportInput] = useState<MoriExportInput | null>(null)
+  const [exportRange, setExportRange] = useState<(StudioExportRange & { versionRef: string }) | null>(null)
   const [exportSnapshot, setExportSnapshot] = useState<MoriExportSnapshot | null>(null)
   const [exportMessage, setExportMessage] = useState<string | null>(null)
   const [trackedExport, setTrackedExport] = useState<TrackedExport | null>(null)
@@ -335,6 +336,12 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
   activeProjectRefRef.current = activeProjectRef
   studioCandidatesRef.current = studioCandidates
 
+  const rememberExportRange = useCallback((selection: StudioExportRange) => {
+    const versionRef = activeVersionRefRef.current
+    if (versionRef === null) return
+    setExportRange({ ...selection, versionRef })
+  }, [])
+
   useEffect(() => {
     const restoreVersionFromLocation = () => {
       const locationVersionRef = studioVersionRefFromPath(window.location.pathname, activeProjectRef)
@@ -379,6 +386,7 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
     setExportSnapshot(null)
     setExportMessage(null)
     if (contextChanged) {
+      setExportRange(null)
       studioRecoveryGenerationRef.current = null
       recoveredStudioGenerationSnapshotRef.current = null
       setTrackedStudioChange(null)
@@ -1671,7 +1679,7 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
             {activeTool === "arrangement" ? <ArrangementEditor key={activeCandidate.versionRef} compositionSave={(api !== undefined && "createCompositionRevision" in api ? api.createCompositionRevision : studioApi.createCompositionRevision) as MoriApi["createCompositionRevision"]} compositionLoad={(api !== undefined && "getCompositionRevision" in api ? api.getCompositionRevision : studioApi.getCompositionRevision) as MoriApi["getCompositionRevision"]} compositionRevision={0} onRefreshWorkspace={projectWorkspaceMemory.refresh} candidate={activeCandidate} creativeSources={resolvedCreativeSources} takes={studioCandidates} structure={hasPreviewProjectContent ? previewSongPlan.structure : wholeSongStructure} lyricsPreview={initialStudioLyrics} currentVersionRef={currentVersionRef} playerVersionRef={playerCandidate?.versionRef ?? ""} playerAuditionScope={playerAuditionScope} positionSeconds={playerCandidate?.versionRef === activeCandidate.versionRef ? positionSeconds : 0} playing={playerCandidate?.versionRef === activeCandidate.versionRef && playing} initialIntent={initialIntent} studioChangeRun={studioChangeRun} currentVersionCommitRun={currentVersionCommitRun} onSeekTimeline={(nextPositionSeconds) => seekTimeline(activeCandidate, nextPositionSeconds)} onPreviewSelection={(selection) => previewSelection(activeCandidate, selection)} onGenerateStudioChange={(plan) => { void generateStudioChange(plan) }} onCancelStudioChange={() => { void cancelStudioChange() }} onResetStudioChange={resetStudioChange} onSelectTake={selectTake} onPreviewTake={previewTake} onPromoteTake={(take) => { void commitCurrentVersion(take) }} onRetryCurrentVersion={retryCurrentVersionCommit} onDismissCurrentVersion={dismissCurrentVersionCommit} onOpenLyrics={() => {
               setActiveTool("lyrics")
               window.requestAnimationFrame(() => document.getElementById("mori-studio-tool-lyrics")?.focus())
-            }} previewingSourceRef={playing && playerCandidate?.versionRef?.startsWith("creative-source:") ? playerCandidate.versionRef.slice("creative-source:".length) : null} onPreviewSource={previewCreativeSource} /> : null}
+            }} previewingSourceRef={playing && playerCandidate?.versionRef?.startsWith("creative-source:") ? playerCandidate.versionRef.slice("creative-source:".length) : null} onPreviewSource={previewCreativeSource} onSelectionChange={rememberExportRange} /> : null}
           </div>
           <div id="mori-studio-panel-lyrics" role="tabpanel" aria-labelledby="mori-studio-tool-lyrics" hidden={activeTool !== "lyrics"}>
             {activeTool === "lyrics" ? <StudioLyricsEditor key={studioLyricsKey} versionRef={activeCandidate.versionRef} initialLyrics={initialStudioLyrics} baselineLyrics={durableStudioLyrics} draftRevision={workspaceLyricsRevision} draftSource={lyricsDraftSource} draftSaveRun={projectWorkspaceMemory.saveRun} canSaveDraft={projectWorkspaceMemory.canSaveLyrics} run={lyricsRevisionRun} onGenerate={(plan) => { void generateLyricsRevision(plan) }} onCancel={() => { void cancelLyricsRevision() }} onReset={resetLyricsRevision} onSaveDraft={projectWorkspaceMemory.saveLyrics} onRefreshDraft={projectWorkspaceMemory.refresh} onDraftStateChange={rememberPendingLyricsDraft} /> : null}
@@ -1715,6 +1723,7 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
         latestMixRevision={latestMixRevision}
         status={exportFeedback}
         activeInput={exportInput}
+        selectedRange={exportRange?.versionRef === activeCandidate.versionRef ? exportRange : undefined}
         snapshot={exportSnapshot}
         message={exportMessage}
         onClose={() => setExportDialogOpen(false)}
@@ -1841,6 +1850,10 @@ function exportSnapshotMatchesInput(snapshot: MoriExportSnapshot, input: MoriExp
 
 function exportInputsMatch(left: MoriExportInput, right: MoriExportInput): boolean {
   if (left.format !== right.format || left.scope.type !== right.scope.type || left.source.type !== right.source.type) return false
+  if (
+    left.scope.type === "time_range"
+    && (right.scope.type !== "time_range" || left.scope.start_ms !== right.scope.start_ms || left.scope.end_ms !== right.scope.end_ms)
+  ) return false
   return left.source.type === "version"
     || (right.source.type === "mix_revision" && left.source.mix_revision_ref === right.source.mix_revision_ref)
 }
@@ -2052,6 +2065,7 @@ type ArrangementEditorProps = {
   currentVersionCommitRun: CurrentVersionCommitRun
   onSeekTimeline: (positionSeconds: number) => void
   onPreviewSelection: (selection: StudioTimelineSection) => void
+  onSelectionChange: (selection: StudioExportRange) => void
   onGenerateStudioChange: (plan: StudioChangePlan) => void
   onCancelStudioChange: () => void
   onResetStudioChange: () => void
@@ -2084,7 +2098,7 @@ function compositionFromOwnerRevision(revision: MoriCompositionRevision): Compos
   }
 }
 
-function ArrangementEditor({ compositionSave, compositionLoad, compositionRevision, onRefreshWorkspace, candidate, creativeSources, takes, structure, lyricsPreview, currentVersionRef, playerVersionRef, playerAuditionScope, positionSeconds, playing, initialIntent, studioChangeRun, currentVersionCommitRun, onSeekTimeline, onPreviewSelection, onGenerateStudioChange, onCancelStudioChange, onResetStudioChange, onSelectTake, onPreviewTake, onPromoteTake, onRetryCurrentVersion, onDismissCurrentVersion, onOpenLyrics, previewingSourceRef, onPreviewSource }: ArrangementEditorProps) {
+function ArrangementEditor({ compositionSave, compositionLoad, compositionRevision, onRefreshWorkspace, candidate, creativeSources, takes, structure, lyricsPreview, currentVersionRef, playerVersionRef, playerAuditionScope, positionSeconds, playing, initialIntent, studioChangeRun, currentVersionCommitRun, onSeekTimeline, onPreviewSelection, onSelectionChange, onGenerateStudioChange, onCancelStudioChange, onResetStudioChange, onSelectTake, onPreviewTake, onPromoteTake, onRetryCurrentVersion, onDismissCurrentVersion, onOpenLyrics, previewingSourceRef, onPreviewSource }: ArrangementEditorProps) {
   const timelineSections = useMemo(() => buildStudioTimelineSections(structure, candidate.durationSeconds), [candidate.durationSeconds, structure])
   const defaultSection = studioChangeRun.plan?.selection
     ?? timelineSections.find((item) => item.label.toLowerCase() === "chorus")
@@ -2165,6 +2179,9 @@ function ArrangementEditor({ compositionSave, compositionLoad, compositionRevisi
     return { trackName: track.name, label: resolveClipLabel(clip, track), startMs: clip.startMs, durationMs: clip.durationMs }
   }, [compositionEditor.composition, resolveClipLabel, selectedClipRef, selectedTrackRef])
   const selectedTrack = compositionEditor.composition.find((track) => track.trackRef === selectedTrackRef)
+  useEffect(() => {
+    if (selection !== undefined) onSelectionChange({ label: selection.label, startMs: selection.startMs, endMs: selection.endMs })
+  }, [onSelectionChange, selection])
   const duplicateClip = (clipRef: string, trackRef: string) => {
     const track = compositionEditor.composition.find((item) => item.trackRef === trackRef)
     const source = track?.clips.find((clip) => clip.clipRef === clipRef)
