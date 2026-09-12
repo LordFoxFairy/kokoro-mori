@@ -102,11 +102,11 @@ function SourceCard({ source, disabled, canInsert, previewing, onPreview, onInse
       <p>{source.description}</p>
       <div className={styles.sourceActions}>
         {audioSource !== null ? <>
-          <button className={styles.previewButton} type="button" disabled={disabled} aria-pressed={previewing} onClick={() => onPreview(audioSource)}>
+          <button className={styles.previewButton} type="button" disabled={disabled} aria-label={`${previewing ? "Pause" : "Preview"} ${source.name}`} aria-pressed={previewing} onClick={() => onPreview(audioSource)}>
             {previewing ? <Pause aria-hidden="true" size={13} fill="currentColor" /> : <Play aria-hidden="true" size={13} fill="currentColor" />}
             {previewing ? "Pause preview" : "Preview"}
           </button>
-          <button className={styles.insertButton} type="button" disabled={disabled || !canInsert} onClick={() => onInsert(audioSource)}>{canInsert ? "Insert" : "Select a track"}</button>
+          <button className={styles.insertButton} type="button" aria-label={canInsert ? `Insert ${source.name}` : `Select a track to insert ${source.name}`} disabled={disabled || !canInsert} onClick={() => onInsert(audioSource)}>{canInsert ? "Insert" : "Select a track"}</button>
         </> : <span className={styles.referenceOnly}><Sparkles aria-hidden="true" size={12} /> Reference only in Arrangement</span>}
       </div>
     </div>

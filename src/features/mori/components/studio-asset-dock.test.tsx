@@ -17,9 +17,9 @@ describe("StudioAssetDock", () => {
 
     const dock = screen.getByRole("region", { name: "Studio asset dock" })
     expect(within(dock).getByText("Main version")).toBeInTheDocument()
-    fireEvent.click(within(dock).getByRole("button", { name: "Preview" }))
+    fireEvent.click(within(dock).getByRole("button", { name: "Preview Room tone" }))
     expect(onPreview).toHaveBeenCalledWith(sources[0])
-    fireEvent.click(within(dock).getByRole("button", { name: "Insert" }))
+    fireEvent.click(within(dock).getByRole("button", { name: "Insert Room tone" }))
     expect(onInsert).toHaveBeenCalledWith(sources[0])
   })
 
@@ -40,6 +40,6 @@ describe("StudioAssetDock", () => {
 
   it("explains when a track must be selected before insertion", () => {
     render(<StudioAssetDock sources={sources} selectedRangeLabel="Chorus" selectedRangeTime="0:42–1:12" onPreview={vi.fn()} onInsert={vi.fn()} />)
-    expect(screen.getByRole("button", { name: "Select a track" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Select a track to insert Room tone" })).toBeDisabled()
   })
 })

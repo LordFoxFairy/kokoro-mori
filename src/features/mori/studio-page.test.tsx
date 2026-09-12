@@ -1224,7 +1224,7 @@ describe("Mori studio page", () => {
 
     const arrangement = screen.getByRole("region", { name: "Arrangement editor" })
     const dock = within(arrangement).getByRole("region", { name: "Studio asset dock" })
-    fireEvent.click(within(dock).getByRole("button", { name: "Insert" }))
+    fireEvent.click(within(dock).getByRole("button", { name: "Insert City Lights demo" }))
     expect(within(screen.getByRole("region", { name: "Version timeline" })).getByRole("button", { name: "Main version clip City Lights demo · 0:24" })).toBeInTheDocument()
 
     fireEvent.click(within(arrangement).getByRole("button", { name: "Save arrangement" }))
