@@ -1,7 +1,21 @@
 import { describe, expect, it } from "vitest"
-import { cropClip, insertClip, moveClip, moveClipToTrack, removeClip, setClipFades, splitClip, trimClip, type CompositionTrack } from "./composition"
+import { createCompositionPlacementRef, cropClip, insertClip, moveClip, moveClipToTrack, removeClip, setClipFades, splitClip, trimClip, type CompositionTrack } from "./composition"
 
 const track: CompositionTrack = { trackRef: "track_1", kind: "vocals", name: "Lead", clips: [{ clipRef: "clip_1", sourceRef: "asset_1", startMs: 0, durationMs: 10000, offsetMs: 0 }] }
+
+describe("composition placement identity", () => {
+  it("creates a unique opaque ref under the requested namespace", () => {
+    const first = createCompositionPlacementRef("version_1:track_1")
+    const second = createCompositionPlacementRef("version_1:track_1")
+    expect(first).toMatch(/^version_1:track_1:placement-/u)
+    expect(second).toMatch(/^version_1:track_1:placement-/u)
+    expect(second).not.toBe(first)
+  })
+
+  it("rejects an empty placement namespace", () => {
+    expect(() => createCompositionPlacementRef("  ")).toThrow("composition_placement_namespace_required")
+  })
+})
 
 describe("composition primitives", () => {
   it("moves and sorts a clip without changing source identity", () => {

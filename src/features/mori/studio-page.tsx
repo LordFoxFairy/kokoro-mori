@@ -52,7 +52,7 @@ import { useMoriApp, type PlayerAuditionScope } from "./components/mori-app-prov
 import { Waveform } from "./components/waveform"
 import { previewCandidates, previewProject, previewSongPlan } from "./preview-data"
 import type { StudioEntryIntent, StudioEntrySurface } from "./studio-entry"
-import type { Composition, CompositionClip, CompositionTrack } from "./composition"
+import { createCompositionPlacementRef, type Composition, type CompositionClip, type CompositionTrack } from "./composition"
 import { useCompositionEditor } from "./use-composition-editor"
 import { buildStudioTimelineSections, formatStudioTimelineTime, isActiveStudioChangeStatus, studioChangeCommand, type PendingStudioChangeCommand, type StudioChangePlan, type StudioTimelineSection } from "./studio-change"
 import { createStudioLyricsRevisionDraft, defaultStudioLyrics, isActiveLyricsRevisionStatus, studioLyricsScopeLabel, type StudioLyricsPlan } from "./studio-lyrics"
@@ -2640,7 +2640,7 @@ function ArrangementEditor({ compositionSave, compositionLoad, compositionRevisi
     const source = track?.clips.find((clip) => clip.clipRef === clipRef)
     if (source === undefined) return
     const endMs = Math.max(...(track?.clips.map((clip) => clip.startMs + clip.durationMs) ?? [0]))
-    compositionEditor.editAndQueue({ operation: "insert", trackRef, clip: { ...source, clipRef: `${source.clipRef}:copy-${(track?.clips.length ?? 0) + 1}`, startMs: endMs + 250 } })
+    compositionEditor.editAndQueue({ operation: "insert", trackRef, clip: { ...source, clipRef: createCompositionPlacementRef(`${source.clipRef}:copy`), startMs: endMs + 250 } })
     setSelectedClipRef(undefined)
   }
   const moveClip = (clipRef: string, sourceTrackRef: string, startMs: number, targetTrackRef = sourceTrackRef) => {
@@ -2670,7 +2670,7 @@ function ArrangementEditor({ compositionSave, compositionLoad, compositionRevisi
     if (source === undefined || track === undefined) return
     const selectionDurationMs = Math.max(1_000, selection.endMs - selection.startMs)
     const durationMs = Math.min(selectionDurationMs, Math.max(1_000, Math.round(source.durationSeconds * 1_000)))
-    const clipRef = `${candidate.versionRef}:${trackRef}:insert-${track.clips.length + 1}`
+    const clipRef = createCompositionPlacementRef(`${candidate.versionRef}:${trackRef}:take`)
     compositionEditor.editAndQueue({ operation: "insert", trackRef, clip: { clipRef, sourceRef: source.versionRef, startMs: selection.startMs, durationMs, offsetMs: 0 } })
     setSelectedClipRef(clipRef)
     setSelectedTrackRef(trackRef)
@@ -2684,7 +2684,7 @@ function ArrangementEditor({ compositionSave, compositionLoad, compositionRevisi
     const sourceDurationMs = Math.max(1_000, Math.round(source.durationSeconds * 1_000))
     const remainingDurationMs = Math.max(1_000, Math.round(candidate.durationSeconds * 1_000) - startMs)
     const durationMs = Math.min(sourceDurationMs, durationLimitMs ?? remainingDurationMs, remainingDurationMs)
-    const clipRef = `${candidate.versionRef}:${track.trackRef}:source-${track.clips.length + 1}`
+    const clipRef = createCompositionPlacementRef(`${candidate.versionRef}:${track.trackRef}:source`)
     compositionEditor.editAndQueue({ operation: "insert", trackRef: track.trackRef, clip: { clipRef, sourceRef: source.ref, startMs, durationMs, offsetMs: 0 } })
     setSelectedClipRef(clipRef)
     setSelectedTrackRef(trackRef)

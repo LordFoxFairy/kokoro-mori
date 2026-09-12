@@ -4,6 +4,15 @@ export type CompositionClip = { clipRef: MoriRef; sourceRef: MoriRef; startMs: n
 export type CompositionTrack = { trackRef: MoriRef; kind: "vocals" | "instrumental" | "other"; name: string; clips: CompositionClip[] }
 export type Composition = { tracks: CompositionTrack[] }
 
+/** Generate an opaque identity for a new timeline placement. Existing placements keep their clipRef across edits. */
+export function createCompositionPlacementRef(namespace: string): MoriRef {
+  const normalizedNamespace = namespace.trim()
+  if (normalizedNamespace === "") throw new Error("composition_placement_namespace_required")
+  const randomUuid = globalThis.crypto?.randomUUID?.()
+  const entropy = randomUuid ?? `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+  return `${normalizedNamespace}:placement-${entropy}`
+}
+
 export function insertClip(track: CompositionTrack, clip: CompositionClip): CompositionTrack {
   if (clip.startMs < 0 || clip.durationMs < 1 || clip.offsetMs < 0) throw new Error("composition_clip_invalid")
   if (track.clips.some((item) => item.clipRef === clip.clipRef)) throw new Error("composition_clip_exists")
