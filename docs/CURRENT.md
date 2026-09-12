@@ -114,7 +114,7 @@ pnpm exec vitest run --maxWorkers=1 src/features/mori/mori-workspace.test.tsx
                                   passed: 1 file / 71 tests
 pnpm exec vitest run --maxWorkers=1 src/features/mori/use-audio-recorder.test.tsx
                                   passed: 1 file / 2 tests
-pnpm test                         passed: 80 files / 602 tests
+pnpm test                         passed: 81 files / 607 tests
 pnpm build                        passed
 ```
 
