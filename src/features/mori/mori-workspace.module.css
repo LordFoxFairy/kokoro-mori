@@ -5560,17 +5560,23 @@
 
   .studioPage .studioHeader {
     min-height: 58px;
+    align-items: flex-start;
+    flex-wrap: wrap;
     gap: 10px;
-    padding-inline: 14px;
+    padding: 10px 14px;
   }
 
   .studioHeaderLeft {
+    flex: 1 1 100%;
     min-width: 0;
   }
 
   .studioHeaderActions {
-    flex: 0 0 auto;
+    flex: 1 1 100%;
+    min-width: 0;
+    flex-wrap: wrap;
     gap: 6px;
+    justify-content: flex-start;
   }
 
   .studioPage .studioHeaderActions .ghostButton {
@@ -5692,6 +5698,14 @@
 
   .takeLaneActions {
     justify-content: space-between;
+    gap: 8px;
+  }
+
+  .takeLanePreview,
+  .takeLanePromote {
+    min-height: 44px;
+    padding-inline: 12px;
+    font-size: 10px;
   }
 
   .lyricsCard p {

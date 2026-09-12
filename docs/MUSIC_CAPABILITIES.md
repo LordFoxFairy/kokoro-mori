@@ -568,6 +568,7 @@ BFF 必须按受信会话校验该 asset 与用户可见 Mori 资源的关联，
 - Create：Smart / Custom、Song Plan review、Audio / Voice / Inspiration 创意来源。
 - Studio：Arrangement / Lyrics / Stems、Mori AI Changes、Take Lanes。
 - 全局：Player、播放队列、Project-first 导航。
+- 窄屏决策路径：Studio 项目上下文与动作区分层，Take Lanes 的 Preview / Use take 保持可触达，不用把核心提交动作压缩成小图标。
 
 ### P1 · Studio Change 契约（已完成浏览器侧）
 
