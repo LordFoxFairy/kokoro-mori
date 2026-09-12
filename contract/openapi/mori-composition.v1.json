@@ -4,12 +4,17 @@
   "paths": {
     "/api/v1/mori/versions/{version_ref}/composition": {
       "parameters": [{ "$ref": "#/components/parameters/VersionRef" }],
+      "get": {
+        "operationId": "getMoriCompositionRevision",
+        "security": [{ "moriSession": [] }],
+        "responses": { "200": { "description": "Current composition projection", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiCompositionRevision" } } } }, "404": { "$ref": "#/components/responses/ApiError" } }
+      },
       "put": {
         "operationId": "applyMoriCompositionRevision",
         "security": [{ "moriSession": [] }],
         "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
         "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CompositionRevisionInput" } } } },
-        "responses": { "200": { "description": "Composition revision applied", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CompositionRevision" } } } }, "409": { "$ref": "#/components/responses/ApiError" } }
+        "responses": { "200": { "description": "Composition revision applied", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiCompositionRevision" } } } }, "409": { "$ref": "#/components/responses/ApiError" } }
       }
     }
   },
@@ -31,7 +36,11 @@
       "SplitClip": { "type": "object", "additionalProperties": false, "required": ["type", "track_ref", "clip_ref", "at_ms"], "properties": { "type": { "const": "split_clip" }, "track_ref": { "type": "string", "minLength": 1 }, "clip_ref": { "type": "string", "minLength": 1 }, "at_ms": { "type": "integer", "minimum": 1 } } },
       "SetFades": { "type": "object", "additionalProperties": false, "required": ["type", "track_ref", "clip_ref", "fade_in_ms", "fade_out_ms"], "properties": { "type": { "const": "set_fades" }, "track_ref": { "type": "string", "minLength": 1 }, "clip_ref": { "type": "string", "minLength": 1 }, "fade_in_ms": { "type": "integer", "minimum": 0 }, "fade_out_ms": { "type": "integer", "minimum": 0 } } },
       "CompositionRevisionInput": { "type": "object", "additionalProperties": false, "required": ["expected_revision", "commands"], "properties": { "expected_revision": { "type": "integer", "minimum": 0 }, "commands": { "type": "array", "minItems": 1, "items": { "$ref": "#/components/schemas/CompositionCommand" } } } },
-      "CompositionRevision": { "type": "object", "required": ["version_ref", "revision", "tracks"], "properties": { "version_ref": { "type": "string" }, "revision": { "type": "integer", "minimum": 1 }, "tracks": { "type": "array", "items": { "type": "object" } } } },
+      "CompositionClip": { "type": "object", "additionalProperties": false, "required": ["clip_ref", "source_ref", "start_ms", "duration_ms", "offset_ms"], "properties": { "clip_ref": { "type": "string", "minLength": 1 }, "source_ref": { "type": "string", "minLength": 1 }, "start_ms": { "type": "integer", "minimum": 0 }, "duration_ms": { "type": "integer", "minimum": 1 }, "offset_ms": { "type": "integer", "minimum": 0 }, "fade_in_ms": { "type": "integer", "minimum": 0 }, "fade_out_ms": { "type": "integer", "minimum": 0 } } },
+      "CompositionTrack": { "type": "object", "additionalProperties": false, "required": ["track_ref", "kind", "name", "clips"], "properties": { "track_ref": { "type": "string", "minLength": 1 }, "kind": { "enum": ["vocals", "instrumental", "other"] }, "name": { "type": "string", "minLength": 1 }, "clips": { "type": "array", "items": { "$ref": "#/components/schemas/CompositionClip" } } } },
+      "CompositionRevision": { "type": "object", "additionalProperties": false, "required": ["version_ref", "revision", "tracks"], "properties": { "version_ref": { "type": "string", "minLength": 1 }, "revision": { "type": "integer", "minimum": 1 }, "tracks": { "type": "array", "items": { "$ref": "#/components/schemas/CompositionTrack" } } } },
+      "ApiCompositionRevision": { "type": "object", "additionalProperties": false, "required": ["data", "meta"], "properties": { "data": { "$ref": "#/components/schemas/CompositionRevision" }, "meta": { "$ref": "#/components/schemas/Meta" } } },
+      "Meta": { "type": "object", "additionalProperties": false, "required": ["request_id"], "properties": { "request_id": { "type": "string", "minLength": 1 } } },
       "ErrorBody": { "type": "object", "required": ["error", "meta"], "properties": { "error": { "type": "object" }, "meta": { "type": "object" } } }
     },
     "responses": { "ApiError": { "description": "Mori API error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorBody" } } } } }

@@ -1797,6 +1797,40 @@ describe("Mori same-origin API client", () => {
     expect(JSON.parse(String(capturedInit?.body))).toEqual({ release_draft_ref: "draft_1", expected_draft_revision: 3 })
     expect(response.data.public_url).toBe("https://mori.local/release/release_1")
   })
+
+  it("saves a track-scoped composition revision and parses its owner projection", async () => {
+    let capturedInit: RequestInit | undefined
+    const api = createMoriApiClient({
+      fetchImpl: async (_input, init) => {
+        capturedInit = init
+        return jsonResponse({ data: { version_ref: "version_1", revision: 4, tracks: [{ track_ref: "track_1", kind: "vocals", name: "Lead", clips: [{ clip_ref: "clip_1", source_ref: "asset_1", start_ms: 0, duration_ms: 8_000, offset_ms: 0, fade_in_ms: 150 }] }] }, meta: { request_id: "composition_1" } })
+      },
+    })
+    const response = await api.createCompositionRevision("version_1", { expected_revision: 3, commands: [{ type: "move_clip", track_ref: "track_1", clip_ref: "clip_1", start_ms: 1_000 }] }, "composition-key-1")
+    expect(capturedInit?.headers).toMatchObject({ "Idempotency-Key": "composition-key-1" })
+    expect(JSON.parse(String(capturedInit?.body))).toEqual({ expected_revision: 3, commands: [{ type: "move_clip", track_ref: "track_1", clip_ref: "clip_1", start_ms: 1_000 }] })
+    expect(response.data.tracks[0]?.clips[0]?.fade_in_ms).toBe(150)
+  })
+
+  it("loads a version composition projection through the same-origin resource path", async () => {
+    let capturedUrl = ""
+    const api = createMoriApiClient({
+      fetchImpl: async (input) => {
+        capturedUrl = String(input)
+        return jsonResponse({ data: { version_ref: "version_1", revision: 2, tracks: [{ track_ref: "track_1", kind: "other", name: "Main", clips: [] }] }, meta: { request_id: "composition_load_1" } })
+      },
+    })
+    const response = await api.getCompositionRevision("version/1")
+    expect(capturedUrl).toBe("/api/v1/mori/versions/version%2F1/composition")
+    expect(response.data.revision).toBe(2)
+  })
+
+  it("rejects a composition revision with malformed owner tracks", async () => {
+    const api = createMoriApiClient({
+      fetchImpl: async () => jsonResponse({ data: { version_ref: "version_1", revision: 4, tracks: [{ track_ref: "track_1", kind: "vocals", name: "Lead", clips: [{ clip_ref: "clip_1" }] }] }, meta: { request_id: "composition_invalid_1" } }),
+    })
+    await expect(api.createCompositionRevision("version_1", { expected_revision: 3, commands: [{ type: "move_clip", track_ref: "track_1", clip_ref: "clip_1", start_ms: 1_000 }] }, "composition-key-1")).rejects.toThrow("composition_response_invalid")
+  })
 })
 
 function jsonResponse(payload: unknown, status = 200): Response {

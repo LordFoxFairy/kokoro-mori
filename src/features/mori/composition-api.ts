@@ -1,6 +1,7 @@
 import { createCompositionRevisionInput, type CompositionRevisionInput } from "./composition-command"
+import type { MoriCompositionClip, MoriCompositionRevision, MoriCompositionTrack } from "@/lib/mori-api"
 
-export type CompositionRevisionResponse = { version_ref: string; revision: number; tracks: unknown[] }
+export type CompositionRevisionResponse = MoriCompositionRevision
 export type CompositionRevisionClient = (versionRef: string, input: CompositionRevisionInput, idempotencyKey: string) => Promise<CompositionRevisionResponse>
 
 export function createCompositionRevisionClient(options: { apiBasePath?: string; fetchImpl?: typeof fetch } = {}): CompositionRevisionClient {
@@ -18,8 +19,25 @@ export function parseCompositionRevisionResponse(value: unknown): CompositionRev
   if (typeof value !== "object" || value === null) throw new Error("composition_response_invalid")
   const candidate = value as Partial<CompositionRevisionResponse>
   const revision = candidate.revision
-  if (typeof candidate.version_ref !== "string" || typeof revision !== "number" || !Number.isSafeInteger(revision) || revision < 1 || !Array.isArray(candidate.tracks)) throw new Error("composition_response_invalid")
-  return { version_ref: candidate.version_ref, revision, tracks: candidate.tracks }
+  if (typeof candidate.version_ref !== "string" || candidate.version_ref.trim() === "" || typeof revision !== "number" || !Number.isSafeInteger(revision) || revision < 1 || !Array.isArray(candidate.tracks)) throw new Error("composition_response_invalid")
+  const tracks = candidate.tracks.map(parseCompositionTrack)
+  if (new Set(tracks.map((track) => track.track_ref)).size !== tracks.length) throw new Error("composition_response_invalid")
+  return { version_ref: candidate.version_ref, revision, tracks }
+}
+
+function parseCompositionTrack(value: unknown): MoriCompositionTrack {
+  if (typeof value !== "object" || value === null) throw new Error("composition_response_invalid")
+  const candidate = value as Partial<MoriCompositionTrack>
+  if (typeof candidate.track_ref !== "string" || candidate.track_ref.trim() === "" || (candidate.kind !== "vocals" && candidate.kind !== "instrumental" && candidate.kind !== "other") || typeof candidate.name !== "string" || candidate.name.trim() === "" || !Array.isArray(candidate.clips)) throw new Error("composition_response_invalid")
+  const clips = candidate.clips.map((clip) => {
+    if (typeof clip !== "object" || clip === null) throw new Error("composition_response_invalid")
+    const parsed = clip as Partial<MoriCompositionClip>
+    const { clip_ref: clipRef, source_ref: sourceRef, start_ms: startMs, duration_ms: durationMs, offset_ms: offsetMs, fade_in_ms: fadeInMs, fade_out_ms: fadeOutMs } = parsed
+    if (typeof clipRef !== "string" || clipRef.trim() === "" || typeof sourceRef !== "string" || sourceRef.trim() === "" || ![startMs, durationMs, offsetMs].every((number) => typeof number === "number" && Number.isSafeInteger(number)) || typeof startMs !== "number" || typeof durationMs !== "number" || typeof offsetMs !== "number" || startMs < 0 || durationMs < 1 || offsetMs < 0 || (fadeInMs !== undefined && (typeof fadeInMs !== "number" || !Number.isSafeInteger(fadeInMs) || fadeInMs < 0)) || (fadeOutMs !== undefined && (typeof fadeOutMs !== "number" || !Number.isSafeInteger(fadeOutMs) || fadeOutMs < 0))) throw new Error("composition_response_invalid")
+    return { clip_ref: clipRef, source_ref: sourceRef, start_ms: startMs, duration_ms: durationMs, offset_ms: offsetMs, ...(fadeInMs === undefined ? {} : { fade_in_ms: fadeInMs }), ...(fadeOutMs === undefined ? {} : { fade_out_ms: fadeOutMs }) }
+  })
+  if (new Set(clips.map((clip) => clip.clip_ref)).size !== clips.length) throw new Error("composition_response_invalid")
+  return { track_ref: candidate.track_ref, kind: candidate.kind, name: candidate.name, clips }
 }
 
 export function createCompositionSaveRequest(versionRef: string, revision: number, commands: CompositionRevisionInput["commands"], idempotencyKey: string) {

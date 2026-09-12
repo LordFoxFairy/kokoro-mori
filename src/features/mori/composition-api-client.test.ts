@@ -12,4 +12,6 @@ describe("composition revision client", () => {
     await expect(createCompositionRevisionClient({ fetchImpl })("version_1", { expected_revision: 2, commands: [{ type: "move_clip", track_ref: "track_1", clip_ref: "clip_1", start_ms: 1_000 }] }, "key_1")).rejects.toThrow("composition_conflict")
   })
   it("rejects an incomplete owner projection", () => expect(() => parseCompositionRevisionResponse({ version_ref: "version_1", revision: 0, tracks: [] })).toThrow("composition_response_invalid"))
+  it("rejects an owner projection with incomplete track data", () => expect(() => parseCompositionRevisionResponse({ version_ref: "version_1", revision: 1, tracks: [{ track_ref: "track_1", kind: "vocals", name: "Lead", clips: [{ clip_ref: "clip_1" }] }] })).toThrow("composition_response_invalid"))
+  it("rejects duplicate track identities", () => expect(() => parseCompositionRevisionResponse({ version_ref: "version_1", revision: 1, tracks: [{ track_ref: "track_1", kind: "vocals", name: "Lead", clips: [] }, { track_ref: "track_1", kind: "instrumental", name: "Keys", clips: [] }] })).toThrow("composition_response_invalid"))
 })

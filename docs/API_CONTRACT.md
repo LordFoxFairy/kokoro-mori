@@ -14,7 +14,7 @@ contract -> contract test -> browser type/client -> component seam -> integratio
 
 - Library / Creative Source：版本与来源的分页投影、source deep link。
 - Studio Change / Lyrics Revision / Stem Separation：Version-scoped 异步任务、snapshot、SSE replay、cancel。
-- Composition：带 `revision` 与 `Idempotency-Key` 的确定性编辑 command。
+- Composition：Version-scoped GET/PUT projection，带 `revision` 与 `Idempotency-Key` 的确定性、显式 `track_ref` 编辑 command。
 - Project Workspace / Current Version：Project memory 与 compare-and-set 写入。
 - Media / Export / Mix：opaque asset 读取、Mix Revision 与异步渲染。
 - Artwork / Release Draft / Release Publish：完成态视觉、草稿与发布边界。

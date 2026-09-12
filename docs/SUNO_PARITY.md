@@ -65,7 +65,7 @@ Prompt / Upload
 | Take audition / Commit / Current Version | 浏览器已对齐 | Open、Playing、Selected、Current 分离；Project-scoped CAS | **P0：Durable Project Memory 的 Version / Revision 一致性** |
 | 保存版本、刷新或跨设备继续 | 浏览器 foundation 已对齐 | Current/Mix/Release 有契约；Workspace projection、Open Version、Studio Lyrics Draft 与 Create Smart Song Plan 的 owner-confirmed 保存状态机已落地浏览器 | **P0 继续：真实 BFF runtime recovery 与 Song Plan 历史** |
 | Library / Workspace 搜索与素材复用 | 部分对齐 | Projects、Versions、Audio/Voice/Inspiration Sources、cursor/search/filter | 接入真实 Source 生命周期；Studio 内 Asset Dock 放入 P1 |
-| Song Editor 的 Split / Crop / Fade / Move | 浏览器 foundation 已对齐 | `Composition { tracks[] }`、轨道上下文选择、Clip 编辑面板与 Move / Trim / Split / Crop / Fade / Insert 原语、Undo / Redo 已存在；候选 Take 可以插入已选时间范围；命令均有 `track_ref`、revision 与 owner seam；当前 preview 仍是一条 Main track | P1 接入真实 Composition owner，并扩展多轨 Track / Placement projection |
+| Song Editor 的 Split / Crop / Fade / Move | 浏览器 foundation 已对齐 | `Composition { tracks[] }`、轨道上下文选择、空轨道选择、Clip 编辑面板与 Move / Trim / Split / Crop / Fade / Insert 原语、Undo / Redo 已存在；候选 Take 可以插入已选时间范围；命令均有 `track_ref`、revision 与 owner seam，Studio 已能加载非空多轨 projection；无 owner projection 时保留 Main track fallback | P1 接入真实 Composition owner persistence，并扩展 Track / Placement projection |
 | 多轨 timeline、录音、loop、tempo | 部分对齐 | 当前已有 provider-neutral Track / Clip projection 与单轨浏览器编辑；录音、loop、tempo 和真实多轨 owner 尚缺 | P1：扩展 Track / Clip / Placement，并接入真实 owner |
 | Advanced Stems 与 mixer | 部分对齐 | Split intent、异步恢复、同步试听、Mute/Solo/Gain、Mix Revision | 补 Pan、真实 stem manifest 与 composition placement |
 | 整曲 / 选区 / 多轨 / MIDI 导出 | 部分对齐 | 现有 Export 仅 Full song MP3/WAV | P1：Selected range、Multitrack、artifact manifest |

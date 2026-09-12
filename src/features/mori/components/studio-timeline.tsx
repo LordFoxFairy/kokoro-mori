@@ -27,6 +27,7 @@ type StudioTimelineProps = {
   compositionTracks?: CompositionTrack[]
   selectedClipRef?: string
   selectedTrackRef?: string
+  onSelectTrack?: (trackRef: string) => void
   onSelectClip?: (clipRef: string, trackRef: string) => void
   onEditClip?: (operation: "move" | "trim" | "split" | "crop" | "fade", clipRef: string, trackRef: string) => void
   onDuplicateClip?: (clipRef: string, trackRef: string) => void
@@ -34,7 +35,7 @@ type StudioTimelineProps = {
   onInsertClip?: (sourceRef: string, trackRef: string) => void
 }
 
-export function StudioTimeline({ candidate, sections, selection, positionSeconds, playing, disabled, onSeek, onSelect, compositionTracks = [], selectedClipRef, selectedTrackRef, onSelectClip, onEditClip, onDuplicateClip, insertSources, onInsertClip }: StudioTimelineProps) {
+export function StudioTimeline({ candidate, sections, selection, positionSeconds, playing, disabled, onSeek, onSelect, compositionTracks = [], selectedClipRef, selectedTrackRef, onSelectTrack, onSelectClip, onEditClip, onDuplicateClip, insertSources, onInsertClip }: StudioTimelineProps) {
   const sectionHintId = useId()
   const durationMs = Math.max(minimumStudioTimelineSelectionMs, Math.round(candidate.durationSeconds * 1_000))
   const positionMs = Math.max(0, Math.min(durationMs, Math.round(positionSeconds * 1_000)))
@@ -89,7 +90,7 @@ export function StudioTimeline({ candidate, sections, selection, positionSeconds
         />
       </div>
 
-      {compositionTracks.length > 0 ? <CompositionLane tracks={compositionTracks} durationMs={durationMs} disabled={disabled} selectedClipRef={selectedClipRef} selectedTrackRef={selectedTrackRef} onSelectClip={onSelectClip} onEditClip={onEditClip} onDuplicateClip={onDuplicateClip} insertSources={insertSources} onInsertClip={onInsertClip} /> : null}
+      {compositionTracks.length > 0 ? <CompositionLane tracks={compositionTracks} durationMs={durationMs} disabled={disabled} selectedClipRef={selectedClipRef} selectedTrackRef={selectedTrackRef} onSelectTrack={onSelectTrack} onSelectClip={onSelectClip} onEditClip={onEditClip} onDuplicateClip={onDuplicateClip} insertSources={insertSources} onInsertClip={onInsertClip} /> : null}
 
       <div className={styles.segmentRail}>
         <div

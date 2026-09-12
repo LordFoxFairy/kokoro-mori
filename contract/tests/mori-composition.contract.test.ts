@@ -12,5 +12,7 @@ describe("Mori composition contract", () => {
       const schema = contract.components.schemas[schemaName] as { required?: string[] }
       expect(schema.required).toContain("track_ref")
     }
+    expect(contract.components.schemas.CompositionTrack).toEqual(expect.objectContaining({ required: expect.arrayContaining(["track_ref", "kind", "name", "clips"]) }))
+    expect(contract.components.schemas.ApiCompositionRevision).toEqual(expect.objectContaining({ required: expect.arrayContaining(["data", "meta"]) }))
   })
 })

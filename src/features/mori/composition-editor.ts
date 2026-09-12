@@ -35,7 +35,10 @@ export function compositionTrackRefForEdit(composition: Composition, edit: Compo
     if (!composition.tracks.some((track) => track.trackRef === edit.trackRef)) throw new Error("composition_track_not_found")
     return edit.trackRef
   }
-  if (edit.operation === "insert") return composition.tracks[0]?.trackRef ?? ""
+  if (edit.operation === "insert") {
+    if (composition.tracks.length !== 1) throw new Error("composition_track_required")
+    return composition.tracks[0]?.trackRef ?? ""
+  }
   const matches = composition.tracks.filter((track) => track.clips.some((clip) => clip.clipRef === edit.clipRef))
   if (matches.length !== 1) throw new Error(matches.length === 0 ? "composition_clip_not_found" : "composition_clip_ambiguous")
   return matches[0]?.trackRef ?? ""

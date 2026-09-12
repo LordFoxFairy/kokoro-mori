@@ -21,4 +21,10 @@ describe("composition editor", () => {
   it("rejects commands that target a missing track", () => {
     expect(() => applyCompositionEdit(createCompositionHistory({ tracks: [initial] }), { operation: "move", trackRef: "track_missing", clipRef: "clip_1", startMs: 2_000 })).toThrow("composition_track_not_found")
   })
+
+  it("requires an explicit track for inserts in a multi-track composition", () => {
+    const second = { ...initial, trackRef: "track_2", name: "Instrumental" }
+    const clip = { clipRef: "clip_2", sourceRef: "asset_2", startMs: 0, durationMs: 5_000, offsetMs: 0 }
+    expect(() => applyCompositionEdit(createCompositionHistory({ tracks: [initial, second] }), { operation: "insert", clip })).toThrow("composition_track_required")
+  })
 })

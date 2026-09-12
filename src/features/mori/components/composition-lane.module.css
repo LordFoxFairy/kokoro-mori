@@ -22,7 +22,10 @@
 .actions button:hover, .actions button:focus-visible { color:var(--mori-primary); border-color:rgba(109,92,231,.35); }
 .tracks { display:grid; gap:6px; }
 .track { display:grid; grid-template-columns:78px minmax(0,1fr); align-items:center; gap:8px; min-height:28px; }
-.trackName { overflow:hidden; color:var(--mori-muted); font-size:10px; text-overflow:ellipsis; white-space:nowrap; }
+.trackName { overflow:hidden; padding:0; border:0; color:var(--mori-muted); background:transparent; font:inherit; font-size:10px; font-weight:650; text-align:left; text-overflow:ellipsis; white-space:nowrap; cursor:pointer; }
+.track[data-active="true"] .trackName { color:var(--mori-primary-deep); }
+.trackName:hover:not(:disabled), .trackName:focus-visible { color:var(--mori-primary); }
+.trackName:disabled { cursor:progress; opacity:.58; }
 .clipRail { position:relative; height:26px; border-radius:7px; background:rgba(231,227,247,.54); }
 .clip { position:absolute; top:2px; bottom:2px; min-width:10px; overflow:hidden; padding:0 7px; border:1px solid rgba(109,92,231,.18); border-radius:6px; color:var(--mori-primary); background:linear-gradient(100deg,rgba(109,92,231,.22),rgba(232,166,129,.28)); font:700 9px inherit; text-align:left; white-space:nowrap; cursor:pointer; }
 .clip[data-selected="true"] { border-color:var(--mori-primary); box-shadow:0 0 0 2px rgba(109,92,231,.14); }

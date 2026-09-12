@@ -723,9 +723,17 @@ export type MoriCreativeSourceUploadReceipt = Pick<MoriCreativeSourceUpload, "up
 
 export type MoriExportStatus = "queued" | "processing" | "succeeded" | "failed"
 
-export type MoriCompositionCommand = Record<string, string | number>
+export type MoriCompositionCommand =
+  | { type: "move_clip"; track_ref: MoriRef; clip_ref: MoriRef; start_ms: number }
+  | { type: "trim_clip"; track_ref: MoriRef; clip_ref: MoriRef; duration_ms: number }
+  | { type: "crop_clip"; track_ref: MoriRef; clip_ref: MoriRef; start_offset_ms: number; end_offset_ms: number }
+  | { type: "insert_clip"; track_ref: MoriRef; clip_ref: MoriRef; source_ref: MoriRef; start_ms: number; duration_ms: number; offset_ms: number }
+  | { type: "split_clip"; track_ref: MoriRef; clip_ref: MoriRef; at_ms: number }
+  | { type: "set_fades"; track_ref: MoriRef; clip_ref: MoriRef; fade_in_ms: number; fade_out_ms: number }
 export type MoriCompositionRevisionInput = { expected_revision: number; commands: MoriCompositionCommand[] }
-export type MoriCompositionRevision = { version_ref: MoriRef; revision: number; tracks: unknown[] }
+export type MoriCompositionClip = { clip_ref: MoriRef; source_ref: MoriRef; start_ms: number; duration_ms: number; offset_ms: number; fade_in_ms?: number; fade_out_ms?: number }
+export type MoriCompositionTrack = { track_ref: MoriRef; kind: "vocals" | "instrumental" | "other"; name: string; clips: MoriCompositionClip[] }
+export type MoriCompositionRevision = { version_ref: MoriRef; revision: number; tracks: MoriCompositionTrack[] }
 
 export type MoriExportFormat = "mp3" | "wav"
 
@@ -789,6 +797,7 @@ export type MoriApi = {
   unpublishRelease: (releaseRef: MoriRef, idempotencyKey: string) => Promise<ApiSuccess<MoriRelease>>
   createMixRevision: (versionRef: MoriRef, input: MixRevisionInput, idempotencyKey: string) => Promise<ApiSuccess<MoriMixRevision>>
   getMixRevision: (mixRevisionRef: MoriRef) => Promise<ApiSuccess<MoriMixRevision>>
+  getCompositionRevision: (versionRef: MoriRef) => Promise<ApiSuccess<MoriCompositionRevision>>
   getGeneration: (generationRef: MoriRef) => Promise<ApiSuccess<GenerationSnapshot>>
   getGenerationEvents: (generationRef: MoriRef, lastEventId?: string | null, signal?: AbortSignal) => Promise<MoriGenerationEvent[]>
   listCandidates: (projectRef: MoriRef, options?: MoriCandidateListOptions) => Promise<ApiSuccess<MoriCandidatePage>>

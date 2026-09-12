@@ -540,6 +540,12 @@ export const previewMoriApi: MoriApi = {
       meta: { request_id: `preview-composition-request-${idempotencyKey}` },
     }
   },
+  async getCompositionRevision(versionRef) {
+    return {
+      data: { version_ref: versionRef, revision: 1, tracks: [] },
+      meta: { request_id: `preview-composition-load-request-${versionRef}` },
+    }
+  },
 }
 
 function previewProjectWorkspace(projectRef: MoriRef): MoriProjectWorkspaceProjection {

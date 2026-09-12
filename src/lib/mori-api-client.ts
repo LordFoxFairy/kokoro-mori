@@ -15,6 +15,9 @@ import {
   type MoriCreativeSourceUploadInput,
   type MoriExportInput,
   type MoriCompositionRevisionInput,
+  type MoriCompositionClip,
+  type MoriCompositionRevision,
+  type MoriCompositionTrack,
   type PublishReleaseInput,
   type MoriLyricsRevisionEvent,
   type MoriStemSeparationEvent,
@@ -484,6 +487,11 @@ export function createMoriApiClient(options: MoriApiClientOptions = {}): MoriApi
       const payload = await readJson(response)
       return parseSuccessResponse(response, payload, parseMoriExportSnapshot)
     },
+    async getCompositionRevision(versionRef: MoriRef) {
+      const response = await fetchImpl(`${apiBasePath}/versions/${encodeURIComponent(versionRef)}/composition`)
+      const payload = await readJson(response)
+      return parseSuccessResponse(response, payload, parseCompositionRevision)
+    },
     async createCompositionRevision(versionRef: MoriRef, input: MoriCompositionRevisionInput, idempotencyKey: string) {
       const response = await fetchImpl(`${apiBasePath}/versions/${encodeURIComponent(versionRef)}/composition`, { method: "PUT", headers: createMutationHeaders(idempotencyKey), body: JSON.stringify(input) })
       const payload = await readJson(response)
@@ -492,11 +500,30 @@ export function createMoriApiClient(options: MoriApiClientOptions = {}): MoriApi
   }
 }
 
-function parseCompositionRevision(value: unknown) {
+function parseCompositionRevision(value: unknown): MoriCompositionRevision {
   if (typeof value !== "object" || value === null) throw new Error("composition_response_invalid")
   const candidate = value as { version_ref?: unknown; revision?: unknown; tracks?: unknown }
-  if (typeof candidate.version_ref !== "string" || typeof candidate.revision !== "number" || !Number.isSafeInteger(candidate.revision) || candidate.revision < 1 || !Array.isArray(candidate.tracks)) throw new Error("composition_response_invalid")
-  return { version_ref: candidate.version_ref, revision: candidate.revision, tracks: candidate.tracks }
+  if (typeof candidate.version_ref !== "string" || candidate.version_ref.trim() === "" || typeof candidate.revision !== "number" || !Number.isSafeInteger(candidate.revision) || candidate.revision < 1 || !Array.isArray(candidate.tracks)) throw new Error("composition_response_invalid")
+  const tracks = candidate.tracks.map(parseCompositionTrack)
+  if (new Set(tracks.map((track) => track.track_ref)).size !== tracks.length) throw new Error("composition_response_invalid")
+  return { version_ref: candidate.version_ref, revision: candidate.revision, tracks }
+}
+
+function parseCompositionTrack(value: unknown): MoriCompositionTrack {
+  if (typeof value !== "object" || value === null) throw new Error("composition_response_invalid")
+  const candidate = value as Partial<MoriCompositionTrack>
+  if (typeof candidate.track_ref !== "string" || candidate.track_ref.trim() === "" || (candidate.kind !== "vocals" && candidate.kind !== "instrumental" && candidate.kind !== "other") || typeof candidate.name !== "string" || candidate.name.trim() === "" || !Array.isArray(candidate.clips)) throw new Error("composition_response_invalid")
+  const clips = candidate.clips.map(parseCompositionClip)
+  if (new Set(clips.map((clip) => clip.clip_ref)).size !== clips.length) throw new Error("composition_response_invalid")
+  return { track_ref: candidate.track_ref, kind: candidate.kind, name: candidate.name, clips }
+}
+
+function parseCompositionClip(value: unknown): MoriCompositionClip {
+  if (typeof value !== "object" || value === null) throw new Error("composition_response_invalid")
+  const candidate = value as Partial<MoriCompositionClip>
+  const { clip_ref: clipRef, source_ref: sourceRef, start_ms: startMs, duration_ms: durationMs, offset_ms: offsetMs, fade_in_ms: fadeInMs, fade_out_ms: fadeOutMs } = candidate
+  if (typeof clipRef !== "string" || clipRef.trim() === "" || typeof sourceRef !== "string" || sourceRef.trim() === "" || ![startMs, durationMs, offsetMs].every((number) => typeof number === "number" && Number.isSafeInteger(number)) || typeof startMs !== "number" || typeof durationMs !== "number" || typeof offsetMs !== "number" || startMs < 0 || durationMs < 1 || offsetMs < 0 || (fadeInMs !== undefined && (typeof fadeInMs !== "number" || !Number.isSafeInteger(fadeInMs) || fadeInMs < 0)) || (fadeOutMs !== undefined && (typeof fadeOutMs !== "number" || !Number.isSafeInteger(fadeOutMs) || fadeOutMs < 0))) throw new Error("composition_response_invalid")
+  return { clip_ref: clipRef, source_ref: sourceRef, start_ms: startMs, duration_ms: durationMs, offset_ms: offsetMs, ...(fadeInMs === undefined ? {} : { fade_in_ms: fadeInMs }), ...(fadeOutMs === undefined ? {} : { fade_out_ms: fadeOutMs }) }
 }
 
 async function fetchGenerationSnapshot(fetchImpl: typeof fetch, url: string): Promise<Response> {

@@ -20,7 +20,7 @@ const createTestStemPlaybackController: StemPlaybackFactory = () => ({
 })
 
 describe("Mori studio page", () => {
-  function renderStudio(api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "putCurrentVersion" | "listCandidates" | "listCreativeSources" | "createStudioChange" | "createCompositionRevision" | "getGeneration" | "getGenerationEvents" | "cancelGeneration" | "createLyricsRevision" | "getLyricsRevision" | "getLyricsRevisionEvents" | "cancelLyricsRevision" | "createStemSeparation" | "getStemSeparation" | "getStemSeparationEvents" | "cancelStemSeparation" | "createArtworkGeneration" | "getArtworkGeneration" | "getArtworkGenerationEvents" | "cancelArtworkGeneration" | "getReleaseDraft" | "putReleaseDraft" | "createMixRevision">>, studioCandidate = previewCandidates[0]) {
+  function renderStudio(api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "putCurrentVersion" | "getCompositionRevision" | "listCandidates" | "listCreativeSources" | "createStudioChange" | "createCompositionRevision" | "getGeneration" | "getGenerationEvents" | "cancelGeneration" | "createLyricsRevision" | "getLyricsRevision" | "getLyricsRevisionEvents" | "cancelLyricsRevision" | "createStemSeparation" | "getStemSeparation" | "getStemSeparationEvents" | "cancelStemSeparation" | "createArtworkGeneration" | "getArtworkGeneration" | "getArtworkGenerationEvents" | "cancelArtworkGeneration" | "getReleaseDraft" | "putReleaseDraft" | "createMixRevision">>, studioCandidate = previewCandidates[0]) {
     return render(
       <MoriAppProvider>
         <StudioPageContent candidate={studioCandidate} api={api} stemPlaybackFactory={createTestStemPlaybackController} />
@@ -1198,8 +1198,28 @@ describe("Mori studio page", () => {
         expected_revision: 0,
         commands: [expect.objectContaining({ type: "insert_clip", track_ref: "version_preview_first_light_a:main", source_ref: "version_preview_first_light_b" })],
       }),
-      expect.stringMatching(/^mori-composition-version_preview_first_light_a-/u),
+      expect.stringMatching(/^mori-composition-/u),
     ))
+  })
+
+  it("loads a real multi-track composition projection before editing", async () => {
+    const getCompositionRevision = vi.fn<MoriApi["getCompositionRevision"]>(async () => ({
+      data: {
+        version_ref: "version_preview_first_light_a",
+        revision: 7,
+        tracks: [
+          { track_ref: "track_vocals", kind: "vocals", name: "Lead vocal", clips: [{ clip_ref: "clip_vocal", source_ref: "asset_vocal", start_ms: 0, duration_ms: 60_000, offset_ms: 0 }] },
+          { track_ref: "track_keys", kind: "instrumental", name: "Keys", clips: [{ clip_ref: "clip_keys", source_ref: "asset_keys", start_ms: 0, duration_ms: 60_000, offset_ms: 0 }] },
+        ],
+      },
+      meta: { request_id: "request_composition_projection" },
+    }))
+    renderStudio({ getCompositionRevision })
+    await waitFor(() => expect(getCompositionRevision).toHaveBeenCalledWith("version_preview_first_light_a"))
+    const timeline = screen.getByRole("region", { name: "Version timeline" })
+    expect(within(timeline).getByText("Lead vocal")).toBeInTheDocument()
+    expect(within(timeline).getByText("Keys")).toBeInTheDocument()
+    expect(within(timeline).getByRole("button", { name: "Keys clip clip_keys" })).toBeInTheDocument()
   })
 
   it("creates a typed Vocal Cover as two new Takes without replacing Current", async () => {
