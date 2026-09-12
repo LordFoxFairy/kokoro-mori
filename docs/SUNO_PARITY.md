@@ -57,7 +57,7 @@ Prompt / Upload
 
 | Suno 用户任务 | Mori 当前状态 | 当前证据 | 对齐决策 |
 |---|---|---|---|
-| Simple / Custom 生成歌词歌或纯音乐 | 浏览器已对齐 | `create-canvas.tsx`、`mori-workspace.tsx`；Smart 额外提供可编辑 Song Plan | 保留 Mori 的 Approach / Output 分离，不复制 Suno 表单层级 |
+| Simple / Custom 生成歌词歌或纯音乐 | 浏览器已对齐 | `create-canvas.tsx`、`mori-workspace.tsx`；Smart 额外提供可编辑 Song Plan，Song idea 提供 `Surprise me` 起点 | 保留 Mori 的 Approach / Output 分离，不复制 Suno 表单层级；随机起点只辅助输入，不改变生成契约 |
 | 每次生成多个候选并持续跟踪 | 浏览器已对齐 | Generation Queue、snapshot、SSE、cancel、retry、Candidate projection | Runtime 以真实 provider integration smoke 为完成门槛 |
 | 上传 / 录制音频并跨项目复用 | 部分对齐 | 文件类型与大小校验、live Upload Session 状态、稳定幂等重试与持续 processing 轮询；preview fixture 仍使用固定 preview asset ref | **P0：正式 Creative Source Ingest** |
 | Cover / Extend / Replace / Remaster | 浏览器已对齐 | Arrangement Change Plan、typed snapshot、Take Lanes、Finish Remaster | 补真实执行验收；Mori 的 Balanced / Bold 是自有语言，不冒充 Suno 原词 |

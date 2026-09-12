@@ -256,11 +256,62 @@
   box-shadow: var(--mori-shadow-md);
 }
 
+.promptHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 15px 20px 0;
+}
+
+.promptLabel {
+  color: var(--mori-muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.promptSurpriseButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 9px;
+  border: 1px solid rgba(109, 92, 231, 0.16);
+  border-radius: 9px;
+  color: var(--mori-primary-deep);
+  font-size: 11px;
+  font-weight: 750;
+  background: rgba(247, 245, 255, 0.82);
+  transition: border-color var(--mori-motion-fast) ease, background var(--mori-motion-fast) ease, transform var(--mori-motion-fast) ease;
+}
+
+.promptSurpriseButton:hover {
+  border-color: rgba(109, 92, 231, 0.32);
+  background: linear-gradient(120deg, rgba(237, 233, 254, 0.96), rgba(255, 240, 232, 0.72));
+  transform: translateY(-1px);
+}
+
+.promptSurpriseButton:active {
+  transform: translateY(0);
+}
+
+.promptSurpriseButton:disabled {
+  cursor: wait;
+  opacity: 0.52;
+}
+
+.promptSurpriseButton:focus-visible {
+  outline: 3px solid rgba(109, 92, 231, 0.22);
+  outline-offset: 2px;
+}
+
 .promptArea {
   display: block;
   width: 100%;
   min-height: 130px;
-  padding: 19px 20px;
+  padding: 13px 20px 19px;
   border: 0;
   outline: 0;
   resize: vertical;

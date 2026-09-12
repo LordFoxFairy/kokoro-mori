@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent, type KeyboardEvent } from "react"
-import { AlertCircle, AudioLines, Check, Disc3, LoaderCircle, Mic2, RotateCcw, SlidersHorizontal, Sparkles } from "lucide-react"
+import { AlertCircle, AudioLines, Check, Dice3, Disc3, LoaderCircle, Mic2, RotateCcw, SlidersHorizontal, Sparkles } from "lucide-react"
 import type { CreationMode, LyricsMode, SongPlan } from "../domain"
 import type { MoriApi, MoriCreativeSourceUpload, MoriCreativeSourceUploadStatus } from "@/lib/mori-api"
 import { t } from "../copy"
@@ -20,6 +20,14 @@ import styles from "../mori-workspace.module.css"
 
 const DEFAULT_PROMPT = "A warm, late-night track for the drive home, slowly opening into sunrise."
 const creativeUploadRecoveryKey = "mori-creative-upload-recovery-v1"
+const PROMPT_STARTERS = [
+  "A bright indie-pop chorus for a friend who is starting over.",
+  "A slow-burning cinematic ballad with close harmonies and strings.",
+  "A playful electro-funk track for a rooftop party at golden hour.",
+  "A tender acoustic song about finding your way back home.",
+  "A nocturnal R&B groove with soft drums, warm bass, and honest lyrics.",
+  "An airy dream-pop song that feels like sunlight through a train window.",
+] as const
 
 export type CreationDraft = {
   prompt: string
@@ -105,6 +113,7 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
   const [planSubmitAttempted, setPlanSubmitAttempted] = useState(false)
   const [planDirtySinceSave, setPlanDirtySinceSave] = useState(false)
   const [planValidationError, setPlanValidationError] = useState<string | null>(null)
+  const [promptAnnouncement, setPromptAnnouncement] = useState("")
 
   const lyricsMode = lyricsModeOverride ?? preferences.lyricsMode
   const durationSeconds = durationOverride ?? preferences.durationSeconds
@@ -239,6 +248,16 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
     setPlanSubmitAttempted(false)
     setPlanDirtySinceSave(false)
     setPlanValidationError(null)
+  }
+
+  function surpriseMe() {
+    if (planBusy) return
+    const choices = PROMPT_STARTERS.filter((starter) => starter !== prompt)
+    const nextPrompt = choices[Math.floor(Math.random() * choices.length)] ?? PROMPT_STARTERS[0]
+    setPrompt(nextPrompt)
+    clearPlanPreview()
+    setPromptAnnouncement(`New song idea: ${nextPrompt}`)
+    window.requestAnimationFrame(() => promptRef.current?.focus())
   }
 
   function openPlanEditor() {
@@ -484,6 +503,12 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
 
       <form className={styles.composerCard} id="mori-create-panel" role="tabpanel" aria-labelledby={mode === "smart" ? "mori-mode-smart" : "mori-mode-custom"} onSubmit={submit}>
         {planPreview === null ? <>
+          <div className={styles.promptHeader}>
+            <span className={styles.promptLabel}>Song idea</span>
+            <button className={styles.promptSurpriseButton} type="button" disabled={planBusy} onClick={surpriseMe}>
+              <Dice3 size={13} /> Surprise me
+            </button>
+          </div>
           <textarea
             ref={promptRef}
             className={styles.promptArea}
@@ -493,6 +518,7 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
             aria-label="Song idea"
             maxLength={1000}
           />
+          <span className={styles.srOnly} role="status" aria-live="polite">{promptAnnouncement}</span>
 
           {mode === "custom" ? (
             <div className={styles.customFields}>

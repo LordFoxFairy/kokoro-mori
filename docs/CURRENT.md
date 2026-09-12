@@ -57,6 +57,7 @@
   `expected_revision` 和幂等键保存 Current Song Plan；只有返回的 `song_plan_ref`、revision 与全部字段精确确认后才提交
   Generation。Song Plan 短暂失败保留原 command / 幂等键；Generation 响应不确定或队列 receipt 暂时无法落盘时也保留精确 request / 幂等键，生成重试复用已确认的 Song Plan，避免重复执行；live Project
   不回退到旧的 Song Plan POST。唯一例外是本地 preview Project：它仍可用 legacy POST 演示流程，并明确标为 preview。
+- Create 的 Song idea 提供 `Surprise me` 随机起点：只替换未提交 prompt、清理旧 Song Plan preview，并把焦点返回输入框；不改变 Smart / Custom、歌词输出选择或生成 payload。
 - P0.3 Release / Share / Publish 已接入浏览器链路：Release Draft 保存确认后，`public` 才开放 Publish，`link_only` 才开放
   Create share link；两者各自支持状态、幂等重试、刷新恢复、复制与撤销。Library Version projection 可显示 Published /
   Publishing / Unpublished 与公开链接；真实 Release、Share 权限和 URL 仍由 BFF / Storage owner 提供 integration smoke。
@@ -104,6 +105,8 @@ pnpm exec vitest run --maxWorkers=1 src/features/mori/studio-page.test.tsx
                                   passed: 1 file / 87 tests
 pnpm exec vitest run --maxWorkers=1 <affected composition tests>
                                   passed: 4 files / 22 tests
+pnpm exec vitest run --maxWorkers=1 src/features/mori/mori-workspace.test.tsx
+                                  passed: 1 file / 68 tests
 pnpm test                         79 files / 581 passed; one order-sensitive failure was observed in the saved Mix Revision test
 pnpm build                        passed
 ```

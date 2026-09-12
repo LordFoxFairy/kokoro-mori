@@ -142,6 +142,17 @@ describe("Mori workspace", () => {
     expect(screen.queryByRole("heading", { name: "Song plan" })).not.toBeInTheDocument()
   })
 
+  it("offers a random starting idea without changing the creation mode", () => {
+    renderWorkspace()
+    const idea = screen.getByRole("textbox", { name: "Song idea" })
+    fireEvent.change(idea, { target: { value: "My own starting idea" } })
+    fireEvent.click(screen.getByRole("button", { name: "Surprise me" }))
+
+    expect(idea).not.toHaveValue("My own starting idea")
+    expect((idea as HTMLTextAreaElement).value).toMatch(/\.$/u)
+    expect(screen.getByRole("tab", { name: /smart/i })).toHaveAttribute("aria-selected", "true")
+  })
+
   it("restores the active generation reference after a refresh without restoring prompt contents", async () => {
     localStorage.setItem("mori-generation-queue-v1", JSON.stringify({
       version: 1,
