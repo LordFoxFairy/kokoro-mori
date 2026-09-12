@@ -175,7 +175,7 @@ Workspace nav    内容随项目上下文变化                     跨页面保
   该 Project 下创建 Song Plan / Generation；地址与 Rail 上下文同步替换为新 `project_ref`，刷新、设置返回和失败重试
   都不会重新落回示例 Project 或重复创建 Project。尚未运行过生成时，Queue 显示真实空态，不展示示例 Plan/Candidate。
 - 已落地第一版：Prompt 下方的 Creative sources 把 Audio、Voice、Inspiration 作为 Smart / Custom 共用的
-  上下文输入，而不是继续堆全局 AI 工具。Audio 使用真实文件选择与格式/大小校验；Voice 使用稳定 preview
+  上下文输入，而不是继续堆全局 AI 工具。Audio 使用真实文件选择或浏览器录音，并执行格式/大小校验；Voice 使用稳定 preview
   `voice_ref`，与本次生成的人类可读 Vocal direction 分开；Inspiration 只提供少量策展起点并写入仍可编辑的
   Style。Library 的 All 视图已经将作品与素材分区，Sources 视图按 Audio / Voices / Inspiration 渐进筛选；
   `Use in Create` 会通过经校验的 provider-neutral source ref 恢复同一个创作上下文。当前素材为确定性 preview，

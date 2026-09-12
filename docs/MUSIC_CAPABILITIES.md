@@ -84,11 +84,11 @@ Vocal direction 会从界面和 Generation request 同时移除。由 Library �
 已经选中却被偏好设置静默忽略。
 
 Create 不再把 Reference、Voice、Style 拆成互相重复的快捷按钮或全局工具页。主 Prompt 下方固定一层
-轻量 **Creative sources**，Smart 与 Custom 共用同一份选择：
+轻量 **Creative sources**，Smart 与 Custom 共用同一份选择；Audio 支持选择文件或直接录制参考：
 
 | 来源 | 用户意图 | 当前行为 | 契约事实 |
 |---|---|---|---|
-| Audio | “参考这段节奏、旋律或质感” | 选择、校验、替换或移除本地音频 | `source_ref` 保留可复用来源身份；解析出的 `asset_ref` 进入 `reference_asset_refs[]` |
+| Audio | “参考这段节奏、旋律或质感” | 选择、录制、校验、替换或移除音频参考 | `source_ref` 保留可复用来源身份；解析出的 `asset_ref` 进入 `reference_asset_refs[]` |
 | Voice | “沿用这个可复用的演唱身份” | 从渐进式 Voice profiles 中选择 | 稳定资产引用进入 `voice_ref` |
 | Inspiration | “从一个完整创作方向开始” | 选择少量策展预设并把结果写入可编辑 Style | 当前进入 provider-neutral `style` 文本 |
 
