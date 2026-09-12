@@ -1,6 +1,6 @@
 # Creative Source Ingest 设计
 
-> 状态：浏览器契约设计阶段（2026-09-05）  
+> 状态：浏览器 foundation 已实现，Storage integration 待接入（2026-09-12）
 > Owner：`kokoro-mori` 负责页面状态与同源 API 映射；真实 Asset / Upload 事实由 Storage owner 保存。
 
 ## 目标
@@ -87,6 +87,10 @@ idle → creating → uploading → processing → ready
 3. `ready` 才写入 `reference_asset_refs[]`；取消、失败或过期会清除该引用并保留 Retry。
 4. Generation command 只接收 ready 的 opaque `asset_ref`；上传重试与生成重试是两套幂等边界。
 5. Library 只展示 ready Source；Source deep link 进入 Create 后先读取 owner detail，再恢复选择状态。
+
+当前浏览器实现还额外保证：live Project 缺少上传 seam 时不会把 `asset_preview_reference` 写入生成请求；上传命令在首个
+请求前固定 `Idempotency-Key`，同一文件的失败重试复用已有 `upload_ref`（若已创建）或同一创建幂等键；processing 状态由
+页面保持有界退避轮询，直到 owner 返回 ready / failed / cancelled / expired。上传进行中 Generate 保持禁用。
 
 ## 暂不开放
 

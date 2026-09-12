@@ -12,6 +12,7 @@
 - Studio Arrangement / Lyrics / Stems / Finish 工作面，以及 Add part、Replace section、Extend、Transform（Restyle / Cover）的一层 AI 意图模型。
 - Studio Arrangement 已挂载 `Composition { tracks[] }` 文档与 Clip 编辑面板；每个 Move / Trim / Split / Crop / Fade / Insert 命令都显式绑定 `track_ref`，通过本地 history、revisioned command、保存状态和冲突 rebase 串成浏览器侧闭环，并支持从候选 Take 将 Clip 插入已选时间范围、从已选 Clip Duplicate 到时间线末端；时间线用 Take / Source 标题替代内部 ref，选中 Clip 会显示轨道、来源与时间范围，且明确不改变 AI Scope；同源 GET/PUT Composition seam 已接入，加载到的多轨 owner projection 会成为本地基线，加载失败或空投影才保留一条 Main track fallback。
 - Studio Arrangement 的当前 AI edit range 现在可以直接通过全局 Player 试听：Preview selection 复用同一个媒体通道，从选区起点开始并在终点自动暂停、回到起点；Player 显示 Range audition 上下文，普通整曲试听、Take 切换和 AI Scope 仍保持独立，不创建第二个播放器。
+- Creative Source ingest 的浏览器 foundation 已收紧：live Project 不再把缺失的上传能力伪装成 preview asset；上传 command 在首个请求前生成稳定幂等键，同一文件失败重试会复用会话，并持续以退避轮询 processing 状态直到 owner 返回终态；Generate 在上传进行中保持禁用。
 - Studio AI 的 Reference audio 与 Cover voice 不再绑定单一 preview 常量；Studio 默认通过 `/library/sources` 读取 live Creative Source projection，组件接受同一 catalog，加载失败时才使用明确的 preview fallback。
 - Composition API seam 已固定 Version ref、幂等键与 revisioned input 的分离，并已提供同源 GET/PUT revision client；保存成功后会校验并采用 owner 返回的轨道投影，真实 BFF owner persistence 与 recovery smoke 仍待接入。
 - Studio Change 在 Review Plan 后才生成；请求 builder 统一 snake_case、范围、保护项、references 和输出数量，并保持当前 Version 非破坏式。
@@ -92,7 +93,7 @@
 ```text
 pnpm lint                         passed
 pnpm typecheck                    passed
-pnpm test                         passed: 77 files / 559 tests
+pnpm test                         passed: 77 files / 561 tests
 pnpm build                        passed
 ```
 
@@ -100,6 +101,7 @@ pnpm build                        passed
 
 - 当前页面仍保留 preview fallback；真实 provider 适配、持久化 Project/Version/Source 和公开 Product API
   由后续 owner contract 驱动，不在组件内伪造。Library 的浏览器契约已先固定投影形状，供后续同源 owner 接入。
+- Creative Source ingest 仍未达到 P0.2 完成门槛：跨刷新恢复只保留 `upload_ref` 元数据，真实字节上传、Storage 扫描、过期/取消 integration smoke 与 Playwright 全流程仍待 owner 接入和验证。
 - Durable Project Memory 仍处于 browser foundation：Studio Lyrics 与 Create Smart Song Plan 已通过 owner-confirmed
   Workspace command 接入浏览器 seam；BFF 仍尚未提供 projection 组合、revision 存储、幂等 receipt 与 recovery smoke。
   因此不把 preview Workspace 计为跨刷新、跨设备的 Runtime 恢复证据。
