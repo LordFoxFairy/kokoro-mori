@@ -120,4 +120,22 @@ describe("Library version pagination", () => {
     await waitFor(() => expect(screen.getByText("Recovered direction")).toBeInTheDocument())
     expect(listLibrary).toHaveBeenNthCalledWith(3, { kind: "all", limit: 20, cursor: "cursor_retry" })
   })
+
+  it("encodes opaque project and version refs in Studio links", async () => {
+    const item = libraryItem({
+      project_ref: "project library / 01",
+      version_ref: "version?take=2#wide",
+      title: "Opaque ref direction",
+    })
+    const listLibrary = vi.fn<MoriApi["listLibrary"]>().mockResolvedValue(libraryPage([item], null))
+
+    renderLibrary(listLibrary)
+
+    await waitFor(() => expect(screen.getByText("Opaque ref direction")).toBeInTheDocument())
+    fireEvent.click(screen.getByRole("button", { name: "Versions" }))
+    expect(screen.getByRole("link", { name: "Open Opaque ref direction studio" })).toHaveAttribute(
+      "href",
+      "/projects/project%20library%20%2F%2001/studio/version%3Ftake%3D2%23wide",
+    )
+  })
 })

@@ -289,7 +289,7 @@ export function LibraryPageContent({ api }: LibraryPageContentProps = {}) {
               </header>
               <div className={styles.libraryList}>
                 {visibleVersions.map((item) => {
-                  const versionPath = `/projects/${item.projectRef}/studio/${item.ref}`
+                  const versionPath = `/projects/${encodeURIComponent(item.projectRef)}/studio/${encodeURIComponent(item.ref)}`
                   const active = playerCandidate?.versionRef === item.ref
                   return (
                     <article className={styles.libraryRow} key={item.ref}>

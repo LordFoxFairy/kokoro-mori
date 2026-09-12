@@ -4084,4 +4084,48 @@ describe("Mori studio page", () => {
     expect(screen.getByRole("link", { name: "Project" })).toHaveAttribute("href", "/projects/project_live_2")
     expect(screen.getByRole("link", { name: "Back to projects" })).toHaveAttribute("href", "/projects/project_live_2")
   })
+
+  it("encodes the Project link when an opaque Project ref contains URL delimiters", async () => {
+    const specialCandidate = {
+      ...previewCandidates[0],
+      projectRef: "project live / 01",
+      versionRef: "version?take=2#wide",
+    }
+    const listCandidates = vi.fn<MoriApi["listCandidates"]>(async () => ({
+      data: {
+        candidates: [{
+          candidate_ref: "candidate_opaque_studio",
+          generation_ref: "generation_opaque_studio",
+          version_ref: specialCandidate.versionRef,
+          project_ref: specialCandidate.projectRef,
+          title: specialCandidate.title,
+          duration_seconds: specialCandidate.durationSeconds,
+          audio_asset_ref: specialCandidate.audioAssetRef ?? "asset_opaque_studio",
+          waveform_asset_ref: "waveform_opaque_studio",
+          style_tags: ["quiet", "close vocal"],
+          created_at: "2026-09-04T12:00:00.000Z",
+        }],
+        next_cursor: null,
+      },
+      meta: { request_id: "request_opaque_studio" },
+    }))
+
+    render(
+      <MoriAppProvider>
+        <StudioPageContent
+          candidate={previewCandidates[0]}
+          projectRef={specialCandidate.projectRef}
+          versionRef={specialCandidate.versionRef}
+          api={{ listCandidates }}
+          stemPlaybackFactory={createTestStemPlaybackController}
+        />
+      </MoriAppProvider>,
+    )
+
+    await waitFor(() => expect(screen.getByRole("heading", { name: specialCandidate.title })).toBeInTheDocument())
+    expect(screen.getByRole("link", { name: "Project" })).toHaveAttribute(
+      "href",
+      "/projects/project%20live%20%2F%2001",
+    )
+  })
 })

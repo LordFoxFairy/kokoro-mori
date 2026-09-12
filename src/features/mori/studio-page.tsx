@@ -1644,7 +1644,7 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
   return (
     <MoriStudioShell projectRef={activeProjectRef}>
       <header className={styles.studioHeader}>
-          <div className={styles.studioHeaderLeft}><Link className={styles.studioBack} href={`/projects/${activeProjectRef}`}><ArrowLeft size={15} /> {activeProjectTitle}</Link><span>/</span><strong>Studio</strong></div>
+          <div className={styles.studioHeaderLeft}><Link className={styles.studioBack} href={`/projects/${encodeURIComponent(activeProjectRef)}`}><ArrowLeft size={15} /> {activeProjectTitle}</Link><span>/</span><strong>Studio</strong></div>
           <div className={styles.studioHeaderActions}>
             <StudioWorkspaceSaveStatus run={projectWorkspaceMemory.saveRun} hasCurrentDraftChanges={activePendingLyricsDraft !== null} onRetry={projectWorkspaceMemory.retrySave} onRefresh={projectWorkspaceMemory.refresh} />
             <button
@@ -1716,7 +1716,7 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
         </> : <>
           <h1>This Version is not available</h1>
           <p>Mori could not find a playable Version for this project. Return to the project and choose another direction.</p>
-          <Link className={styles.generateButton} href={`/projects/${activeProjectRef}`}><ArrowLeft size={14} /> Back to projects</Link>
+          <Link className={styles.generateButton} href={`/projects/${encodeURIComponent(activeProjectRef)}`}><ArrowLeft size={14} /> Back to projects</Link>
         </>}
       </section> : <div className={styles.studioLayout}>
         <aside className={styles.studioSidebar} aria-label="Studio tools">
