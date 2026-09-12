@@ -2240,6 +2240,27 @@ describe("Mori workspace", () => {
     expect(screen.getByRole("button", { name: "Play First Light · Afterglow" })).toHaveTextContent("Preview")
   })
 
+  it("keeps global listening intent while a new direction enters the queue", async () => {
+    const createGeneration = vi.fn<MoriApi["createGeneration"]>(async () => ({
+      data: { generation_ref: "generation_background_listen", status: "queued" as const },
+      meta: { request_id: "request_background_listen" },
+    }))
+
+    render(
+      <MoriAppProvider mediaFactory={silentMediaFactory}>
+        <ActivePlayerHarness />
+        <MoriWorkspace projectRef={previewProject.projectRef} api={createWorkspaceApi({ createGeneration })} />
+      </MoriAppProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Start outside listen" }))
+    fireEvent.click(screen.getByRole("tab", { name: /custom/i }))
+    fireEvent.submit(screen.getByRole("textbox", { name: "Song idea" }).closest("form") as HTMLFormElement)
+
+    await waitFor(() => expect(createGeneration).toHaveBeenCalledOnce())
+    expect(screen.getByLabelText("global listening state")).toHaveTextContent("version_outside_listen|playing|40|version_outside_listen")
+  })
+
   it("keeps global listening intent unchanged when a Direction becomes Current", async () => {
     const putCurrentVersion = vi.fn<MoriApi["putCurrentVersion"]>(async () => ({
       data: {

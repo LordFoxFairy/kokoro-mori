@@ -624,7 +624,6 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, generationRef: 
       setGenerationStatus("preparing")
       setGenerationLabel(draft.prompt.trim() ? "Preparing your next direction" : "Preparing a new direction")
       setProgress(8)
-      setPlaying(false)
       setQueueOpen(true)
       generationUiStarted = true
       const generationInput = createGenerationRequest({
@@ -749,7 +748,6 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, generationRef: 
     setGenerationRef,
     setGenerationStatus,
     setHasGeneration,
-    setPlaying,
     setProgress,
     setQueueOpen,
     setSongPlan,
