@@ -33,7 +33,7 @@ type StudioTimelineProps = {
   onSelectTrack?: (trackRef: string) => void
   onSelectClip?: (clipRef: string, trackRef: string) => void
   onEditClip?: (operation: "move" | "trim" | "split" | "crop" | "fade", clipRef: string, trackRef: string) => void
-  onMoveClip?: (clipRef: string, trackRef: string, startMs: number) => void
+  onMoveClip?: (clipRef: string, sourceTrackRef: string, startMs: number, targetTrackRef?: string) => void
   onDeleteClip?: (clipRef: string, trackRef: string) => void
   onDuplicateClip?: (clipRef: string, trackRef: string) => void
   insertSources?: readonly CompositionInsertSource[]

@@ -739,7 +739,7 @@ export type MoriCreativeSourceUploadReceipt = Pick<MoriCreativeSourceUpload, "up
 export type MoriExportStatus = "queued" | "processing" | "succeeded" | "failed"
 
 export type MoriCompositionCommand =
-  | { type: "move_clip"; track_ref: MoriRef; clip_ref: MoriRef; start_ms: number }
+  | { type: "move_clip"; track_ref: MoriRef; target_track_ref?: MoriRef; clip_ref: MoriRef; start_ms: number }
   | { type: "trim_clip"; track_ref: MoriRef; clip_ref: MoriRef; duration_ms: number }
   | { type: "crop_clip"; track_ref: MoriRef; clip_ref: MoriRef; start_offset_ms: number; end_offset_ms: number }
   | { type: "insert_clip"; track_ref: MoriRef; clip_ref: MoriRef; source_ref: MoriRef; start_ms: number; duration_ms: number; offset_ms: number }

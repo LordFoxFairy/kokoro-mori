@@ -1,9 +1,9 @@
-import { cropClip, insertClip, moveClip, removeClip, setClipFades, splitClip, trimClip, type Composition, type CompositionTrack } from "./composition"
+import { cropClip, insertClip, moveClip, moveClipToTrack, removeClip, setClipFades, splitClip, trimClip, type Composition, type CompositionTrack } from "./composition"
 import type { CompositionHistory } from "./composition-history"
 import { commitComposition } from "./composition-history"
 
 export type CompositionEdit =
-  | { operation: "move"; trackRef?: string; clipRef: string; startMs: number }
+  | { operation: "move"; trackRef?: string; targetTrackRef?: string; clipRef: string; startMs: number }
   | { operation: "trim"; trackRef?: string; clipRef: string; durationMs: number }
   | { operation: "crop"; trackRef?: string; clipRef: string; startOffsetMs: number; endOffsetMs: number }
   | { operation: "insert"; trackRef?: string; clip: CompositionTrack["clips"][number] }
@@ -13,6 +13,9 @@ export type CompositionEdit =
 
 export function applyCompositionEdit(history: CompositionHistory, edit: CompositionEdit): CompositionHistory {
   const trackRef = compositionTrackRefForEdit(history.present, edit)
+  if (edit.operation === "move" && edit.targetTrackRef !== undefined && edit.targetTrackRef !== trackRef) {
+    return commitComposition(history, moveClipToTrack(history.present, trackRef, edit.targetTrackRef, edit.clipRef, edit.startMs))
+  }
   if (edit.operation === "insert" && history.present.tracks.some((track) => track.clips.some((clip) => clip.clipRef === edit.clip.clipRef))) throw new Error("composition_clip_exists")
   const tracks = history.present.tracks.map((track) => {
     if (track.trackRef !== trackRef) return track

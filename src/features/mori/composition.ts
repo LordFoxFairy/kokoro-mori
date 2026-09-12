@@ -22,6 +22,26 @@ export function moveClip(track: CompositionTrack, clipRef: MoriRef, startMs: num
   return { ...track, clips: track.clips.map((item) => item.clipRef === clipRef ? { ...item, startMs } : item).sort((left, right) => left.startMs - right.startMs) }
 }
 
+export function moveClipToTrack(composition: Composition, sourceTrackRef: MoriRef, targetTrackRef: MoriRef, clipRef: MoriRef, startMs: number): Composition {
+  if (sourceTrackRef === targetTrackRef) {
+    return { tracks: composition.tracks.map((track) => track.trackRef === sourceTrackRef ? moveClip(track, clipRef, startMs) : track) }
+  }
+  const sourceTrack = composition.tracks.find((track) => track.trackRef === sourceTrackRef)
+  const targetTrack = composition.tracks.find((track) => track.trackRef === targetTrackRef)
+  if (sourceTrack === undefined || targetTrack === undefined) throw new Error("composition_track_not_found")
+  const clip = sourceTrack.clips.find((item) => item.clipRef === clipRef)
+  if (clip === undefined) throw new Error("composition_clip_not_found")
+  if (targetTrack.clips.some((item) => item.clipRef === clipRef)) throw new Error("composition_clip_exists")
+  const movedClip = { ...clip, startMs }
+  return {
+    tracks: composition.tracks.map((track) => track.trackRef === sourceTrackRef
+      ? { ...track, clips: track.clips.filter((item) => item.clipRef !== clipRef) }
+      : track.trackRef === targetTrackRef
+        ? insertClip(track, movedClip)
+        : track),
+  }
+}
+
 export function trimClip(track: CompositionTrack, clipRef: MoriRef, durationMs: number): CompositionTrack {
   if (!Number.isSafeInteger(durationMs) || durationMs < 1) throw new Error("composition_duration_invalid")
   const clip = track.clips.find((item) => item.clipRef === clipRef)

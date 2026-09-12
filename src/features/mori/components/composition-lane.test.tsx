@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react"
+import { act, fireEvent, render, screen } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 import { CompositionLane } from "./composition-lane"
 
@@ -88,10 +88,41 @@ describe("CompositionLane", () => {
       getData: vi.fn(() => JSON.stringify({ clipRef: "clip_1", trackRef: "track_1" })),
     }
     fireEvent.dragStart(clip, { dataTransfer })
-    const drop = new Event("drop", { bubbles: true })
-    Object.defineProperties(drop, { clientX: { value: 50 }, dataTransfer: { value: dataTransfer } })
-    rail.dispatchEvent(drop)
+    act(() => {
+      const drop = new Event("drop", { bubbles: true })
+      Object.defineProperties(drop, { clientX: { value: 50 }, dataTransfer: { value: dataTransfer } })
+      rail.dispatchEvent(drop)
+    })
     expect(dataTransfer.setData).toHaveBeenCalledWith("application/x-mori-composition-clip", JSON.stringify({ clipRef: "clip_1", trackRef: "track_1" }))
     expect(onMove).toHaveBeenCalledWith("clip_1", "track_1", 4_000)
+  })
+
+  it("moves a clip to another track when dropped on its timeline", () => {
+    const onMove = vi.fn()
+    const { container } = render(<CompositionLane durationMs={10_000} onMoveClip={onMove} tracks={[
+      { trackRef: "track_1", kind: "vocals", name: "Lead", clips: [{ clipRef: "clip_1", sourceRef: "asset_1", startMs: 0, durationMs: 4_000, offsetMs: 0 }] },
+      { trackRef: "track_2", kind: "instrumental", name: "Keys", clips: [] },
+    ]} />)
+    const rails = Array.from(container.querySelectorAll('[class*="clipRail"]'))
+    const sourceClip = screen.getByRole("button", { name: "Lead clip Audio clip · 0:04" })
+    const targetRail = rails[1]
+    if (!(targetRail instanceof HTMLElement)) throw new Error("Expected a destination clip rail")
+    Object.defineProperty(targetRail, "getBoundingClientRect", { value: () => ({ left: 10, width: 100 }) })
+    const dataTransfer = {
+      effectAllowed: "",
+      dropEffect: "none",
+      setData: vi.fn(),
+      getData: vi.fn(() => JSON.stringify({ clipRef: "clip_1", trackRef: "track_1" })),
+    }
+    fireEvent.dragStart(sourceClip, { dataTransfer })
+    fireEvent.dragOver(targetRail, { dataTransfer })
+    expect(targetRail).toHaveAttribute("data-drop-target", "true")
+    act(() => {
+      const drop = new Event("drop", { bubbles: true })
+      Object.defineProperties(drop, { clientX: { value: 50 }, dataTransfer: { value: dataTransfer } })
+      targetRail.dispatchEvent(drop)
+    })
+    expect(onMove).toHaveBeenCalledWith("clip_1", "track_1", 4_000, "track_2")
+    expect(targetRail).toHaveAttribute("data-drop-target", "false")
   })
 })

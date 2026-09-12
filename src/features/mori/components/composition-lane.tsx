@@ -7,10 +7,11 @@ import styles from "./composition-lane.module.css"
 
 export type CompositionInsertSource = { sourceRef: string; label: string; description: string; durationMs: number }
 
-type CompositionLaneProps = { tracks: CompositionTrack[]; durationMs: number; disabled?: boolean; selectedClipRef?: string; selectedTrackRef?: string; onSelectTrack?: (trackRef: string) => void; onSelectClip?: (clipRef: string, trackRef: string) => void; onEditClip?: (operation: "move" | "trim" | "split" | "crop" | "fade", clipRef: string, trackRef: string) => void; onMoveClip?: (clipRef: string, trackRef: string, startMs: number) => void; onDeleteClip?: (clipRef: string, trackRef: string) => void; onDuplicateClip?: (clipRef: string, trackRef: string) => void; insertSources?: readonly CompositionInsertSource[]; onInsertClip?: (sourceRef: string, trackRef: string) => void; resolveClipLabel?: (clip: CompositionClip, track: CompositionTrack) => string }
+type CompositionLaneProps = { tracks: CompositionTrack[]; durationMs: number; disabled?: boolean; selectedClipRef?: string; selectedTrackRef?: string; onSelectTrack?: (trackRef: string) => void; onSelectClip?: (clipRef: string, trackRef: string) => void; onEditClip?: (operation: "move" | "trim" | "split" | "crop" | "fade", clipRef: string, trackRef: string) => void; onMoveClip?: (clipRef: string, sourceTrackRef: string, startMs: number, targetTrackRef?: string) => void; onDeleteClip?: (clipRef: string, trackRef: string) => void; onDuplicateClip?: (clipRef: string, trackRef: string) => void; insertSources?: readonly CompositionInsertSource[]; onInsertClip?: (sourceRef: string, trackRef: string) => void; resolveClipLabel?: (clip: CompositionClip, track: CompositionTrack) => string }
 
 export function CompositionLane({ tracks, durationMs, disabled = false, selectedClipRef, selectedTrackRef, onSelectTrack, onSelectClip, onEditClip, onMoveClip, onDeleteClip, onDuplicateClip, insertSources = [], onInsertClip, resolveClipLabel }: CompositionLaneProps) {
   const [insertOpen, setInsertOpen] = useState(false)
+  const [dropTrackRef, setDropTrackRef] = useState<string | null>(null)
   const selectedTrack = selectedTrackRef === undefined ? undefined : tracks.find((track) => track.trackRef === selectedTrackRef)
   const activeTrack = selectedTrack?.clips.some((clip) => clip.clipRef === selectedClipRef) ? selectedTrack : undefined
   const insertTrack = selectedTrack
@@ -42,27 +43,33 @@ export function CompositionLane({ tracks, durationMs, disabled = false, selected
         <button className={styles.trackName} type="button" aria-pressed={selectedTrackRef === track.trackRef} aria-label={`Select ${track.name} track`} disabled={disabled} onClick={() => onSelectTrack?.(track.trackRef)}>{track.name}</button>
         <div
           className={styles.clipRail}
-          aria-label={`Drop clips on ${track.name} timeline`}
+          data-drop-target={dropTrackRef === track.trackRef ? "true" : "false"}
+          aria-label={`Move clips to ${track.name} timeline`}
           onDragOver={(event) => {
             if (disabled || onMoveClip === undefined) return
             const payload = readClipDragPayload(event.dataTransfer)
-            if (payload?.trackRef !== track.trackRef) return
+            const sourceTrack = payload === null ? undefined : tracks.find((item) => item.trackRef === payload.trackRef)
+            if (payload === null || sourceTrack?.clips.some((clip) => clip.clipRef === payload.clipRef) !== true) return
             event.preventDefault()
             event.dataTransfer.dropEffect = "move"
+            setDropTrackRef(track.trackRef)
           }}
           onDrop={(event) => {
             if (disabled || onMoveClip === undefined) return
             const payload = readClipDragPayload(event.dataTransfer)
-            if (payload === null || payload.trackRef !== track.trackRef) return
-            const clip = track.clips.find((item) => item.clipRef === payload.clipRef)
+            const sourceTrack = payload === null ? undefined : tracks.find((item) => item.trackRef === payload.trackRef)
+            const clip = sourceTrack?.clips.find((item) => item.clipRef === payload?.clipRef)
             const width = event.currentTarget.getBoundingClientRect().width
-            if (clip === undefined || width <= 0) return
+            if (sourceTrack === undefined || clip === undefined || width <= 0) return
             event.preventDefault()
             const rawStartMs = ((event.clientX - event.currentTarget.getBoundingClientRect().left) / width) * durationMs
             const maxStartMs = Math.max(0, durationMs - clip.durationMs)
             const startMs = Math.min(maxStartMs, Math.max(0, Math.round(rawStartMs / 100) * 100))
-            onMoveClip(payload.clipRef, track.trackRef, startMs)
+            if (track.trackRef === sourceTrack.trackRef) onMoveClip(clip.clipRef, sourceTrack.trackRef, startMs)
+            else onMoveClip(clip.clipRef, sourceTrack.trackRef, startMs, track.trackRef)
+            setDropTrackRef(null)
           }}
+          onDragLeave={() => setDropTrackRef(null)}
         >
           {track.clips.map((clip) => {
             const label = resolveClipLabel?.(clip, track).trim() || defaultClipLabel(clip)
@@ -82,6 +89,7 @@ export function CompositionLane({ tracks, durationMs, disabled = false, selected
                 event.dataTransfer.effectAllowed = "move"
                 event.dataTransfer.setData(clipDragMimeType, JSON.stringify({ clipRef: clip.clipRef, trackRef: track.trackRef }))
               }}
+              onDragEnd={() => setDropTrackRef(null)}
               onKeyDown={(event) => {
                 if ((event.key === "Delete" || event.key === "Backspace") && onDeleteClip !== undefined && !disabled) {
                   event.preventDefault()

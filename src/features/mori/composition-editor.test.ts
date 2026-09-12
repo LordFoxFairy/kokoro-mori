@@ -18,6 +18,13 @@ describe("composition editor", () => {
     expect(next.present.tracks[1]?.clips[0]?.startMs).toBe(2_000)
   })
 
+  it("moves a clip to an explicit destination track", () => {
+    const second = { ...initial, trackRef: "track_2", name: "Instrumental", clips: [] }
+    const next = applyCompositionEdit(createCompositionHistory({ tracks: [initial, second] }), { operation: "move", trackRef: "track_1", targetTrackRef: "track_2", clipRef: "clip_1", startMs: 2_000 })
+    expect(next.present.tracks[0]?.clips).toEqual([])
+    expect(next.present.tracks[1]?.clips[0]).toMatchObject({ clipRef: "clip_1", startMs: 2_000 })
+  })
+
   it("rejects commands that target a missing track", () => {
     expect(() => applyCompositionEdit(createCompositionHistory({ tracks: [initial] }), { operation: "move", trackRef: "track_missing", clipRef: "clip_1", startMs: 2_000 })).toThrow("composition_track_not_found")
   })

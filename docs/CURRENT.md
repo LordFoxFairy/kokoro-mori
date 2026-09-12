@@ -10,7 +10,7 @@
 - 全局 Player 的 `Up next` 在桌面作为上下文面板，在移动端作为 modal sheet；支持 Escape、焦点恢复和移动端焦点循环。
 - Create → Generation Queue → Candidate → Project / Version → Studio → Take Lanes → Current Version 的本地闭环。
 - Studio Arrangement / Lyrics / Stems / Finish 工作面，以及 Add part、Replace section、Extend、Transform（Restyle / Cover）的一层 AI 意图模型。
-- Studio Arrangement 已挂载 `Composition { tracks[] }` 文档与 Clip 编辑面板；每个 Move / Trim / Split / Crop / Fade / Insert / Remove 命令都显式绑定 `track_ref`，通过本地 history、revisioned command、保存状态和冲突 rebase 串成浏览器侧闭环，并支持从候选 Take 将 Clip 插入已选时间范围、从已选 Clip Duplicate 到时间线末端、直接在同轨时间线拖动 Clip 调整位置，以及通过 Remove 或 Delete / Backspace 快捷键移除选中 Clip；Arrangement 顶部公开 Undo / Redo 与 ⌘/Ctrl+Z、⌘/Ctrl+Y 快捷键，保证删除和其他编辑可立即回退；时间线用 Take / Source 标题替代内部 ref，选中 Clip 会显示轨道、来源与时间范围，且明确不改变 AI Scope；同源 GET/PUT Composition seam 已接入，加载到的多轨 owner projection 会成为本地基线，组合 revision 独立于 Workspace Open Version revision；空 projection 与暂时不可用会明确标注，才保留 Main track fallback。
+- Studio Arrangement 已挂载 `Composition { tracks[] }` 文档与 Clip 编辑面板；每个 Move / Trim / Split / Crop / Fade / Insert / Remove 命令都显式绑定 `track_ref`，通过本地 history、revisioned command、保存状态和冲突 rebase 串成浏览器侧闭环，并支持从候选 Take 将 Clip 插入已选时间范围、从已选 Clip Duplicate 到时间线末端、直接在同轨或跨轨时间线拖动 Clip 调整位置，以及通过 Remove 或 Delete / Backspace 快捷键移除选中 Clip；跨轨移动用可选 `target_track_ref` 显式表达，目标轨悬停有 drop 状态、选中 Clip 会跟随迁移，Move 面板也提供可键盘操作的目标轨选择；Arrangement 顶部公开 Undo / Redo 与 ⌘/Ctrl+Z、⌘/Ctrl+Y 快捷键，保证删除和其他编辑可立即回退；时间线用 Take / Source 标题替代内部 ref，选中 Clip 会显示轨道、来源与时间范围，且明确不改变 AI Scope；同源 GET/PUT Composition seam 已接入，加载到的多轨 owner projection 会成为本地基线，组合 revision 独立于 Workspace Open Version revision；空 projection 与暂时不可用会明确标注，才保留 Main track fallback。
 - Studio Arrangement 已增加 Asset Dock v1：在当前时间线上下文内搜索并按 All / Audio / Voices / Inspiration 筛选 Creative Source；Library Audio 可复用同一个全局 Player 试听，插入动作明确绑定当前 Track、选区和 `source_ref` 并生成新的 Composition revision；Voice / Inspiration 显示为 Arrangement 中的 reference-only，避免把不可插入来源伪装成音频素材。
 - Studio Export 已支持 Full song 或当前 Arrangement 选区：默认仍导出整曲，用户在同一窗口选择 `Selected range` 后，选区的 `start_ms` / `end_ms` 会随 Version 或 Mix Revision 一起进入异步 render request 与 snapshot；多轨 / MIDI 仍未暴露。
 - Studio Arrangement 的当前 AI edit range 现在可以直接通过全局 Player 试听：Preview selection 复用同一个媒体通道，从选区起点开始并在终点自动暂停、回到起点；Player 显示 Range audition 上下文，普通整曲试听、Take 切换和 AI Scope 仍保持独立，不创建第二个播放器。
@@ -18,7 +18,7 @@
 - Creative Source ingest 的浏览器 foundation 已收紧：live Project 不再把缺失的上传能力伪装成 preview asset；上传 command 在首个请求前生成稳定幂等键，同一文件失败重试会复用会话，并持续以退避轮询 processing 状态直到 owner 返回终态；Generate 在上传进行中保持禁用。
 - Creative Source 的身份边界已固定：Audio Source 同时携带 Library/deep-link 使用的 `source_ref` 与可播放、可生成的 `asset_ref`；Create / Studio 只把后者写入 `reference_asset_refs[]`，Voice / Inspiration 不携带 Asset 身份。
 - Studio AI 的 Reference audio 与 Cover voice 不再绑定单一 preview 常量；Studio 默认通过 `/library/sources` 读取 live Creative Source projection，组件接受同一 catalog，加载失败时才使用明确的 preview fallback。
-- Composition API seam 已固定 Version ref、幂等键与 revisioned input 的分离，并已提供同源 GET/PUT revision client；保存成功后会校验并采用 owner 返回的轨道投影，真实 BFF owner persistence 与 recovery smoke 仍待接入。
+- Composition API seam 已固定 Version ref、幂等键与 revisioned input 的分离；`move_clip` 缺省为同轨移动，跨轨时携带可选 `target_track_ref`，并已提供同源 GET/PUT revision client；保存成功后会校验并采用 owner 返回的轨道投影，真实 BFF owner persistence 与 recovery smoke 仍待接入。
 - Studio 重新打开 live Project / Version 时，会从 Workspace 的 `latest_mix_revision` 摘要读取完整 Mix Revision，并严格校验 ref、Version、revision、名称和轨道数后再提供给 Finish / Export；加载中、缺失 reader 或校验失败会明确显示 unavailable，保留 Open Version 路径，不静默使用旧混音。
 - Studio Change 在 Review Plan 后才生成；请求 builder 统一 snake_case、范围、保护项、references 和输出数量，并保持当前 Version 非破坏式。
 - Mori API 与公共 Web package 保持本仓边界；未修改 Root、BFF 或 sibling service。
@@ -104,10 +104,10 @@ pnpm typecheck                    passed
 pnpm exec vitest run --maxWorkers=1 src/features/mori/studio-page.test.tsx
                                   passed: 1 file / 87 tests
 pnpm exec vitest run --maxWorkers=1 <affected composition tests>
-                                  passed: 4 files / 22 tests
+                                  passed: 6 files / 36 tests
 pnpm exec vitest run --maxWorkers=1 src/features/mori/mori-workspace.test.tsx
                                   passed: 1 file / 68 tests
-pnpm test                         79 files / 581 passed; one order-sensitive failure was observed in the saved Mix Revision test
+pnpm test                         passed: 79 files / 590 tests
 pnpm build                        passed
 ```
 

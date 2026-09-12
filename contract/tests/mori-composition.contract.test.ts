@@ -15,4 +15,10 @@ describe("Mori composition contract", () => {
     expect(contract.components.schemas.CompositionTrack).toEqual(expect.objectContaining({ required: expect.arrayContaining(["track_ref", "kind", "name", "clips"]) }))
     expect(contract.components.schemas.ApiCompositionRevision).toEqual(expect.objectContaining({ required: expect.arrayContaining(["data", "meta"]) }))
   })
+
+  it("makes cross-track moves explicit while preserving in-track moves", () => {
+    const moveClip = contract.components.schemas.MoveClip as { required?: string[]; properties?: Record<string, unknown> }
+    expect(moveClip.required).not.toContain("target_track_ref")
+    expect(moveClip.properties?.target_track_ref).toEqual(expect.objectContaining({ type: "string", minLength: 1 }))
+  })
 })

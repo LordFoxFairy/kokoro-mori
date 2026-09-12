@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { cropClip, insertClip, moveClip, removeClip, setClipFades, splitClip, trimClip, type CompositionTrack } from "./composition"
+import { cropClip, insertClip, moveClip, moveClipToTrack, removeClip, setClipFades, splitClip, trimClip, type CompositionTrack } from "./composition"
 
 const track: CompositionTrack = { trackRef: "track_1", kind: "vocals", name: "Lead", clips: [{ clipRef: "clip_1", sourceRef: "asset_1", startMs: 0, durationMs: 10000, offsetMs: 0 }] }
 
@@ -7,6 +7,12 @@ describe("composition primitives", () => {
   it("moves and sorts a clip without changing source identity", () => {
     const moved = moveClip(track, "clip_1", 2500)
     expect(moved.clips[0]).toMatchObject({ clipRef: "clip_1", sourceRef: "asset_1", startMs: 2500 })
+  })
+  it("moves a clip between tracks without changing its source or offset", () => {
+    const target: CompositionTrack = { trackRef: "track_2", kind: "instrumental", name: "Keys", clips: [] }
+    const moved = moveClipToTrack({ tracks: [track, target] }, "track_1", "track_2", "clip_1", 2500)
+    expect(moved.tracks[0]?.clips).toEqual([])
+    expect(moved.tracks[1]?.clips[0]).toMatchObject({ clipRef: "clip_1", sourceRef: "asset_1", startMs: 2500, offsetMs: 0 })
   })
   it("trims within the existing clip duration", () => expect(trimClip(track, "clip_1", 4000).clips[0]?.durationMs).toBe(4000))
   it("splits into two placements with continuous offsets", () => {

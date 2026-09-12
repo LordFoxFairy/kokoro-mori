@@ -14,6 +14,16 @@ describe("composition revision command", () => {
   })
   it("keeps missing clip errors explicit", () => expect(() => compositionClipAt([], "clip_1")).toThrow("composition_clip_not_found"))
   it("serializes an editor edit without provider fields", () => expect(compositionEditToCommand({ operation: "move", trackRef: "track_1", clipRef: "clip_1", startMs: 1500 })).toEqual({ type: "move_clip", track_ref: "track_1", clip_ref: "clip_1", start_ms: 1500 }))
+  it("serializes and replays a cross-track move", () => {
+    const command = compositionEditToCommand({ operation: "move", trackRef: "track_1", targetTrackRef: "track_2", clipRef: "clip_1", startMs: 2_000 })
+    expect(command).toEqual({ type: "move_clip", track_ref: "track_1", target_track_ref: "track_2", clip_ref: "clip_1", start_ms: 2_000 })
+    const composition = replayCompositionCommands({ tracks: [
+      { trackRef: "track_1", kind: "vocals", name: "Lead", clips: [{ clipRef: "clip_1", sourceRef: "asset_1", startMs: 0, durationMs: 10_000, offsetMs: 0 }] },
+      { trackRef: "track_2", kind: "instrumental", name: "Keys", clips: [] },
+    ] }, [command])
+    expect(composition.tracks[0]?.clips).toEqual([])
+    expect(composition.tracks[1]?.clips[0]).toMatchObject({ clipRef: "clip_1", startMs: 2_000 })
+  })
   it("serializes removal and replays it on a refreshed projection", () => {
     const command = compositionEditToCommand({ operation: "remove", trackRef: "track_1", clipRef: "clip_1" })
     expect(command).toEqual({ type: "remove_clip", track_ref: "track_1", clip_ref: "clip_1" })

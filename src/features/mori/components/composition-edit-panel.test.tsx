@@ -28,6 +28,14 @@ describe("CompositionEditPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Apply fade" }))
     expect(onApply).toHaveBeenCalledWith({ operation: "fade", trackRef: "track_1", clipRef: "clip_1", fadeInMs: 250, fadeOutMs: 450 })
   })
+  it("offers an accessible destination track for move edits", () => {
+    const onApply = vi.fn()
+    render(<CompositionEditPanel clipRef="clip_1" trackRef="track_1" trackOptions={[{ trackRef: "track_1", name: "Lead" }, { trackRef: "track_2", name: "Keys" }]} operation="move" onApply={onApply} />)
+    fireEvent.change(screen.getByRole("combobox", { name: "Destination track" }), { target: { value: "track_2" } })
+    fireEvent.change(screen.getByRole("spinbutton"), { target: { value: "4000" } })
+    fireEvent.click(screen.getByRole("button", { name: "Apply move" }))
+    expect(onApply).toHaveBeenCalledWith({ operation: "move", trackRef: "track_1", targetTrackRef: "track_2", clipRef: "clip_1", startMs: 4000 })
+  })
   it("keeps an invalid edit in the panel with actionable feedback", () => {
     const onApply = vi.fn(() => { throw new Error("composition_crop_exceeds_clip") })
     render(<CompositionEditPanel clipRef="clip_1" trackRef="track_1" operation="crop" onApply={onApply} />)

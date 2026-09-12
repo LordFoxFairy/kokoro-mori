@@ -5,7 +5,7 @@ import { applyCompositionEdit } from "./composition-editor"
 import { createCompositionHistory } from "./composition-history"
 
 export type CompositionCommand =
-  | { type: "move_clip"; track_ref: MoriRef; clip_ref: MoriRef; start_ms: number }
+  | { type: "move_clip"; track_ref: MoriRef; target_track_ref?: MoriRef; clip_ref: MoriRef; start_ms: number }
   | { type: "trim_clip"; track_ref: MoriRef; clip_ref: MoriRef; duration_ms: number }
   | { type: "crop_clip"; track_ref: MoriRef; clip_ref: MoriRef; start_offset_ms: number; end_offset_ms: number }
   | { type: "insert_clip"; track_ref: MoriRef; clip_ref: MoriRef; source_ref: MoriRef; start_ms: number; duration_ms: number; offset_ms: number }
@@ -21,7 +21,7 @@ export type CompositionRevisionInput = {
 export function compositionEditToCommand(edit: CompositionEdit, composition?: Composition): CompositionCommand {
   const trackRef = edit.trackRef ?? (composition === undefined ? "" : compositionTrackRefForEdit(composition, edit))
   if (trackRef === "") throw new Error("composition_track_required")
-  if (edit.operation === "move") return { type: "move_clip", track_ref: trackRef, clip_ref: edit.clipRef, start_ms: edit.startMs }
+  if (edit.operation === "move") return { type: "move_clip", track_ref: trackRef, ...(edit.targetTrackRef === undefined ? {} : { target_track_ref: edit.targetTrackRef }), clip_ref: edit.clipRef, start_ms: edit.startMs }
   if (edit.operation === "trim") return { type: "trim_clip", track_ref: trackRef, clip_ref: edit.clipRef, duration_ms: edit.durationMs }
   if (edit.operation === "crop") return { type: "crop_clip", track_ref: trackRef, clip_ref: edit.clipRef, start_offset_ms: edit.startOffsetMs, end_offset_ms: edit.endOffsetMs }
   if (edit.operation === "insert") return { type: "insert_clip", track_ref: trackRef, clip_ref: edit.clip.clipRef, source_ref: edit.clip.sourceRef, start_ms: edit.clip.startMs, duration_ms: edit.clip.durationMs, offset_ms: edit.clip.offsetMs }
@@ -45,7 +45,7 @@ export function compositionClipAt(clips: readonly CompositionClip[], clipRef: Mo
 export function replayCompositionCommands(composition: Composition, commands: readonly CompositionCommand[]): Composition {
   return commands.reduce((current, command) => {
     const edit: CompositionEdit = command.type === "move_clip"
-      ? { operation: "move", trackRef: command.track_ref, clipRef: command.clip_ref, startMs: command.start_ms }
+      ? { operation: "move", trackRef: command.track_ref, ...(command.target_track_ref === undefined ? {} : { targetTrackRef: command.target_track_ref }), clipRef: command.clip_ref, startMs: command.start_ms }
       : command.type === "trim_clip"
         ? { operation: "trim", trackRef: command.track_ref, clipRef: command.clip_ref, durationMs: command.duration_ms }
         : command.type === "crop_clip"
