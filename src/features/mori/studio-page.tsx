@@ -2,7 +2,7 @@
 
 import { AlertCircle, ArrowLeft, ArrowRight, AudioLines, AudioWaveform, Check, Download, FileText, History, Link2, ListMusic, LoaderCircle, Play, Redo2, RotateCcw, Sparkles, Undo2, X } from "lucide-react"
 import Link from "next/link"
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react"
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent } from "react"
 import {
   createLyricsRevisionRequest,
   createStemSeparationRequest,
@@ -45,6 +45,7 @@ import { StudioAssetDock } from "./components/studio-asset-dock"
 import type { CompositionInsertSource } from "./components/composition-lane"
 import { CompositionSaveIndicator } from "./components/composition-save-indicator"
 import { CompositionEditPanel } from "./components/composition-edit-panel"
+import { StudioUnsavedCompositionDialog } from "./components/studio-unsaved-composition-dialog"
 import { StudioUnsavedLyricsDialog } from "./components/studio-unsaved-lyrics-dialog"
 import { StudioVersionHistoryDrawer, StudioVersionHistoryRail } from "./components/studio-version-history"
 import { StudioWorkspaceSaveStatus } from "./components/studio-workspace-save-status"
@@ -53,6 +54,7 @@ import { Waveform } from "./components/waveform"
 import { previewCandidates, previewProject, previewSongPlan } from "./preview-data"
 import type { StudioEntryIntent, StudioEntrySurface } from "./studio-entry"
 import { createCompositionPlacementRef, type Composition, type CompositionClip, type CompositionTrack } from "./composition"
+import type { CompositionSaveState } from "./composition-save-state"
 import { useCompositionEditor } from "./use-composition-editor"
 import { buildStudioTimelineSections, formatStudioTimelineTime, isActiveStudioChangeStatus, studioChangeCommand, type PendingStudioChangeCommand, type StudioChangePlan, type StudioTimelineSection } from "./studio-change"
 import { createStudioLyricsRevisionDraft, defaultStudioLyrics, isActiveLyricsRevisionStatus, studioLyricsScopeLabel, type StudioLyricsPlan } from "./studio-lyrics"
@@ -74,6 +76,8 @@ import {
 import styles from "./mori-workspace.module.css"
 
 type StudioTool = "arrangement" | "lyrics" | "stems"
+type CompositionNavigationTarget = { kind: "tool"; tool: StudioTool } | { kind: "version"; candidate: Candidate } | { kind: "project"; href: string }
+type CompositionSession = { versionRef: string; saveState: CompositionSaveState; persist: () => Promise<void>; discard: () => void; refresh: () => void }
 type StudioLinkCopyStatus = "idle" | "copying" | "copied" | "failed"
 type StudioExportFeedback = "idle" | MoriExportStatus
 type StudioVersionLoadState = "ready" | "loading" | "error"
@@ -266,6 +270,9 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
   const [pendingLyricsDraft, setPendingLyricsDraft] = useState<StudioLyricsDraftState | null>(null)
   const [pendingVersionSelection, setPendingVersionSelection] = useState<Candidate | null>(null)
   const [saveBeforeVersionSwitch, setSaveBeforeVersionSwitch] = useState(false)
+  const [pendingCompositionNavigation, setPendingCompositionNavigation] = useState<CompositionNavigationTarget | null>(null)
+  const [saveBeforeCompositionNavigation, setSaveBeforeCompositionNavigation] = useState(false)
+  const [compositionSaveState, setCompositionSaveState] = useState<CompositionSaveState>("saved")
   const [stemSeparationRun, setStemSeparationRun] = useState<StudioStemSeparationRunState>(idleStemSeparationRun)
   const [trackedStemSeparation, setTrackedStemSeparation] = useState<TrackedStemSeparation | null>(null)
   const activeVersionRef = activeCandidate?.versionRef ?? null
@@ -337,6 +344,7 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
   const linkCopyResetTimerRef = useRef<number | null>(null)
   const linkCopyAttemptRef = useRef(0)
   const studioRecoveryGenerationRef = useRef<string | null>(null)
+  const compositionSessionRef = useRef<CompositionSession | null>(null)
 
   useEffect(() => () => {
     linkCopyAttemptRef.current += 1
@@ -358,6 +366,13 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
       if (locationVersionRef === null || locationVersionRef === activeVersionRefRef.current) return
       const restoredCandidate = studioCandidatesRef.current.find((item) => item.versionRef === locationVersionRef)
       if (restoredCandidate === undefined) return
+      const compositionSession = compositionSessionRef.current
+      if (compositionSession?.versionRef === activeVersionRefRef.current && compositionSession.saveState !== "saved") {
+        window.history.pushState(null, "", canonicalStudioHref(window.location.href, activeProjectRef, activeVersionRefRef.current ?? ""))
+        setPendingCompositionNavigation({ kind: "version", candidate: restoredCandidate })
+        setSaveBeforeCompositionNavigation(false)
+        return
+      }
       setVersionHistoryOpen(false)
       setActiveCandidate(restoredCandidate)
     }
@@ -1364,7 +1379,7 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
     if (nextHref !== window.location.href) window.history.pushState(null, "", nextHref)
   }, [])
 
-  const selectTake = useCallback((take: Candidate) => {
+  const proceedToVersionSelection = useCallback((take: Candidate) => {
     if (take.versionRef === activeVersionRefRef.current) return
     if (activePendingLyricsDraft === null) {
       completeTakeSelection(take)
@@ -1373,6 +1388,65 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
     setPendingVersionSelection(take)
     setSaveBeforeVersionSwitch(projectWorkspaceMemory.saveRun.status === "saving")
   }, [activePendingLyricsDraft, completeTakeSelection, projectWorkspaceMemory.saveRun.status])
+
+  const selectTake = useCallback((take: Candidate) => {
+    if (take.versionRef === activeVersionRefRef.current) return
+    const compositionSession = compositionSessionRef.current
+    if (compositionSession?.versionRef === activeVersionRefRef.current && compositionSession.saveState !== "saved") {
+      setPendingCompositionNavigation({ kind: "version", candidate: take })
+      setSaveBeforeCompositionNavigation(false)
+      return
+    }
+    proceedToVersionSelection(take)
+  }, [proceedToVersionSelection])
+
+  const rememberCompositionSession = useCallback((session: CompositionSession) => {
+    if (session.versionRef !== activeVersionRefRef.current) return
+    compositionSessionRef.current = session
+    setCompositionSaveState((current) => current === session.saveState ? current : session.saveState)
+  }, [])
+
+  const stayOnCompositionNavigation = useCallback(() => {
+    setPendingCompositionNavigation(null)
+    setSaveBeforeCompositionNavigation(false)
+  }, [])
+
+  const discardCompositionAndContinue = useCallback(() => {
+    const pending = pendingCompositionNavigation
+    if (pending === null) return
+    const session = compositionSessionRef.current
+    if (session?.versionRef === activeVersionRefRef.current) session.discard()
+    setPendingCompositionNavigation(null)
+    setSaveBeforeCompositionNavigation(false)
+    if (pending.kind === "tool") setActiveTool(pending.tool)
+    else if (pending.kind === "version") proceedToVersionSelection(pending.candidate)
+    else window.location.assign(pending.href)
+  }, [pendingCompositionNavigation, proceedToVersionSelection])
+
+  const saveCompositionAndContinue = useCallback(() => {
+    const session = compositionSessionRef.current
+    if (pendingCompositionNavigation === null || session?.versionRef !== activeVersionRefRef.current) return
+    setSaveBeforeCompositionNavigation(true)
+    void session.persist()
+  }, [pendingCompositionNavigation])
+
+  const refreshCompositionAndKeepNavigation = useCallback(() => {
+    const session = compositionSessionRef.current
+    if (session?.versionRef === activeVersionRefRef.current) session.refresh()
+    setSaveBeforeCompositionNavigation(false)
+  }, [])
+
+  useEffect(() => {
+    if (!saveBeforeCompositionNavigation || pendingCompositionNavigation === null) return
+    const session = compositionSessionRef.current
+    if (session?.versionRef !== activeVersionRefRef.current || session.saveState !== "saved") return
+    const pending = pendingCompositionNavigation
+    setPendingCompositionNavigation(null)
+    setSaveBeforeCompositionNavigation(false)
+    if (pending.kind === "tool") setActiveTool(pending.tool)
+    else if (pending.kind === "version") proceedToVersionSelection(pending.candidate)
+    else window.location.assign(pending.href)
+  }, [compositionSaveState, pendingCompositionNavigation, proceedToVersionSelection, saveBeforeCompositionNavigation])
 
   const stayOnCurrentVersion = useCallback(() => {
     setPendingVersionSelection(null)
@@ -1865,13 +1939,45 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
   const remasterRun = isStudioRemasterPlan(studioChangeRun.plan)
   const remasterActive = remasterRun && isActiveStudioChangeStatus(studioChangeRun.status)
   const finishActive = remasterActive || releaseWorkflow.active
+  function hasUnsavedComposition() {
+    const session = compositionSessionRef.current
+    return session?.versionRef === activeVersionRefRef.current && session.saveState !== "saved"
+  }
+
+  function openStudioTool(nextTool: StudioTool) {
+    if (nextTool === activeTool) return
+    if (hasUnsavedComposition()) {
+      setPendingCompositionNavigation({ kind: "tool", tool: nextTool })
+      setSaveBeforeCompositionNavigation(false)
+      return
+    }
+    setActiveTool(nextTool)
+  }
+
+  function guardStudioProjectLink(event: ReactMouseEvent<HTMLAnchorElement>) {
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.altKey || event.ctrlKey || event.shiftKey || !hasUnsavedComposition()) return
+    event.preventDefault()
+    setPendingCompositionNavigation({ kind: "project", href: event.currentTarget.href })
+    setSaveBeforeCompositionNavigation(false)
+  }
+
   function navigateStudioTools(event: ReactKeyboardEvent<HTMLButtonElement>, currentTool: StudioTool) {
     const nextTool = studioToolForKey(event.key, currentTool)
     if (nextTool === null) return
     event.preventDefault()
-    setActiveTool(nextTool)
+    openStudioTool(nextTool)
     document.getElementById(`mori-studio-tool-${nextTool}`)?.focus()
   }
+
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!hasUnsavedComposition()) return
+      event.preventDefault()
+      event.returnValue = ""
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload)
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload)
+  })
 
   function focusTakeLanes() {
     const takeLanes = document.getElementById("mori-take-lanes")
@@ -1884,7 +1990,7 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
   return (
     <MoriStudioShell projectRef={activeProjectRef}>
       <header className={styles.studioHeader}>
-          <div className={styles.studioHeaderLeft}><Link className={styles.studioBack} href={`/projects/${encodeURIComponent(activeProjectRef)}`}><ArrowLeft size={15} /> {activeProjectTitle}</Link><span>/</span><strong>Studio</strong></div>
+          <div className={styles.studioHeaderLeft}><Link className={styles.studioBack} href={`/projects/${encodeURIComponent(activeProjectRef)}`} onClick={guardStudioProjectLink}><ArrowLeft size={15} /> {activeProjectTitle}</Link><span>/</span><strong>Studio</strong></div>
           <div className={styles.studioHeaderActions}>
             <StudioWorkspaceSaveStatus run={projectWorkspaceMemory.saveRun} hasCurrentDraftChanges={activePendingLyricsDraft !== null} onRetry={projectWorkspaceMemory.retrySave} onRefresh={projectWorkspaceMemory.refresh} />
             <button
@@ -1963,9 +2069,9 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
           <div className={styles.studioArtwork}><span>01</span></div>
           <div className={styles.studioSidebarCopy}><span>{activeCandidate.versionRef === currentVersionRef ? "Current version" : "Open take"}</span><h1>{activeCandidate.title}</h1><p>{activeCandidate.subtitle}</p></div>
           <div className={styles.studioToolList} role="tablist" aria-label="Studio workspace">
-            <button className={activeTool === "arrangement" ? styles.studioToolActive : ""} id="mori-studio-tool-arrangement" type="button" role="tab" aria-selected={activeTool === "arrangement"} aria-controls="mori-studio-panel-arrangement" tabIndex={activeTool === "arrangement" ? 0 : -1} onKeyDown={(event) => navigateStudioTools(event, "arrangement")} onClick={() => setActiveTool("arrangement")}><AudioLines size={15} /> Arrangement</button>
-            <button className={activeTool === "lyrics" ? styles.studioToolActive : ""} id="mori-studio-tool-lyrics" type="button" role="tab" aria-selected={activeTool === "lyrics"} aria-controls="mori-studio-panel-lyrics" tabIndex={activeTool === "lyrics" ? 0 : -1} onKeyDown={(event) => navigateStudioTools(event, "lyrics")} onClick={() => setActiveTool("lyrics")}><FileText size={15} /> Lyrics</button>
-            <button className={activeTool === "stems" ? styles.studioToolActive : ""} id="mori-studio-tool-stems" type="button" role="tab" aria-selected={activeTool === "stems"} aria-controls="mori-studio-panel-stems" tabIndex={activeTool === "stems" ? 0 : -1} onKeyDown={(event) => navigateStudioTools(event, "stems")} onClick={() => setActiveTool("stems")}><AudioWaveform size={15} /> Voice &amp; stems</button>
+            <button className={activeTool === "arrangement" ? styles.studioToolActive : ""} id="mori-studio-tool-arrangement" type="button" role="tab" aria-selected={activeTool === "arrangement"} aria-controls="mori-studio-panel-arrangement" tabIndex={activeTool === "arrangement" ? 0 : -1} onKeyDown={(event) => navigateStudioTools(event, "arrangement")} onClick={() => openStudioTool("arrangement")}><AudioLines size={15} /> Arrangement</button>
+            <button className={activeTool === "lyrics" ? styles.studioToolActive : ""} id="mori-studio-tool-lyrics" type="button" role="tab" aria-selected={activeTool === "lyrics"} aria-controls="mori-studio-panel-lyrics" tabIndex={activeTool === "lyrics" ? 0 : -1} onKeyDown={(event) => navigateStudioTools(event, "lyrics")} onClick={() => openStudioTool("lyrics")}><FileText size={15} /> Lyrics</button>
+            <button className={activeTool === "stems" ? styles.studioToolActive : ""} id="mori-studio-tool-stems" type="button" role="tab" aria-selected={activeTool === "stems"} aria-controls="mori-studio-panel-stems" tabIndex={activeTool === "stems" ? 0 : -1} onKeyDown={(event) => navigateStudioTools(event, "stems")} onClick={() => openStudioTool("stems")}><AudioWaveform size={15} /> Voice &amp; stems</button>
           </div>
           <div className={styles.studioSidebarBottom}>
             <span>Version state</span>
@@ -1976,16 +2082,16 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
         <section className={styles.studioCanvas} aria-label="Studio editor">
           <div className={styles.studioCanvasTop}><div><span className={styles.eyebrow}><span className={styles.eyebrowDot} />Editing with intention</span><h2>Shape the feeling.</h2></div></div>
           <div id="mori-studio-panel-arrangement" role="tabpanel" aria-labelledby="mori-studio-tool-arrangement" hidden={activeTool !== "arrangement"}>
-            {activeTool === "arrangement" ? <ArrangementEditor key={activeCandidate.versionRef} compositionSave={(api !== undefined && "createCompositionRevision" in api ? api.createCompositionRevision : studioApi.createCompositionRevision) as MoriApi["createCompositionRevision"]} compositionLoad={(api !== undefined && "getCompositionRevision" in api ? api.getCompositionRevision : studioApi.getCompositionRevision) as MoriApi["getCompositionRevision"]} compositionRevision={0} onRefreshWorkspace={projectWorkspaceMemory.refresh} candidate={activeCandidate} creativeSources={resolvedCreativeSources} takes={studioCandidates} structure={hasPreviewProjectContent ? previewSongPlan.structure : wholeSongStructure} lyricsPreview={initialStudioLyrics} currentVersionRef={currentVersionRef} playerVersionRef={playerCandidate?.versionRef ?? ""} playerAuditionScope={playerAuditionScope} playerAuditionLooping={playerAuditionLooping} positionSeconds={playerCandidate?.versionRef === activeCandidate.versionRef ? positionSeconds : 0} playing={playerCandidate?.versionRef === activeCandidate.versionRef && playing} globalPlaying={playing} initialIntent={initialIntent} studioChangeRun={studioChangeRun} currentVersionCommitRun={currentVersionCommitRun} onSeekTimeline={(nextPositionSeconds) => seekTimeline(activeCandidate, nextPositionSeconds)} onPreviewSelection={(selection) => previewSelection(activeCandidate, selection)} onToggleLoopSelection={(selection) => toggleLoopSelection(activeCandidate, selection)} onClearAuditionLoop={clearAuditionLoop} onPreviewClip={previewClip} onGenerateStudioChange={(plan) => { void generateStudioChange(plan) }} onCancelStudioChange={() => { void cancelStudioChange() }} onResetStudioChange={resetStudioChange} onSelectTake={selectTake} onPreviewTake={previewTake} onPromoteTake={(take) => { void commitCurrentVersion(take) }} onRetryCurrentVersion={retryCurrentVersionCommit} onDismissCurrentVersion={dismissCurrentVersionCommit} onOpenLyrics={() => {
-              setActiveTool("lyrics")
+            <ArrangementEditor key={activeCandidate.versionRef} compositionSave={(api !== undefined && "createCompositionRevision" in api ? api.createCompositionRevision : studioApi.createCompositionRevision) as MoriApi["createCompositionRevision"]} compositionLoad={(api !== undefined && "getCompositionRevision" in api ? api.getCompositionRevision : studioApi.getCompositionRevision) as MoriApi["getCompositionRevision"]} compositionRevision={0} onRefreshWorkspace={projectWorkspaceMemory.refresh} candidate={activeCandidate} creativeSources={resolvedCreativeSources} takes={studioCandidates} structure={hasPreviewProjectContent ? previewSongPlan.structure : wholeSongStructure} lyricsPreview={initialStudioLyrics} currentVersionRef={currentVersionRef} playerVersionRef={playerCandidate?.versionRef ?? ""} playerAuditionScope={playerAuditionScope} playerAuditionLooping={playerAuditionLooping} positionSeconds={playerCandidate?.versionRef === activeCandidate.versionRef ? positionSeconds : 0} playing={playerCandidate?.versionRef === activeCandidate.versionRef && playing} globalPlaying={playing} initialIntent={initialIntent} studioChangeRun={studioChangeRun} currentVersionCommitRun={currentVersionCommitRun} onSeekTimeline={(nextPositionSeconds) => seekTimeline(activeCandidate, nextPositionSeconds)} onPreviewSelection={(selection) => previewSelection(activeCandidate, selection)} onToggleLoopSelection={(selection) => toggleLoopSelection(activeCandidate, selection)} onClearAuditionLoop={clearAuditionLoop} onPreviewClip={previewClip} onCompositionSessionChange={rememberCompositionSession} onGenerateStudioChange={(plan) => { void generateStudioChange(plan) }} onCancelStudioChange={() => { void cancelStudioChange() }} onResetStudioChange={resetStudioChange} onSelectTake={selectTake} onPreviewTake={previewTake} onPromoteTake={(take) => { void commitCurrentVersion(take) }} onRetryCurrentVersion={retryCurrentVersionCommit} onDismissCurrentVersion={dismissCurrentVersionCommit} onOpenLyrics={() => {
+              openStudioTool("lyrics")
               window.requestAnimationFrame(() => document.getElementById("mori-studio-tool-lyrics")?.focus())
-            }} previewingSourceRef={playing && playerCandidate?.versionRef?.startsWith("creative-source:") ? playerCandidate.versionRef.slice("creative-source:".length) : null} onPreviewSource={previewCreativeSource} onSelectionChange={rememberExportRange} /> : null}
+            }} previewingSourceRef={playing && playerCandidate?.versionRef?.startsWith("creative-source:") ? playerCandidate.versionRef.slice("creative-source:".length) : null} onPreviewSource={previewCreativeSource} onSelectionChange={rememberExportRange} />
           </div>
           <div id="mori-studio-panel-lyrics" role="tabpanel" aria-labelledby="mori-studio-tool-lyrics" hidden={activeTool !== "lyrics"}>
             {activeTool === "lyrics" ? <StudioLyricsEditor key={studioLyricsKey} versionRef={activeCandidate.versionRef} initialLyrics={initialStudioLyrics} baselineLyrics={durableStudioLyrics} draftRevision={workspaceLyricsRevision} draftSource={lyricsDraftSource} draftSaveRun={projectWorkspaceMemory.saveRun} canSaveDraft={projectWorkspaceMemory.canSaveLyrics} run={lyricsRevisionRun} onGenerate={(plan) => { void generateLyricsRevision(plan) }} onCancel={() => { void cancelLyricsRevision() }} onReset={resetLyricsRevision} onSaveDraft={projectWorkspaceMemory.saveLyrics} onRefreshDraft={projectWorkspaceMemory.refresh} onDraftStateChange={rememberPendingLyricsDraft} /> : null}
           </div>
           <div id="mori-studio-panel-stems" role="tabpanel" aria-labelledby="mori-studio-tool-stems" hidden={activeTool !== "stems"}>
-            {activeTool === "stems" ? <StudioStemsEditor key={activeVersionRef ?? "no-version"} durationSeconds={activeCandidate.durationSeconds} run={stemSeparationRun} layerRun={studioChangeRun} onSeparate={(plan) => { void generateStemSeparation(plan) }} onCancel={() => { void cancelStemSeparation() }} onReset={resetStemSeparation} onSaveMix={saveMixRevision} onGenerateLayer={(plan) => { void generateStudioChange(plan) }} onCancelLayer={() => { void cancelStudioChange() }} onResetLayer={resetStudioChange} onReviewTakes={() => setActiveTool("arrangement")} playbackFactory={stemPlaybackFactory} /> : null}
+            {activeTool === "stems" ? <StudioStemsEditor key={activeVersionRef ?? "no-version"} durationSeconds={activeCandidate.durationSeconds} run={stemSeparationRun} layerRun={studioChangeRun} onSeparate={(plan) => { void generateStemSeparation(plan) }} onCancel={() => { void cancelStemSeparation() }} onReset={resetStemSeparation} onSaveMix={saveMixRevision} onGenerateLayer={(plan) => { void generateStudioChange(plan) }} onCancelLayer={() => { void cancelStudioChange() }} onResetLayer={resetStudioChange} onReviewTakes={() => openStudioTool("arrangement")} playbackFactory={stemPlaybackFactory} /> : null}
           </div>
         </section>
         <StudioVersionHistoryRail
@@ -2016,6 +2122,15 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
         onDiscard={discardLyricsAndOpenVersion}
         onSave={saveLyricsAndOpenVersion}
         onRefresh={projectWorkspaceMemory.refresh}
+      /> : null}
+      {pendingCompositionNavigation !== null && activeCandidate !== null ? <StudioUnsavedCompositionDialog
+        currentVersionTitle={activeCandidate.title}
+        destinationLabel={compositionNavigationLabel(pendingCompositionNavigation)}
+        saveState={compositionSaveState}
+        onStay={stayOnCompositionNavigation}
+        onDiscard={discardCompositionAndContinue}
+        onSave={saveCompositionAndContinue}
+        onRefresh={refreshCompositionAndKeepNavigation}
       /> : null}
       {exportDialogOpen && activeCandidate !== null ? <StudioExportDialog
         versionTitle={activeCandidate.title}
@@ -2063,12 +2178,18 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
         onSubmit={(plan) => { void generateStudioChange(plan) }}
         onCancel={() => { void cancelStudioChange() }}
         onReviewTakes={() => {
-          setActiveTool("arrangement")
+          openStudioTool("arrangement")
           setFinishDialogOpen(false)
         }}
       /> : null}
     </MoriStudioShell>
   )
+}
+
+function compositionNavigationLabel(target: CompositionNavigationTarget): string {
+  if (target.kind === "version") return "opening another Version"
+  if (target.kind === "project") return "returning to the project"
+  return target.tool === "stems" ? "Voice & stems" : target.tool === "lyrics" ? "Lyrics" : "Arrangement"
 }
 
 function resolveInitialCandidate(candidate: Candidate, projectRef?: string, versionRef?: string): Candidate | null {
@@ -2456,6 +2577,7 @@ type ArrangementEditorProps = {
   onToggleLoopSelection: (selection: StudioTimelineSection) => void
   onClearAuditionLoop: () => void
   onPreviewClip: (candidate: Candidate, scope: PlayerAuditionScope) => void
+  onCompositionSessionChange: (session: CompositionSession) => void
   onSelectionChange: (selection: StudioExportRange) => void
   onGenerateStudioChange: (plan: StudioChangePlan) => void
   onCancelStudioChange: () => void
@@ -2489,7 +2611,7 @@ function compositionFromOwnerRevision(revision: MoriCompositionRevision): Compos
   }
 }
 
-function ArrangementEditor({ compositionSave, compositionLoad, compositionRevision, onRefreshWorkspace, candidate, creativeSources, takes, structure, lyricsPreview, currentVersionRef, playerVersionRef, playerAuditionScope, playerAuditionLooping, positionSeconds, playing, globalPlaying, initialIntent, studioChangeRun, currentVersionCommitRun, onSeekTimeline, onPreviewSelection, onToggleLoopSelection, onClearAuditionLoop, onPreviewClip, onSelectionChange, onGenerateStudioChange, onCancelStudioChange, onResetStudioChange, onSelectTake, onPreviewTake, onPromoteTake, onRetryCurrentVersion, onDismissCurrentVersion, onOpenLyrics, previewingSourceRef, onPreviewSource }: ArrangementEditorProps) {
+function ArrangementEditor({ compositionSave, compositionLoad, compositionRevision, onRefreshWorkspace, candidate, creativeSources, takes, structure, lyricsPreview, currentVersionRef, playerVersionRef, playerAuditionScope, playerAuditionLooping, positionSeconds, playing, globalPlaying, initialIntent, studioChangeRun, currentVersionCommitRun, onSeekTimeline, onPreviewSelection, onToggleLoopSelection, onClearAuditionLoop, onPreviewClip, onCompositionSessionChange, onSelectionChange, onGenerateStudioChange, onCancelStudioChange, onResetStudioChange, onSelectTake, onPreviewTake, onPromoteTake, onRetryCurrentVersion, onDismissCurrentVersion, onOpenLyrics, previewingSourceRef, onPreviewSource }: ArrangementEditorProps) {
   const timelineSections = useMemo(() => buildStudioTimelineSections(structure, candidate.durationSeconds), [candidate.durationSeconds, structure])
   const defaultSection = studioChangeRun.plan?.selection
     ?? timelineSections.find((item) => item.label.toLowerCase() === "chorus")
@@ -2528,8 +2650,21 @@ function ArrangementEditor({ compositionSave, compositionLoad, compositionRevisi
   const [selectedTrackRef, setSelectedTrackRef] = useState<string | undefined>(compositionTracks[0]?.trackRef)
   const [editOperation, setEditOperation] = useState<"move" | "trim" | "split" | "crop" | "fade" | null>(null)
   const [compositionLoadState, setCompositionLoadState] = useState<CompositionLoadState>("loading")
+  const [compositionLoadAttempt, setCompositionLoadAttempt] = useState(0)
   const replaceCompositionFromOwner = compositionEditor.replaceFromOwner
   const rebaseCompositionFromOwner = compositionEditor.rebase
+  const refreshComposition = useCallback(() => setCompositionLoadAttempt((attempt) => attempt + 1), [])
+
+  useEffect(() => {
+    onCompositionSessionChange({
+      versionRef: candidate.versionRef,
+      saveState: compositionEditor.saveState,
+      persist: compositionEditor.persist,
+      discard: compositionEditor.discard,
+      refresh: refreshComposition,
+    })
+  }, [candidate.versionRef, compositionEditor.discard, compositionEditor.persist, compositionEditor.saveState, onCompositionSessionChange, refreshComposition])
+
   useEffect(() => {
     let disposed = false
     void compositionLoad(candidate.versionRef).then((response) => {
@@ -2553,7 +2688,7 @@ function ArrangementEditor({ compositionSave, compositionLoad, compositionRevisi
       if (!disposed) setCompositionLoadState("unavailable")
     })
     return () => { disposed = true }
-  }, [candidate.versionRef, compositionDocument, compositionLoad, rebaseCompositionFromOwner, replaceCompositionFromOwner])
+  }, [candidate.versionRef, compositionDocument, compositionLoad, compositionLoadAttempt, rebaseCompositionFromOwner, replaceCompositionFromOwner])
   const insertSources = useMemo<CompositionInsertSource[]>(() => takes.map((take) => ({
     sourceRef: take.versionRef,
     label: take.title,

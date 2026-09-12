@@ -123,4 +123,12 @@ describe("useCompositionEditor", () => {
     await act(async () => { await result.current.persist() })
     expect(result.current.saveState).toBe("conflict")
   })
+  it("discards queued edits back to the last saved owner composition", () => {
+    const { result } = renderHook(() => useCompositionEditor({ tracks: [track] }))
+    act(() => result.current.editAndQueue({ operation: "move", clipRef: "clip_1", startMs: 2_000 }))
+    act(() => result.current.discard())
+    expect(result.current.composition[0]?.clips[0]?.startMs).toBe(0)
+    expect(result.current.saveState).toBe("saved")
+    expect(result.current.canUndo).toBe(false)
+  })
 })

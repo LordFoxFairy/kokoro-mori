@@ -13,6 +13,7 @@ type CompositionSave = (input: CompositionRevisionInput, idempotencyKey: string)
 export function useCompositionEditor(initial: Composition, save?: CompositionSave, expectedRevision = 0) {
   const [history, setHistory] = useState<CompositionHistory>(() => createCompositionHistory(initial))
   const historyRef = useRef(history)
+  const savedCompositionRef = useRef(initial)
   const [saveState, setSaveState] = useState<"saved" | "unsaved" | "saving" | "conflict" | "failed">("saved")
   const pendingCommandsRef = useRef<CompositionRevisionInput["commands"]>([])
   const redoCommandsRef = useRef<CompositionRevisionInput["commands"]>([])
@@ -52,10 +53,12 @@ export function useCompositionEditor(initial: Composition, save?: CompositionSav
         queuedHistoryDepthRef.current = remaining.length
         if (response?.composition !== undefined) {
           const projected = remaining.length === 0 ? response.composition : replayCompositionCommands(response.composition, remaining)
+          if (remaining.length === 0) savedCompositionRef.current = response.composition
           const next = createCompositionHistory(projected)
           historyRef.current = next
           setHistory(next)
         } else if (remaining.length === 0) {
+          savedCompositionRef.current = historyRef.current.present
           const next = createCompositionHistory(historyRef.current.present)
           historyRef.current = next
           setHistory(next)
@@ -79,6 +82,7 @@ export function useCompositionEditor(initial: Composition, save?: CompositionSav
   }, [save])
   const rebase = useCallback((latest: Composition, nextRevision: number) => {
     revisionRef.current = nextRevision
+    savedCompositionRef.current = latest
     const next = createCompositionHistory(replayCompositionCommands(latest, pendingCommandsRef.current))
     historyRef.current = next
     setHistory(next)
@@ -89,6 +93,7 @@ export function useCompositionEditor(initial: Composition, save?: CompositionSav
   const replaceFromOwner = useCallback((latest: Composition, nextRevision: number): boolean => {
     if (saveInFlightRef.current || pendingCommandsRef.current.length > 0) return false
     revisionRef.current = nextRevision
+    savedCompositionRef.current = latest
     const next = createCompositionHistory(latest)
     historyRef.current = next
     setHistory(next)
@@ -98,6 +103,17 @@ export function useCompositionEditor(initial: Composition, save?: CompositionSav
     idempotencyKeyRef.current = null
     setSaveState("saved")
     return true
+  }, [])
+  const discard = useCallback(() => {
+    if (saveInFlightRef.current) return
+    const next = createCompositionHistory(savedCompositionRef.current)
+    historyRef.current = next
+    setHistory(next)
+    pendingCommandsRef.current = []
+    redoCommandsRef.current = []
+    queuedHistoryDepthRef.current = 0
+    idempotencyKeyRef.current = null
+    setSaveState("saved")
   }, [])
   const undo = useCallback(() => {
     const next = undoComposition(historyRef.current)
@@ -127,7 +143,7 @@ export function useCompositionEditor(initial: Composition, save?: CompositionSav
     }
     commitHistory(redoComposition(historyRef.current))
   }, [commitHistory])
-  return { composition: history.present.tracks, canUndo: history.past.length > 0, canRedo: history.future.length > 0, edit, editAndQueue, undo, redo, saveState, persist, rebase, replaceFromOwner }
+  return { composition: history.present.tracks, canUndo: history.past.length > 0, canRedo: history.future.length > 0, edit, editAndQueue, undo, redo, saveState, persist, discard, rebase, replaceFromOwner }
 }
 
 function createCompositionIdempotencyKey(): string {

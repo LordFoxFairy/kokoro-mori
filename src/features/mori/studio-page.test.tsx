@@ -1451,6 +1451,45 @@ describe("Mori studio page", () => {
     expect(within(timeline).queryByRole("button", { name: "Main version clip First Light · 3:02" })).not.toBeInTheDocument()
   })
 
+  it("guards a dirty arrangement before changing Studio tools and keeps the draft mounted", async () => {
+    const createCompositionRevision = vi.fn<MoriApi["createCompositionRevision"]>(async (_versionRef, input) => ({
+      data: { version_ref: "version_preview_first_light_a", revision: input.expected_revision + 1, tracks: [] },
+      meta: { request_id: "request_guarded_composition" },
+    }))
+    renderStudio({ createCompositionRevision })
+    await waitForCompositionToLoad()
+    const timeline = screen.getByRole("region", { name: "Version timeline" })
+    fireEvent.click(within(timeline).getByRole("button", { name: "Add clip" }))
+    fireEvent.click(within(timeline).getByRole("button", { name: "Insert First Light · Afterglow into selected range" }))
+
+    fireEvent.click(screen.getByRole("tab", { name: "Lyrics" }))
+    const dialog = await screen.findByRole("dialog", { name: "Save changes before Lyrics?" })
+    fireEvent.click(within(dialog).getByRole("button", { name: "Keep editing" }))
+    expect(screen.queryByRole("dialog", { name: "Save changes before Lyrics?" })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole("tab", { name: "Lyrics" }))
+    const saveDialog = await screen.findByRole("dialog", { name: "Save changes before Lyrics?" })
+    fireEvent.click(within(saveDialog).getByRole("button", { name: "Save & continue" }))
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Lyrics" })).toHaveAttribute("aria-selected", "true"))
+    fireEvent.click(screen.getByRole("tab", { name: "Arrangement" }))
+    expect(within(screen.getByRole("region", { name: "Version timeline" })).getAllByRole("button", { name: /Main version clip/u })).toHaveLength(2)
+  })
+
+  it("guards a dirty arrangement before opening another Version", async () => {
+    renderStudio()
+    await waitForCompositionToLoad()
+    const timeline = screen.getByRole("region", { name: "Version timeline" })
+    fireEvent.click(within(timeline).getByRole("button", { name: "Add clip" }))
+    fireEvent.click(within(timeline).getByRole("button", { name: "Insert First Light · Afterglow into selected range" }))
+
+    fireEvent.click(screen.getByRole("link", { name: /First Light · Afterglow, Draft/u }))
+    const dialog = await screen.findByRole("dialog", { name: "Save changes before opening another Version?" })
+    fireEvent.click(within(dialog).getByRole("button", { name: "Discard & continue" }))
+
+    await waitFor(() => expect(screen.getByRole("heading", { name: "First Light · Afterglow" })).toBeInTheDocument())
+    expect(within(screen.getByRole("region", { name: "Version timeline" })).queryByRole("button", { name: /First Light · Afterglow · 3:16/u })).toBeInTheDocument()
+  })
+
   it("loads a real multi-track composition projection before editing", async () => {
     const getCompositionRevision = vi.fn<MoriApi["getCompositionRevision"]>(async () => ({
       data: {

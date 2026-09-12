@@ -48,7 +48,7 @@ Create -> Generation Queue -> Candidate -> Project/Version -> Studio -> Take Lan
 5. 瞬时故障保留原 command，重试复用原幂等身份；
 6. 冲突显示 Refresh/Review，不静默覆盖用户当前版本。
 
-Composition 当前以 `Composition { tracks[] }` 作为浏览器侧 revision foundation：每条编辑 command 都携带 `track_ref`，Studio 通过同源 GET 加载 owner projection，Move、Trim、Split、Crop、Fade、Insert、Duplicate 可形成本地 history 并通过同源 PUT 保存；`clip_ref` 在当前 wire model 中承担 timeline placement identity，新建 placement 使用唯一 opaque ref，编辑和 command replay 保持该身份；空/不可用投影时才保留一条明确的 Main track fallback，真实 BFF owner persistence、独立 Placement projection 与 recovery smoke 仍未接入。
+Composition 当前以 `Composition { tracks[] }` 作为浏览器侧 revision foundation：每条编辑 command 都携带 `track_ref`，Studio 通过同源 GET 加载 owner projection，Move、Trim、Split、Crop、Fade、Insert、Duplicate 可形成本地 history 并通过同源 PUT 保存；`clip_ref` 在当前 wire model 中承担 timeline placement identity，新建 placement 使用唯一 opaque ref，编辑和 command replay 保持该身份；Arrangement session 在 Studio 工具切换时保持 mounted，未保存命令在切换工具、Version 或离开 Project 前进入显式保护层，Discard 回到最近一次 owner-confirmed composition，Save 继续复用原 revision 与幂等键；空/不可用投影时才保留一条明确的 Main track fallback，真实 BFF owner persistence、独立 Placement projection 与 recovery smoke 仍未接入。
 
 ## 5. 依赖规则
 
