@@ -59,7 +59,7 @@ import { createStudioLyricsRevisionDraft, defaultStudioLyrics, isActiveLyricsRev
 import { isStudioRemasterPlan, isStudioRemasterSnapshot } from "./studio-remaster"
 import { studioChangePlanFromSnapshot } from "./studio-recovery"
 import { canonicalStudioHref, studioVersionRefFromPath } from "./studio-location"
-import { createStudioStemSeparationDraft, isActiveStemSeparationStatus, stemSeparationSnapshotMatchesPlan, type StudioStemSeparationPlan } from "./studio-stems"
+import { buildStudioStemSeparationPlan, createStudioStemSeparationDraft, isActiveStemSeparationStatus, stemSeparationSnapshotMatchesPlan, type StudioStemSeparationPlan } from "./studio-stems"
 import { createHtmlStemPlaybackController, type StemPlaybackFactory } from "./stem-playback"
 import { useStudioReleaseWorkflow } from "./use-studio-release-workflow"
 import { useStudioProjectWorkspaceMemory } from "./use-studio-project-workspace-memory"
@@ -328,6 +328,8 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
   const recoveredStudioGenerationSnapshotRef = useRef<StudioChangeGenerationSnapshot | null>(null)
   const ignoredStemSeparationsRef = useRef(new Set<string>())
   const activeStemEventRequestRef = useRef<{ stemSeparationRef: string; controller: AbortController } | null>(null)
+  const lyricsRecoveryTaskRef = useRef<string | null>(null)
+  const stemRecoveryTaskRef = useRef<string | null>(null)
   const exportRecoveryTaskRef = useRef<string | null>(null)
   const preserveInitialFinishEntryRef = useRef(initialSurface === "finish")
   const previousStudioContextRef = useRef({ projectRef: activeProjectRef, versionRef: activeVersionRef })
@@ -374,6 +376,8 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
     exportCommandEpochRef.current += 1
     mixRevisionHydrationEpochRef.current += 1
     pendingExportCommandRef.current = null
+    lyricsRecoveryTaskRef.current = null
+    stemRecoveryTaskRef.current = null
     exportRecoveryTaskRef.current = null
     if (contextChanged) pendingStudioChangeCommandRef.current = null
     setTrackedStemSeparation((current) => {
@@ -1690,6 +1694,133 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
   const initialStudioLyrics = canRestorePendingLyrics && activePendingLyricsDraft !== null
     ? activePendingLyricsDraft.text
     : durableStudioLyrics
+
+  useEffect(() => {
+    const task = projectWorkspaceMemory.activeTasks.find((candidate) => (
+      candidate.kind === "lyrics_revision"
+      && candidate.project_ref === activeProjectRef
+      && candidate.version_ref === activeVersionRef
+    ))
+    if (
+      activeVersionRef === null
+      || projectWorkspaceMemory.workspaceStatus !== "ready"
+      || task === undefined
+      || lyricsRecoveryTaskRef.current === task.task_ref
+    ) return
+
+    lyricsRecoveryTaskRef.current = task.task_ref
+    const sourceVersionRef = activeVersionRef
+    const commandEpoch = lyricsRevisionCommandEpochRef.current + 1
+    lyricsRevisionCommandEpochRef.current = commandEpoch
+    let disposed = false
+
+    void studioApi.getLyricsRevision(task.task_ref).then((response) => {
+      if (
+        disposed
+        || lyricsRevisionCommandEpochRef.current !== commandEpoch
+        || activeVersionRefRef.current !== sourceVersionRef
+      ) return
+      const snapshot = response.data
+      if (snapshot.lyrics_revision_ref !== task.task_ref || snapshot.version_ref !== sourceVersionRef) {
+        throw new Error("lyrics_revision_snapshot_context_mismatch")
+      }
+      const plan = studioLyricsPlanFromSnapshot(snapshot, durableStudioLyrics)
+      setLyricsRevisionRun({
+        status: snapshot.status,
+        progress: snapshot.progress,
+        plan,
+        suggestions: snapshot.status === "succeeded" ? snapshot.suggestions : [],
+        sourceDigest: snapshot.source_digest,
+        message: snapshot.status === "failed" || snapshot.status === "cancelled" || snapshot.status === "expired"
+          ? lyricsRevisionTerminalMessage(snapshot.status)
+          : null,
+      })
+      if (isActiveLyricsRevisionStatus(snapshot.status)) {
+        setTrackedLyricsRevision({ lyricsRevisionRef: snapshot.lyrics_revision_ref, sourceVersionRef, plan, commandEpoch })
+      }
+    }).catch((error) => {
+      if (
+        disposed
+        || lyricsRevisionCommandEpochRef.current !== commandEpoch
+        || activeVersionRefRef.current !== sourceVersionRef
+      ) return
+      setTrackedLyricsRevision(null)
+      setLyricsRevisionRun({
+        status: "failed",
+        progress: task.progress,
+        plan: null,
+        suggestions: [],
+        sourceDigest: null,
+        message: lyricsRevisionFailureMessage(error),
+      })
+    })
+
+    return () => {
+      disposed = true
+    }
+  }, [activeProjectRef, activeVersionRef, durableStudioLyrics, projectWorkspaceMemory.activeTasks, projectWorkspaceMemory.workspaceStatus, studioApi])
+
+  useEffect(() => {
+    const task = projectWorkspaceMemory.activeTasks.find((candidate) => (
+      candidate.kind === "stem_separation"
+      && candidate.project_ref === activeProjectRef
+      && candidate.version_ref === activeVersionRef
+    ))
+    if (
+      activeVersionRef === null
+      || projectWorkspaceMemory.workspaceStatus !== "ready"
+      || task === undefined
+      || stemRecoveryTaskRef.current === task.task_ref
+    ) return
+
+    stemRecoveryTaskRef.current = task.task_ref
+    const sourceVersionRef = activeVersionRef
+    let disposed = false
+
+    void studioApi.getStemSeparation(task.task_ref).then((response) => {
+      if (disposed || activeVersionRefRef.current !== sourceVersionRef) return
+      const snapshot = response.data
+      if (snapshot.stem_separation_ref !== task.task_ref || snapshot.version_ref !== sourceVersionRef) {
+        throw new Error("stem_separation_snapshot_context_mismatch")
+      }
+      const plan = buildStudioStemSeparationPlan({ mode: snapshot.mode, targetKinds: [...snapshot.target_kinds] }, snapshot.include_midi)
+      setStemSeparationRun({
+        status: snapshot.status,
+        sourceVersionRef,
+        stemSeparationRef: snapshot.stem_separation_ref,
+        progress: snapshot.progress,
+        plan,
+        stems: snapshot.status === "succeeded" ? snapshot.stems : [],
+        midiAssetRef: snapshot.status === "succeeded" ? snapshot.midi_asset_ref : null,
+        sourceAudioDigest: snapshot.source_audio_digest,
+        message: snapshot.status === "failed" || snapshot.status === "cancelled" || snapshot.status === "expired"
+          ? stemSeparationTerminalMessage(snapshot.status)
+          : null,
+      })
+      if (isActiveStemSeparationStatus(snapshot.status)) {
+        setTrackedStemSeparation({ stemSeparationRef: snapshot.stem_separation_ref, sourceVersionRef, plan })
+      }
+    }).catch((error) => {
+      if (disposed || activeVersionRefRef.current !== sourceVersionRef) return
+      setTrackedStemSeparation(null)
+      setStemSeparationRun({
+        status: "failed",
+        sourceVersionRef,
+        stemSeparationRef: task.task_ref,
+        progress: task.progress,
+        plan: null,
+        stems: [],
+        midiAssetRef: null,
+        sourceAudioDigest: null,
+        message: stemSeparationFailureMessage(error),
+      })
+    })
+
+    return () => {
+      disposed = true
+    }
+  }, [activeProjectRef, activeVersionRef, projectWorkspaceMemory.activeTasks, projectWorkspaceMemory.workspaceStatus, studioApi])
+
   const studioLyricsKey = `${activeVersionRef ?? "no-version"}:${lyricsDraftSource}:${projectWorkspaceMemory.lyricsDraft?.revision ?? "new"}`
   const remasterRun = isStudioRemasterPlan(studioChangeRun.plan)
   const remasterActive = remasterRun && isActiveStudioChangeStatus(studioChangeRun.status)
@@ -2180,6 +2311,42 @@ function lyricsRevisionSnapshotMatches(snapshot: LyricsRevisionSnapshot, tracked
     && snapshot.scope.section_label === studioLyricsScopeLabel(plan.scope)
     && snapshot.scope.start_line === plan.startLine
     && snapshot.scope.end_line === plan.endLine
+}
+
+function studioLyricsPlanFromSnapshot(snapshot: LyricsRevisionSnapshot, lyricsContext: string): StudioLyricsPlan {
+  const normalizedContext = lyricsContext.trim()
+  if (snapshot.scope.type === "whole_lyrics") {
+    return {
+      direction: snapshot.direction,
+      instruction: snapshot.instruction,
+      sourceText: normalizedContext,
+      lyricsContext: normalizedContext,
+      constraints: [...snapshot.constraints],
+      outputCount: snapshot.output_count,
+      scope: "whole_lyrics",
+      startLine: null,
+      endLine: null,
+    }
+  }
+
+  const scope = snapshot.scope.section_label === "Verse"
+    ? "verse"
+    : snapshot.scope.section_label === "Chorus"
+      ? "chorus"
+      : null
+  if (scope === null) throw new Error("lyrics_revision_snapshot_context_mismatch")
+  const lines = normalizedContext === "" ? [] : normalizedContext.split("\n")
+  return {
+    direction: snapshot.direction,
+    instruction: snapshot.instruction,
+    sourceText: lines.slice(snapshot.scope.start_line, snapshot.scope.end_line).join("\n").trim(),
+    lyricsContext: normalizedContext,
+    constraints: [...snapshot.constraints],
+    outputCount: snapshot.output_count,
+    scope,
+    startLine: snapshot.scope.start_line,
+    endLine: snapshot.scope.end_line,
+  }
 }
 
 function lyricsRevisionFailureMessage(error: unknown): string {

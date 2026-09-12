@@ -55,9 +55,9 @@
 - P0.1 Durable Project Memory 已落地浏览器 foundation：Project Workspace 以同源、完整 projection 恢复
   Current Song Plan、用户 Open Version、该 Version 的 Lyrics Draft、最新 Mix 摘要与活动任务；Song Plan、Lyrics
   Draft、Open Version 的写入分别携带 revision 与 `Idempotency-Key`，只在完整返回投影精确确认下一 revision 后
-  才可显示保存成功。Studio Finish 的 Artwork 与 Export 会消费同一 projection 的活动任务，按 task ref 读取 owner
-  snapshot，严格恢复到当前 Project / Version，并继续原有状态轮询；跨刷新不再只依赖 React 内存。Project Overview 已读取真实
-  Song Plan；本地 fixture 则明确标为 `Preview plan`，不冒充持久化结果。
+  才可显示保存成功。Studio 的 Lyrics Revision、Stem Separation、Finish Artwork 与 Export 会消费同一 projection 的活动任务，按
+  task ref 读取 owner snapshot，严格恢复到当前 Project / Version，并继续原有状态轮询；跨刷新不再只依赖 React 内存。Project
+  Overview 已读取真实 Song Plan；本地 fixture 则明确标为 `Preview plan`，不冒充持久化结果。
 - Create Smart 已接入同一条 Workspace 写入边界：用户确认可编辑 Song Plan 后，浏览器先读取最新 projection，再以
   `expected_revision` 和幂等键保存 Current Song Plan；只有返回的 `song_plan_ref`、revision 与全部字段精确确认后才提交
   Generation。Song Plan 短暂失败保留原 command / 幂等键；Generation 响应不确定或队列 receipt 暂时无法落盘时也保留精确 request / 幂等键，生成重试复用已确认的 Song Plan，避免重复执行；live Project
@@ -110,14 +110,14 @@
 pnpm lint                         passed
 pnpm typecheck                    passed
 pnpm exec vitest run --maxWorkers=1 src/features/mori/studio-page.test.tsx
-                                  passed: 1 file / 90 tests
+                                  passed: 1 file / 91 tests
 pnpm exec vitest run --maxWorkers=1 <affected composition tests>
                                   passed: 6 files / 36 tests
 pnpm exec vitest run --maxWorkers=1 src/features/mori/mori-workspace.test.tsx
                                   passed: 1 file / 71 tests
 pnpm exec vitest run --maxWorkers=1 src/features/mori/use-audio-recorder.test.tsx
                                   passed: 1 file / 2 tests
-pnpm test                         passed: 81 files / 613 tests
+pnpm test                         passed: 81 files / 614 tests
 pnpm build                        passed
 ```
 

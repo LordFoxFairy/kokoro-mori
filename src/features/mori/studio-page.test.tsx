@@ -2027,6 +2027,114 @@ describe("Mori studio page", () => {
     localStorage.clear()
   })
 
+  it("recovers active lyric and stem tasks from the durable Project workspace", async () => {
+    const projectRef = "project_preview_first_light"
+    const versionRef = "version_preview_first_light_a"
+    const workspace: MoriProjectWorkspaceProjection = {
+      project: {
+        project_ref: projectRef,
+        title: "First Light",
+        description: "A bright, patient song about finding your way home.",
+        current_version_ref: versionRef,
+        candidate_count: 2,
+        last_activity_at: "2026-09-12T12:00:00.000Z",
+      },
+      current_song_plan: null,
+      open_version: {
+        project_ref: projectRef,
+        version_ref: versionRef,
+        revision: 2,
+        updated_at: "2026-09-12T12:00:00.000Z",
+      },
+      latest_lyrics_draft: {
+        lyrics_draft_ref: "lyrics_draft_recovery",
+        project_ref: projectRef,
+        version_ref: versionRef,
+        revision: 2,
+        text: "We were headlights in the quiet\nfinding a little gold in the blue\nand every road became a reason\nto carry the morning through",
+        source_digest: "sha256:lyrics-draft-recovery",
+        updated_at: "2026-09-12T12:00:00.000Z",
+      },
+      latest_mix_revision: null,
+      active_tasks: [
+        {
+          task_ref: "lyrics_revision_recovery",
+          kind: "lyrics_revision",
+          project_ref: projectRef,
+          version_ref: versionRef,
+          status: "running",
+          progress: 38,
+          updated_at: "2026-09-12T12:00:00.000Z",
+        },
+        {
+          task_ref: "stem_separation_recovery",
+          kind: "stem_separation",
+          project_ref: projectRef,
+          version_ref: versionRef,
+          status: "running",
+          progress: 57,
+          updated_at: "2026-09-12T12:00:00.000Z",
+        },
+      ],
+      revision_cursor: "workspace_active_tasks_recovery",
+      observed_at: "2026-09-12T12:00:00.000Z",
+    }
+    const getLyricsRevision = vi.fn<MoriApi["getLyricsRevision"]>(async () => ({
+      data: {
+        lyrics_revision_ref: "lyrics_revision_recovery",
+        version_ref: versionRef,
+        status: "generating",
+        progress: 38,
+        direction: "rewrite",
+        scope: { type: "section", section_label: "Chorus", start_line: 2, end_line: 4 },
+        instruction: "Open the chorus into a brighter lift.",
+        constraints: ["meaning", "cadence"],
+        output_count: 2,
+        source_digest: "sha256:lyrics-revision-recovery",
+        suggestions: [],
+        created_at: "2026-09-12T12:00:00.000Z",
+      },
+      meta: { request_id: "request_lyrics_revision_recovery" },
+    }))
+    const getStemSeparation = vi.fn<MoriApi["getStemSeparation"]>(async () => ({
+      data: {
+        stem_separation_ref: "stem_separation_recovery",
+        version_ref: versionRef,
+        status: "separating",
+        progress: 57,
+        mode: "isolate_part",
+        target_kinds: ["vocals"],
+        include_midi: false,
+        source_audio_digest: "sha256:stem-recovery",
+        stems: [],
+        midi_asset_ref: null,
+        created_at: "2026-09-12T12:00:00.000Z",
+      },
+      meta: { request_id: "request_stem_separation_recovery" },
+    }))
+    renderStudio({
+      getProjectWorkspace: async () => ({ data: workspace, meta: { request_id: "request_workspace_active_tasks_recovery" } }),
+      getLyricsRevision,
+      getLyricsRevisionEvents: async () => [],
+      getStemSeparation,
+      getStemSeparationEvents: async () => [],
+    })
+
+    await waitFor(() => expect(getLyricsRevision).toHaveBeenCalledWith("lyrics_revision_recovery"))
+    await waitFor(() => expect(getStemSeparation).toHaveBeenCalledWith("stem_separation_recovery"))
+    fireEvent.click(screen.getByRole("tab", { name: "Lyrics" }))
+    const lyricsEditor = screen.getByRole("region", { name: "Lyrics editor" })
+    const lyricPartner = within(lyricsEditor).getByRole("region", { name: "Mori lyric partner" })
+    expect(within(lyricPartner).getByText("Open the chorus into a brighter lift.")).toBeInTheDocument()
+    expect(within(lyricPartner).getByRole("progressbar", { name: "Lyrics revision progress" })).toHaveAttribute("aria-valuenow", "38")
+
+    fireEvent.click(screen.getByRole("tab", { name: "Voice & stems" }))
+    const stemsEditor = screen.getByRole("region", { name: "Stems editor" })
+    const stemPlan = within(stemsEditor).getByRole("region", { name: "Stem separation plan" })
+    expect(within(stemPlan).getByText("Vocals or one part")).toBeInTheDocument()
+    expect(within(stemPlan).getByRole("progressbar", { name: "Stem separation progress" })).toHaveAttribute("aria-valuenow", "57")
+  })
+
   it("does not project a lyric revision into a different open Version", async () => {
     let releaseSnapshot: () => void = () => undefined
     let markSnapshotReturned: () => void = () => undefined
