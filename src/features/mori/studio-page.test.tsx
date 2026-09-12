@@ -900,6 +900,57 @@ describe("Mori studio page", () => {
     expect(within(updatedAiChanges).getByText("Selected section · Verse")).toBeInTheDocument()
   })
 
+  it("reuses the Studio Change idempotency key when the create receipt is uncertain", async () => {
+    const idempotencyKeys: string[] = []
+    const submittedInputs: StudioChangeGenerationInput[] = []
+    let attempts = 0
+    renderStudio({
+      createStudioChange: async (_versionRef, input, idempotencyKey) => {
+        submittedInputs.push(input)
+        idempotencyKeys.push(idempotencyKey)
+        attempts += 1
+        if (attempts === 1) throw new Error("temporary network failure")
+        return { data: { generation_ref: "generation_idempotent_change", status: "queued" }, meta: { request_id: "request_idempotent_change" } }
+      },
+      getGeneration: async () => ({
+        data: {
+          generation_ref: "generation_idempotent_change",
+          generation_kind: "studio_change",
+          project_ref: "project_preview_first_light",
+          song_plan_ref: null,
+          mode: null,
+          source_version_ref: "version_preview_first_light_a",
+          operation: "add_part",
+          scope: { type: "insertion_point", position_ms: 153_563 },
+          instruction: "Add a restrained string lift.",
+          preserve: ["melody", "lyrics", "vocal_identity"],
+          reference_asset_refs: [],
+          output_count: 2,
+          status: "failed",
+          progress: 12,
+          candidate_refs: [],
+          created_at: "2026-09-03T12:00:00.000Z",
+        },
+        meta: { request_id: "request_idempotent_change_snapshot" },
+      }),
+      getGenerationEvents: async () => [],
+    })
+
+    const aiChanges = screen.getByRole("region", { name: "Mori AI changes" })
+    fireEvent.change(within(aiChanges).getByRole("textbox", { name: "Tell Mori what to change" }), {
+      target: { value: "Add a restrained string lift." },
+    })
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Review change" }))
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Generate 2 takes" }))
+
+    const retry = await within(aiChanges).findByRole("button", { name: "Retry change" })
+    fireEvent.click(retry)
+
+    await waitFor(() => expect(idempotencyKeys).toHaveLength(2))
+    expect(idempotencyKeys[1]).toBe(idempotencyKeys[0])
+    expect(submittedInputs[1]).toEqual(submittedInputs[0])
+  })
+
   it("links the Studio playhead to the global player and current timeline section", () => {
     renderStudio(undefined, { ...previewCandidates[0], audioAssetRef: "asset_studio_playhead" })
 

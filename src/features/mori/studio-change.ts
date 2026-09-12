@@ -1,9 +1,11 @@
 import type { GenerationStatus } from "./domain"
 import {
+  createStudioChangeRequest,
   studioInstrumentalCoverProtectedAnchors,
   studioVocalCoverProtectedAnchors,
   studioChangeOutputCounts,
   type MoriStudioChangeDraft,
+  type StudioChangeGenerationInput,
   type StudioChangeOperation,
   type StudioChangeOutputCount,
   type StudioChangePreserve,
@@ -43,6 +45,41 @@ export type StudioChangePlanOptions = {
   coverMode: StudioCoverMode
   coverVoiceRef: string | null
   referenceAssetRefs?: string[]
+}
+
+export type PendingStudioChangeCommand = {
+  versionRef: string
+  input: StudioChangeGenerationInput
+  idempotencyKey: string
+}
+
+/**
+ * Keep one logical Studio request on the same idempotency key until its
+ * receipt has been durably placed in the browser queue. A retry after a
+ * confirmed receipt creates a new command instead of replaying a terminal
+ * generation.
+ */
+export function studioChangeCommand(
+  versionRef: string,
+  draft: MoriStudioChangeDraft,
+  previousCommand: PendingStudioChangeCommand | null,
+): PendingStudioChangeCommand {
+  const input = createStudioChangeRequest(draft)
+  if (
+    previousCommand !== null
+    && previousCommand.versionRef === versionRef
+    && studioChangeInputsMatch(previousCommand.input, input)
+  ) return previousCommand
+
+  return {
+    versionRef,
+    input,
+    idempotencyKey: `mori-studio-change-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  }
+}
+
+export function studioChangeInputsMatch(left: StudioChangeGenerationInput, right: StudioChangeGenerationInput): boolean {
+  return JSON.stringify(left) === JSON.stringify(right)
 }
 
 export const minimumStudioTimelineSelectionMs = 1_000

@@ -67,7 +67,7 @@
   被当前 Project / Version 接受后才显示 `Saved`。短暂故障复用原 `Idempotency-Key`，冲突转为 Refresh；在有未保存文字时
   选择另一 Version 会明确提供 Keep editing、Discard & open、Save & open，不让导航静默丢稿。preview 文字可编辑但始终
   明确标为非耐久草稿。
-- Generation 生命周期已补齐 Create、snapshot、SSE replay、cancel 与 Project Candidate list 的本仓 OpenAPI；Create 明确固定 `output_count: 2`，Studio Change 的候选数收敛为 `1 | 2 | 4` 并由请求类型、运行时解析与 OpenAPI 共同校验；标准 Studio Change 与 Layer snapshot 会回显 reviewed scope、instruction、preserve、references、output count，以及 Layer 的 part kind / lyrics / voice，刷新恢复不会退回 generic plan；Candidate
+- Generation 生命周期已补齐 Create、snapshot、SSE replay、cancel 与 Project Candidate list 的本仓 OpenAPI；Create 明确固定 `output_count: 2`，Studio Change 的候选数收敛为 `1 | 2 | 4` 并由请求类型、运行时解析与 OpenAPI 共同校验；标准 Studio Change 与 Layer snapshot 会回显 reviewed scope、instruction、preserve、references、output count，以及 Layer 的 part kind / lyrics / voice，刷新恢复不会退回 generic plan；Studio Change 在 receipt 不确定或队列持久化失败时保留同一 command/idempotency key，确认入队后才释放，显式 Retry 随后创建新 command；Candidate
   list 使用 opaque cursor/limit/generation filter，Create / Studio 生成结果恢复按 `generation_ref` 查询，页面投影统一消费全部分页并按 `candidate_ref` 去重。Generation queue
   以显式字段白名单保存多任务摘要、状态、进度、候选引用和 event cursor，不保存 prompt、lyrics、provider payload 或音频字节；
   Create 与 Studio Change 共用这份队列；Create 不会接管 Studio Change，Studio 路由会从 active generation ref 拉回 snapshot 并恢复工作上下文，
@@ -111,7 +111,7 @@ pnpm exec vitest run --maxWorkers=1 src/features/mori/mori-workspace.test.tsx
                                   passed: 1 file / 71 tests
 pnpm exec vitest run --maxWorkers=1 src/features/mori/use-audio-recorder.test.tsx
                                   passed: 1 file / 2 tests
-pnpm test                         passed: 80 files / 600 tests
+pnpm test                         passed: 80 files / 602 tests
 pnpm build                        passed
 ```
 

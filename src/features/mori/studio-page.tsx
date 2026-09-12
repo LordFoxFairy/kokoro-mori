@@ -54,7 +54,7 @@ import { previewCandidates, previewProject, previewSongPlan } from "./preview-da
 import type { StudioEntryIntent, StudioEntrySurface } from "./studio-entry"
 import type { Composition, CompositionClip, CompositionTrack } from "./composition"
 import { useCompositionEditor } from "./use-composition-editor"
-import { buildStudioTimelineSections, formatStudioTimelineTime, isActiveStudioChangeStatus, type StudioChangePlan, type StudioTimelineSection } from "./studio-change"
+import { buildStudioTimelineSections, formatStudioTimelineTime, isActiveStudioChangeStatus, studioChangeCommand, type PendingStudioChangeCommand, type StudioChangePlan, type StudioTimelineSection } from "./studio-change"
 import { createStudioLyricsRevisionDraft, defaultStudioLyrics, isActiveLyricsRevisionStatus, studioLyricsScopeLabel, type StudioLyricsPlan } from "./studio-lyrics"
 import { isStudioRemasterPlan, isStudioRemasterSnapshot } from "./studio-remaster"
 import { studioChangePlanFromSnapshot } from "./studio-recovery"
@@ -316,6 +316,7 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
   const exportFeedbackRef = useRef<StudioExportFeedback>("idle")
   const pendingExportCommandRef = useRef<PendingExportCommand | null>(null)
   const pendingCurrentVersionCommandRef = useRef<PendingCurrentVersionCommand | null>(null)
+  const pendingStudioChangeCommandRef = useRef<PendingStudioChangeCommand | null>(null)
   const lyricsRevisionCommandEpochRef = useRef(0)
   const stemSeparationCommandEpochRef = useRef(0)
   const mixRevisionHydrationEpochRef = useRef(0)
@@ -371,6 +372,7 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
     exportCommandEpochRef.current += 1
     mixRevisionHydrationEpochRef.current += 1
     pendingExportCommandRef.current = null
+    if (contextChanged) pendingStudioChangeCommandRef.current = null
     setTrackedStemSeparation((current) => {
       if (current === null || current.sourceVersionRef === activeVersionRef) return current
       ignoredStemSeparationsRef.current.add(current.stemSeparationRef)
@@ -644,10 +646,12 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
     setTrackedStudioChange(null)
     setStudioChangeRun({ status: "preparing", progress: 4, resultCount: 0, plan, message: null, cancelPending: false })
     try {
+      const command = studioChangeCommand(sourceVersionRef, plan.draft, pendingStudioChangeCommandRef.current)
+      pendingStudioChangeCommandRef.current = command
       const response = await studioApi.createStudioChange(
         sourceVersionRef,
-        createStudioChangeRequest(plan.draft),
-        `mori-studio-change-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        command.input,
+        command.idempotencyKey,
       )
       if (studioChangeCommandEpochRef.current !== commandEpoch) return
       setStudioChangeRun({
@@ -675,6 +679,7 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
         active_generation_ref: queueItem.generation_ref,
       }))
       if (studioChangeCommandEpochRef.current !== commandEpoch) return
+      if (pendingStudioChangeCommandRef.current === command) pendingStudioChangeCommandRef.current = null
       setTrackedStudioChange({
         generationRef: response.data.generation_ref,
         projectRef: activeProjectRef,
@@ -862,6 +867,7 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
 
   const resetStudioChange = () => {
     if (isActiveStudioChangeStatus(studioChangeRun.status)) return
+    pendingStudioChangeCommandRef.current = null
     setTrackedStudioChange(null)
     setStudioChangeRun(idleStudioChangeRun)
   }
