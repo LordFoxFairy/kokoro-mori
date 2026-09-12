@@ -59,6 +59,7 @@ import type {
   MoriProjectPage,
   MoriReleaseDraft,
   MoriRelease,
+  MoriShare,
   PublishReleaseReceipt,
   MoriSongPlan,
   MoriStem,
@@ -1150,6 +1151,20 @@ export function parseMoriRelease(value: unknown): MoriRelease | null {
   const receipt = parsePublishReleaseReceipt(value)
   if (receipt === null || !nonEmptyString((value as Record<string, unknown>).release_draft_ref) || !dateString((value as Record<string, unknown>).updated_at)) return null
   return { ...receipt, release_draft_ref: (value as Record<string, string>).release_draft_ref, updated_at: (value as Record<string, string>).updated_at }
+}
+
+export function parseMoriShare(value: unknown): MoriShare | null {
+  if (!isRecord(value) || !nonEmptyString(value.share_ref) || !nonEmptyString(value.version_ref) || !nonEmptyString(value.release_draft_ref) || !nonEmptyString(value.status) || !["creating", "active", "failed", "revoked"].includes(value.status) || !nullableString(value.share_url) || !dateString(value.created_at) || !dateString(value.updated_at)) return null
+  if ((value.status === "active") !== (value.share_url !== null)) return null
+  return {
+    share_ref: value.share_ref,
+    version_ref: value.version_ref,
+    release_draft_ref: value.release_draft_ref,
+    status: value.status as MoriShare["status"],
+    share_url: value.share_url,
+    created_at: value.created_at,
+    updated_at: value.updated_at,
+  }
 }
 
 export function parseMoriExportReceipt(value: unknown): MoriExportReceipt | null {

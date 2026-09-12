@@ -1837,6 +1837,56 @@ describe("Mori same-origin API client", () => {
     expect(response.data.public_url).toBe("https://mori.local/release/release_1")
   })
 
+  it("creates, restores, and revokes a link-only share without exposing a token", async () => {
+    const calls: Array<{ url: string; method: string | undefined; headers: HeadersInit | undefined; body: unknown }> = []
+    const api = createMoriApiClient({
+      fetchImpl: async (input, init) => {
+        calls.push({
+          url: String(input),
+          method: init?.method,
+          headers: init?.headers,
+          body: typeof init?.body === "string" ? JSON.parse(init.body) : null,
+        })
+        const revoked = String(input).endsWith("/revoke")
+        return jsonResponse({
+          data: {
+            share_ref: "share_1",
+            version_ref: "version_1",
+            release_draft_ref: "draft_1",
+            status: revoked ? "revoked" : "active",
+            share_url: revoked ? null : "https://mori.local/share/share_1",
+            created_at: "2026-09-12T00:00:00Z",
+            updated_at: "2026-09-12T00:00:01Z",
+          },
+          meta: { request_id: `share_${calls.length}` },
+        }, revoked ? 200 : 202)
+      },
+    })
+
+    const created = await api.createShare("version/1", { release_draft_ref: "draft_1", expected_draft_revision: 3 }, "share-key-1")
+    const restored = await api.getShare(created.data.share_ref)
+    const revoked = await api.revokeShare(restored.data.share_ref, "share-revoke-key-1")
+
+    expect(calls).toEqual([
+      {
+        url: "/api/v1/mori/versions/version%2F1/share",
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": "share-key-1" },
+        body: { release_draft_ref: "draft_1", expected_draft_revision: 3 },
+      },
+      { url: "/api/v1/mori/shares/share_1", method: undefined, headers: undefined, body: null },
+      {
+        url: "/api/v1/mori/shares/share_1/revoke",
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": "share-revoke-key-1" },
+        body: null,
+      },
+    ])
+    expect(created.data.share_url).toBe("https://mori.local/share/share_1")
+    expect(revoked.data.status).toBe("revoked")
+    expect(revoked.data.share_url).toBeNull()
+  })
+
   it("saves a track-scoped composition revision and parses its owner projection", async () => {
     let capturedInit: RequestInit | undefined
     const api = createMoriApiClient({

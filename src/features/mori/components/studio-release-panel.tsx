@@ -13,6 +13,7 @@ import {
   type StudioReleaseDraft,
   type StudioReleaseSaveState,
   type StudioReleasePublishState,
+  type StudioReleaseShareState,
 } from "../studio-release"
 import styles from "./studio-release-panel.module.css"
 
@@ -31,6 +32,9 @@ export type StudioReleasePanelProps = {
   publishState?: StudioReleasePublishState
   onPublish?: () => void
   onUnpublish?: () => void
+  shareState?: StudioReleaseShareState
+  onCreateShare?: () => void
+  onRevokeShare?: () => void
 }
 
 const styleOptions: ReadonlyArray<{ id: ArtworkStyle; label: string }> = [
@@ -73,11 +77,12 @@ export function StudioReleasePanel({
   onGenerateArtwork,
   onCancelArtwork,
   onResetArtwork,
-  onSave, publishState, onPublish, onUnpublish,
+  onSave, publishState, onPublish, onUnpublish, shareState, onCreateShare, onRevokeShare,
 }: StudioReleasePanelProps) {
   const titleId = useId()
   const [reviewedArtworkPlan, setReviewedArtworkPlan] = useState<StudioArtworkPlan | null>(null)
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle")
+  const [copyShareState, setCopyShareState] = useState<"idle" | "copied" | "failed">("idle")
   const artworkBusy = isActiveArtworkGenerationStatus(artworkRun.status)
   const artworkRetryable = artworkRun.plan !== null && (artworkRun.status === "failed" || artworkRun.status === "cancelled" || artworkRun.status === "expired")
   const artworkReady = artworkRun.status === "succeeded" && artworkRun.candidates.length > 0
@@ -106,7 +111,7 @@ export function StudioReleasePanel({
       <div className={styles.body}>
         <div className={styles.intro}>
           <div><span>Release draft</span><h3 id={titleId}>Prepare the way this song leaves Studio.</h3></div>
-          <p>Everything stays with this version. Nothing is published from this window.</p>
+          <p>Save the draft first. Sharing and publishing are separate choices.</p>
         </div>
 
         <div className={styles.grid}>
@@ -228,6 +233,7 @@ export function StudioReleasePanel({
                   </label>
                 ))}
               </div>
+              {draft.visibility === "link_only" ? <p>Link-only creates a revocable share link after this draft is saved.</p> : null}
               {draft.visibility === "public" ? <p>Public is saved as your intended visibility. Publishing still requires a separate final review.</p> : null}
             </fieldset>
             <div className={styles.toggles}>
@@ -249,10 +255,16 @@ export function StudioReleasePanel({
           {saveState.status === "saving" ? <LoaderCircle className={styles.spinner} size={14} /> : <Check size={14} />}
           Save release draft
         </button>
-        {saveState.status === "saved" && onPublish !== undefined && publishState?.status !== "published" ? <button className={styles.saveButton} type="button" disabled={publishState?.status === "publishing"} onClick={onPublish}>{publishState?.status === "publishing" ? "Publishing…" : "Publish release"}</button> : null}
+        {saveState.status === "saved" && draft.visibility === "public" && onPublish !== undefined && publishState?.status !== "published" ? <button className={styles.saveButton} type="button" disabled={publishState?.status === "publishing"} onClick={onPublish}>{publishState?.status === "publishing" ? "Publishing…" : "Publish release"}</button> : null}
+        {saveState.status === "saved" && draft.visibility === "link_only" && onCreateShare !== undefined && shareState?.status !== "active" ? <button className={styles.saveButton} type="button" disabled={shareState?.status === "creating"} onClick={onCreateShare}>{shareState?.status === "creating" ? "Preparing link…" : "Create share link"}</button> : null}
         {publishState?.status === "published" && onUnpublish !== undefined ? <button className={styles.textButton} type="button" onClick={onUnpublish}>Unpublish</button> : null}
         {publishState?.status === "published" && publishState.publicUrl ? <span role="status">Published · {publishState.publicUrl} <button className={styles.textButton} type="button" onClick={() => { void navigator.clipboard.writeText(publishState.publicUrl!).then(() => setCopyState("copied")).catch(() => setCopyState("failed")) }}>{copyState === "copied" ? "Copied" : copyState === "failed" ? "Try copy again" : "Copy public link"}</button></span> : null}
         {publishState?.status === "failed" ? <span role="alert">{publishState.message} {onPublish !== undefined ? <button className={styles.textButton} type="button" onClick={onPublish}>Try again</button> : null}</span> : null}
+        {shareState?.status === "creating" ? <span role="status"><LoaderCircle className={styles.spinner} size={13} /> Preparing a link…</span> : null}
+        {shareState?.status === "revoking" ? <span role="status"><LoaderCircle className={styles.spinner} size={13} /> Revoking link…</span> : null}
+        {shareState?.status === "active" && shareState.shareUrl ? <span role="status">Link-only share ready · <button className={styles.textButton} type="button" onClick={() => { void navigator.clipboard.writeText(shareState.shareUrl!).then(() => setCopyShareState("copied")).catch(() => setCopyShareState("failed")) }}>{copyShareState === "copied" ? "Copied" : copyShareState === "failed" ? "Try copy again" : "Copy share link"}</button></span> : null}
+        {shareState?.status === "active" && onRevokeShare !== undefined ? <button className={styles.textButton} type="button" onClick={onRevokeShare}>Revoke link</button> : null}
+        {shareState?.status === "failed" ? <span role="alert">{shareState.message ?? "The share link was not ready."} {shareState.shareRef !== null && shareState.shareUrl !== null && onRevokeShare !== undefined ? <button className={styles.textButton} type="button" onClick={onRevokeShare}>Try revoke again</button> : onCreateShare !== undefined ? <button className={styles.textButton} type="button" onClick={onCreateShare}>Try again</button> : null}</span> : null}
       </footer>
     </form>
   )

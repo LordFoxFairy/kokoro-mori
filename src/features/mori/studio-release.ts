@@ -56,6 +56,7 @@ export type StudioReleaseSaveState = {
 }
 
 export type StudioReleasePublishState = { status: "idle" | "publishing" | "published" | "failed" | "unpublished"; releaseRef: string | null; publicUrl: string | null; message: string | null }
+export type StudioReleaseShareState = { status: "idle" | "creating" | "active" | "revoking" | "failed" | "revoked"; shareRef: string | null; shareUrl: string | null; message: string | null }
 
 export type TrackedArtworkGeneration = {
   artworkGenerationRef: string
@@ -78,6 +79,7 @@ export const idleStudioReleaseSave: StudioReleaseSaveState = {
   message: null,
 }
 export const idleStudioReleasePublish: StudioReleasePublishState = { status: "idle", releaseRef: null, publicUrl: null, message: null }
+export const idleStudioReleaseShare: StudioReleaseShareState = { status: "idle", shareRef: null, shareUrl: null, message: null }
 
 export function createInitialStudioReleaseDraft(versionTitle: string): StudioReleaseDraft {
   return {

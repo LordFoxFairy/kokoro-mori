@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import type { MoriApi, ReleaseDraftInput } from "@/lib/mori-api"
+import type { CreateShareInput, MoriApi, ReleaseDraftInput } from "@/lib/mori-api"
 import { MoriApiRequestError } from "@/lib/mori-api-client"
 import {
   artworkSnapshotMatchesPlan,
@@ -21,6 +21,8 @@ import {
   type StudioReleaseSaveState,
   idleStudioReleasePublish,
   type StudioReleasePublishState,
+  idleStudioReleaseShare,
+  type StudioReleaseShareState,
   type TrackedArtworkGeneration,
 } from "./studio-release"
 
@@ -35,6 +37,9 @@ type StudioReleaseApi = Pick<
   | "publishRelease"
   | "getRelease"
   | "unpublishRelease"
+  | "createShare"
+  | "getShare"
+  | "revokeShare"
 >
 
 type PendingReleaseCommand = {
@@ -43,6 +48,7 @@ type PendingReleaseCommand = {
   idempotencyKey: string
 }
 const releasePublishRecoveryKey = "mori-release-publish-recovery-v1"
+const releaseShareRecoveryKey = "mori-release-share-recovery-v1"
 
 type UseStudioReleaseWorkflowInput = {
   versionRef: string | null
@@ -58,6 +64,7 @@ export type StudioReleaseWorkflow = {
   artworkRun: StudioArtworkRunState
   releaseSave: StudioReleaseSaveState
   releasePublish: StudioReleasePublishState
+  releaseShare: StudioReleaseShareState
   active: boolean
   activityDescription: string | null
   updateReleaseDraft: (draft: StudioReleaseDraft) => void
@@ -68,6 +75,8 @@ export type StudioReleaseWorkflow = {
   saveReleaseDraft: (draft: StudioReleaseDraft) => Promise<void>
   publishRelease: () => Promise<void>
   unpublishRelease: () => Promise<void>
+  createShare: () => Promise<void>
+  revokeShare: () => Promise<void>
 }
 
 export function useStudioReleaseWorkflow({ versionRef, versionTitle, api }: UseStudioReleaseWorkflowInput): StudioReleaseWorkflow {
@@ -78,6 +87,7 @@ export function useStudioReleaseWorkflow({ versionRef, versionTitle, api }: UseS
   const [trackedArtworkGeneration, setTrackedArtworkGeneration] = useState<TrackedArtworkGeneration | null>(null)
   const [releaseSave, setReleaseSave] = useState<StudioReleaseSaveState>(idleStudioReleaseSave)
   const [releasePublish, setReleasePublish] = useState<StudioReleasePublishState>(idleStudioReleasePublish)
+  const [releaseShare, setReleaseShare] = useState<StudioReleaseShareState>(idleStudioReleaseShare)
   const activeVersionRef = useRef(versionRef)
   const versionContextEpoch = useRef(0)
   const artworkCommandEpoch = useRef(0)
@@ -85,6 +95,8 @@ export function useStudioReleaseWorkflow({ versionRef, versionTitle, api }: UseS
   const releaseDraftDirty = useRef(false)
   const pendingReleaseCommand = useRef<PendingReleaseCommand | null>(null)
   const pendingPublishCommand = useRef<{ versionRef: string; draftRef: string; revision: number; idempotencyKey: string } | null>(null)
+  const pendingShareCommand = useRef<{ versionRef: string; draftRef: string; revision: number; idempotencyKey: string } | null>(null)
+  const pendingShareRevokeCommand = useRef<{ shareRef: string; idempotencyKey: string } | null>(null)
   const activeArtworkEventRequest = useRef<{ artworkGenerationRef: string; controller: AbortController } | null>(null)
   activeVersionRef.current = versionRef
 
@@ -95,6 +107,8 @@ export function useStudioReleaseWorkflow({ versionRef, versionTitle, api }: UseS
     releaseDraftDirty.current = false
     pendingReleaseCommand.current = null
     pendingPublishCommand.current = null
+    pendingShareCommand.current = null
+    pendingShareRevokeCommand.current = null
     activeArtworkEventRequest.current?.controller.abort()
     activeArtworkEventRequest.current = null
     setFinishView("remaster")
@@ -104,6 +118,7 @@ export function useStudioReleaseWorkflow({ versionRef, versionTitle, api }: UseS
     setTrackedArtworkGeneration(null)
     setReleaseSave(idleStudioReleaseSave)
     setReleasePublish(idleStudioReleasePublish)
+    setReleaseShare(idleStudioReleaseShare)
   }, [versionRef, versionTitle])
 
   useEffect(() => {
@@ -130,6 +145,22 @@ export function useStudioReleaseWorkflow({ versionRef, versionTitle, api }: UseS
     return () => {
       disposed = true
     }
+  }, [api, versionRef])
+
+  useEffect(() => {
+    if (versionRef === null) return
+    let disposed = false
+    try {
+      const stored = JSON.parse(window.localStorage.getItem(releaseShareRecoveryKey) ?? "null") as { versionRef?: string; shareRef?: string } | null
+      if (stored?.versionRef !== versionRef || stored.shareRef === undefined) return
+      void api.getShare(stored.shareRef).then((response) => {
+        if (disposed || activeVersionRef.current !== versionRef || response.data.version_ref !== versionRef) return
+        setReleaseShare({ status: response.data.status, shareRef: response.data.share_ref, shareUrl: response.data.share_url, message: null })
+      }).catch(() => undefined)
+    } catch {
+      window.localStorage.removeItem(releaseShareRecoveryKey)
+    }
+    return () => { disposed = true }
   }, [api, versionRef])
 
   useEffect(() => {
@@ -394,7 +425,7 @@ export function useStudioReleaseWorkflow({ versionRef, versionTitle, api }: UseS
   const publishRelease = async () => {
     const sourceVersionRef = activeVersionRef.current
     const snapshot = releaseSave.snapshot
-    if (sourceVersionRef === null || snapshot === null || releaseSave.status !== "saved" || api.publishRelease === undefined) return
+    if (sourceVersionRef === null || snapshot === null || releaseSave.status !== "saved" || snapshot.visibility !== "public" || api.publishRelease === undefined) return
     setReleasePublish((current) => ({ ...current, status: "publishing", message: null }))
     try {
       const previous = pendingPublishCommand.current
@@ -418,12 +449,51 @@ export function useStudioReleaseWorkflow({ versionRef, versionTitle, api }: UseS
     } catch { setReleasePublish((current) => ({ ...current, status: "failed", message: "Unpublish needs another try." })) }
   }
 
-  const active = isActiveArtworkGenerationStatus(artworkRun.status) || releaseSave.status === "saving"
+  const createShare = async () => {
+    const sourceVersionRef = activeVersionRef.current
+    const snapshot = releaseSave.snapshot
+    if (sourceVersionRef === null || snapshot === null || releaseSave.status !== "saved" || snapshot.visibility !== "link_only" || releaseShare.status === "creating" || api.createShare === undefined) return
+    setReleaseShare((current) => ({ ...current, status: "creating", message: null }))
+    try {
+      const previous = pendingShareCommand.current
+      const command = previous !== null && previous.versionRef === sourceVersionRef && previous.draftRef === snapshot.release_draft_ref && previous.revision === snapshot.revision
+        ? previous
+        : { versionRef: sourceVersionRef, draftRef: snapshot.release_draft_ref, revision: snapshot.revision, idempotencyKey: `mori-share-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` }
+      pendingShareCommand.current = command
+      const input: CreateShareInput = { release_draft_ref: command.draftRef, expected_draft_revision: command.revision }
+      const response = await api.createShare(sourceVersionRef, input, command.idempotencyKey)
+      pendingShareCommand.current = null
+      setReleaseShare({ status: response.data.status, shareRef: response.data.share_ref, shareUrl: response.data.share_url, message: null })
+      window.localStorage.setItem(releaseShareRecoveryKey, JSON.stringify({ versionRef: sourceVersionRef, shareRef: response.data.share_ref }))
+    } catch { setReleaseShare((current) => ({ ...current, status: "failed", message: "The share link needs another try." })) }
+  }
+
+  const revokeShare = async () => {
+    if (releaseShare.shareRef === null || releaseShare.status === "revoking" || api.revokeShare === undefined) return
+    setReleaseShare((current) => ({ ...current, status: "revoking", message: null }))
+    try {
+      const previous = pendingShareRevokeCommand.current
+      const command = previous !== null && previous.shareRef === releaseShare.shareRef
+        ? previous
+        : { shareRef: releaseShare.shareRef, idempotencyKey: `mori-share-revoke-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` }
+      pendingShareRevokeCommand.current = command
+      const response = await api.revokeShare(command.shareRef, command.idempotencyKey)
+      pendingShareRevokeCommand.current = null
+      setReleaseShare((current) => ({ ...current, status: response.data.status, shareUrl: response.data.share_url, message: null }))
+      window.localStorage.removeItem(releaseShareRecoveryKey)
+    } catch { setReleaseShare((current) => ({ ...current, status: "failed", message: "The share link could not be revoked. Try again." })) }
+  }
+
+  const active = isActiveArtworkGenerationStatus(artworkRun.status) || releaseSave.status === "saving" || releaseShare.status === "creating" || releaseShare.status === "revoking"
   const activityDescription = isActiveArtworkGenerationStatus(artworkRun.status)
     ? "Release artwork is being created"
     : releaseSave.status === "saving"
       ? "Release draft is being saved"
-      : null
+      : releaseShare.status === "creating"
+        ? "Share link is being prepared"
+        : releaseShare.status === "revoking"
+          ? "Share link is being revoked"
+        : null
 
   return {
     finishView,
@@ -433,6 +503,7 @@ export function useStudioReleaseWorkflow({ versionRef, versionTitle, api }: UseS
     artworkRun,
     releaseSave,
     releasePublish,
+    releaseShare,
     active,
     activityDescription,
     updateReleaseDraft,
@@ -443,6 +514,8 @@ export function useStudioReleaseWorkflow({ versionRef, versionTitle, api }: UseS
     saveReleaseDraft,
     publishRelease,
     unpublishRelease,
+    createShare,
+    revokeShare,
   }
 }
 

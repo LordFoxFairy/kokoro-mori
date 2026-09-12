@@ -1732,6 +1732,9 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
           publishState: releaseWorkflow.releasePublish,
           onPublish: () => { void releaseWorkflow.publishRelease() },
           onUnpublish: () => { void releaseWorkflow.unpublishRelease() },
+          shareState: releaseWorkflow.releaseShare,
+          onCreateShare: () => { void releaseWorkflow.createShare() },
+          onRevokeShare: () => { void releaseWorkflow.revokeShare() },
         }}
         onClose={() => setFinishDialogOpen(false)}
         onReset={resetStudioChange}

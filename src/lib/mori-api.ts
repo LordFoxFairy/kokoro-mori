@@ -162,6 +162,19 @@ export type MoriRelease = {
 export type PublishReleaseInput = { release_draft_ref: MoriRef; expected_draft_revision: number }
 export type PublishReleaseReceipt = Pick<MoriRelease, "release_ref" | "version_ref" | "status" | "public_url" | "created_at">
 
+export type MoriShareStatus = "creating" | "active" | "failed" | "revoked"
+export type MoriShare = {
+  share_ref: MoriRef
+  version_ref: MoriRef
+  release_draft_ref: MoriRef
+  status: MoriShareStatus
+  share_url: string | null
+  created_at: string
+  updated_at: string
+}
+export type CreateShareInput = { release_draft_ref: MoriRef; expected_draft_revision: number }
+export type CreateShareReceipt = Pick<MoriShare, "share_ref" | "version_ref" | "status" | "share_url" | "created_at">
+
 export type StudioChangeInsertionScope = {
   type: "insertion_point"
   position_ms: number
@@ -795,6 +808,9 @@ export type MoriApi = {
   publishRelease: (versionRef: MoriRef, input: PublishReleaseInput, idempotencyKey: string) => Promise<ApiSuccess<PublishReleaseReceipt>>
   getRelease: (releaseRef: MoriRef) => Promise<ApiSuccess<MoriRelease>>
   unpublishRelease: (releaseRef: MoriRef, idempotencyKey: string) => Promise<ApiSuccess<MoriRelease>>
+  createShare: (versionRef: MoriRef, input: CreateShareInput, idempotencyKey: string) => Promise<ApiSuccess<MoriShare>>
+  getShare: (shareRef: MoriRef) => Promise<ApiSuccess<MoriShare>>
+  revokeShare: (shareRef: MoriRef, idempotencyKey: string) => Promise<ApiSuccess<MoriShare>>
   createMixRevision: (versionRef: MoriRef, input: MixRevisionInput, idempotencyKey: string) => Promise<ApiSuccess<MoriMixRevision>>
   getMixRevision: (mixRevisionRef: MoriRef) => Promise<ApiSuccess<MoriMixRevision>>
   getCompositionRevision: (versionRef: MoriRef) => Promise<ApiSuccess<MoriCompositionRevision>>

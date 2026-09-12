@@ -18,6 +18,7 @@ import {
   type MoriCompositionClip,
   type MoriCompositionRevision,
   type MoriCompositionTrack,
+  type CreateShareInput,
   type PublishReleaseInput,
   type MoriLyricsRevisionEvent,
   type MoriStemSeparationEvent,
@@ -55,6 +56,7 @@ import {
   parseMoriProjectPage,
   parseMoriReleaseDraft,
   parseMoriRelease,
+  parseMoriShare,
   parsePublishReleaseReceipt,
   parseMoriSongPlan,
   parseStemSeparationCancelReceipt,
@@ -464,6 +466,21 @@ export function createMoriApiClient(options: MoriApiClientOptions = {}): MoriApi
       const response = await fetchImpl(`${apiBasePath}/releases/${encodeURIComponent(releaseRef)}/unpublish`, { method: "POST", headers: createMutationHeaders(idempotencyKey) })
       const payload = await readJson(response)
       return parseSuccessResponse(response, payload, parseMoriRelease)
+    },
+    async createShare(versionRef, input: CreateShareInput, idempotencyKey) {
+      const response = await fetchImpl(`${apiBasePath}/versions/${encodeURIComponent(versionRef)}/share`, { method: "POST", headers: createMutationHeaders(idempotencyKey), body: JSON.stringify(input) })
+      const payload = await readJson(response)
+      return parseSuccessResponse(response, payload, parseMoriShare)
+    },
+    async getShare(shareRef) {
+      const response = await fetchImpl(`${apiBasePath}/shares/${encodeURIComponent(shareRef)}`)
+      const payload = await readJson(response)
+      return parseSuccessResponse(response, payload, parseMoriShare)
+    },
+    async revokeShare(shareRef, idempotencyKey) {
+      const response = await fetchImpl(`${apiBasePath}/shares/${encodeURIComponent(shareRef)}/revoke`, { method: "POST", headers: createMutationHeaders(idempotencyKey) })
+      const payload = await readJson(response)
+      return parseSuccessResponse(response, payload, parseMoriShare)
     },
     async cancelCreativeSourceUpload(uploadRef, idempotencyKey) {
       const response = await fetchImpl(`${apiBasePath}/creative-source-uploads/${encodeURIComponent(uploadRef)}/cancel`, {

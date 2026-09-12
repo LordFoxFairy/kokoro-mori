@@ -1,6 +1,6 @@
 # Release、Share、Publish 设计
 
-> 状态：P0.3 浏览器契约设计阶段（2026-09-05）
+> 状态：P0.3 浏览器 foundation 已实现；Share owner integration 待接入（2026-09-12）
 
 ## 产品判断
 
@@ -15,6 +15,9 @@ Version / Mix
 
 用户在 Studio 完成歌曲后，先保存 Release Draft；只有保存确认成功，才显示 Publish。Copy link 在 draft 阶段只复制
 编辑上下文，发布后才复制公开 Release URL，避免把私有编辑链接误称为分享链接。
+
+当前浏览器已把两条外发路径分开：`public` 草稿显示 Publish release，`link_only` 草稿显示 Create share link；
+Share 成功后显示 Copy share link 与 Revoke link。两者都只消费 owner 返回的 opaque URL，浏览器不持有 share token。
 
 ## Owner 与边界
 
@@ -62,16 +65,24 @@ published → unpublished
 - `GET /api/v1/mori/releases/{release_ref}`：Library 与深链读取公开投影。
 - `POST /api/v1/mori/releases/{release_ref}/unpublish`：带 `Idempotency-Key`，只撤销公开可见性，不删除 Version 或 Draft。
 
+### Share
+
+`POST /api/v1/mori/versions/{version_ref}/share` 为已保存的 `link_only` draft 创建可撤销分享；请求携带
+`release_draft_ref` 与 `expected_draft_revision`，并使用 `Idempotency-Key`。浏览器通过
+`GET /api/v1/mori/shares/{share_ref}` 恢复状态，通过
+`POST /api/v1/mori/shares/{share_ref}/revoke` 撤销链接。Share 的 `share_url` 只有 `active` 状态可用；
+`creating`、`failed`、`revoked` 均不得返回可用 URL。
+
 错误使用稳定 `code / message / retryable`；Mori 只根据 `retryable` 决定是否保留 Publish command，不暴露权限或 Storage 内部细节。
 
 ## 交互门禁
 
-1. Draft 保存未得到完整 revision 确认前，Publish 按钮不存在或 disabled。
+1. Draft 保存未得到完整 revision 确认前，Share / Publish 按钮不存在或 disabled。
 2. Publish 前展示来源 Version、Mix、Artwork、Visibility、Remix permission 和最终标题。
 3. `publishing` 可关闭窗口后恢复；重试复用原始 draft revision 与幂等键，不重复创建 Release。
-4. Publish 成功后，Studio 与 Library 显示独立的 Release 状态和 Copy public link。
-5. 编辑深链始终使用 `Copy edit link`；公开链接始终使用 `Copy public link`，两者不复用字段。
-6. Unpublish 后保留本地编辑上下文与 Release history，但公开链接显示已撤销。
+4. Share 成功后显示 Copy share link 与 Revoke link；Publish 成功后显示独立的 Release 状态和 Copy public link。
+5. 编辑深链始终使用 `Copy edit link`；分享链接和公开链接分别使用 `Copy share link` 与 `Copy public link`，不复用字段。
+6. Revoke / Unpublish 后保留本地编辑上下文与历史，但外部链接显示已撤销。
 
 ## 暂不开放
 

@@ -209,7 +209,7 @@ source 或 strength 与 Review Plan 不一致时不会挂接任何 Candidate。�
 
 ### Finish / Release 的完成信息模型
 
-Release 与 Remaster 共用 Studio 的 Finish 入口。Release 先保存当前 Version 的发布意图，再通过独立 Publish command 完成发布：
+Release 与 Remaster 共用 Studio 的 Finish 入口。Release 先保存当前 Version 的发布意图，再通过独立 Share 或 Publish command 完成交付：
 
 ```text
 Identity     Title + Description + Artwork
@@ -217,7 +217,7 @@ Visibility   Private（默认） | Link only | Public
 Permissions  Allow remixes（与 Visibility 独立）
 Disclosure   Explicit content
 Persistence  Save release draft + expected revision
- Publish      Draft revision 确认后显式 Publish / Unpublish
+Delivery     Draft revision 确认后显式 Create share link / Revoke，或 Publish / Unpublish
 ```
 
 Artwork 是视觉身份，不等于 Tad 所称的音乐 Cover。用户可以沿用当前图片，或输入 brief，选择
@@ -232,7 +232,8 @@ Allow remixes 也不会改变可见性。保存草稿不会发布、分享或替
 
 产品反馈也必须服从同一事实边界：Create 的未保存输入没有可分享资源，因此不显示 Share；Studio 的 `Copy link`
 只是复制当前 Project + Version 深链，等待剪贴板写入成功后才显示 `Link copied`，权限拒绝时明确显示失败并允许重试。
-它不代表作品已经发布，也不会改变 Release draft 的可见性。
+它不代表作品已经发布，也不会改变 Release draft 的可见性。Link-only share 是独立、可撤销的分享事实；Public
+release 则是需要显式审核的公开发布事实，两者不复用 URL 或状态。
 
 ### Lyrics 的 AI 协作模型
 
@@ -632,6 +633,8 @@ Composition 的第一组 provider-neutral 纯函数已落地到 `composition.ts`
   Version ref 当作用户信息；Remaster、Release draft 与文件导出的职责仍保持分离。
 - 已完成浏览器侧第六刀：Create 移除没有持久化分享对象的 Share；Studio 将深链动作明确命名为 Copy link，
   以 pending / success / failure 状态反映真实 Clipboard 结果，失败可再次点击重试，不提前宣称成功。
+- 已完成浏览器侧第七刀：Finish 将 link-only Share 与 Public Release 拆成独立的创建、恢复、复制和撤销路径；
+  两者分别绑定已保存的 Release Draft revision，不持有 share token，也不把编辑深链冒充外部链接。
 - 下一步：选区/多轨渲染；等待真实多轨 artifact contract 后再开放。Release Publish 的真实 owner integration smoke 仍待 BFF / Storage 接通。
 - AI MV 作为完成歌曲的后置流程，不抢占创作主路径。
 

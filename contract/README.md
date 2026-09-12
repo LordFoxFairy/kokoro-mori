@@ -67,6 +67,10 @@ music owner、BFF 或其他 Kokoro 子仓的内部模型。
   draft；标题、说明、可见性、Remix 权限、Explicit content 与 Artwork 均为显式字段，并使用 revision 做乐观并发。
 - [`tests/mori-release-draft.contract.test.ts`](./tests/mori-release-draft.contract.test.ts)：检查 `GET` / `PUT`、
   `expected_revision`、draft-only 状态、独立可见性与 Remix 权限，以及 provider-neutral 边界。
+- [`openapi/mori-share.v1.json`](./openapi/mori-share.v1.json)：为已保存的 link-only Release Draft 创建、恢复和撤销
+  分享链接；只返回 opaque `share_ref` 与 `share_url`，不把 token 或权限表暴露给浏览器。
+- [`tests/mori-share.contract.test.ts`](./tests/mori-share.contract.test.ts)：检查 Share 的独立生命周期、幂等命令、
+  恢复路径、撤销命令和 token 边界。
 
 Studio Change 不建立第二套异步任务状态机。它通过
 `POST /api/v1/mori/versions/{version_ref}/generations` 创建既有 Generation 资源，并继续复用

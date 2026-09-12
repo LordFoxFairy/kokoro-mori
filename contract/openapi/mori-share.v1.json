@@ -1,0 +1,171 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Mori Share API",
+    "version": "0.1.0",
+    "description": "Creates and revokes a link-only share for a saved Release Draft. Share permission is owned by the product/IAM boundary; the browser receives only opaque refs and a share URL."
+  },
+  "paths": {
+    "/api/v1/mori/versions/{version_ref}/share": {
+      "post": {
+        "operationId": "createMoriShare",
+        "security": [{ "moriSession": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/VersionRef" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateShare" }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Share link creation started",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiShare" }
+              }
+            }
+          },
+          "409": { "$ref": "#/components/responses/ApiError" }
+        }
+      }
+    },
+    "/api/v1/mori/shares/{share_ref}": {
+      "parameters": [{ "$ref": "#/components/parameters/ShareRef" }],
+      "get": {
+        "operationId": "getMoriShare",
+        "security": [{ "moriSession": [] }],
+        "responses": {
+          "200": {
+            "description": "Share projection",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiShare" }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/ApiError" }
+        }
+      }
+    },
+    "/api/v1/mori/shares/{share_ref}/revoke": {
+      "parameters": [{ "$ref": "#/components/parameters/ShareRef" }],
+      "post": {
+        "operationId": "revokeMoriShare",
+        "security": [{ "moriSession": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
+        "responses": {
+          "200": {
+            "description": "Share revoked",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiShare" }
+              }
+            }
+          },
+          "409": { "$ref": "#/components/responses/ApiError" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "moriSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "kokoro_session"
+      }
+    },
+    "parameters": {
+      "VersionRef": {
+        "name": "version_ref",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "minLength": 1 }
+      },
+      "ShareRef": {
+        "name": "share_ref",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "minLength": 1 }
+      },
+      "IdempotencyKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": true,
+        "schema": { "type": "string", "minLength": 1, "maxLength": 200 }
+      }
+    },
+    "schemas": {
+      "CreateShare": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["release_draft_ref", "expected_draft_revision"],
+        "properties": {
+          "release_draft_ref": { "type": "string", "minLength": 1 },
+          "expected_draft_revision": { "type": "integer", "minimum": 1 }
+        }
+      },
+      "Share": {
+        "type": "object",
+        "required": [
+          "share_ref",
+          "version_ref",
+          "release_draft_ref",
+          "status",
+          "share_url",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "share_ref": { "type": "string" },
+          "version_ref": { "type": "string" },
+          "release_draft_ref": { "type": "string" },
+          "status": { "enum": ["creating", "active", "failed", "revoked"] },
+          "share_url": {
+            "type": ["string", "null"],
+            "description": "Opaque link-only URL; non-active states must return null."
+          },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ApiShare": {
+        "type": "object",
+        "required": ["data", "meta"],
+        "properties": {
+          "data": { "$ref": "#/components/schemas/Share" },
+          "meta": { "$ref": "#/components/schemas/Meta" }
+        }
+      },
+      "Meta": {
+        "type": "object",
+        "required": ["request_id"],
+        "properties": { "request_id": { "type": "string" } }
+      },
+      "ErrorBody": {
+        "type": "object",
+        "required": ["error", "meta"],
+        "properties": {
+          "error": { "type": "object" },
+          "meta": { "$ref": "#/components/schemas/Meta" }
+        }
+      }
+    },
+    "responses": {
+      "ApiError": {
+        "description": "Mori API error",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorBody" }
+          }
+        }
+      }
+    }
+  }
+}

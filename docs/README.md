@@ -13,6 +13,7 @@
 - [Creative Source Ingest 设计](./CREATIVE_SOURCE_INGEST.md)
 - [Release / Share / Publish 设计](./RELEASE_SHARE_PUBLISH.md)
 - [Release Publish OpenAPI](../contract/openapi/mori-release-publish.v1.json)
+- [Share OpenAPI](../contract/openapi/mori-share.v1.json)
 - [Mori 产品形态基线](./PRODUCT_SHAPE.md)
 - [Suno / Tad 竞品与供应商研究](./COMPETITIVE_RESEARCH.md)
 

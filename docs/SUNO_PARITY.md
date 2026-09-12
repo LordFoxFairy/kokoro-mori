@@ -69,7 +69,7 @@ Prompt / Upload
 | 多轨 timeline、录音、loop、tempo | 部分对齐 | 当前已有 provider-neutral Track / Clip projection 与单轨浏览器编辑；录音、loop、tempo 和真实多轨 owner 尚缺 | P1：扩展 Track / Clip / Placement，并接入真实 owner |
 | Advanced Stems 与 mixer | 部分对齐 | Split intent、异步恢复、同步试听、Mute/Solo/Gain、Mix Revision | 补 Pan、真实 stem manifest 与 composition placement |
 | 整曲 / 选区 / 多轨 / MIDI 导出 | 部分对齐 | 现有 Export 仅 Full song MP3/WAV | P1：Selected range、Multitrack、artifact manifest |
-| Link-only 分享与 Public 发布 | 缺失 | Studio Copy link 只是编辑深链；Release 只有 draft | **P0：独立 Share / Publish 资源与权限** |
+| Link-only 分享与 Public 发布 | 浏览器已对齐 | Release draft、独立 Share/Publish/Unpublish 命令、Copy share/public link；真实 owner 权限与 URL smoke 待接通 | **P0：完成真实 Share / Publish owner 集成** |
 | MIDI、Effects、Automation、Synth | 缺失 | 无可靠 Composition Revision 承载 | P1 后段；先做最小 track inspector 与 automation lane |
 | AI 自定义插件、Web MIDI controller | 后置 | 不影响核心创作到交付闭环 | 暂不追逐功能数量 |
 | Voices / Personas / Custom Models / Taste | 部分对齐 | Voice source 与 Vocal direction 已分离；尚无创建、验证、训练和版本生命周期 | P2：Creative Identity 与显式 consent |

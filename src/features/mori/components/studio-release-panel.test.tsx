@@ -12,6 +12,7 @@ import {
   type StudioReleaseDraft,
   type StudioReleaseSaveState,
   type StudioReleasePublishState,
+  type StudioReleaseShareState,
 } from "../studio-release"
 import { StudioReleasePanel } from "./studio-release-panel"
 
@@ -32,7 +33,7 @@ describe("Studio Release panel", () => {
     expect(screen.getByRole("button", { name: "Save release draft" })).toBeEnabled()
     expect(screen.queryByRole("button", { name: /^Publish/u })).not.toBeInTheDocument()
     expect(screen.queryByText("version_1")).not.toBeInTheDocument()
-    expect(screen.getByText("Everything stays with this version. Nothing is published from this window.")).toBeInTheDocument()
+    expect(screen.getByText("Save the draft first. Sharing and publishing are separate choices.")).toBeInTheDocument()
 
     fireEvent.change(screen.getByRole("textbox", { name: "Release title" }), { target: { value: "Morning Lines" } })
     fireEvent.change(screen.getByRole("textbox", { name: "Release note" }), { target: { value: "A quiet ride toward morning." } })
@@ -59,6 +60,33 @@ describe("Studio Release panel", () => {
     expect(screen.getByRole("button", { name: "Copy public link" })).toBeInTheDocument()
     fireEvent.click(screen.getByRole("button", { name: "Copy public link" }))
     await waitFor(() => expect(writeText).toHaveBeenCalledWith("https://mori.local/release/release_1"))
+  })
+
+  it("keeps link-only sharing separate from public publishing", () => {
+    const onCreateShare = vi.fn<() => void>()
+    render(<ReleaseHarness initialVisibility="link_only" saveState={{ status: "saved", snapshot: null, message: null }} onCreateShare={onCreateShare} />)
+
+    expect(screen.getByRole("button", { name: "Create share link" })).toBeEnabled()
+    expect(screen.queryByRole("button", { name: "Publish release" })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: "Create share link" }))
+    expect(onCreateShare).toHaveBeenCalledTimes(1)
+  })
+
+  it("copies and revokes an active link-only share", async () => {
+    const writeText = vi.fn(async () => undefined)
+    const onRevokeShare = vi.fn<() => void>()
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } })
+    render(<ReleaseHarness
+      initialVisibility="link_only"
+      saveState={{ status: "saved", snapshot: null, message: null }}
+      shareState={{ status: "active", shareRef: "share_1", shareUrl: "https://mori.local/share/share_1", message: null }}
+      onRevokeShare={onRevokeShare}
+    />)
+
+    fireEvent.click(screen.getByRole("button", { name: "Copy share link" }))
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith("https://mori.local/share/share_1"))
+    fireEvent.click(screen.getByRole("button", { name: "Revoke link" }))
+    expect(onRevokeShare).toHaveBeenCalledTimes(1)
   })
 
   it("reviews a fixed four-concept artwork plan before generation", () => {
@@ -156,24 +184,32 @@ describe("Studio Release panel", () => {
 
 type ReleaseHarnessProps = {
   initialTitle?: string
+  initialVisibility?: StudioReleaseDraft["visibility"]
   artworkRun?: StudioArtworkRunState
   saveState?: StudioReleaseSaveState
   onGenerateArtwork?: (plan: StudioArtworkPlan) => void
   onCancelArtwork?: () => void
   onSave?: (draft: StudioReleaseDraft) => void
   publishState?: StudioReleasePublishState
+  shareState?: StudioReleaseShareState
+  onCreateShare?: () => void
+  onRevokeShare?: () => void
 }
 
 function ReleaseHarness({
   initialTitle = "First Light",
+  initialVisibility = "private",
   artworkRun = idleStudioArtworkRun,
   saveState = idleStudioReleaseSave,
   onGenerateArtwork = vi.fn(),
   onCancelArtwork = vi.fn(),
   onSave = vi.fn(),
   publishState,
+  shareState,
+  onCreateShare = vi.fn(),
+  onRevokeShare = vi.fn(),
 }: ReleaseHarnessProps) {
-  const [draft, setDraft] = useState<StudioReleaseDraft>(() => createInitialStudioReleaseDraft(initialTitle))
+  const [draft, setDraft] = useState<StudioReleaseDraft>(() => ({ ...createInitialStudioReleaseDraft(initialTitle), visibility: initialVisibility }))
   const [artworkDraft, setArtworkDraft] = useState<StudioArtworkDraft>({ prompt: "", style: "abstract", palette: "warm_dawn" })
   return (
     <StudioReleasePanel
@@ -189,6 +225,9 @@ function ReleaseHarness({
       onResetArtwork={vi.fn()}
       onSave={onSave}
       publishState={publishState}
+      shareState={shareState}
+      onCreateShare={onCreateShare}
+      onRevokeShare={onRevokeShare}
     />
   )
 }

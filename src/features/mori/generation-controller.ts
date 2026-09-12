@@ -1,5 +1,5 @@
 import type { GenerationStatus } from "./domain"
-import { createGenerationRequest, type ArtworkGenerationInput, type CurrentSongPlanInput, type CurrentVersionInput, type GenerationCreateInput, type GenerationReceipt, type LyricsDraftInput, type LyricsRevisionInput, type MixRevisionInput, type MoriApi, type MoriCreativeSourceUploadInput, type MoriCreativeSourceUploadStatus, type MoriExportInput, type MoriGenerationDraft, type MoriProjectCreateInput, type MoriProjectWorkspaceOpenVersion, type MoriProjectWorkspaceProjection, type MoriReleaseDraft, type ProjectWorkspaceOpenVersionInput, type ReleaseDraftInput, type SongPlanCreateInput, type StemSeparationInput, type StudioChangeGenerationInput } from "@/lib/mori-api"
+import { createGenerationRequest, type ArtworkGenerationInput, type CurrentSongPlanInput, type CurrentVersionInput, type GenerationCreateInput, type GenerationReceipt, type LyricsDraftInput, type LyricsRevisionInput, type MixRevisionInput, type MoriApi, type MoriCreativeSourceUploadInput, type MoriCreativeSourceUploadStatus, type MoriExportInput, type MoriGenerationDraft, type MoriProjectCreateInput, type MoriProjectWorkspaceOpenVersion, type MoriProjectWorkspaceProjection, type MoriReleaseDraft, type MoriShare, type ProjectWorkspaceOpenVersionInput, type ReleaseDraftInput, type SongPlanCreateInput, type StemSeparationInput, type StudioChangeGenerationInput } from "@/lib/mori-api"
 import type { MoriRef } from "./domain"
 
 export type GenerationControllerState = {
@@ -51,6 +51,7 @@ function receiptState(receipt: GenerationReceipt, requestId: string): Generation
 const previewExports = new Map<MoriRef, { versionRef: MoriRef; input: MoriExportInput }>()
 const previewArtworkGenerations = new Map<MoriRef, { versionRef: MoriRef; input: ArtworkGenerationInput }>()
 const previewReleaseDrafts = new Map<MoriRef, MoriReleaseDraft>()
+const previewShares = new Map<MoriRef, MoriShare>()
 const previewCurrentSongPlans = new Map<MoriRef, MoriProjectWorkspaceProjection["current_song_plan"]>()
 const previewLyricsDrafts = new Map<MoriRef, MoriProjectWorkspaceProjection["latest_lyrics_draft"]>()
 const previewOpenVersions = new Map<MoriRef, MoriProjectWorkspaceOpenVersion>()
@@ -377,6 +378,46 @@ export const previewMoriApi: MoriApi = {
   },
   async unpublishRelease(releaseRef) {
     return { data: { release_ref: releaseRef, version_ref: "version_preview_first_light_a", release_draft_ref: "release_draft_preview", status: "unpublished" as const, public_url: null, created_at: "2026-09-05T12:00:00.000Z", updated_at: "2026-09-05T12:00:00.000Z" }, meta: { request_id: `preview-release-unpublish-${releaseRef}` } }
+  },
+  async createShare(versionRef, input, idempotencyKey) {
+    const existing = previewShares.get(versionRef)
+    const share: MoriShare = {
+      share_ref: existing?.share_ref ?? `share_preview_${idempotencyKey}`,
+      version_ref: versionRef,
+      release_draft_ref: input.release_draft_ref,
+      status: "active",
+      share_url: `https://mori.local/share/${existing?.share_ref ?? `share_preview_${idempotencyKey}`}`,
+      created_at: "2026-09-12T12:00:00.000Z",
+      updated_at: "2026-09-12T12:00:00.000Z",
+    }
+    previewShares.set(versionRef, share)
+    return { data: share, meta: { request_id: `preview-share-create-${idempotencyKey}` } }
+  },
+  async getShare(shareRef) {
+    const share = [...previewShares.values()].find((candidate) => candidate.share_ref === shareRef) ?? {
+      share_ref: shareRef,
+      version_ref: "version_preview_first_light_a",
+      release_draft_ref: "release_draft_preview",
+      status: "active" as const,
+      share_url: `https://mori.local/share/${shareRef}`,
+      created_at: "2026-09-12T12:00:00.000Z",
+      updated_at: "2026-09-12T12:00:00.000Z",
+    }
+    return { data: share, meta: { request_id: `preview-share-read-${shareRef}` } }
+  },
+  async revokeShare(shareRef) {
+    const current = [...previewShares.entries()].find(([, share]) => share.share_ref === shareRef)
+    const share: MoriShare = {
+      share_ref: shareRef,
+      version_ref: current?.[1].version_ref ?? "version_preview_first_light_a",
+      release_draft_ref: current?.[1].release_draft_ref ?? "release_draft_preview",
+      status: "revoked",
+      share_url: null,
+      created_at: current?.[1].created_at ?? "2026-09-12T12:00:00.000Z",
+      updated_at: "2026-09-12T12:00:00.000Z",
+    }
+    if (current !== undefined) previewShares.set(current[0], share)
+    return { data: share, meta: { request_id: `preview-share-revoke-${shareRef}` } }
   },
   async createMixRevision(versionRef: MoriRef, input: MixRevisionInput, idempotencyKey: string) {
     return {
