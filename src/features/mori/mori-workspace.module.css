@@ -4997,6 +4997,10 @@
 
 .arrangementTimelineHeader { display:flex; align-items:center; justify-content:flex-end; gap:12px; min-height:32px; margin:0 0 6px; }
 .compositionLoadNotice { margin-right:auto; color:var(--mori-muted); font-size:10px; line-height:1.4; }
+.arrangementHistoryActions { display:flex; align-items:center; gap:4px; }
+.arrangementHistoryButton { display:inline-grid; width:30px; height:30px; place-items:center; padding:0; border:1px solid var(--mori-border); border-radius:9px; color:var(--mori-muted); background:rgba(255,255,255,.8); cursor:pointer; }
+.arrangementHistoryButton:hover:not(:disabled), .arrangementHistoryButton:focus-visible { border-color:var(--mori-primary); color:var(--mori-primary); background:#fff; }
+.arrangementHistoryButton:disabled { cursor:default; opacity:.42; }
 .arrangementSaveButton { display:inline-flex; align-items:center; gap:6px; min-height:30px; padding:0 12px; border:1px solid var(--mori-border); border-radius:9px; color:var(--mori-ink); background:rgba(255,255,255,.8); font:inherit; font-size:12px; font-weight:700; cursor:pointer; }
 .arrangementSaveButton:hover:not(:disabled) { border-color:var(--mori-primary); color:var(--mori-primary); }
 .arrangementSaveButton:disabled { cursor:default; opacity:.52; }

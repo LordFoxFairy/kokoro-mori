@@ -599,7 +599,7 @@ BFF 必须按受信会话校验该 asset 与用户可见 Mori 资源的关联，
 
 ### P2 · 深度编辑（进行中）
 
-Composition 的第一组 provider-neutral 纯函数已落地到 `composition.ts`：Move、Trim、Split、Fade 只改变本地 Track / Clip / Placement；`composition-command.ts` 已固定 revisioned command 的 snake_case 输入边界，并可从编辑意图序列化；`composition-history.ts`、`composition-editor.ts` 与 `use-composition-editor.ts` 提供本地 Undo / Redo 与 React 编辑状态，`composition-save-state.ts` 与 `CompositionSaveIndicator` 明确 Saved / Unsaved / Saving / Conflict / Failed 状态；Studio 通过同源 owner seam 提交 revisioned Composition command，并采用 owner 返回的独立 revision，不再借用 Workspace Open Version revision；空 projection 与不可用 projection 会向用户明确说明，而不是伪装成已保存 arrangement。当前 BFF owner projection / durable persistence 尚未闭环，因此 preview 仍不宣称跨设备已保存。
+Composition 的第一组 provider-neutral 纯函数已落地到 `composition.ts`：Move、Trim、Split、Fade、Remove 只改变本地 Track / Clip / Placement；`composition-command.ts` 已固定 revisioned command 的 snake_case 输入边界，并可从编辑意图序列化；`composition-history.ts`、`composition-editor.ts` 与 `use-composition-editor.ts` 提供本地 Undo / Redo 与 React 编辑状态，`composition-save-state.ts` 与 `CompositionSaveIndicator` 明确 Saved / Unsaved / Saving / Conflict / Failed 状态；Studio 通过同源 owner seam 提交 revisioned Composition command，并采用 owner 返回的独立 revision，不再借用 Workspace Open Version revision；选中 Clip 的 Remove 与 Delete / Backspace 快捷键均走同一可撤销命令，Arrangement 顶部同时提供 Undo / Redo 与 ⌘/Ctrl 快捷键；空 projection 与不可用 projection 会向用户明确说明，而不是伪装成已保存 arrangement。当前 BFF owner projection / durable persistence 尚未闭环，因此 preview 仍不宣称跨设备已保存。
 
 - 已完成可拖选时间范围、动态时间标尺、全局播放头与段落联动；Custom range 直接复用既有
   provider-neutral `time_range` 契约，调整范围后会使旧的 Review Plan 失效，避免错用过期选区。

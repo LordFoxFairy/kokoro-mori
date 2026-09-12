@@ -745,6 +745,7 @@ export type MoriCompositionCommand =
   | { type: "insert_clip"; track_ref: MoriRef; clip_ref: MoriRef; source_ref: MoriRef; start_ms: number; duration_ms: number; offset_ms: number }
   | { type: "split_clip"; track_ref: MoriRef; clip_ref: MoriRef; at_ms: number }
   | { type: "set_fades"; track_ref: MoriRef; clip_ref: MoriRef; fade_in_ms: number; fade_out_ms: number }
+  | { type: "remove_clip"; track_ref: MoriRef; clip_ref: MoriRef }
 export type MoriCompositionRevisionInput = { expected_revision: number; commands: MoriCompositionCommand[] }
 export type MoriCompositionClip = { clip_ref: MoriRef; source_ref: MoriRef; start_ms: number; duration_ms: number; offset_ms: number; fade_in_ms?: number; fade_out_ms?: number }
 export type MoriCompositionTrack = { track_ref: MoriRef; kind: "vocals" | "instrumental" | "other"; name: string; clips: MoriCompositionClip[] }

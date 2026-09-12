@@ -7,7 +7,8 @@ describe("CompositionLane", () => {
     const onSelect = vi.fn()
     const onEdit = vi.fn()
     const onDuplicate = vi.fn()
-    render(<CompositionLane durationMs={10_000} onDuplicateClip={onDuplicate} onEditClip={onEdit} onSelectClip={onSelect} selectedClipRef="clip_1" selectedTrackRef="track_1" tracks={[{ trackRef: "track_1", kind: "vocals", name: "Lead", clips: [{ clipRef: "clip_1", sourceRef: "asset_1", startMs: 2_000, durationMs: 4_000, offsetMs: 0 }] }]} />)
+    const onDelete = vi.fn()
+    render(<CompositionLane durationMs={10_000} onDeleteClip={onDelete} onDuplicateClip={onDuplicate} onEditClip={onEdit} onSelectClip={onSelect} selectedClipRef="clip_1" selectedTrackRef="track_1" tracks={[{ trackRef: "track_1", kind: "vocals", name: "Lead", clips: [{ clipRef: "clip_1", sourceRef: "asset_1", startMs: 2_000, durationMs: 4_000, offsetMs: 0 }] }]} />)
     expect(screen.getByRole("region", { name: "Composition tracks" })).toBeTruthy()
     fireEvent.click(screen.getByRole("button", { name: "Lead clip Audio clip · 0:04" }))
     expect(onSelect).toHaveBeenCalledWith("clip_1", "track_1")
@@ -15,6 +16,10 @@ describe("CompositionLane", () => {
     expect(onEdit).toHaveBeenCalledWith("split", "clip_1", "track_1")
     fireEvent.click(screen.getByRole("button", { name: "Duplicate" }))
     expect(onDuplicate).toHaveBeenCalledWith("clip_1", "track_1")
+    fireEvent.click(screen.getByRole("button", { name: "Remove" }))
+    expect(onDelete).toHaveBeenCalledWith("clip_1", "track_1")
+    fireEvent.keyDown(screen.getByRole("button", { name: "Lead clip Audio clip · 0:04" }), { key: "Delete" })
+    expect(onDelete).toHaveBeenCalledTimes(2)
   })
 
   it("disables editing while the timeline is busy", () => {

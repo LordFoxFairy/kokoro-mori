@@ -10,6 +10,11 @@ export function insertClip(track: CompositionTrack, clip: CompositionClip): Comp
   return { ...track, clips: [...track.clips, { ...clip }].sort((left, right) => left.startMs - right.startMs) }
 }
 
+export function removeClip(track: CompositionTrack, clipRef: MoriRef): CompositionTrack {
+  if (!track.clips.some((clip) => clip.clipRef === clipRef)) throw new Error("composition_clip_not_found")
+  return { ...track, clips: track.clips.filter((clip) => clip.clipRef !== clipRef) }
+}
+
 export function moveClip(track: CompositionTrack, clipRef: MoriRef, startMs: number): CompositionTrack {
   if (!Number.isSafeInteger(startMs) || startMs < 0) throw new Error("composition_start_invalid")
   const clip = track.clips.find((item) => item.clipRef === clipRef)

@@ -11,6 +11,7 @@ export type CompositionCommand =
   | { type: "insert_clip"; track_ref: MoriRef; clip_ref: MoriRef; source_ref: MoriRef; start_ms: number; duration_ms: number; offset_ms: number }
   | { type: "split_clip"; track_ref: MoriRef; clip_ref: MoriRef; at_ms: number }
   | { type: "set_fades"; track_ref: MoriRef; clip_ref: MoriRef; fade_in_ms: number; fade_out_ms: number }
+  | { type: "remove_clip"; track_ref: MoriRef; clip_ref: MoriRef }
 
 export type CompositionRevisionInput = {
   expected_revision: number
@@ -25,6 +26,7 @@ export function compositionEditToCommand(edit: CompositionEdit, composition?: Co
   if (edit.operation === "crop") return { type: "crop_clip", track_ref: trackRef, clip_ref: edit.clipRef, start_offset_ms: edit.startOffsetMs, end_offset_ms: edit.endOffsetMs }
   if (edit.operation === "insert") return { type: "insert_clip", track_ref: trackRef, clip_ref: edit.clip.clipRef, source_ref: edit.clip.sourceRef, start_ms: edit.clip.startMs, duration_ms: edit.clip.durationMs, offset_ms: edit.clip.offsetMs }
   if (edit.operation === "split") return { type: "split_clip", track_ref: trackRef, clip_ref: edit.clipRef, at_ms: edit.atMs }
+  if (edit.operation === "remove") return { type: "remove_clip", track_ref: trackRef, clip_ref: edit.clipRef }
   return { type: "set_fades", track_ref: trackRef, clip_ref: edit.clipRef, fade_in_ms: edit.fadeInMs, fade_out_ms: edit.fadeOutMs }
 }
 
@@ -52,7 +54,9 @@ export function replayCompositionCommands(composition: Composition, commands: re
             ? { operation: "insert", trackRef: command.track_ref, clip: { clipRef: command.clip_ref, sourceRef: command.source_ref, startMs: command.start_ms, durationMs: command.duration_ms, offsetMs: command.offset_ms } }
             : command.type === "split_clip"
               ? { operation: "split", trackRef: command.track_ref, clipRef: command.clip_ref, atMs: command.at_ms }
-              : { operation: "fade", trackRef: command.track_ref, clipRef: command.clip_ref, fadeInMs: command.fade_in_ms, fadeOutMs: command.fade_out_ms }
+              : command.type === "remove_clip"
+                ? { operation: "remove", trackRef: command.track_ref, clipRef: command.clip_ref }
+                : { operation: "fade", trackRef: command.track_ref, clipRef: command.clip_ref, fadeInMs: command.fade_in_ms, fadeOutMs: command.fade_out_ms }
     return applyCompositionEdit(createCompositionHistory({ tracks: current.tracks }), edit).present
   }, composition)
 }

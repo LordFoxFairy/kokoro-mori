@@ -7,9 +7,9 @@ import styles from "./composition-lane.module.css"
 
 export type CompositionInsertSource = { sourceRef: string; label: string; description: string; durationMs: number }
 
-type CompositionLaneProps = { tracks: CompositionTrack[]; durationMs: number; disabled?: boolean; selectedClipRef?: string; selectedTrackRef?: string; onSelectTrack?: (trackRef: string) => void; onSelectClip?: (clipRef: string, trackRef: string) => void; onEditClip?: (operation: "move" | "trim" | "split" | "crop" | "fade", clipRef: string, trackRef: string) => void; onDuplicateClip?: (clipRef: string, trackRef: string) => void; insertSources?: readonly CompositionInsertSource[]; onInsertClip?: (sourceRef: string, trackRef: string) => void; resolveClipLabel?: (clip: CompositionClip, track: CompositionTrack) => string }
+type CompositionLaneProps = { tracks: CompositionTrack[]; durationMs: number; disabled?: boolean; selectedClipRef?: string; selectedTrackRef?: string; onSelectTrack?: (trackRef: string) => void; onSelectClip?: (clipRef: string, trackRef: string) => void; onEditClip?: (operation: "move" | "trim" | "split" | "crop" | "fade", clipRef: string, trackRef: string) => void; onDeleteClip?: (clipRef: string, trackRef: string) => void; onDuplicateClip?: (clipRef: string, trackRef: string) => void; insertSources?: readonly CompositionInsertSource[]; onInsertClip?: (sourceRef: string, trackRef: string) => void; resolveClipLabel?: (clip: CompositionClip, track: CompositionTrack) => string }
 
-export function CompositionLane({ tracks, durationMs, disabled = false, selectedClipRef, selectedTrackRef, onSelectTrack, onSelectClip, onEditClip, onDuplicateClip, insertSources = [], onInsertClip, resolveClipLabel }: CompositionLaneProps) {
+export function CompositionLane({ tracks, durationMs, disabled = false, selectedClipRef, selectedTrackRef, onSelectTrack, onSelectClip, onEditClip, onDeleteClip, onDuplicateClip, insertSources = [], onInsertClip, resolveClipLabel }: CompositionLaneProps) {
   const [insertOpen, setInsertOpen] = useState(false)
   const selectedTrack = selectedTrackRef === undefined ? undefined : tracks.find((track) => track.trackRef === selectedTrackRef)
   const activeTrack = selectedTrack?.clips.some((clip) => clip.clipRef === selectedClipRef) ? selectedTrack : undefined
@@ -32,8 +32,9 @@ export function CompositionLane({ tracks, durationMs, disabled = false, selected
         </div> : null}
       </div> : null}
     </header>
-    {selectedClipRef !== undefined && activeTrack !== undefined && onEditClip !== undefined ? <nav className={styles.actions} aria-label={`Clip editing actions for ${activeTrack.name}`}>
-      {(["move", "trim", "split", "crop", "fade"] as const).map((operation) => <button disabled={disabled} key={operation} type="button" onClick={() => onEditClip(operation, selectedClipRef, activeTrack.trackRef)}>{operation[0]?.toUpperCase()}{operation.slice(1)}</button>)}
+    {selectedClipRef !== undefined && activeTrack !== undefined && (onEditClip !== undefined || onDeleteClip !== undefined) ? <nav className={styles.actions} aria-label={`Clip editing actions for ${activeTrack.name}`}>
+      {onEditClip !== undefined ? (["move", "trim", "split", "crop", "fade"] as const).map((operation) => <button disabled={disabled} key={operation} type="button" onClick={() => onEditClip(operation, selectedClipRef, activeTrack.trackRef)}>{operation[0]?.toUpperCase()}{operation.slice(1)}</button>) : null}
+      {onDeleteClip !== undefined ? <button disabled={disabled} type="button" onClick={() => onDeleteClip(selectedClipRef, activeTrack.trackRef)} title="Remove clip (Delete)">Remove</button> : null}
       {onDuplicateClip !== undefined ? <button disabled={disabled} type="button" onClick={() => onDuplicateClip(selectedClipRef, activeTrack.trackRef)}>Duplicate</button> : null}
     </nav> : null}
     <div className={styles.tracks}>
@@ -52,6 +53,12 @@ export function CompositionLane({ tracks, durationMs, disabled = false, selected
               title={`${label} · ${durationLabel}`}
               disabled={disabled}
               onClick={() => onSelectClip?.(clip.clipRef, track.trackRef)}
+              onKeyDown={(event) => {
+                if ((event.key === "Delete" || event.key === "Backspace") && onDeleteClip !== undefined && !disabled) {
+                  event.preventDefault()
+                  onDeleteClip(clip.clipRef, track.trackRef)
+                }
+              }}
               style={{ left: `${(clip.startMs / durationMs) * 100}%`, width: `${(clip.durationMs / durationMs) * 100}%` }}
             ><span>{label}</span><small>{durationLabel}</small></button>
           })}

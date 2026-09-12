@@ -1,6 +1,6 @@
 "use client"
 
-import { AlertCircle, ArrowLeft, ArrowRight, AudioLines, AudioWaveform, Check, Download, FileText, History, Link2, ListMusic, LoaderCircle, Play, RotateCcw, Sparkles, X } from "lucide-react"
+import { AlertCircle, ArrowLeft, ArrowRight, AudioLines, AudioWaveform, Check, Download, FileText, History, Link2, ListMusic, LoaderCircle, Play, Redo2, RotateCcw, Sparkles, Undo2, X } from "lucide-react"
 import Link from "next/link"
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react"
 import {
@@ -2237,6 +2237,22 @@ function ArrangementEditor({ compositionSave, compositionLoad, compositionRevisi
     return { trackName: track.name, label: resolveClipLabel(clip, track), startMs: clip.startMs, durationMs: clip.durationMs }
   }, [compositionEditor.composition, resolveClipLabel, selectedClipRef, selectedTrackRef])
   const selectedTrack = compositionEditor.composition.find((track) => track.trackRef === selectedTrackRef)
+  const { canRedo, canUndo, redo, saveState, undo } = compositionEditor
+  useEffect(() => {
+    const handleHistoryShortcut = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || event.altKey || event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLSelectElement || (event.target instanceof HTMLElement && event.target.isContentEditable)) return
+      const key = event.key.toLowerCase()
+      if (key === "z" && !event.shiftKey && canUndo && saveState !== "saving") {
+        event.preventDefault()
+        undo()
+      } else if ((key === "y" || (key === "z" && event.shiftKey)) && canRedo && saveState !== "saving") {
+        event.preventDefault()
+        redo()
+      }
+    }
+    window.addEventListener("keydown", handleHistoryShortcut)
+    return () => window.removeEventListener("keydown", handleHistoryShortcut)
+  }, [canRedo, canUndo, redo, saveState, undo])
   useEffect(() => {
     if (selection !== undefined) onSelectionChange({ label: selection.label, startMs: selection.startMs, endMs: selection.endMs })
   }, [onSelectionChange, selection])
@@ -2247,6 +2263,15 @@ function ArrangementEditor({ compositionSave, compositionLoad, compositionRevisi
     const endMs = Math.max(...(track?.clips.map((clip) => clip.startMs + clip.durationMs) ?? [0]))
     compositionEditor.editAndQueue({ operation: "insert", trackRef, clip: { ...source, clipRef: `${source.clipRef}:copy-${(track?.clips.length ?? 0) + 1}`, startMs: endMs + 250 } })
     setSelectedClipRef(undefined)
+  }
+  const deleteClip = (clipRef: string, trackRef: string) => {
+    try {
+      compositionEditor.editAndQueue({ operation: "remove", trackRef, clipRef })
+      setSelectedClipRef(undefined)
+      setEditOperation(null)
+    } catch {
+      setEditOperation(null)
+    }
   }
   if (selection === undefined) return null
 
@@ -2286,6 +2311,10 @@ function ArrangementEditor({ compositionSave, compositionLoad, compositionRevisi
         {compositionLoadState === "empty" ? <span className={styles.compositionLoadNotice} role="status">No saved arrangement yet · using version baseline</span> : null}
         {compositionLoadState === "unavailable" ? <span className={styles.compositionLoadNotice} role="status">Arrangement unavailable · using local baseline</span> : null}
         <CompositionSaveIndicator state={compositionEditor.saveState} />
+        <div className={styles.arrangementHistoryActions} aria-label="Arrangement history">
+          <button className={styles.arrangementHistoryButton} type="button" aria-label="Undo arrangement change" title="Undo (⌘/Ctrl+Z)" disabled={!compositionEditor.canUndo || compositionEditor.saveState === "saving"} onClick={compositionEditor.undo}><Undo2 size={14} /></button>
+          <button className={styles.arrangementHistoryButton} type="button" aria-label="Redo arrangement change" title="Redo (⌘/Ctrl+Y)" disabled={!compositionEditor.canRedo || compositionEditor.saveState === "saving"} onClick={compositionEditor.redo}><Redo2 size={14} /></button>
+        </div>
         <button
           className={styles.arrangementSaveButton}
           type="button"
@@ -2296,7 +2325,7 @@ function ArrangementEditor({ compositionSave, compositionLoad, compositionRevisi
           {compositionEditor.saveState === "conflict" ? "Refresh to resolve" : compositionEditor.saveState === "failed" ? "Retry save" : "Save arrangement"}
         </button>
       </div>
-      <StudioTimeline candidate={candidate} sections={timelineSections} selection={selection} positionSeconds={positionSeconds} playing={playing} disabled={changeActive || compositionEditor.saveState === "saving"} onSeek={onSeekTimeline} onSelect={selectTimelineRange} onPreviewSelection={() => onPreviewSelection(selection)} previewingSelection={previewingSelection} compositionTracks={compositionEditor.composition} selectedClipRef={selectedClipRef} selectedTrackRef={selectedTrackRef} onSelectTrack={(trackRef) => { setSelectedTrackRef(trackRef); setSelectedClipRef(undefined); setEditOperation(null) }} onSelectClip={(clipRef, trackRef) => { setSelectedClipRef(clipRef); setSelectedTrackRef(trackRef) }} onEditClip={(operation, clipRef, trackRef) => { setSelectedClipRef(clipRef); setSelectedTrackRef(trackRef); setEditOperation(operation) }} onDuplicateClip={duplicateClip} insertSources={insertSources} onInsertClip={insertClip} resolveClipLabel={resolveClipLabel} />
+      <StudioTimeline candidate={candidate} sections={timelineSections} selection={selection} positionSeconds={positionSeconds} playing={playing} disabled={changeActive || compositionEditor.saveState === "saving"} onSeek={onSeekTimeline} onSelect={selectTimelineRange} onPreviewSelection={() => onPreviewSelection(selection)} previewingSelection={previewingSelection} compositionTracks={compositionEditor.composition} selectedClipRef={selectedClipRef} selectedTrackRef={selectedTrackRef} onSelectTrack={(trackRef) => { setSelectedTrackRef(trackRef); setSelectedClipRef(undefined); setEditOperation(null) }} onSelectClip={(clipRef, trackRef) => { setSelectedClipRef(clipRef); setSelectedTrackRef(trackRef) }} onEditClip={(operation, clipRef, trackRef) => { setSelectedClipRef(clipRef); setSelectedTrackRef(trackRef); setEditOperation(operation) }} onDeleteClip={deleteClip} onDuplicateClip={duplicateClip} insertSources={insertSources} onInsertClip={insertClip} resolveClipLabel={resolveClipLabel} />
       <StudioAssetDock sources={creativeSources} selectedTrackName={selectedTrack?.name} selectedRangeLabel={selection.label} selectedRangeTime={`${formatStudioTimelineTime(selection.startMs)}–${formatStudioTimelineTime(selection.endMs)}`} disabled={changeActive || compositionEditor.saveState === "saving"} previewingSourceRef={previewingSourceRef} onPreview={onPreviewSource} onInsert={insertAudioSource} />
       {selectedClipRef !== undefined && selectedTrackRef !== undefined && editOperation !== null ? <CompositionEditPanel clipRef={selectedClipRef} trackRef={selectedTrackRef} disabled={changeActive || compositionEditor.saveState === "saving"} operation={editOperation} onApply={(edit) => { compositionEditor.editAndQueue(edit); setEditOperation(null) }} /> : null}
       <StudioAiComposer

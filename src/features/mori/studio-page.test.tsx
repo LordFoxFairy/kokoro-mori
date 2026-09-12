@@ -1237,6 +1237,28 @@ describe("Mori studio page", () => {
     ))
   })
 
+  it("removes a selected clip with Delete and makes the edit recoverable", () => {
+    renderStudio()
+
+    const timeline = screen.getByRole("region", { name: "Version timeline" })
+    const clip = within(timeline).getByRole("button", { name: "Main version clip First Light · 3:02" })
+    const undo = screen.getByRole("button", { name: "Undo arrangement change" })
+    const redo = screen.getByRole("button", { name: "Redo arrangement change" })
+    expect(undo).toBeDisabled()
+    expect(redo).toBeDisabled()
+
+    fireEvent.keyDown(clip, { key: "Delete" })
+    expect(within(timeline).queryByRole("button", { name: "Main version clip First Light · 3:02" })).not.toBeInTheDocument()
+    expect(undo).not.toBeDisabled()
+
+    fireEvent.click(undo)
+    expect(within(timeline).getByRole("button", { name: "Main version clip First Light · 3:02" })).toBeInTheDocument()
+    expect(redo).not.toBeDisabled()
+
+    fireEvent.keyDown(window, { key: "y", ctrlKey: true })
+    expect(within(timeline).queryByRole("button", { name: "Main version clip First Light · 3:02" })).not.toBeInTheDocument()
+  })
+
   it("loads a real multi-track composition projection before editing", async () => {
     const getCompositionRevision = vi.fn<MoriApi["getCompositionRevision"]>(async () => ({
       data: {

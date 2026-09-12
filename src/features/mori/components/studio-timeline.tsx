@@ -33,13 +33,14 @@ type StudioTimelineProps = {
   onSelectTrack?: (trackRef: string) => void
   onSelectClip?: (clipRef: string, trackRef: string) => void
   onEditClip?: (operation: "move" | "trim" | "split" | "crop" | "fade", clipRef: string, trackRef: string) => void
+  onDeleteClip?: (clipRef: string, trackRef: string) => void
   onDuplicateClip?: (clipRef: string, trackRef: string) => void
   insertSources?: readonly CompositionInsertSource[]
   onInsertClip?: (sourceRef: string, trackRef: string) => void
   resolveClipLabel?: (clip: CompositionClip, track: CompositionTrack) => string
 }
 
-export function StudioTimeline({ candidate, sections, selection, positionSeconds, playing, disabled, onSeek, onSelect, onPreviewSelection, previewingSelection = false, compositionTracks = [], selectedClipRef, selectedTrackRef, onSelectTrack, onSelectClip, onEditClip, onDuplicateClip, insertSources, onInsertClip, resolveClipLabel }: StudioTimelineProps) {
+export function StudioTimeline({ candidate, sections, selection, positionSeconds, playing, disabled, onSeek, onSelect, onPreviewSelection, previewingSelection = false, compositionTracks = [], selectedClipRef, selectedTrackRef, onSelectTrack, onSelectClip, onEditClip, onDeleteClip, onDuplicateClip, insertSources, onInsertClip, resolveClipLabel }: StudioTimelineProps) {
   const sectionHintId = useId()
   const durationMs = Math.max(minimumStudioTimelineSelectionMs, Math.round(candidate.durationSeconds * 1_000))
   const positionMs = Math.max(0, Math.min(durationMs, Math.round(positionSeconds * 1_000)))
@@ -97,7 +98,7 @@ export function StudioTimeline({ candidate, sections, selection, positionSeconds
         />
       </div>
 
-      {compositionTracks.length > 0 ? <CompositionLane tracks={compositionTracks} durationMs={durationMs} disabled={disabled} selectedClipRef={selectedClipRef} selectedTrackRef={selectedTrackRef} onSelectTrack={onSelectTrack} onSelectClip={onSelectClip} onEditClip={onEditClip} onDuplicateClip={onDuplicateClip} insertSources={insertSources} onInsertClip={onInsertClip} resolveClipLabel={resolveClipLabel} /> : null}
+      {compositionTracks.length > 0 ? <CompositionLane tracks={compositionTracks} durationMs={durationMs} disabled={disabled} selectedClipRef={selectedClipRef} selectedTrackRef={selectedTrackRef} onSelectTrack={onSelectTrack} onSelectClip={onSelectClip} onEditClip={onEditClip} onDeleteClip={onDeleteClip} onDuplicateClip={onDuplicateClip} insertSources={insertSources} onInsertClip={onInsertClip} resolveClipLabel={resolveClipLabel} /> : null}
 
       <div className={styles.segmentRail}>
         <div

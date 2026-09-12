@@ -1,4 +1,4 @@
-import { cropClip, insertClip, moveClip, setClipFades, splitClip, trimClip, type Composition, type CompositionTrack } from "./composition"
+import { cropClip, insertClip, moveClip, removeClip, setClipFades, splitClip, trimClip, type Composition, type CompositionTrack } from "./composition"
 import type { CompositionHistory } from "./composition-history"
 import { commitComposition } from "./composition-history"
 
@@ -9,6 +9,7 @@ export type CompositionEdit =
   | { operation: "insert"; trackRef?: string; clip: CompositionTrack["clips"][number] }
   | { operation: "split"; trackRef?: string; clipRef: string; atMs: number }
   | { operation: "fade"; trackRef?: string; clipRef: string; fadeInMs: number; fadeOutMs: number }
+  | { operation: "remove"; trackRef?: string; clipRef: string }
 
 export function applyCompositionEdit(history: CompositionHistory, edit: CompositionEdit): CompositionHistory {
   const trackRef = compositionTrackRefForEdit(history.present, edit)
@@ -20,7 +21,8 @@ export function applyCompositionEdit(history: CompositionHistory, edit: Composit
         : edit.operation === "split" ? splitClip(track, edit.clipRef, edit.atMs)
           : edit.operation === "crop" ? cropClip(track, edit.clipRef, edit.startOffsetMs, edit.endOffsetMs)
             : edit.operation === "insert" ? insertClip(track, edit.clip)
-              : setClipFades(track, edit.clipRef, edit.fadeInMs, edit.fadeOutMs)
+              : edit.operation === "fade" ? setClipFades(track, edit.clipRef, edit.fadeInMs, edit.fadeOutMs)
+                : removeClip(track, edit.clipRef)
   })
   return commitComposition(history, { tracks })
 }
