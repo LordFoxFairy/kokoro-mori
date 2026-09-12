@@ -110,7 +110,7 @@
 pnpm lint                         passed
 pnpm typecheck                    passed
 pnpm exec vitest run --maxWorkers=1 src/features/mori/studio-page.test.tsx
-                                  passed: 1 file / 87 tests
+                                  passed: 1 file / 90 tests
 pnpm exec vitest run --maxWorkers=1 <affected composition tests>
                                   passed: 6 files / 36 tests
 pnpm exec vitest run --maxWorkers=1 src/features/mori/mori-workspace.test.tsx
