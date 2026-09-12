@@ -1222,6 +1222,19 @@ describe("Mori studio page", () => {
     expect(within(timeline).getByRole("button", { name: "Keys clip Keys audio · 1:00" })).toBeInTheDocument()
   })
 
+  it("labels an empty composition projection instead of presenting it as a saved arrangement", async () => {
+    const getCompositionRevision = vi.fn<MoriApi["getCompositionRevision"]>(async () => ({
+      data: { version_ref: "version_preview_first_light_a", revision: 4, tracks: [] },
+      meta: { request_id: "request_empty_composition" },
+    }))
+
+    renderStudio({ getCompositionRevision })
+
+    await waitFor(() => expect(getCompositionRevision).toHaveBeenCalledWith("version_preview_first_light_a"))
+    expect(await screen.findByText("No saved arrangement yet · using version baseline")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Save arrangement" })).toBeDisabled()
+  })
+
   it("creates a typed Vocal Cover as two new Takes without replacing Current", async () => {
     let submittedVersionRef = ""
     let submittedInput: StudioChangeGenerationInput | null = null
