@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import { MoriAppProvider } from "./components/mori-app-provider"
 import { MoriCatalogShell } from "./components/mori-catalog-shell"
 import { ProjectOverviewPageContent } from "./project-overview"
+import type { MoriProjectWorkspaceProjection } from "@/lib/mori-api"
 
 describe("Project Overview durable workspace projection", () => {
   it("shows the saved Song Plan from the coherent workspace projection instead of a preview plan", async () => {
@@ -50,7 +51,7 @@ describe("Project Overview durable workspace projection", () => {
           },
           latest_lyrics_draft: null,
           latest_mix_revision: null,
-          active_tasks: [],
+          active_tasks: liveActiveTasks(),
           revision_cursor: "workspace_cursor_live_memory_3",
           observed_at: "2026-09-04T18:05:00.000Z",
         },
@@ -73,6 +74,16 @@ describe("Project Overview durable workspace projection", () => {
     expect(within(songPlan).getByText("Revision 3 · saved")).toBeInTheDocument()
     expect(within(songPlan).getByText("Felt piano · Soft strings")).toBeInTheDocument()
     expect(within(songPlan).queryByText("Warm · hopeful")).not.toBeInTheDocument()
+    const activeWork = screen.getByRole("region", { name: "In progress" })
+    expect(within(activeWork).getByRole("link", { name: "Resume Generate directions" })).toHaveAttribute(
+      "href",
+      "/create?project_ref=project_live_memory&generation_ref=generation_live_memory",
+    )
+    expect(within(activeWork).getByRole("link", { name: "Resume Rewrite lyrics" })).toHaveAttribute(
+      "href",
+      "/projects/project_live_memory/studio/version_live_b?surface=lyrics",
+    )
+    expect(within(activeWork).getByRole("progressbar", { name: "Generate directions progress" })).toHaveAttribute("aria-valuenow", "32")
   })
 })
 
@@ -88,4 +99,27 @@ function projectResponse() {
     },
     meta: { request_id: "request_project_live_memory" },
   }
+}
+
+function liveActiveTasks(): MoriProjectWorkspaceProjection["active_tasks"] {
+  return [
+    {
+      task_ref: "generation_live_memory",
+      kind: "generation",
+      project_ref: "project_live_memory",
+      version_ref: null,
+      status: "running",
+      progress: 32,
+      updated_at: "2026-09-04T18:04:30.000Z",
+    },
+    {
+      task_ref: "lyrics_revision_live_memory",
+      kind: "lyrics_revision",
+      project_ref: "project_live_memory",
+      version_ref: "version_live_b",
+      status: "queued",
+      progress: 0,
+      updated_at: "2026-09-04T18:04:45.000Z",
+    },
+  ]
 }

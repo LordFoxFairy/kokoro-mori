@@ -3,7 +3,7 @@
 import { ArrowLeft, ArrowUpRight, AudioLines, AudioWaveform, FileText, Play, SlidersHorizontal, Sparkles } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
-import type { MoriApi, MoriCandidate, MoriProject } from "@/lib/mori-api"
+import type { MoriApi, MoriCandidate, MoriProject, MoriProjectWorkspaceActiveTask } from "@/lib/mori-api"
 import { createMoriApiClient } from "@/lib/mori-api-client"
 import type { Candidate, Project } from "./domain"
 import { listAllMoriCandidates } from "./candidate-pagination"
@@ -49,6 +49,7 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
   const songPlan = workspaceProjection.projection?.current_song_plan
     ?? (initialProjectRef === previewProject.projectRef ? previewCurrentSongPlanRevision : null)
   const songPlanStatus = initialProjectRef === previewProject.projectRef ? "ready" : workspaceProjection.status
+  const activeTasks = workspaceProjection.projection?.active_tasks ?? []
   const currentCandidate = requestedProject.currentVersionRef === null
     ? undefined
     : candidates.find((candidate) => candidate.versionRef === requestedProject.currentVersionRef)
@@ -163,54 +164,57 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
           }}
         />
 
-        {studioBaseHref ? (
-          <section className={`${styles.overviewSection} ${styles.continueMaking}`} aria-labelledby="continue-making-heading">
-            <div className={styles.overviewSectionHeader}>
-              <div>
-                <h2 id="continue-making-heading">Continue making</h2>
-                <p>Choose a clear task for the confirmed Current Version.</p>
+        <div className={styles.projectOverviewSidebar}>
+          {activeTasks.length > 0 ? <ProjectOverviewActiveTasks projectRef={requestedProject.projectRef} tasks={activeTasks} /> : null}
+          {studioBaseHref ? (
+            <section className={`${styles.overviewSection} ${styles.continueMaking}`} aria-labelledby="continue-making-heading">
+              <div className={styles.overviewSectionHeader}>
+                <div>
+                  <h2 id="continue-making-heading">Continue making</h2>
+                  <p>Choose a clear task for the confirmed Current Version.</p>
+                </div>
+                <span>Current · {currentCandidate?.title ?? "Current Version"}</span>
               </div>
-              <span>Current · {currentCandidate?.title ?? "Current Version"}</span>
-            </div>
-            <div className={styles.continueMakingGrid}>
-              <ProjectContinuationLink
-                href={`${studioBaseHref}?surface=arrangement&intent=transform`}
-                label="Remix & edit"
-                description="Restyle, remix, replace, or extend a section."
-                destination="Arrangement"
-                icon={SlidersHorizontal}
-              />
-              <ProjectContinuationLink
-                href={`${studioBaseHref}?surface=arrangement&intent=cover`}
-                label="Cover"
-                description="Re-perform this Version as a vocal or instrumental take."
-                destination="New takes"
-                icon={AudioLines}
-              />
-              <ProjectContinuationLink
-                href={`${studioBaseHref}?surface=lyrics`}
-                label="Lyrics"
-                description="Draft, rewrite, or continue with the song in view."
-                destination="Review before apply"
-                icon={FileText}
-              />
-              <ProjectContinuationLink
-                href={`${studioBaseHref}?surface=stems`}
-                label="Voice & stems"
-                description="Add vocals, split parts, or save a mix revision."
-                destination="Non-destructive"
-                icon={AudioWaveform}
-              />
-              <ProjectContinuationLink
-                href={`${studioBaseHref}?surface=finish`}
-                label="Remaster & release"
-                description="Polish audio or prepare artwork and release details."
-                destination="No auto-publish"
-                icon={SlidersHorizontal}
-              />
-            </div>
-          </section>
-        ) : null}
+              <div className={styles.continueMakingGrid}>
+                <ProjectContinuationLink
+                  href={`${studioBaseHref}?surface=arrangement&intent=transform`}
+                  label="Remix & edit"
+                  description="Restyle, remix, replace, or extend a section."
+                  destination="Arrangement"
+                  icon={SlidersHorizontal}
+                />
+                <ProjectContinuationLink
+                  href={`${studioBaseHref}?surface=arrangement&intent=cover`}
+                  label="Cover"
+                  description="Re-perform this Version as a vocal or instrumental take."
+                  destination="New takes"
+                  icon={AudioLines}
+                />
+                <ProjectContinuationLink
+                  href={`${studioBaseHref}?surface=lyrics`}
+                  label="Lyrics"
+                  description="Draft, rewrite, or continue with the song in view."
+                  destination="Review before apply"
+                  icon={FileText}
+                />
+                <ProjectContinuationLink
+                  href={`${studioBaseHref}?surface=stems`}
+                  label="Voice & stems"
+                  description="Add vocals, split parts, or save a mix revision."
+                  destination="Non-destructive"
+                  icon={AudioWaveform}
+                />
+                <ProjectContinuationLink
+                  href={`${studioBaseHref}?surface=finish`}
+                  label="Remaster & release"
+                  description="Polish audio or prepare artwork and release details."
+                  destination="No auto-publish"
+                  icon={SlidersHorizontal}
+                />
+              </div>
+            </section>
+          ) : null}
+        </div>
       </div>
 
       <ProjectOverviewSongPlan
@@ -222,6 +226,61 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
       />
     </div>
   )
+}
+
+function ProjectOverviewActiveTasks({ projectRef, tasks }: { projectRef: string; tasks: readonly MoriProjectWorkspaceActiveTask[] }) {
+  return <section className={`${styles.overviewSection} ${styles.continueMaking}`} aria-labelledby="active-work-heading">
+    <div className={styles.overviewSectionHeader}>
+      <div>
+        <h2 id="active-work-heading">In progress</h2>
+        <p>Pick up work that is still rendering in this Project.</p>
+      </div>
+      <span>{tasks.length} {tasks.length === 1 ? "task" : "tasks"}</span>
+    </div>
+    <div className={styles.continueMakingGrid}>
+      {tasks.map((task) => {
+        const presentation = activeTaskPresentation(task)
+        const progress = Math.max(0, Math.min(100, Math.round(task.progress)))
+        return <Link className={styles.continueMakingCard} href={activeTaskHref(projectRef, task)} aria-label={`Resume ${presentation.label}`} key={task.task_ref}>
+          <span className={styles.continueMakingIcon} aria-hidden="true"><presentation.Icon size={16} /></span>
+          <span className={styles.continueMakingCopy}>
+            <strong>{presentation.label}</strong>
+            <span>{presentation.description}</span>
+            <small>{task.status === "queued" ? "Queued" : `${progress}% complete`} · {presentation.destination}</small>
+            <span className={styles.activeTaskProgress} role="progressbar" aria-label={`${presentation.label} progress`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}>
+              <span style={{ width: `${progress}%` }} />
+            </span>
+          </span>
+          <ArrowUpRight className={styles.continueMakingArrow} size={15} aria-hidden="true" />
+        </Link>
+      })}
+    </div>
+  </section>
+}
+
+function activeTaskPresentation(task: MoriProjectWorkspaceActiveTask): {
+  label: string
+  description: string
+  destination: string
+  Icon: typeof Sparkles
+} {
+  switch (task.kind) {
+    case "generation": return { label: "Generate directions", description: "Compare the new takes when they are ready.", destination: "Create queue", Icon: Sparkles }
+    case "lyrics_revision": return { label: "Rewrite lyrics", description: "Review lyric suggestions before applying them.", destination: "Lyrics", Icon: FileText }
+    case "stem_separation": return { label: "Separate stems", description: "Open the non-destructive voice and stems workspace.", destination: "Voice & stems", Icon: AudioWaveform }
+    case "artwork_generation": return { label: "Create artwork", description: "Review visual concepts for this Version.", destination: "Finish", Icon: Sparkles }
+    case "export": return { label: "Render export", description: "Return to the render status and download when ready.", destination: "Export", Icon: AudioLines }
+  }
+}
+
+function activeTaskHref(projectRef: string, task: MoriProjectWorkspaceActiveTask): string {
+  const encodedProjectRef = encodeURIComponent(projectRef)
+  if (task.kind === "generation") {
+    return `/create?project_ref=${encodedProjectRef}&generation_ref=${encodeURIComponent(task.task_ref)}`
+  }
+  if (task.version_ref === null) return `/projects/${encodedProjectRef}`
+  const surface = task.kind === "lyrics_revision" ? "lyrics" : task.kind === "stem_separation" ? "stems" : "finish"
+  return `/projects/${encodedProjectRef}/studio/${encodeURIComponent(task.version_ref)}?surface=${surface}`
 }
 
 function ProjectContinuationLink({ href, label, description, destination, icon: Icon }: {

@@ -2221,6 +2221,16 @@
   grid-column: 1 / -1;
 }
 
+.projectOverviewSidebar {
+  display: grid;
+  min-width: 0;
+  gap: 18px;
+}
+
+.projectOverviewSidebar > .overviewSection {
+  margin-top: 0;
+}
+
 .overviewSection {
   display: grid;
   gap: 16px;
@@ -2349,6 +2359,24 @@
 .continueMakingArrow {
   margin-top: 8px;
   color: var(--mori-faint);
+}
+
+.activeTaskProgress {
+  display: block;
+  width: 100%;
+  height: 4px;
+  margin-top: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(109, 92, 231, 0.1);
+}
+
+.activeTaskProgress > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--mori-primary), #efa481);
+  transition: width var(--mori-motion-normal) ease;
 }
 
 .overviewCandidateList {
