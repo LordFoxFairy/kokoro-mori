@@ -1,20 +1,42 @@
 "use client"
 
-import { Plus } from "lucide-react"
+import { Pause, Play, Plus } from "lucide-react"
 import { useState } from "react"
 import type { CompositionClip, CompositionTrack } from "../composition"
 import styles from "./composition-lane.module.css"
 
 export type CompositionInsertSource = { sourceRef: string; label: string; description: string; durationMs: number }
 
-type CompositionLaneProps = { tracks: CompositionTrack[]; durationMs: number; disabled?: boolean; selectedClipRef?: string; selectedTrackRef?: string; onSelectTrack?: (trackRef: string) => void; onSelectClip?: (clipRef: string, trackRef: string) => void; onEditClip?: (operation: "move" | "trim" | "split" | "crop" | "fade", clipRef: string, trackRef: string) => void; onMoveClip?: (clipRef: string, sourceTrackRef: string, startMs: number, targetTrackRef?: string) => void; onDeleteClip?: (clipRef: string, trackRef: string) => void; onDuplicateClip?: (clipRef: string, trackRef: string) => void; insertSources?: readonly CompositionInsertSource[]; onInsertClip?: (sourceRef: string, trackRef: string) => void; dropSources?: readonly CompositionInsertSource[]; onDropSource?: (sourceRef: string, trackRef: string, startMs: number) => void; resolveClipLabel?: (clip: CompositionClip, track: CompositionTrack) => string }
+type CompositionLaneProps = {
+  tracks: CompositionTrack[]
+  durationMs: number
+  disabled?: boolean
+  selectedClipRef?: string
+  selectedTrackRef?: string
+  onSelectTrack?: (trackRef: string) => void
+  onSelectClip?: (clipRef: string, trackRef: string) => void
+  onEditClip?: (operation: "move" | "trim" | "split" | "crop" | "fade", clipRef: string, trackRef: string) => void
+  onMoveClip?: (clipRef: string, sourceTrackRef: string, startMs: number, targetTrackRef?: string) => void
+  onDeleteClip?: (clipRef: string, trackRef: string) => void
+  onDuplicateClip?: (clipRef: string, trackRef: string) => void
+  onPreviewClip?: (clipRef: string, trackRef: string) => void
+  previewingClip?: boolean
+  isClipPreviewable?: (clip: CompositionClip, track: CompositionTrack) => boolean
+  insertSources?: readonly CompositionInsertSource[]
+  onInsertClip?: (sourceRef: string, trackRef: string) => void
+  dropSources?: readonly CompositionInsertSource[]
+  onDropSource?: (sourceRef: string, trackRef: string, startMs: number) => void
+  resolveClipLabel?: (clip: CompositionClip, track: CompositionTrack) => string
+}
 
-export function CompositionLane({ tracks, durationMs, disabled = false, selectedClipRef, selectedTrackRef, onSelectTrack, onSelectClip, onEditClip, onMoveClip, onDeleteClip, onDuplicateClip, insertSources = [], onInsertClip, dropSources = [], onDropSource, resolveClipLabel }: CompositionLaneProps) {
+export function CompositionLane({ tracks, durationMs, disabled = false, selectedClipRef, selectedTrackRef, onSelectTrack, onSelectClip, onEditClip, onMoveClip, onDeleteClip, onDuplicateClip, onPreviewClip, previewingClip = false, isClipPreviewable, onInsertClip, insertSources = [], dropSources = [], onDropSource, resolveClipLabel }: CompositionLaneProps) {
   const [insertOpen, setInsertOpen] = useState(false)
   const [dropTrackRef, setDropTrackRef] = useState<string | null>(null)
   const [dropKind, setDropKind] = useState<"clip" | "source" | null>(null)
   const selectedTrack = selectedTrackRef === undefined ? undefined : tracks.find((track) => track.trackRef === selectedTrackRef)
   const activeTrack = selectedTrack?.clips.some((clip) => clip.clipRef === selectedClipRef) ? selectedTrack : undefined
+  const activeClip = activeTrack === undefined || selectedClipRef === undefined ? undefined : activeTrack.clips.find((clip) => clip.clipRef === selectedClipRef)
+  const clipPreviewable = activeClip !== undefined && activeTrack !== undefined && (isClipPreviewable?.(activeClip, activeTrack) ?? true)
   const insertTrack = selectedTrack
   const canInsert = onInsertClip !== undefined && insertSources.length > 0 && insertTrack !== undefined
 
@@ -34,7 +56,8 @@ export function CompositionLane({ tracks, durationMs, disabled = false, selected
         </div> : null}
       </div> : null}
     </header>
-    {selectedClipRef !== undefined && activeTrack !== undefined && (onEditClip !== undefined || onDeleteClip !== undefined) ? <nav className={styles.actions} aria-label={`Clip editing actions for ${activeTrack.name}`}>
+    {selectedClipRef !== undefined && activeTrack !== undefined && (onEditClip !== undefined || onDeleteClip !== undefined || onDuplicateClip !== undefined || onPreviewClip !== undefined) ? <nav className={styles.actions} aria-label={`Clip editing actions for ${activeTrack.name}`}>
+      {onPreviewClip !== undefined ? <button disabled={disabled || !clipPreviewable} type="button" aria-pressed={previewingClip} aria-label={previewingClip ? "Pause clip preview" : "Preview selected clip"} onClick={() => onPreviewClip(selectedClipRef, activeTrack.trackRef)}>{previewingClip ? <Pause size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" />} {previewingClip ? "Pause clip" : "Preview clip"}</button> : null}
       {onEditClip !== undefined ? (["move", "trim", "split", "crop", "fade"] as const).map((operation) => <button disabled={disabled} key={operation} type="button" onClick={() => onEditClip(operation, selectedClipRef, activeTrack.trackRef)}>{operation[0]?.toUpperCase()}{operation.slice(1)}</button>) : null}
       {onDeleteClip !== undefined ? <button disabled={disabled} type="button" onClick={() => onDeleteClip(selectedClipRef, activeTrack.trackRef)} title="Remove clip (Delete)">Remove</button> : null}
       {onDuplicateClip !== undefined ? <button disabled={disabled} type="button" onClick={() => onDuplicateClip(selectedClipRef, activeTrack.trackRef)}>Duplicate</button> : null}

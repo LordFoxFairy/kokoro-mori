@@ -980,6 +980,7 @@ describe("Mori studio page", () => {
       dispose: vi.fn(),
     })
     renderStudio(undefined, previewCandidates[0], mediaFactory)
+    await waitForCompositionToLoad()
 
     const timeline = within(screen.getByRole("region", { name: "Arrangement editor" })).getByRole("region", { name: "Version timeline" })
     const loop = within(timeline).getByRole("button", { name: "Loop selection" })
@@ -991,6 +992,31 @@ describe("Mori studio page", () => {
 
     fireEvent.click(within(timeline).getByRole("button", { name: "Stop looping selection" }))
     expect(within(timeline).getByRole("button", { name: "Loop selection" })).toHaveAttribute("aria-pressed", "false")
+  })
+
+  it("previews a selected arrangement clip through the global player", async () => {
+    const mediaFactory: PlayerMediaFactory = () => ({
+      setSource: vi.fn(),
+      play: vi.fn(async () => undefined),
+      pause: vi.fn(),
+      seek: vi.fn(),
+      setMuted: vi.fn(),
+      dispose: vi.fn(),
+    })
+    renderStudio({
+      getCompositionRevision: async () => ({
+        data: { version_ref: "version_preview_first_light_a", revision: 0, tracks: [] },
+        meta: { request_id: "request_clip_preview_composition" },
+      }),
+    }, previewCandidates[0], mediaFactory)
+    await waitForCompositionToLoad()
+
+    const timeline = within(screen.getByRole("region", { name: "Arrangement editor" })).getByRole("region", { name: "Version timeline" })
+    fireEvent.click(within(timeline).getByRole("button", { name: "Main version clip First Light · 3:02" }))
+    fireEvent.click(within(timeline).getByRole("button", { name: "Preview selected clip" }))
+
+    await waitFor(() => expect(within(timeline).getByRole("button", { name: "Pause clip preview" })).toHaveAttribute("aria-pressed", "true"))
+    expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("Clip audition · 0:00–3:02")
   })
 
   it("turns a dragged custom timeline range into the Studio change scope", async () => {
