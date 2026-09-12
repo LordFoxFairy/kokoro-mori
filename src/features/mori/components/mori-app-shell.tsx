@@ -10,6 +10,11 @@ import { lockMoriModalBody } from "./mori-modal-isolation"
 import { MoriSettingsPage } from "../settings-page"
 import styles from "../mori-workspace.module.css"
 
+export function getMoriPortalHost(): HTMLElement | null {
+  if (typeof document === "undefined") return null
+  return document.querySelector<HTMLElement>('[data-mori-portal-host="true"]')
+}
+
 type MoriAppShellProps = {
   activeKey: MoriNavigationKey
   ariaLabel: string
@@ -128,7 +133,7 @@ export function MoriAppShell({ activeKey, ariaLabel, projectRef, children }: Mor
   const className = `${styles.appShell} ${styles.appShellWithPlayer}`
 
   return (
-    <div ref={setAppShellElement} className={className} data-mori-app-shell="true" data-rail-collapsed={effectiveRailCollapsed} data-reduce-motion={preferences.reduceMotion} data-viewport-ready={isMobileViewport === null ? "false" : "true"} style={shellStyle}>
+    <div ref={setAppShellElement} className={className} data-mori-app-shell="true" data-mori-portal-host="true" data-rail-collapsed={effectiveRailCollapsed} data-reduce-motion={preferences.reduceMotion} data-viewport-ready={isMobileViewport === null ? "false" : "true"} style={shellStyle}>
       <MoriRail
         activeKey={activeKey}
         collapsed={effectiveRailCollapsed}

@@ -2165,6 +2165,7 @@ describe("Mori workspace", () => {
     fireEvent.click(screen.getByRole("button", { name: /open generation queue/i }))
 
     expect(screen.getByRole("dialog", { name: /generation queue/i })).toBeInTheDocument()
+    expect(screen.getByRole("dialog", { name: /generation queue/i }).closest('[data-mori-portal-host="true"]')).not.toBeNull()
     expect(screen.getByRole("button", { name: /close generation queue/i })).toBeInTheDocument()
     expect(screen.getByRole("dialog", { name: /generation queue/i })).toHaveFocus()
     expect(document.body.style.overflow).toBe("hidden")

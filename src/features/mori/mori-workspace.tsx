@@ -59,7 +59,7 @@ import { CreateCanvas, type CreationDraft } from "./components/create-canvas"
 import { InspectorPanel } from "./components/inspector-panel"
 import { useMoriModalLayer } from "./components/mori-modal-isolation"
 import { useMoriApp } from "./components/mori-app-provider"
-import { MoriAppShell } from "./components/mori-app-shell"
+import { MoriAppShell, getMoriPortalHost } from "./components/mori-app-shell"
 import styles from "./mori-workspace.module.css"
 
 type MoriWorkspaceProps = {
@@ -1226,7 +1226,7 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, generationRef: 
           <button className={styles.drawerBackdrop} type="button" aria-label="Dismiss generation queue" onClick={() => setQueueOpen(false)} />
           {renderQueue("drawer")}
         </div>,
-        document.body,
+        getMoriPortalHost() ?? document.body,
       ) : null}
     </main>
   )

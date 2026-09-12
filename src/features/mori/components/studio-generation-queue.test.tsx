@@ -2,6 +2,8 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 import { emptyGenerationQueueState, type GenerationQueueItem } from "../generation-queue"
 import { writeGenerationQueueState } from "../generation-queue-storage"
+import { MoriCatalogShell } from "./mori-catalog-shell"
+import { MoriAppProvider } from "./mori-app-provider"
 import { StudioGenerationQueue } from "./studio-generation-queue"
 
 function queueItem(overrides: Partial<GenerationQueueItem> = {}): GenerationQueueItem {
@@ -85,5 +87,20 @@ describe("Studio generation queue", () => {
 
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Generation queue" })).not.toBeInTheDocument())
     expect(screen.getByRole("button", { name: "Open generation queue" })).toHaveFocus()
+  })
+
+  it("mounts inside the application shell when hosted by Studio", async () => {
+    render(
+      <MoriAppProvider>
+        <MoriCatalogShell activeKey="projects" ariaLabel="Studio">
+          <StudioGenerationQueue projectRef="project_queue_studio" activeVersionRef="version_queue_studio" />
+        </MoriCatalogShell>
+      </MoriAppProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Open generation queue" }))
+
+    const queue = await screen.findByRole("dialog", { name: "Generation queue" })
+    expect(queue.closest('[data-mori-portal-host="true"]')).not.toBeNull()
   })
 })

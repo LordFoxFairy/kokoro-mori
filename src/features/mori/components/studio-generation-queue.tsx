@@ -15,6 +15,7 @@ import {
   subscribeGenerationQueueState,
 } from "../generation-queue-storage"
 import { useMoriModalLayer } from "./mori-modal-isolation"
+import { getMoriPortalHost } from "./mori-app-shell"
 import styles from "./studio-generation-queue.module.css"
 
 type StudioGenerationQueueProps = {
@@ -145,7 +146,7 @@ export function StudioGenerationQueue({ projectRef, activeVersionRef }: StudioGe
           </div>
         </aside>
       </div>,
-      document.body,
+      getMoriPortalHost() ?? document.body,
     ) : null}
   </>
 }
