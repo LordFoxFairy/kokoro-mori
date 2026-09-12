@@ -36,3 +36,12 @@
 .clip > small { flex:0 0 auto; color:var(--mori-muted); font-size:8px; font-variant-numeric:tabular-nums; font-weight:650; }
 .clip[data-selected="true"] { border-color:var(--mori-primary); box-shadow:0 0 0 2px rgba(109,92,231,.14); }
 .clip:focus-visible { outline:3px solid rgba(109,92,231,.2); outline-offset:2px; }
+
+@media (max-width: 620px) {
+  .lane { padding-inline: 12px; }
+  .actions { flex-wrap: wrap; margin-left: 0; }
+  .actions button { min-height: 36px; padding-inline: 10px; }
+  .track { grid-template-columns: 68px minmax(0, 1fr); gap: 6px; }
+  .clip { padding-inline: 6px; }
+  .clip > small { display: none; }
+}
