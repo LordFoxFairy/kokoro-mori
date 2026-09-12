@@ -27,6 +27,8 @@
 .trackName:hover:not(:disabled), .trackName:focus-visible { color:var(--mori-primary); }
 .trackName:disabled { cursor:progress; opacity:.58; }
 .clipRail { position:relative; height:26px; border-radius:7px; background:rgba(231,227,247,.54); }
-.clip { position:absolute; top:2px; bottom:2px; min-width:10px; overflow:hidden; padding:0 7px; border:1px solid rgba(109,92,231,.18); border-radius:6px; color:var(--mori-primary); background:linear-gradient(100deg,rgba(109,92,231,.22),rgba(232,166,129,.28)); font:700 9px inherit; text-align:left; white-space:nowrap; cursor:pointer; }
+.clip { position:absolute; top:2px; bottom:2px; display:flex; min-width:10px; align-items:center; gap:5px; overflow:hidden; padding:0 7px; border:1px solid rgba(109,92,231,.18); border-radius:6px; color:var(--mori-primary); background:linear-gradient(100deg,rgba(109,92,231,.22),rgba(232,166,129,.28)); font:700 9px inherit; text-align:left; white-space:nowrap; cursor:pointer; }
+.clip > span { overflow:hidden; min-width:0; text-overflow:ellipsis; }
+.clip > small { flex:0 0 auto; color:var(--mori-muted); font-size:8px; font-variant-numeric:tabular-nums; font-weight:650; }
 .clip[data-selected="true"] { border-color:var(--mori-primary); box-shadow:0 0 0 2px rgba(109,92,231,.14); }
 .clip:focus-visible { outline:3px solid rgba(109,92,231,.2); outline-offset:2px; }
