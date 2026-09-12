@@ -198,6 +198,43 @@ describe("Mori global player media integration", () => {
     expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("Range audition · 0:30–0:35")
   })
 
+  it("offers the same loop control for a selected clip audition", async () => {
+    const harness = createMediaHarness()
+    const auditionScope = {
+      kind: "clip" as const,
+      label: "Afterglow",
+      trackName: "Main version",
+      startSeconds: 8,
+      endSeconds: 16,
+    }
+
+    function CandidateHarness() {
+      const { selectPlayerCandidate } = useMoriApp()
+      return <button type="button" onClick={() => selectPlayerCandidate(firstCandidate, auditionScope.startSeconds, auditionScope)}>Preview clip</button>
+    }
+
+    render(
+      <MoriAppProvider mediaFactory={harness.factory}>
+        <CandidateHarness />
+        <MoriCatalogShell activeKey="library" ariaLabel="Library">
+          <div>Library content</div>
+        </MoriCatalogShell>
+      </MoriAppProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Preview clip" }))
+    fireEvent.click(screen.getByRole("button", { name: "Play" }))
+    await waitFor(() => expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument())
+    expect(screen.getByRole("button", { name: "Loop current clip" })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole("button", { name: "Loop current clip" }))
+    expect(screen.getByRole("button", { name: "Stop looping clip" })).toHaveAttribute("aria-pressed", "true")
+    harness.controller.pause.mockClear()
+    harness.callbacks.onTimeUpdate(16)
+    await waitFor(() => expect(screen.getByRole("slider", { name: "Seek through current audition" })).toHaveValue("8"))
+    expect(harness.controller.pause).not.toHaveBeenCalled()
+  })
+
   it("keeps playing when the active Version changes audition scope", async () => {
     const harness = createMediaHarness()
     const chorus = {

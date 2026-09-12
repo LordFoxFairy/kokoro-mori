@@ -85,7 +85,7 @@ export function PersistentPlayer({ candidate, playing, muted, positionSeconds, o
       </div>
       <div className={styles.playerTools} role="group" aria-label="Player tools">
         {canPlay ? <button className={`${styles.playerButton} ${styles.playerMuteButton}`} type="button" onClick={onToggleMute} aria-label={muted ? "Unmute" : "Mute"}>{muted ? <VolumeX /> : <Volume2 />}</button> : null}
-        {canPlay && auditionScope?.kind === "range" && onToggleAuditionLoop ? <button className={styles.playerTool} type="button" onClick={onToggleAuditionLoop} aria-label={auditionLooping ? "Stop looping selection" : "Loop current selection"} aria-pressed={auditionLooping} title={auditionLooping ? "Stop looping selection" : "Loop current selection"}><Repeat /> <span>{auditionLooping ? "Looping" : "Loop"}</span></button> : null}
+        {canPlay && auditionScope !== null && onToggleAuditionLoop ? <button className={styles.playerTool} type="button" onClick={onToggleAuditionLoop} aria-label={auditionLooping ? `Stop looping ${auditionScope.kind === "clip" ? "clip" : "selection"}` : `Loop current ${auditionScope.kind === "clip" ? "clip" : "selection"}`} aria-pressed={auditionLooping} title={auditionLooping ? `Stop looping ${auditionScope.kind === "clip" ? "clip" : "selection"}` : `Loop current ${auditionScope.kind === "clip" ? "clip" : "selection"}`}><Repeat /> <span>{auditionLooping ? "Looping" : "Loop"}</span></button> : null}
         {onSelectQueue ? <button className={styles.playerTool} type="button" onClick={onSelectQueue} aria-label="Open playback queue" aria-haspopup="dialog" aria-expanded={queueOpen}><ListMusic /> <span>Up next</span></button> : null}
       </div>
     </section>
