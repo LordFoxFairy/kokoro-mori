@@ -879,7 +879,7 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, generationRef: 
         setGenerationLabel(generationLabelFor(status))
 
         if (status === "succeeded") {
-          const candidateResponse = await listAllMoriCandidates({ listCandidates }, snapshot.project_ref)
+          const candidateResponse = await listAllMoriCandidates({ listCandidates }, snapshot.project_ref, generationRef)
           if (disposed || generationObservationEpochRef.current !== observationEpoch) return
           const generated = candidateResponse.filter((candidate) => candidateRefs.includes(candidate.candidate_ref))
           const generatedCandidates = generated.map(toDomainCandidate)

@@ -1158,7 +1158,7 @@ describe("Mori studio page", () => {
       expect.stringMatching(/^mori-studio-change-/u),
     ))
     await waitFor(() => expect(getGeneration).toHaveBeenCalledWith("generation_restyle_reference"))
-    await waitFor(() => expect(listCandidates).toHaveBeenCalledWith("project_preview_first_light"))
+    await waitFor(() => expect(listCandidates).toHaveBeenCalledWith("project_preview_first_light", { generation_ref: "generation_restyle_reference" }))
     expect(localStorage.getItem("mori-generation-queue-v1")).toContain("generation_restyle_reference")
     expect(localStorage.getItem("mori-generation-queue-v1")).not.toContain("City Lights pulse")
 
@@ -2527,6 +2527,9 @@ describe("Mori studio page", () => {
     fireEvent.change(within(layerComposer).getByRole("combobox", { name: "Voice profile" }), {
       target: { value: "voice_preview_mira" },
     })
+    const alternatives = within(layerComposer).getByRole("group", { name: "Alternatives" })
+    fireEvent.click(within(alternatives).getByRole("button", { name: "4 takes" }))
+    expect(within(alternatives).getByRole("button", { name: "4 takes" })).toHaveAttribute("aria-pressed", "true")
     fireEvent.click(within(layerComposer).getByRole("button", { name: "Review vocal layer" }))
 
     const plan = within(layerComposer).getByRole("region", { name: "Studio layer plan" })
@@ -2534,9 +2537,9 @@ describe("Mori studio page", () => {
     expect(within(plan).getByText("Add vocals")).toBeInTheDocument()
     expect(within(plan).getByText("Whole song")).toBeInTheDocument()
     expect(within(plan).getByText("Melody · Tempo · Structure")).toBeInTheDocument()
-    expect(within(plan).getByText("2 alternatives · Take lanes")).toBeInTheDocument()
+    expect(within(plan).getByText("4 alternatives · Take lanes")).toBeInTheDocument()
     expect(within(plan).getByText("Current version stays untouched.")).toBeInTheDocument()
-    expect(within(plan).getByRole("button", { name: "Generate 2 takes" })).toBeInTheDocument()
+    expect(within(plan).getByRole("button", { name: "Generate 4 takes" })).toBeInTheDocument()
 
     fireEvent.click(within(plan).getByRole("button", { name: "Edit request" }))
     expect(within(layerComposer).getByRole("textbox", { name: "Lyrics for vocal layer" })).toHaveValue("Meet me where the streetlights fade.")
@@ -2650,6 +2653,8 @@ describe("Mori studio page", () => {
 
   it("keeps an active vocal layer reachable across Studio tools", async () => {
     let cancelledGenerationRef = ""
+    let releaseCancel: () => void = () => undefined
+    const cancelGate = new Promise<void>((resolve) => { releaseCancel = resolve })
     renderStudio({
       createStudioChange: async () => ({
         data: { generation_ref: "generation_vocal_layer_active", status: "queued" },
@@ -2674,6 +2679,7 @@ describe("Mori studio page", () => {
       getGenerationEvents: async () => [],
       cancelGeneration: async (generationRef) => {
         cancelledGenerationRef = generationRef
+        await cancelGate
         return {
           data: { generation_ref: generationRef, status: "cancelled" },
           meta: { request_id: "request_vocal_layer_cancel" },
@@ -2702,6 +2708,8 @@ describe("Mori studio page", () => {
     expect(within(stemsEditor).getByRole("button", { name: "Add vocals" })).toHaveAttribute("aria-pressed", "true")
     layerComposer = within(stemsEditor).getByRole("region", { name: "Add vocals workflow" })
     fireEvent.click(within(layerComposer).getByRole("button", { name: "Cancel layer" }))
+    expect(within(layerComposer).getByRole("button", { name: "Stopping…" })).toBeDisabled()
+    releaseCancel()
     await waitFor(() => expect(cancelledGenerationRef).toBe("generation_vocal_layer_active"))
     expect(within(layerComposer).getByText("Layer cancelled")).toBeInTheDocument()
   })

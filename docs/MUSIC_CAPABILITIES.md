@@ -281,7 +281,7 @@ Add Instrumental
   Keep         Melody + Lyrics + Voice + Tempo + Structure
 ```
 
-两条路径都先 Review Layer Plan，默认生成两个 alternatives，并复用 Studio Change 的 Generation lifecycle；
+两条路径都先 Review Layer Plan，默认生成两个 alternatives，并可在 `1 / 2 / 4` 间选择；随后复用 Studio Change 的 Generation lifecycle；
 成功结果进入 Arrangement 的 Take Lanes，用户明确 `Use take` 前不替换 Current Version。切换 Add Vocals、
 Add Instrumental 与 Separate mix 时，本地未提交草稿不会丢失；运行中的图层在离开并返回 Stems 后仍恢复到原意图，
 保留取消和重试入口。进入 Review 后输入表单会让位于单一 Layer Plan，`Edit request` 再恢复原草稿，避免请求与复核
@@ -334,8 +334,8 @@ GET  /api/v1/mori/generations/{generation_ref}/events
 POST /api/v1/mori/generations/{generation_ref}/cancel
 ```
 
-Create 从 Project 发起 Generation，默认一次产出两条 alternatives；Studio 从不可变 Version 发起 Generation；两者最终都输出
-Candidate 并进入 Take Lanes。浏览器仍只调用同源 BFF。Create 的 provider-neutral 请求固定携带 `output_count: 2`，
+  Create 从 Project 发起 Generation，默认一次产出两条 alternatives；Studio 从不可变 Version 发起 Generation；两者最终都输出
+  Candidate 并进入 Take Lanes。生成结果恢复使用 `generation_ref` 过滤候选，避免扫描整个 Project。浏览器仍只调用同源 BFF。Create 的 provider-neutral 请求固定携带 `output_count: 2`，
 Studio 请求的 provider-neutral 结构为：
 
 ```text

@@ -148,6 +148,51 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.alternatives {
+  display: grid;
+  gap: 7px;
+  padding: 9px;
+  border: 1px solid rgba(109, 92, 231, 0.1);
+  border-radius: 9px;
+  background: rgba(249, 247, 253, 0.78);
+}
+
+.alternatives > span {
+  color: var(--mori-faint);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.alternatives > div {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.alternatives button {
+  min-height: 32px;
+  border: 1px solid rgba(109, 92, 231, 0.12);
+  border-radius: 7px;
+  color: var(--mori-muted);
+  font-size: 10px;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.alternatives button[aria-pressed="true"] {
+  border-color: rgba(109, 92, 231, 0.34);
+  color: var(--mori-primary-deep);
+  background: rgba(235, 230, 255, 0.84);
+  box-shadow: inset 0 0 0 1px rgba(109, 92, 231, 0.08);
+}
+
+.alternatives button:disabled {
+  cursor: not-allowed;
+  opacity: 0.56;
+}
+
 .vocalFacts {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-top: 7px;
@@ -334,7 +379,8 @@
 }
 
 .reviewButton:focus-visible,
-.plan button:focus-visible {
+.plan button:focus-visible,
+.alternatives button:focus-visible {
   outline: 2px solid rgba(109, 92, 231, 0.48);
   outline-offset: 2px;
 }

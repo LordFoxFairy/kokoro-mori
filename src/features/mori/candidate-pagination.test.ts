@@ -41,4 +41,14 @@ describe("listAllMoriCandidates", () => {
     await expect(listAllMoriCandidates({ listCandidates }, "project_1")).rejects.toThrow("candidate_cursor_invalid")
     expect(listCandidates).toHaveBeenCalledTimes(2)
   })
+
+  it("keeps generation-scoped recovery queries out of unrelated Project candidates", async () => {
+    const listCandidates = vi.fn<MoriApi["listCandidates"]>()
+      .mockResolvedValueOnce(response([candidate("a")], "cursor_2"))
+      .mockResolvedValueOnce(response([candidate("b")], null))
+
+    await expect(listAllMoriCandidates({ listCandidates }, "project_1", "generation_1")).resolves.toHaveLength(2)
+    expect(listCandidates).toHaveBeenNthCalledWith(1, "project_1", { generation_ref: "generation_1" })
+    expect(listCandidates).toHaveBeenNthCalledWith(2, "project_1", { cursor: "cursor_2", generation_ref: "generation_1" })
+  })
 })

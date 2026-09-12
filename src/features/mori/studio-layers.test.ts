@@ -8,6 +8,7 @@ describe("Mori Studio layer plans", () => {
       lyrics: "  Meet me where the streetlights fade.  ",
       voiceRef: "voice_preview_mira",
       durationSeconds: 182,
+      outputCount: 2,
     })
 
     expect(plan).toMatchObject({
@@ -36,6 +37,7 @@ describe("Mori Studio layer plans", () => {
       lyrics: "This is ignored for an instrumental layer.",
       voiceRef: "voice_preview_mira",
       durationSeconds: 182,
+      outputCount: 2,
     })
 
     expect(plan).toMatchObject({

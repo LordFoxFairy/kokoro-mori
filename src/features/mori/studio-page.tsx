@@ -760,7 +760,7 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
         setStudioChangeRun((current) => ({ ...current, status, progress, message: null, cancelPending: current.cancelPending }))
 
         if (status === "succeeded") {
-          const candidateResponse = await listAllMoriCandidates(studioApi, snapshot.project_ref)
+          const candidateResponse = await listAllMoriCandidates(studioApi, snapshot.project_ref, trackedStudioChange.generationRef)
           if (disposed || studioChangeObservationEpochRef.current !== observationEpoch) return
           const generatedCandidates = candidateResponse
             .filter((item) => candidateRefs.includes(item.candidate_ref))

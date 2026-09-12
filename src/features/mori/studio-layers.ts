@@ -1,5 +1,5 @@
 import type { MoriStudioLayerDraft, StudioChangePreserve, StudioLayerKind } from "@/lib/mori-api"
-import type { StudioChangePlan, StudioTimelineSection } from "./studio-change"
+import type { StudioChangeOutputCount, StudioChangePlan, StudioTimelineSection } from "./studio-change"
 
 export type StudioLayerMode = StudioLayerKind
 
@@ -13,6 +13,7 @@ export type StudioLayerPlanInput = {
   lyrics?: string
   voiceRef?: string
   durationSeconds: number
+  outputCount: StudioChangeOutputCount
 }
 
 const vocalPreserve: StudioChangePreserve[] = ["melody", "tempo", "structure"]
@@ -27,7 +28,7 @@ export function buildStudioLayerPlan(mode: StudioLayerMode, input: StudioLayerPl
     partKind: mode,
     instruction: input.instruction.trim(),
     preserve,
-    outputCount: 2,
+    outputCount: input.outputCount,
     ...(mode === "vocals" ? {
       lyrics: input.lyrics?.trim() ?? "",
       ...(input.voiceRef?.trim() ? { voiceRef: input.voiceRef.trim() } : {}),
@@ -42,7 +43,7 @@ export function buildStudioLayerPlan(mode: StudioLayerMode, input: StudioLayerPl
     selection,
     scopeLabel: "Whole song",
     preserve,
-    outputCount: 2,
+    outputCount: input.outputCount,
     draft,
   }
 }

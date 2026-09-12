@@ -3,7 +3,7 @@
 import { ArrowRight, Check, Mic2, Music2, Pencil, RotateCcw, Sparkles, Square } from "lucide-react"
 import { useId, useState, type FormEvent } from "react"
 import { previewVoiceProfiles } from "../creative-assets"
-import { isActiveStudioChangeStatus } from "../studio-change"
+import { isActiveStudioChangeStatus, studioChangeOutputCounts, type StudioChangeOutputCount } from "../studio-change"
 import { buildStudioLayerPlan, isStudioLayerPlan, type StudioLayerMode, type StudioLayerPlan } from "../studio-layers"
 import type { StudioAiRunState } from "./studio-ai-composer"
 import styles from "./studio-layer-composer.module.css"
@@ -26,6 +26,7 @@ export function StudioLayerComposer({ mode, durationSeconds, run, onGenerate, on
   const [lyrics, setLyrics] = useState(() => runPlan?.draft.lyrics ?? "")
   const [instruction, setInstruction] = useState(() => runPlan?.instruction ?? "")
   const [voiceRef, setVoiceRef] = useState(() => runPlan?.draft.voiceRef ?? "")
+  const [outputCount, setOutputCount] = useState<StudioChangeOutputCount>(() => runPlan?.outputCount ?? 2)
   const [reviewedPlan, setReviewedPlan] = useState<StudioLayerPlan | null>(null)
   const busy = isActiveStudioChangeStatus(run.status)
   const visiblePlan = run.status === "idle" ? reviewedPlan : runPlan
@@ -46,7 +47,12 @@ export function StudioLayerComposer({ mode, durationSeconds, run, onGenerate, on
       lyrics,
       voiceRef,
       durationSeconds,
+      outputCount,
     }))
+  }
+
+  const chooseOutputCount = (nextOutputCount: StudioChangeOutputCount) => {
+    updateDraft(() => setOutputCount(nextOutputCount))
   }
 
   const editPlan = () => {
@@ -119,7 +125,18 @@ export function StudioLayerComposer({ mode, durationSeconds, run, onGenerate, on
         <div className={styles.context} aria-label="Layer context">
           <span><strong>Source</strong>Current version</span>
           <span><strong>Scope</strong>Whole song</span>
-          <span><strong>Output</strong>2 alternatives · Take lanes</span>
+          <span><strong>Output</strong>{outputCount} alternatives · Take lanes</span>
+        </div>
+
+        <div className={styles.alternatives} role="group" aria-label="Alternatives">
+          <span>Alternatives</span>
+          <div>
+            {studioChangeOutputCounts.map((count) => (
+              <button type="button" aria-pressed={outputCount === count} disabled={busy} key={count} onClick={() => chooseOutputCount(count)}>
+                {takeCountLabel(count)}
+              </button>
+            ))}
+          </div>
         </div>
 
         <button className={styles.reviewButton} type="submit" disabled={!canReview}>
@@ -137,7 +154,7 @@ export function StudioLayerComposer({ mode, durationSeconds, run, onGenerate, on
           <div className={styles.planFacts}>
             <span><strong>Scope</strong>{visiblePlan.scopeLabel}</span>
             <span><strong>Keep</strong>{preserveLabel(visiblePlan)}</span>
-            <span><strong>Result</strong>2 alternatives · Take lanes</span>
+            <span><strong>Result</strong>{visiblePlan.outputCount} alternatives · Take lanes</span>
           </div>
           {visiblePlan.layerKind === "vocals" ? (
             <div className={styles.vocalFacts}>
@@ -158,7 +175,7 @@ export function StudioLayerComposer({ mode, durationSeconds, run, onGenerate, on
             <span><Check /> Current version stays untouched.</span>
             <div>
               {busy ? (
-                <button className={styles.cancelButton} type="button" onClick={onCancel}><Square fill="currentColor" /> Cancel layer</button>
+                <button className={styles.cancelButton} type="button" disabled={run.cancelPending === true} onClick={onCancel}><Square fill="currentColor" /> {run.cancelPending === true ? "Stopping…" : "Cancel layer"}</button>
               ) : <>
                 <button type="button" onClick={editPlan}><Pencil /> Edit request</button>
                 {run.status === "succeeded" && run.resultCount > 0 ? (
@@ -166,7 +183,7 @@ export function StudioLayerComposer({ mode, durationSeconds, run, onGenerate, on
                 ) : run.status === "failed" || run.status === "cancelled" || run.status === "expired" || (run.status === "succeeded" && run.resultCount === 0) ? (
                   <button className={styles.primaryButton} type="button" onClick={() => onGenerate(visiblePlan)}><RotateCcw /> Retry layer</button>
                 ) : (
-                  <button className={styles.primaryButton} type="button" onClick={() => onGenerate(visiblePlan)}>Generate 2 takes <Sparkles /></button>
+                  <button className={styles.primaryButton} type="button" onClick={() => onGenerate(visiblePlan)}>Generate {takeCountLabel(visiblePlan.outputCount)} <Sparkles /></button>
                 )}
               </>}
             </div>
@@ -196,6 +213,10 @@ function lineCountLabel(lyrics: string): string {
 function voiceLabel(voiceRef: string | undefined): string {
   if (voiceRef === undefined || voiceRef === "") return "Mori voice"
   return previewVoiceProfiles.find((profile) => profile.ref === voiceRef)?.name ?? "Selected voice"
+}
+
+function takeCountLabel(count: StudioChangeOutputCount): string {
+  return `${count} ${count === 1 ? "take" : "takes"}`
 }
 
 function layerRunStatus(run: StudioAiRunState, matchesLayer: boolean): { label: string; className: string } {

@@ -20,7 +20,7 @@
 - Studio AI 的 Reference audio 与 Cover voice 不再绑定单一 preview 常量；Studio 默认通过 `/library/sources` 读取 live Creative Source projection，组件接受同一 catalog，加载失败时才使用明确的 preview fallback。
 - Composition API seam 已固定 Version ref、幂等键与 revisioned input 的分离；`move_clip` 缺省为同轨移动，跨轨时携带可选 `target_track_ref`，并已提供同源 GET/PUT revision client；保存成功后会校验并采用 owner 返回的轨道投影，真实 BFF owner persistence 与 recovery smoke 仍待接入。
 - Studio 重新打开 live Project / Version 时，会从 Workspace 的 `latest_mix_revision` 摘要读取完整 Mix Revision，并严格校验 ref、Version、revision、名称和轨道数后再提供给 Finish / Export；加载中、缺失 reader 或校验失败会明确显示 unavailable，保留 Open Version 路径，不静默使用旧混音。
-- Studio Change 在 Review Plan 后才生成；请求 builder 统一 snake_case、范围、保护项、references 和输出数量，并保持当前 Version 非破坏式。
+- Studio Change 在 Review Plan 后才生成；请求 builder 统一 snake_case、范围、保护项、references 和输出数量，Add vocals / Add instrumental 与 Restyle 统一支持 `1 / 2 / 4` alternatives，并保持当前 Version 非破坏式。
 - Mori API 与公共 Web package 保持本仓边界；未修改 Root、BFF 或 sibling service。
 - 全局 Player 继续保持 viewport-fixed 的底部 transport；shell 通过同一组 `--mori-player-height` /
   `--mori-player-safe-space` token 预留可滚动安全区，短桌面视口将 dock 收敛到 72px，避免 Studio 的
@@ -68,7 +68,7 @@
   选择另一 Version 会明确提供 Keep editing、Discard & open、Save & open，不让导航静默丢稿。preview 文字可编辑但始终
   明确标为非耐久草稿。
 - Generation 生命周期已补齐 Create、snapshot、SSE replay、cancel 与 Project Candidate list 的本仓 OpenAPI；Create 明确固定 `output_count: 2`，snapshot 回显同一输出上下文；Candidate
-  list 使用 opaque cursor/limit/generation filter，页面投影统一消费全部分页并按 `candidate_ref` 去重。Generation queue
+  list 使用 opaque cursor/limit/generation filter，Create / Studio 生成结果恢复按 `generation_ref` 查询，页面投影统一消费全部分页并按 `candidate_ref` 去重。Generation queue
   以显式字段白名单保存多任务摘要、状态、进度、候选引用和 event cursor，不保存 prompt、lyrics、provider payload 或音频字节；
   Create 与 Studio Change 共用这份队列；Create 不会接管 Studio Change，Studio 路由会从 active generation ref 拉回 snapshot 并恢复工作上下文，
   工作区在切换任务或回到 Create 时也会按队列 kind 校验并同步后台 Studio Change，网络瞬时错误按退避重试而非立即伪装成失败，
