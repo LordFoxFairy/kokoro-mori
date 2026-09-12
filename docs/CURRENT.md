@@ -26,9 +26,10 @@
   `--mori-player-safe-space` token 预留可滚动安全区，短桌面视口将 dock 收敛到 72px，避免 Studio 的
   AI Changes / Take Lanes 被底部控件过度遮挡，移动端继续保留安全区与底部 sheet 行为。
 - 全局 Player 已接入窄化的 same-origin media seam：Candidate 只携带 opaque `audio_asset_ref`，浏览器通过
-  `/api/v1/mori/assets/{asset_ref}/content` 获取音频；Provider 使用可注入的 media controller 同步真实
-  `play/pause/seek/mute/timeupdate/ended` 状态，不再用定时器伪造播放。preview Candidate 没有音频资产时显示
-  `Preview audio is unavailable` 并禁用播放，真实媒体加载失败会停止 Playing、保留错误上下文并提供 Retry playback。
+  `/api/v1/mori/assets/{asset_ref}/content` 获取真实音频；本地 preview ref 仅解析到 `public/audio/` 的可回归 fixture，
+  不改变 live asset 路由。Provider 使用可注入的 media controller 同步真实 `play/pause/seek/mute/timeupdate/ended`
+  状态，不再用定时器伪造播放。Candidate 缺少音频资产时显示 `Preview audio is unavailable` 并禁用播放，真实媒体
+  加载失败会停止 Playing、保留错误上下文并提供 Retry playback。
 - 全局 Player 与页面 projection 已解耦：打开空 Project、Candidate projection 暂时失败或进入不可用的 Studio Version
   都不会清空正在播放的 Version、进度或媒体源；浏览 Library、Project 或 Studio 不会重写 `Up next`，队列默认
   为空，只在用户明确试听 Version（或启用明确的生成后自动播放偏好）时按 `version_ref` 加入或更新，避免同一 Version
@@ -109,7 +110,7 @@ pnpm exec vitest run --maxWorkers=1 src/features/mori/mori-workspace.test.tsx
                                   passed: 1 file / 69 tests
 pnpm exec vitest run --maxWorkers=1 src/features/mori/use-audio-recorder.test.tsx
                                   passed: 1 file / 2 tests
-pnpm test                         passed: 80 files / 593 tests
+pnpm test                         passed: 80 files / 594 tests
 pnpm build                        passed
 ```
 

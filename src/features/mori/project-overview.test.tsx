@@ -80,7 +80,7 @@ describe("Mori project overview", () => {
     expect(within(songPlan).queryByText("Revision 1 · saved")).not.toBeInTheDocument()
   })
 
-  it("shows the global player availability when a preview candidate is selected", () => {
+  it("shows playable controls when a preview candidate is selected", () => {
     render(
       <MoriAppProvider>
         <MoriCatalogShell activeKey="projects" ariaLabel="Project overview">
@@ -92,8 +92,8 @@ describe("Mori project overview", () => {
     fireEvent.click(screen.getByRole("button", { name: "Play First Light" }))
 
     expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("First Light")
-    expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("Preview audio is unavailable")
-    expect(screen.queryByRole("button", { name: "Play" })).not.toBeInTheDocument()
+    expect(screen.getByRole("region", { name: "Global player" })).not.toHaveTextContent("Preview audio is unavailable")
+    expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument()
   })
 
   it("hydrates the requested project and its latest candidates", async () => {

@@ -29,6 +29,11 @@ export type PlayerMediaFactory = (callbacks: PlayerMediaCallbacks) => PlayerMedi
 
 export type PlayerMediaEvent = "timeupdate" | "ended" | "error"
 
+const previewAudioUrls: Readonly<Record<string, string>> = {
+  "preview:first-light:a": "/audio/mori-preview-first-light-a.mp3",
+  "preview:first-light:b": "/audio/mori-preview-first-light-b.mp3",
+}
+
 export function isPlayableCandidate(candidate: Candidate | null): boolean {
   const assetRef = candidate?.audioAssetRef
   return assetRef !== undefined && assetRef !== null && assetRef.trim().length > 0
@@ -75,7 +80,7 @@ export function createHtmlPlayerMediaController(
 
     const assetRef = candidate.audioAssetRef
     if (assetRef === undefined || assetRef === null || assetRef.trim().length === 0) return
-    const channel = createChannel(buildMoriAssetContentUrl(assetRef))
+    const channel = createChannel(resolvePlayerAudioUrl(assetRef))
     channel.muted = muted
     const source: LoadedSource = { candidate, channel, listeners: [] }
     loaded = source
@@ -116,6 +121,10 @@ export function createHtmlPlayerMediaController(
     source.channel.on(event, listener)
     source.listeners.push({ event, listener })
   }
+}
+
+function resolvePlayerAudioUrl(assetRef: string): string {
+  return previewAudioUrls[assetRef] ?? buildMoriAssetContentUrl(assetRef)
 }
 
 export type PlayerMediaChannelFactory = (url: string) => PlayerMediaChannel

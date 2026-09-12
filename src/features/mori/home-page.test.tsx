@@ -56,7 +56,7 @@ describe("Mori home page", () => {
     expect(within(quickStart).getByRole("button", { name: "Shape this idea" })).toHaveAttribute("type", "submit")
   })
 
-  it("shows the global player availability when a preview direction is selected", () => {
+  it("shows playable controls when a preview direction is selected", () => {
     render(
       <MoriAppProvider>
         <MoriCatalogShell activeKey="home" ariaLabel="Home">
@@ -68,10 +68,10 @@ describe("Mori home page", () => {
     fireEvent.click(screen.getByRole("button", { name: "Play First Light" }))
 
     const player = screen.getByRole("region", { name: "Global player" })
-    expect(player).toHaveAttribute("data-player-state", "unavailable")
+    expect(player).not.toHaveAttribute("data-player-state", "unavailable")
     expect(player).toHaveTextContent("First Light")
-    expect(player).toHaveTextContent("Preview audio is unavailable")
-    expect(screen.queryByRole("button", { name: "Play" })).not.toBeInTheDocument()
+    expect(player).not.toHaveTextContent("Preview audio is unavailable")
+    expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument()
   })
 
   it("continues the latest live project from its confirmed Current Version", async () => {

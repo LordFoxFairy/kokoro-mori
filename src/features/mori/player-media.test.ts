@@ -45,6 +45,16 @@ describe("Mori player media controller", () => {
     expect(callbacks.onEnded).toHaveBeenCalledTimes(1)
   })
 
+  it("maps local preview refs to playable static fixtures without changing live asset routing", () => {
+    const channel = createChannel()
+    const createChannelMock = vi.fn(() => channel)
+    const controller = createHtmlPlayerMediaController(createCallbacks(), createChannelMock)
+
+    controller.setSource({ ...candidate, audioAssetRef: "preview:first-light:a" })
+
+    expect(createChannelMock).toHaveBeenCalledWith("/audio/mori-preview-first-light-a.mp3")
+  })
+
   it("releases the previous source and does not retain its event listeners", () => {
     const first = createChannel()
     const second = createChannel()
