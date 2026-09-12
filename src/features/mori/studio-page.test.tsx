@@ -583,7 +583,7 @@ describe("Mori studio page", () => {
     const workspaceTabs = screen.getByRole("tablist", { name: "Studio workspace" })
     const arrangementTab = within(workspaceTabs).getByRole("tab", { name: "Arrangement" })
     expect(arrangementTab).toHaveAttribute("aria-selected", "true")
-    expect(screen.queryByRole("button", { name: "Preview" })).not.toBeInTheDocument()
+    expect(screen.getByRole("region", { name: "Studio asset dock" })).toBeInTheDocument()
     expect(screen.getByText("Current · saved")).toBeInTheDocument()
     expect(screen.queryByText("version_preview_first_light_a")).not.toBeInTheDocument()
 
@@ -1210,6 +1210,28 @@ describe("Mori studio page", () => {
       expect.objectContaining({
         expected_revision: 0,
         commands: [expect.objectContaining({ type: "insert_clip", track_ref: "version_preview_first_light_a:main", source_ref: "version_preview_first_light_b" })],
+      }),
+      expect.stringMatching(/^mori-composition-/u),
+    ))
+  })
+
+  it("inserts Library Audio by source identity into the selected arrangement range", async () => {
+    const createCompositionRevision = vi.fn<MoriApi["createCompositionRevision"]>(async (_versionRef, input) => ({
+      data: { version_ref: "version_preview_first_light_a", revision: input.expected_revision + 1, tracks: [] },
+      meta: { request_id: "request_insert_library_audio" },
+    }))
+    renderStudio({ createCompositionRevision })
+
+    const arrangement = screen.getByRole("region", { name: "Arrangement editor" })
+    const dock = within(arrangement).getByRole("region", { name: "Studio asset dock" })
+    fireEvent.click(within(dock).getByRole("button", { name: "Insert" }))
+    expect(within(screen.getByRole("region", { name: "Version timeline" })).getByRole("button", { name: "Main version clip City Lights demo · 0:24" })).toBeInTheDocument()
+
+    fireEvent.click(within(arrangement).getByRole("button", { name: "Save arrangement" }))
+    await waitFor(() => expect(createCompositionRevision).toHaveBeenCalledWith(
+      "version_preview_first_light_a",
+      expect.objectContaining({
+        commands: [expect.objectContaining({ type: "insert_clip", source_ref: "source_preview_city_lights" })],
       }),
       expect.stringMatching(/^mori-composition-/u),
     ))

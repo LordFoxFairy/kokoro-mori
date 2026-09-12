@@ -570,6 +570,7 @@ BFF 必须按受信会话校验该 asset 与用户可见 Mori 资源的关联，
 
 - Create：Smart / Custom、Song Plan review、Audio / Voice / Inspiration 创意来源。
 - Studio：Arrangement / Lyrics / Stems、Mori AI Changes、Take Lanes。
+- Studio Arrangement 的 Asset Dock v1：搜索/筛选 Creative Sources；Audio 通过全局 Player 试听并插入当前 Track / Range；Voice 与 Inspiration 先作为 reference-only。
 - 全局：Player、播放队列、Project-first 导航。
 - 窄屏决策路径：Studio 项目上下文与动作区分层，Take Lanes 的 Preview / Use take 保持可触达，不用把核心提交动作压缩成小图标。
 
@@ -615,6 +616,9 @@ Composition 的第一组 provider-neutral 纯函数已落地到 `composition.ts`
 - Create 已建立 Audio / Voice / Inspiration 的统一选择位，并把 `voice_ref` 与 Vocal direction 分离；Library
   已加入同源 preview 素材架、类型筛选、搜索和 `Use in Create` 上下文恢复。下一步由 storage/music owner
   adapter 提供正式 Audio、Voice、Persona、Style preset 与 Reference projection，替换当前 preview 目录。
+- Studio Asset Dock v1 已把 Library 素材带回 Arrangement 上下文：搜索与类型筛选不离开 Studio，Audio 使用同一个全局
+  Player 试听，插入时携带当前 `track_ref`、选区和 `source_ref`；Voice / Inspiration 以 reference-only 呈现，真实
+  媒体投影、拖放、批量素材与 owner persistence 留在后续 P1。
 
 ### P3 · 完成与发布
 

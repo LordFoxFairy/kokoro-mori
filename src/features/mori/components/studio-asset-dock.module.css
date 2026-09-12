@@ -1,0 +1,354 @@
+.dock {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+  padding: 17px;
+  border: 1px solid rgba(109, 92, 231, 0.14);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 100% 0, rgba(255, 224, 207, 0.35), transparent 18rem),
+    linear-gradient(135deg, rgba(247, 244, 255, 0.88), rgba(255, 252, 248, 0.9));
+  box-shadow: 0 12px 30px rgba(62, 45, 86, 0.055);
+}
+
+.header,
+.contextRow,
+.sourceTitleRow,
+.sourceActions {
+  display: flex;
+  align-items: center;
+}
+
+.header,
+.contextRow {
+  justify-content: space-between;
+  gap: 15px;
+}
+
+.headerCopy {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.eyebrow {
+  color: var(--mori-primary);
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.header h3 {
+  margin: 0;
+  color: var(--mori-foreground);
+  font-size: 15px;
+  letter-spacing: -0.03em;
+}
+
+.header p {
+  margin: 0;
+  color: var(--mori-muted);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.headerMark,
+.sourceIcon,
+.emptyState > span {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  color: var(--mori-primary);
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.headerMark {
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(109, 92, 231, 0.12);
+  border-radius: 11px;
+}
+
+.contextCard {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+  padding: 9px 11px;
+  border: 1px solid rgba(109, 92, 231, 0.12);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.contextCard span {
+  color: var(--mori-faint);
+  font-size: 8px;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.contextCard strong,
+.contextCard small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.contextCard strong {
+  color: var(--mori-foreground);
+  font-size: 11px;
+}
+
+.contextCard small {
+  color: var(--mori-muted);
+  font-size: 9px;
+}
+
+.searchField {
+  display: flex;
+  min-width: 150px;
+  height: 34px;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px;
+  border: 1px solid rgba(109, 92, 231, 0.14);
+  border-radius: 10px;
+  color: var(--mori-faint);
+  background: rgba(255, 255, 255, 0.76);
+}
+
+.searchField:focus-within {
+  border-color: rgba(109, 92, 231, 0.36);
+  box-shadow: 0 0 0 3px rgba(109, 92, 231, 0.08);
+}
+
+.searchField input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  color: var(--mori-foreground);
+  font: inherit;
+  font-size: 10px;
+  background: transparent;
+}
+
+.filterBar {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--mori-faint);
+}
+
+.filterBar button {
+  min-height: 26px;
+  padding: 0 9px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: var(--mori-muted);
+  font-size: 9px;
+  font-weight: 800;
+  background: transparent;
+}
+
+.filterBar button:hover,
+.filterBar button[aria-pressed="true"] {
+  border-color: rgba(109, 92, 231, 0.16);
+  color: var(--mori-primary-deep);
+  background: rgba(237, 233, 254, 0.76);
+}
+
+.sourceList {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.sourceCard {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  min-width: 0;
+  padding: 11px;
+  border: 1px solid rgba(103, 91, 126, 0.13);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.78);
+  transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+
+.sourceCard:hover {
+  border-color: rgba(109, 92, 231, 0.25);
+  box-shadow: 0 7px 16px rgba(62, 45, 86, 0.055);
+  transform: translateY(-1px);
+}
+
+.sourceCard[data-source-kind="inspiration"] {
+  background: linear-gradient(135deg, rgba(255, 248, 242, 0.84), rgba(255, 255, 255, 0.72));
+}
+
+.sourceCard[data-source-kind="voice"] {
+  background: linear-gradient(135deg, rgba(242, 250, 247, 0.84), rgba(255, 255, 255, 0.72));
+}
+
+.sourceIcon {
+  width: 31px;
+  height: 31px;
+  border-radius: 9px;
+  background: linear-gradient(140deg, rgba(230, 224, 255, 0.94), rgba(255, 231, 218, 0.74));
+}
+
+.sourceCopy {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.sourceTitleRow {
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sourceTitleRow h4 {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--mori-foreground);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sourceTitleRow > span {
+  flex: 0 0 auto;
+  color: var(--mori-faint);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+
+.sourceCopy p {
+  margin: 0;
+  overflow: hidden;
+  color: var(--mori-muted);
+  font-size: 9px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sourceActions {
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.previewButton,
+.insertButton {
+  display: inline-flex;
+  min-height: 27px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 8px;
+  border-radius: 8px;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.previewButton {
+  border: 1px solid rgba(109, 92, 231, 0.16);
+  color: var(--mori-primary-deep);
+  background: rgba(237, 233, 254, 0.74);
+}
+
+.previewButton:hover:not(:disabled),
+.previewButton[aria-pressed="true"] {
+  border-color: rgba(109, 92, 231, 0.3);
+  background: rgba(237, 233, 254, 0.98);
+}
+
+.insertButton {
+  border: 1px solid rgba(196, 121, 90, 0.2);
+  color: #925e4e;
+  background: rgba(255, 241, 231, 0.82);
+}
+
+.insertButton:hover:not(:disabled) {
+  border-color: rgba(196, 121, 90, 0.36);
+  background: rgba(255, 236, 223, 0.98);
+}
+
+.previewButton:disabled,
+.insertButton:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.referenceOnly {
+  display: inline-flex;
+  min-height: 27px;
+  align-items: center;
+  gap: 5px;
+  color: var(--mori-muted);
+  font-size: 9px;
+}
+
+.emptyState {
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  padding: 18px;
+  border: 1px dashed rgba(109, 92, 231, 0.18);
+  border-radius: 12px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.48);
+}
+
+.emptyState > span {
+  width: 29px;
+  height: 29px;
+  border-radius: 9px;
+}
+
+.emptyState strong {
+  font-size: 10px;
+}
+
+.emptyState small {
+  color: var(--mori-muted);
+  font-size: 9px;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.filterBar button:focus-visible,
+.searchField input:focus-visible,
+.previewButton:focus-visible,
+.insertButton:focus-visible {
+  outline: 3px solid rgba(109, 92, 231, 0.2);
+  outline-offset: 2px;
+}
+
+@media (max-width: 700px) {
+  .contextRow {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .searchField {
+    width: 100%;
+  }
+
+  .sourceList {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
