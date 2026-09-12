@@ -121,6 +121,7 @@ describe("Mori Studio change OpenAPI contract", () => {
 
   it("models Restyle, Cover, and Remaster as typed transforms instead of new top-level operations", () => {
     const schemas = contractSchemas(readContract())
+    expect(recordValue(schemas.OutputCount, "OutputCount").enum).toEqual([1, 2, 4])
     const transform = recordValue(schemas.TransformGenerationInput, "TransformGenerationInput")
     const variants = arrayValue(transform.oneOf, "Transform variants").map((value) => {
       const ref = stringValue(recordValue(value, "Transform variant").$ref, "Transform variant ref")

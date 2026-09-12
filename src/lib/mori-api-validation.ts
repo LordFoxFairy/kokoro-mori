@@ -6,6 +6,7 @@ import {
   releaseVisibilities,
   stemSeparationModes,
   stemTargetKinds,
+  studioChangeOutputCounts,
   studioInstrumentalCoverProtectedAnchors,
   studioRemasterStrengths,
   studioVocalCoverProtectedAnchors,
@@ -76,6 +77,7 @@ import type {
   StudioChangePreserve,
   StudioChangeRangeScope,
   StudioChangeOperation,
+  StudioChangeOutputCount,
   StudioChangeWholeVersionScope,
   StudioCoverMode,
   StudioRemasterSource,
@@ -118,6 +120,10 @@ function dateString(value: unknown): value is string {
 
 function integer(value: unknown, minimum = 0, maximum = Number.MAX_SAFE_INTEGER): value is number {
   return typeof value === "number" && Number.isSafeInteger(value) && value >= minimum && value <= maximum
+}
+
+function studioChangeOutputCount(value: unknown): value is StudioChangeOutputCount {
+  return typeof value === "number" && studioChangeOutputCounts.includes(value as StudioChangeOutputCount)
 }
 
 function stringArray(value: unknown): value is string[] {
@@ -713,7 +719,7 @@ export function parseGenerationSnapshot(value: unknown): GenerationSnapshot | nu
       || value.instruction.length > 2_000
       || preserve === null
       || referenceAssetRefs === null
-      || !integer(value.output_count, 1, 4)
+      || !studioChangeOutputCount(value.output_count)
     ) return null
 
     if (value.intent === "restyle") {

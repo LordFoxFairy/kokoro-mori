@@ -43,6 +43,10 @@ export type StudioLayerKind = "vocals" | "instrumental"
 
 export type StudioChangePreserve = "melody" | "lyrics" | "vocal_identity" | "tempo" | "structure"
 
+export const studioChangeOutputCounts = [1, 2, 4] as const
+
+export type StudioChangeOutputCount = typeof studioChangeOutputCounts[number]
+
 export type StudioTransformIntent = "restyle" | "cover"
 
 export type StudioCoverMode = "vocal" | "instrumental"
@@ -200,7 +204,7 @@ type StudioChangeGenerationCommonInput = {
   instruction: string
   preserve: StudioChangePreserve[]
   reference_asset_refs: MoriRef[]
-  output_count: number
+  output_count: StudioChangeOutputCount
 }
 
 export type StudioRemasterGenerationInput = StudioChangeGenerationCommonInput & {
@@ -590,7 +594,7 @@ export type StudioRestyleGenerationSnapshot = GenerationSnapshotBase & {
   instruction: string
   preserve: StudioChangePreserve[]
   reference_asset_refs: MoriRef[]
-  output_count: number
+  output_count: StudioChangeOutputCount
 }
 
 export type StudioCoverGenerationSnapshot = GenerationSnapshotBase & {
@@ -853,7 +857,7 @@ type MoriStudioChangeCommonDraft = {
   instruction: string
   preserve?: StudioChangePreserve[]
   referenceAssetRefs?: MoriRef[]
-  outputCount?: number
+  outputCount?: StudioChangeOutputCount
 }
 
 export type MoriStudioRemasterSource =
@@ -959,7 +963,7 @@ export function createStudioChangeRequest(draft: MoriStudioChangeDraft): StudioC
   if (instruction.length > 2_000) throw new Error("studio_change_instruction_too_long")
 
   const outputCount = draft.outputCount ?? 2
-  if (!Number.isSafeInteger(outputCount) || outputCount < 1 || outputCount > 4) {
+  if (!studioChangeOutputCounts.includes(outputCount as StudioChangeOutputCount)) {
     throw new Error("studio_change_output_count_invalid")
   }
 

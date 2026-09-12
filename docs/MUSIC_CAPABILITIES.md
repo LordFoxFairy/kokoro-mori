@@ -376,7 +376,7 @@ StudioChangeGenerationInput
   instruction
   preserve                  melody | lyrics | vocal_identity | tempo | structure
   reference_asset_refs[]
-  output_count              default 2, range 1–4
+  output_count              default 2, enum 1 | 2 | 4
 ```
 
 机器可检查的事实源位于

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { createExportRequest, createGenerationRequest, createLyricsRevisionRequest, createMixRevisionRequest, createStemSeparationRequest, createStudioChangeRequest } from "./mori-api"
 import { createMoriApiClient, MoriApiRequestError } from "./mori-api-client"
-import { parseMoriMixTrack } from "./mori-api-validation"
+import { parseGenerationSnapshot, parseMoriMixTrack } from "./mori-api-validation"
 
 describe("Mori same-origin API client", () => {
   it("normalizes a generation snapshot network failure as retryable", async () => {
@@ -1291,6 +1291,36 @@ describe("Mori same-origin API client", () => {
       scope: { type: "whole_version" },
       instruction: "   ",
     })).toThrow("studio_change_instruction_required")
+
+    expect(() => createStudioChangeRequest({
+      operation: "transform",
+      intent: "restyle",
+      scope: { type: "whole_version" },
+      instruction: "Try three alternatives.",
+      outputCount: 3 as never,
+    })).toThrow("studio_change_output_count_invalid")
+  })
+
+  it("rejects a durable Restyle snapshot with an unsupported output count", () => {
+    expect(parseGenerationSnapshot({
+      generation_ref: "generation_restyle_invalid_count",
+      generation_kind: "studio_change",
+      project_ref: "project_1",
+      song_plan_ref: null,
+      mode: null,
+      source_version_ref: "version_1",
+      operation: "transform",
+      intent: "restyle",
+      scope: { type: "whole_version" },
+      instruction: "Try three alternatives.",
+      preserve: ["melody"],
+      reference_asset_refs: [],
+      output_count: 3,
+      status: "generating",
+      progress: 46,
+      candidate_refs: [],
+      created_at: "2026-09-03T12:00:00.000Z",
+    })).toBeNull()
   })
 
   it("cancels a generation with an idempotent command", async () => {

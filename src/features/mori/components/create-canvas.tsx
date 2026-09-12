@@ -113,6 +113,7 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
   const [planBackup, setPlanBackup] = useState<SongPlan | null>(null)
   const [planActionPending, setPlanActionPending] = useState(false)
   const [generationSubmitPending, setGenerationSubmitPending] = useState(false)
+  const [generationSubmitFingerprints, setGenerationSubmitFingerprints] = useState<string[]>([])
   const [planSubmitAttempted, setPlanSubmitAttempted] = useState(false)
   const [planDirtySinceSave, setPlanDirtySinceSave] = useState(false)
   const [planValidationError, setPlanValidationError] = useState<string | null>(null)
@@ -126,7 +127,7 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
   const durationSeconds = durationOverride ?? preferences.durationSeconds
   const planPreviewVisible = planPreview !== null
   const planBusy = planActionPending || planSaveLoading || planSaveRun.status === "saving"
-  const generationSubmissionPendingForCurrentDraft = generationSubmitPending && generationSubmitFingerprintsRef.current.has(creationDraftFingerprint(toCreationDraft()))
+  const generationSubmissionPendingForCurrentDraft = generationSubmitPending && generationSubmitFingerprints.includes(creationDraftFingerprint(toCreationDraft()))
   const visiblePlanSaveRun = planSubmitAttempted ? planSaveRun : idleProjectWorkspaceSaveRun
   const workspacePlanRefreshToken = workspacePlanRefresh?.token ?? null
   const refreshedWorkspacePlan = workspacePlanRefresh?.plan ?? null
@@ -427,12 +428,14 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
   function beginGenerationSubmission(fingerprint: string): boolean {
     if (generationSubmitFingerprintsRef.current.has(fingerprint)) return false
     generationSubmitFingerprintsRef.current.add(fingerprint)
+    setGenerationSubmitFingerprints([...generationSubmitFingerprintsRef.current])
     setGenerationSubmitPending(true)
     return true
   }
 
   function endGenerationSubmission(fingerprint: string) {
     generationSubmitFingerprintsRef.current.delete(fingerprint)
+    setGenerationSubmitFingerprints([...generationSubmitFingerprintsRef.current])
     setGenerationSubmitPending(generationSubmitFingerprintsRef.current.size > 0)
   }
 

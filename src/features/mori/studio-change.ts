@@ -2,8 +2,10 @@ import type { GenerationStatus } from "./domain"
 import {
   studioInstrumentalCoverProtectedAnchors,
   studioVocalCoverProtectedAnchors,
+  studioChangeOutputCounts,
   type MoriStudioChangeDraft,
   type StudioChangeOperation,
+  type StudioChangeOutputCount,
   type StudioChangePreserve,
   type StudioCoverMode,
   type StudioTransformIntent,
@@ -29,9 +31,8 @@ export type StudioChangePlan = {
 }
 
 export const defaultStudioChangePreserve: StudioChangePreserve[] = ["melody", "lyrics", "vocal_identity"]
-export const studioChangeOutputCounts = [1, 2, 4] as const
-
-export type StudioChangeOutputCount = typeof studioChangeOutputCounts[number]
+export { studioChangeOutputCounts }
+export type { StudioChangeOutputCount }
 export type StudioTransformScope = "selected_section" | "whole_version"
 
 export type StudioChangePlanOptions = {
