@@ -44,9 +44,17 @@ export type StudioAiRunState = {
   cancelPending?: boolean
 }
 
+export type StudioAiClipContext = {
+  trackName: string
+  label: string
+  startMs: number
+  durationMs: number
+}
+
 type StudioAiComposerProps = {
   selectedSection: StudioTimelineSection
   run: StudioAiRunState
+  selectedClipContext?: StudioAiClipContext
   creativeSources?: readonly MoriCreativeLibrarySource[]
   initialOperation?: StudioChangeOperation | undefined
   initialTransformScope?: StudioTransformScope | undefined
@@ -152,7 +160,7 @@ const coverPromptStarters: Readonly<Record<StudioCoverMode, readonly string[]>> 
   ],
 }
 
-export function StudioAiComposer({ selectedSection, run, creativeSources, initialOperation, initialTransformScope, initialTransformIntent, onGenerate, onCancel, onReset }: StudioAiComposerProps) {
+export function StudioAiComposer({ selectedSection, run, creativeSources, selectedClipContext, initialOperation, initialTransformScope, initialTransformIntent, onGenerate, onCancel, onReset }: StudioAiComposerProps) {
   const promptId = useId()
   const promptRef = useRef<HTMLTextAreaElement>(null)
   const [operation, setOperation] = useState<StudioChangeOperation>(() => run.plan?.operation ?? initialOperation ?? "add_part")
@@ -481,11 +489,15 @@ export function StudioAiComposer({ selectedSection, run, creativeSources, initia
         </div>
       </details> : null}
 
-      <div className={styles.studioAiContext} aria-label="Change context">
+      <div className={styles.studioAiContext} role="group" aria-label="Change context">
         <span><strong>Scope</strong>{activeScope}</span>
         <span><strong>Output</strong>{alternativeCountLabel(activeOutputCount)}</span>
         <span><strong>Destination</strong>Take lanes</span>
       </div>
+      {selectedClipContext !== undefined ? <section className={styles.studioAiClipContext} aria-label="Clip edit context">
+        <span><Scissors size={12} aria-hidden="true" /><strong>Clip edit</strong>{selectedClipContext.trackName} · {selectedClipContext.label} · {formatClipRange(selectedClipContext.startMs, selectedClipContext.durationMs)}</span>
+        <small>Clip selection does not change AI scope</small>
+      </section> : null}
 
       {visiblePlan !== null && plannedOperation !== null ? (
         <section className={styles.studioAiPlan} aria-label="AI change plan" aria-live="polite" aria-busy={busy}>
@@ -616,6 +628,15 @@ function preserveLabel(preserve: StudioChangePreserve[]): string {
     structure: "Structure",
   }
   return preserve.length === 0 ? "No locked elements" : preserve.map((item) => labels[item]).join(" · ")
+}
+
+function formatClipRange(startMs: number, durationMs: number): string {
+  return `${formatClipTime(startMs)}–${formatClipTime(startMs + durationMs)}`
+}
+
+function formatClipTime(valueMs: number): string {
+  const totalSeconds = Math.max(0, Math.round(valueMs / 1_000))
+  return `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, "0")}`
 }
 
 function runStatus(run: StudioAiRunState): { label: string; className: string } {

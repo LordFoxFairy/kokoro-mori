@@ -9,7 +9,7 @@ describe("CompositionLane", () => {
     const onDuplicate = vi.fn()
     render(<CompositionLane durationMs={10_000} onDuplicateClip={onDuplicate} onEditClip={onEdit} onSelectClip={onSelect} selectedClipRef="clip_1" selectedTrackRef="track_1" tracks={[{ trackRef: "track_1", kind: "vocals", name: "Lead", clips: [{ clipRef: "clip_1", sourceRef: "asset_1", startMs: 2_000, durationMs: 4_000, offsetMs: 0 }] }]} />)
     expect(screen.getByRole("region", { name: "Composition tracks" })).toBeTruthy()
-    fireEvent.click(screen.getByRole("button", { name: "Lead clip clip_1" }))
+    fireEvent.click(screen.getByRole("button", { name: "Lead clip Audio clip · 0:04" }))
     expect(onSelect).toHaveBeenCalledWith("clip_1", "track_1")
     fireEvent.click(screen.getByRole("button", { name: "Split" }))
     expect(onEdit).toHaveBeenCalledWith("split", "clip_1", "track_1")
@@ -22,7 +22,7 @@ describe("CompositionLane", () => {
     const onSelect = vi.fn()
     render(<CompositionLane disabled durationMs={10_000} onEditClip={onEdit} onSelectClip={onSelect} selectedClipRef="clip_1" selectedTrackRef="track_1" tracks={[{ trackRef: "track_1", kind: "vocals", name: "Lead", clips: [{ clipRef: "clip_1", sourceRef: "asset_1", startMs: 0, durationMs: 4_000, offsetMs: 0 }] }]} />)
     expect(screen.getByRole("button", { name: "Split" })).toBeDisabled()
-    expect(screen.getByRole("button", { name: "Lead clip clip_1" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Lead clip Audio clip · 0:04" })).toBeDisabled()
   })
 
   it("inserts a selected source through the composition lane", () => {
@@ -51,9 +51,15 @@ describe("CompositionLane", () => {
       { trackRef: "track_1", kind: "vocals", name: "Lead", clips: [{ clipRef: "clip_1", sourceRef: "asset_1", startMs: 0, durationMs: 4_000, offsetMs: 0 }] },
       { trackRef: "track_2", kind: "instrumental", name: "Keys", clips: [{ clipRef: "clip_1", sourceRef: "asset_2", startMs: 0, durationMs: 4_000, offsetMs: 0 }] },
     ]} />)
-    const clips = screen.getAllByRole("button", { name: /clip clip_1/u })
+    const clips = screen.getAllByRole("button", { name: /clip Audio clip/u })
     expect(clips[0]).toHaveAttribute("data-selected", "false")
     expect(clips[1]).toHaveAttribute("data-selected", "true")
+  })
+
+  it("renders a human-readable source label instead of exposing the clip ref", () => {
+    render(<CompositionLane durationMs={10_000} resolveClipLabel={() => "Afterglow take"} tracks={[{ trackRef: "track_1", kind: "other", name: "Main", clips: [{ clipRef: "version_2:insert-1", sourceRef: "version_2", startMs: 0, durationMs: 4_000, offsetMs: 0 }] }]} />)
+    expect(screen.getByRole("button", { name: "Main clip Afterglow take · 0:04" })).toHaveTextContent("Afterglow take")
+    expect(screen.queryByText("version_2:insert-1")).not.toBeInTheDocument()
   })
 
   it("allows an empty track to become the insertion target", () => {

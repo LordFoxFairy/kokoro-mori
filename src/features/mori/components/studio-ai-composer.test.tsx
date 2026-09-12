@@ -43,6 +43,25 @@ describe("Studio AI composer", () => {
     expect(screen.getByText("Change the expression while preserving the parts you choose.")).toBeInTheDocument()
   })
 
+  it("shows clip context without silently changing the AI scope", () => {
+    render(
+      <StudioAiComposer
+        selectedSection={verse}
+        run={idleRun}
+        selectedClipContext={{ trackName: "Lead vocal", label: "Afterglow take", startMs: 12_000, durationMs: 8_000 }}
+        initialOperation="transform"
+        onGenerate={vi.fn()}
+        onCancel={vi.fn()}
+        onReset={vi.fn()}
+      />,
+    )
+
+    const context = screen.getByRole("region", { name: "Clip edit context" })
+    expect(context).toHaveTextContent("Lead vocal · Afterglow take · 0:12–0:20")
+    expect(context).toHaveTextContent("Clip selection does not change AI scope")
+    expect(screen.getByRole("group", { name: "Change context" })).toHaveTextContent("Selected section · Verse")
+  })
+
   it("offers operation-aware prompt starters without skipping plan review", () => {
     const onGenerate = renderComposer()
 

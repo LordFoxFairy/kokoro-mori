@@ -50,7 +50,7 @@ import { useMoriApp } from "./components/mori-app-provider"
 import { Waveform } from "./components/waveform"
 import { previewCandidates, previewProject, previewSongPlan } from "./preview-data"
 import type { StudioEntryIntent, StudioEntrySurface } from "./studio-entry"
-import type { Composition, CompositionTrack } from "./composition"
+import type { Composition, CompositionClip, CompositionTrack } from "./composition"
 import { useCompositionEditor } from "./use-composition-editor"
 import { buildStudioTimelineSections, isActiveStudioChangeStatus, type StudioChangePlan, type StudioTimelineSection } from "./studio-change"
 import { createStudioLyricsRevisionDraft, defaultStudioLyrics, isActiveLyricsRevisionStatus, studioLyricsScopeLabel, type StudioLyricsPlan } from "./studio-lyrics"
@@ -2058,6 +2058,23 @@ function ArrangementEditor({ compositionSave, compositionLoad, compositionRevisi
     description: take.subtitle,
     durationMs: Math.round(take.durationSeconds * 1_000),
   })), [takes])
+  const clipTitles = useMemo(() => new Map<string, string>([
+    [candidate.versionRef, candidate.title],
+    ...takes.map((take) => [take.versionRef, take.title] as const),
+  ]), [candidate.title, candidate.versionRef, takes])
+  const resolveClipLabel = useCallback((clip: CompositionClip, track: CompositionTrack) => {
+    const sourceTitle = clipTitles.get(clip.sourceRef)
+    if (sourceTitle !== undefined) return sourceTitle
+    const splitSuffix = /:([ab])$/u.exec(clip.clipRef)?.[1]
+    return splitSuffix === undefined ? `${track.name} audio` : `${track.name} · part ${splitSuffix.toUpperCase()}`
+  }, [clipTitles])
+  const selectedClipContext = useMemo(() => {
+    if (selectedClipRef === undefined || selectedTrackRef === undefined) return undefined
+    const track = compositionEditor.composition.find((item) => item.trackRef === selectedTrackRef)
+    const clip = track?.clips.find((item) => item.clipRef === selectedClipRef)
+    if (track === undefined || clip === undefined) return undefined
+    return { trackName: track.name, label: resolveClipLabel(clip, track), startMs: clip.startMs, durationMs: clip.durationMs }
+  }, [compositionEditor.composition, resolveClipLabel, selectedClipRef, selectedTrackRef])
   const duplicateClip = (clipRef: string, trackRef: string) => {
     const track = compositionEditor.composition.find((item) => item.trackRef === trackRef)
     const source = track?.clips.find((clip) => clip.clipRef === clipRef)
@@ -2101,12 +2118,13 @@ function ArrangementEditor({ compositionSave, compositionLoad, compositionRevisi
           {compositionEditor.saveState === "conflict" ? "Refresh to resolve" : compositionEditor.saveState === "failed" ? "Retry save" : "Save arrangement"}
         </button>
       </div>
-      <StudioTimeline candidate={candidate} sections={timelineSections} selection={selection} positionSeconds={positionSeconds} playing={playing} disabled={changeActive || compositionEditor.saveState === "saving"} onSeek={onSeekTimeline} onSelect={selectTimelineRange} compositionTracks={compositionEditor.composition} selectedClipRef={selectedClipRef} selectedTrackRef={selectedTrackRef} onSelectTrack={(trackRef) => { setSelectedTrackRef(trackRef); setSelectedClipRef(undefined); setEditOperation(null) }} onSelectClip={(clipRef, trackRef) => { setSelectedClipRef(clipRef); setSelectedTrackRef(trackRef) }} onEditClip={(operation, clipRef, trackRef) => { setSelectedClipRef(clipRef); setSelectedTrackRef(trackRef); setEditOperation(operation) }} onDuplicateClip={duplicateClip} insertSources={insertSources} onInsertClip={insertClip} />
+      <StudioTimeline candidate={candidate} sections={timelineSections} selection={selection} positionSeconds={positionSeconds} playing={playing} disabled={changeActive || compositionEditor.saveState === "saving"} onSeek={onSeekTimeline} onSelect={selectTimelineRange} compositionTracks={compositionEditor.composition} selectedClipRef={selectedClipRef} selectedTrackRef={selectedTrackRef} onSelectTrack={(trackRef) => { setSelectedTrackRef(trackRef); setSelectedClipRef(undefined); setEditOperation(null) }} onSelectClip={(clipRef, trackRef) => { setSelectedClipRef(clipRef); setSelectedTrackRef(trackRef) }} onEditClip={(operation, clipRef, trackRef) => { setSelectedClipRef(clipRef); setSelectedTrackRef(trackRef); setEditOperation(operation) }} onDuplicateClip={duplicateClip} insertSources={insertSources} onInsertClip={insertClip} resolveClipLabel={resolveClipLabel} />
       {selectedClipRef !== undefined && selectedTrackRef !== undefined && editOperation !== null ? <CompositionEditPanel clipRef={selectedClipRef} trackRef={selectedTrackRef} disabled={changeActive || compositionEditor.saveState === "saving"} operation={editOperation} onApply={(edit) => { compositionEditor.editAndQueue(edit); setEditOperation(null) }} /> : null}
       <StudioAiComposer
         selectedSection={selection}
         run={studioChangeRun}
         creativeSources={creativeSources}
+        selectedClipContext={selectedClipContext}
         initialOperation={initialIntent === "transform" || initialIntent === "cover" ? "transform" : undefined}
         initialTransformScope={initialIntent === "transform" ? "whole_version" : undefined}
         initialTransformIntent={initialIntent === "cover" ? "cover" : initialIntent === "transform" ? "restyle" : undefined}

@@ -1219,7 +1219,7 @@ describe("Mori studio page", () => {
     const timeline = screen.getByRole("region", { name: "Version timeline" })
     expect(within(timeline).getByText("Lead vocal")).toBeInTheDocument()
     expect(within(timeline).getByText("Keys")).toBeInTheDocument()
-    expect(within(timeline).getByRole("button", { name: "Keys clip clip_keys" })).toBeInTheDocument()
+    expect(within(timeline).getByRole("button", { name: "Keys clip Keys audio · 1:00" })).toBeInTheDocument()
   })
 
   it("creates a typed Vocal Cover as two new Takes without replacing Current", async () => {

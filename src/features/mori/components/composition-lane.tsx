@@ -2,14 +2,14 @@
 
 import { Plus } from "lucide-react"
 import { useState } from "react"
-import type { CompositionTrack } from "../composition"
+import type { CompositionClip, CompositionTrack } from "../composition"
 import styles from "./composition-lane.module.css"
 
 export type CompositionInsertSource = { sourceRef: string; label: string; description: string; durationMs: number }
 
-type CompositionLaneProps = { tracks: CompositionTrack[]; durationMs: number; disabled?: boolean; selectedClipRef?: string; selectedTrackRef?: string; onSelectTrack?: (trackRef: string) => void; onSelectClip?: (clipRef: string, trackRef: string) => void; onEditClip?: (operation: "move" | "trim" | "split" | "crop" | "fade", clipRef: string, trackRef: string) => void; onDuplicateClip?: (clipRef: string, trackRef: string) => void; insertSources?: readonly CompositionInsertSource[]; onInsertClip?: (sourceRef: string, trackRef: string) => void }
+type CompositionLaneProps = { tracks: CompositionTrack[]; durationMs: number; disabled?: boolean; selectedClipRef?: string; selectedTrackRef?: string; onSelectTrack?: (trackRef: string) => void; onSelectClip?: (clipRef: string, trackRef: string) => void; onEditClip?: (operation: "move" | "trim" | "split" | "crop" | "fade", clipRef: string, trackRef: string) => void; onDuplicateClip?: (clipRef: string, trackRef: string) => void; insertSources?: readonly CompositionInsertSource[]; onInsertClip?: (sourceRef: string, trackRef: string) => void; resolveClipLabel?: (clip: CompositionClip, track: CompositionTrack) => string }
 
-export function CompositionLane({ tracks, durationMs, disabled = false, selectedClipRef, selectedTrackRef, onSelectTrack, onSelectClip, onEditClip, onDuplicateClip, insertSources = [], onInsertClip }: CompositionLaneProps) {
+export function CompositionLane({ tracks, durationMs, disabled = false, selectedClipRef, selectedTrackRef, onSelectTrack, onSelectClip, onEditClip, onDuplicateClip, insertSources = [], onInsertClip, resolveClipLabel }: CompositionLaneProps) {
   const [insertOpen, setInsertOpen] = useState(false)
   const selectedTrack = selectedTrackRef === undefined ? undefined : tracks.find((track) => track.trackRef === selectedTrackRef)
   const activeTrack = selectedTrack?.clips.some((clip) => clip.clipRef === selectedClipRef) ? selectedTrack : undefined
@@ -40,16 +40,21 @@ export function CompositionLane({ tracks, durationMs, disabled = false, selected
       {tracks.map((track) => <div className={styles.track} data-active={selectedTrack?.trackRef === track.trackRef ? "true" : "false"} key={track.trackRef}>
         <button className={styles.trackName} type="button" aria-pressed={selectedTrackRef === track.trackRef} aria-label={`Select ${track.name} track`} disabled={disabled} onClick={() => onSelectTrack?.(track.trackRef)}>{track.name}</button>
         <div className={styles.clipRail}>
-          {track.clips.map((clip) => <button
-            className={styles.clip}
-            data-selected={selectedTrackRef === track.trackRef && selectedClipRef === clip.clipRef ? "true" : "false"}
-            key={clip.clipRef}
-            type="button"
-            aria-label={`${track.name} clip ${clip.clipRef}`}
-            disabled={disabled}
-            onClick={() => onSelectClip?.(clip.clipRef, track.trackRef)}
-            style={{ left: `${(clip.startMs / durationMs) * 100}%`, width: `${(clip.durationMs / durationMs) * 100}%` }}
-          ><span>{clip.clipRef}</span></button>)}
+          {track.clips.map((clip) => {
+            const label = resolveClipLabel?.(clip, track).trim() || defaultClipLabel(clip)
+            const durationLabel = formatClipDuration(clip.durationMs)
+            return <button
+              className={styles.clip}
+              data-selected={selectedTrackRef === track.trackRef && selectedClipRef === clip.clipRef ? "true" : "false"}
+              key={clip.clipRef}
+              type="button"
+              aria-label={`${track.name} clip ${label} · ${durationLabel}`}
+              title={`${label} · ${durationLabel}`}
+              disabled={disabled}
+              onClick={() => onSelectClip?.(clip.clipRef, track.trackRef)}
+              style={{ left: `${(clip.startMs / durationMs) * 100}%`, width: `${(clip.durationMs / durationMs) * 100}%` }}
+            ><span>{label}</span><small>{durationLabel}</small></button>
+          })}
         </div>
       </div>)}
     </div>
@@ -59,4 +64,9 @@ export function CompositionLane({ tracks, durationMs, disabled = false, selected
 function formatClipDuration(durationMs: number): string {
   const totalSeconds = Math.max(0, Math.round(durationMs / 1_000))
   return `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, "0")}`
+}
+
+function defaultClipLabel(clip: CompositionClip): string {
+  const suffix = /:([ab])$/u.exec(clip.clipRef)?.[1]
+  return suffix === undefined ? "Audio clip" : `Audio clip ${suffix.toUpperCase()}`
 }

@@ -12,7 +12,7 @@ import {
 } from "../studio-change"
 import { Waveform } from "./waveform"
 import { CompositionLane, type CompositionInsertSource } from "./composition-lane"
-import type { CompositionTrack } from "../composition"
+import type { CompositionClip, CompositionTrack } from "../composition"
 import styles from "./studio-timeline.module.css"
 
 type StudioTimelineProps = {
@@ -33,9 +33,10 @@ type StudioTimelineProps = {
   onDuplicateClip?: (clipRef: string, trackRef: string) => void
   insertSources?: readonly CompositionInsertSource[]
   onInsertClip?: (sourceRef: string, trackRef: string) => void
+  resolveClipLabel?: (clip: CompositionClip, track: CompositionTrack) => string
 }
 
-export function StudioTimeline({ candidate, sections, selection, positionSeconds, playing, disabled, onSeek, onSelect, compositionTracks = [], selectedClipRef, selectedTrackRef, onSelectTrack, onSelectClip, onEditClip, onDuplicateClip, insertSources, onInsertClip }: StudioTimelineProps) {
+export function StudioTimeline({ candidate, sections, selection, positionSeconds, playing, disabled, onSeek, onSelect, compositionTracks = [], selectedClipRef, selectedTrackRef, onSelectTrack, onSelectClip, onEditClip, onDuplicateClip, insertSources, onInsertClip, resolveClipLabel }: StudioTimelineProps) {
   const sectionHintId = useId()
   const durationMs = Math.max(minimumStudioTimelineSelectionMs, Math.round(candidate.durationSeconds * 1_000))
   const positionMs = Math.max(0, Math.min(durationMs, Math.round(positionSeconds * 1_000)))
@@ -90,7 +91,7 @@ export function StudioTimeline({ candidate, sections, selection, positionSeconds
         />
       </div>
 
-      {compositionTracks.length > 0 ? <CompositionLane tracks={compositionTracks} durationMs={durationMs} disabled={disabled} selectedClipRef={selectedClipRef} selectedTrackRef={selectedTrackRef} onSelectTrack={onSelectTrack} onSelectClip={onSelectClip} onEditClip={onEditClip} onDuplicateClip={onDuplicateClip} insertSources={insertSources} onInsertClip={onInsertClip} /> : null}
+      {compositionTracks.length > 0 ? <CompositionLane tracks={compositionTracks} durationMs={durationMs} disabled={disabled} selectedClipRef={selectedClipRef} selectedTrackRef={selectedTrackRef} onSelectTrack={onSelectTrack} onSelectClip={onSelectClip} onEditClip={onEditClip} onDuplicateClip={onDuplicateClip} insertSources={insertSources} onInsertClip={onInsertClip} resolveClipLabel={resolveClipLabel} /> : null}
 
       <div className={styles.segmentRail}>
         <div
