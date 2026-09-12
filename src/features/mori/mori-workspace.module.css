@@ -3290,6 +3290,25 @@
   display: inline-flex;
 }
 
+.takeLanesTrigger {
+  display: inline-flex;
+  gap: 5px;
+}
+
+.takeLanesTriggerCount {
+  display: inline-grid;
+  min-width: 17px;
+  height: 17px;
+  place-items: center;
+  padding-inline: 4px;
+  border-radius: 999px;
+  color: var(--mori-primary-deep);
+  background: var(--mori-primary-soft);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+}
+
 @keyframes exportPulse {
   50% { opacity: 0.38; transform: scale(0.82); }
 }
@@ -3510,6 +3529,16 @@
   display: grid;
   gap: 12px;
   margin-top: 18px;
+  scroll-margin-block: 20px var(--mori-player-safe-space);
+}
+
+.takeLanes:focus {
+  outline: none;
+}
+
+.takeLanes:focus-visible {
+  outline: 2px solid rgba(109, 92, 231, 0.38);
+  outline-offset: 7px;
 }
 
 .takeLanesHeader {
@@ -5558,6 +5587,14 @@
     width: auto;
     min-width: 0;
     padding-inline: 9px;
+    font-size: 10px;
+    white-space: nowrap;
+  }
+
+  .studioPage .studioHeaderActions .ghostButton[data-action="compare-takes"] {
+    width: auto;
+    min-width: 0;
+    padding-inline: 8px;
     font-size: 10px;
     white-space: nowrap;
   }

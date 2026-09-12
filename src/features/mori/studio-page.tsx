@@ -1,6 +1,6 @@
 "use client"
 
-import { AlertCircle, ArrowLeft, ArrowRight, AudioLines, AudioWaveform, Check, Download, FileText, History, Link2, LoaderCircle, Play, RotateCcw, Sparkles, X } from "lucide-react"
+import { AlertCircle, ArrowLeft, ArrowRight, AudioLines, AudioWaveform, Check, Download, FileText, History, Link2, ListMusic, LoaderCircle, Play, RotateCcw, Sparkles, X } from "lucide-react"
 import Link from "next/link"
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react"
 import {
@@ -1554,6 +1554,14 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
     document.getElementById(`mori-studio-tool-${nextTool}`)?.focus()
   }
 
+  function focusTakeLanes() {
+    const takeLanes = document.getElementById("mori-take-lanes")
+    if (!(takeLanes instanceof HTMLElement)) return
+    const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false
+    takeLanes.scrollIntoView?.({ behavior: reduceMotion ? "auto" : "smooth", block: "start" })
+    takeLanes.focus({ preventScroll: true })
+  }
+
   return (
     <MoriStudioShell>
       <header className={styles.studioHeader}>
@@ -1582,6 +1590,14 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
               data-action="versions"
               onClick={() => setVersionHistoryOpen(true)}
             ><History size={14} /> Versions</button>
+            {studioCandidates.length > 1 ? <button
+              className={`${styles.ghostButton} ${styles.takeLanesTrigger}`}
+              type="button"
+              aria-label={`Compare takes (${studioCandidates.length})`}
+              aria-controls="mori-take-lanes"
+              data-action="compare-takes"
+              onClick={focusTakeLanes}
+            ><ListMusic size={14} /> <span>Takes</span> <span className={styles.takeLanesTriggerCount}>{studioCandidates.length}</span></button> : null}
             <button
               className={`${styles.ghostButton} ${styles.finishButton}`}
               type="button"
@@ -2175,7 +2191,7 @@ function ArrangementEditor({ compositionSave, compositionLoad, compositionRevisi
         onCancel={onCancelStudioChange}
         onReset={onResetStudioChange}
       />
-      <section className={styles.takeLanes} id="mori-take-lanes" aria-label="Take lanes">
+      <section className={styles.takeLanes} id="mori-take-lanes" aria-label="Take lanes" tabIndex={-1}>
         <div className={styles.takeLanesHeader}>
           <div><span>Compare before committing</span><h3>Take lanes</h3></div>
           <span>{takes.length} {takes.length === 1 ? "take" : "takes"}</span>

@@ -560,8 +560,21 @@ describe("Mori studio page", () => {
 
     expect(screen.getByRole("button", { name: "Copy link" })).toHaveAttribute("data-action", "copy")
     expect(screen.getByRole("button", { name: "Open version history" })).toHaveAttribute("data-action", "versions")
+    expect(screen.getByRole("button", { name: "Compare takes (2)" })).toHaveAttribute("data-action", "compare-takes")
     expect(screen.getByRole("button", { name: "Finish" })).toHaveAttribute("data-action", "finish")
     expect(screen.getByRole("button", { name: "Export" })).toHaveAttribute("data-action", "export")
+  })
+
+  it("makes the multi-take comparison surface reachable from the Studio header", () => {
+    renderStudio()
+
+    const takeLanes = screen.getByRole("region", { name: "Take lanes" })
+    expect(takeLanes).not.toHaveFocus()
+    expect(screen.getByRole("button", { name: "Compare takes (2)" })).toHaveAttribute("aria-controls", "mori-take-lanes")
+
+    fireEvent.click(screen.getByRole("button", { name: "Compare takes (2)" }))
+
+    expect(takeLanes).toHaveFocus()
   })
 
   it("switches between arrangement, lyrics, and stems as one keyboard-accessible workspace", () => {
