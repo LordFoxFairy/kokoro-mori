@@ -827,11 +827,11 @@ describe("Mori workspace", () => {
     )
     await waitFor(() => expect(createGeneration).toHaveBeenCalledOnce())
     expect(createGeneration).toHaveBeenCalledWith("project_quiet_train", expect.anything(), expect.stringMatching(/^mori-create-/u))
-    const activeTrigger = screen.getByRole("button", { name: "Hide generation queue" })
+    const activeTrigger = screen.getByRole("button", { name: "Hide generation queue", hidden: true })
     expect(activeTrigger).toHaveAttribute("data-generation-feedback", "active")
     expect(activeTrigger).toHaveTextContent("Generating")
     expect(activeTrigger.querySelector('[data-generation-icon="active"]')).toBeInTheDocument()
-    fireEvent.click(activeTrigger)
+    fireEvent.click(screen.getByRole("button", { name: "Close generation queue" }))
     expect(screen.getByRole("button", { name: "Open generation queue" })).toHaveAttribute("data-generation-feedback", "active")
     expect(screen.getByRole("link", { name: "Quiet piano song for the first train home" })).toHaveAttribute("href", "/projects/project_quiet_train")
     expect(window.location.pathname + window.location.search).toBe("/create?project_ref=project_quiet_train&generation_ref=generation_quiet_train")
@@ -878,7 +878,7 @@ describe("Mori workspace", () => {
     fireEvent.submit(screen.getByRole("textbox", { name: "Song idea" }).closest("form") as HTMLFormElement)
 
     await waitFor(() => expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument())
-    fireEvent.click(screen.getByRole("button", { name: "Hide generation queue" }))
+    fireEvent.click(screen.getByRole("button", { name: "Hide generation queue", hidden: true }))
     const failedTrigger = screen.getByRole("button", { name: "Open generation queue" })
     expect(failedTrigger).toHaveAttribute("data-generation-feedback", "attention")
     expect(failedTrigger).toHaveTextContent("Needs attention")
@@ -2358,7 +2358,7 @@ describe("Mori workspace", () => {
       meta: { request_id: "request_projection_race_project" },
     })
 
-    await waitFor(() => expect(screen.getByRole("link", { name: "Open Window Project" })).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole("link", { name: "Open Window Project", hidden: true })).toBeInTheDocument())
     expect(screen.getByText("Current version")).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Set as current" })).not.toBeInTheDocument()
   })
@@ -2472,7 +2472,7 @@ describe("Mori workspace", () => {
     fireEvent.click(screen.getByRole("button", { name: "Cancel generation" }))
 
     await waitFor(() => expect(screen.getByText("No playable directions yet")).toBeInTheDocument())
-    expect(screen.getByRole("button", { name: "Hide generation queue" })).toHaveAttribute("data-generation-feedback", "ready")
+    expect(screen.getByRole("button", { name: "Hide generation queue", hidden: true })).toHaveAttribute("data-generation-feedback", "ready")
   })
 
   it("offers a human retry path when generation fails", async () => {
@@ -2555,7 +2555,7 @@ describe("Mori workspace", () => {
     fireEvent.submit(screen.getByRole("textbox", { name: "Song idea" }).closest("form") as HTMLFormElement)
 
     await waitFor(() => expect(screen.getByText("Mori status is unavailable. Retrying…")).toBeInTheDocument())
-    expect(screen.getByRole("button", { name: "Hide generation queue" })).toHaveAttribute("data-generation-feedback", "active")
+    expect(screen.getByRole("button", { name: "Hide generation queue", hidden: true })).toHaveAttribute("data-generation-feedback", "active")
     expect(readGenerationQueueState().items.find((item) => item.generation_ref === "generation_status_failure")?.status).toBe("queued")
   })
 

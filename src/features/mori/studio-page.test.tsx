@@ -568,7 +568,7 @@ describe("Mori studio page", () => {
   it("makes the multi-take comparison surface reachable from the Studio header", () => {
     renderStudio()
 
-    const takeLanes = screen.getByRole("region", { name: "Take lanes" })
+    const takeLanes = screen.getByRole("region", { name: "Take lanes", hidden: true })
     expect(takeLanes).not.toHaveFocus()
     expect(screen.getByRole("button", { name: "Compare takes (2)" })).toHaveAttribute("aria-controls", "mori-take-lanes")
 
@@ -3383,9 +3383,11 @@ describe("Mori studio page", () => {
     }))
     expect(submittedReleaseVersion).toBe("version_preview_first_light_a")
     expect(await within(dialog).findByRole("status")).toHaveTextContent("Draft revision 1 saved")
-    const takeLanes = screen.getByRole("region", { name: "Take lanes" })
-    expect(within(takeLanes).getAllByRole("article")).toHaveLength(2)
-    expect(within(within(takeLanes).getByRole("article", { name: "Take 1: First Light" })).getByText("Current version")).toBeInTheDocument()
+    const takeLanes = document.querySelector<HTMLElement>('[aria-label="Take lanes"]')
+    expect(takeLanes).not.toBeNull()
+    const takeLanesRegion = takeLanes as HTMLElement
+    expect(within(takeLanesRegion).getAllByRole("article", { hidden: true })).toHaveLength(2)
+    expect(within(within(takeLanesRegion).getByRole("article", { name: "Take 1: First Light", hidden: true })).getByText("Current version")).toBeInTheDocument()
   })
 
   it("preserves an active artwork run across Finish close and supports cancel then retry", async () => {
@@ -3475,7 +3477,9 @@ describe("Mori studio page", () => {
 
     expect(await within(dialog).findByRole("alert")).toHaveTextContent("The returned artwork did not match this Version or visual plan. Nothing was attached.")
     expect(within(dialog).queryByRole("radiogroup", { name: "Generated artwork concepts" })).not.toBeInTheDocument()
-    expect(within(screen.getByRole("region", { name: "Take lanes" })).getAllByRole("article")).toHaveLength(2)
+    const takeLanes = document.querySelector<HTMLElement>('[aria-label="Take lanes"]')
+    expect(takeLanes).not.toBeNull()
+    expect(within(takeLanes as HTMLElement).getAllByRole("article", { hidden: true })).toHaveLength(2)
   })
 
   it("rejects a mismatched release save while preserving the user's choices", async () => {
@@ -3649,7 +3653,7 @@ describe("Mori studio page", () => {
     expect(exportedVersion).toBe("version_preview_first_light_a")
     expect(exportedInput).toEqual({ source: { type: "version" }, scope: { type: "full_song" }, format: "mp3" })
     expect(await within(dialog).findByRole("status")).toHaveTextContent("Waiting to render MP3")
-    const exportingButton = screen.getByRole("button", { name: "Exporting" })
+    const exportingButton = screen.getByRole("button", { name: "Exporting", hidden: true })
     expect(exportingButton).toHaveAttribute("data-export-status", "queued")
     expect(exportingButton.querySelector('[data-export-icon="queued"]')).toBeInTheDocument()
   })
@@ -3723,7 +3727,7 @@ describe("Mori studio page", () => {
 
     const download = await within(dialog).findByRole("link", { name: "Download WAV" })
     expect(download).toHaveAttribute("href", "https://download.kokoro.invalid/export_1.wav")
-    const exportButton = screen.getByRole("button", { name: "Export ready" })
+    const exportButton = screen.getByRole("button", { name: "Export ready", hidden: true })
     expect(exportButton).toHaveAttribute("data-export-status", "succeeded")
     expect(exportButton.querySelector('[data-export-icon="succeeded"]')).toBeInTheDocument()
     const statusDescriptionId = exportButton.getAttribute("aria-describedby")
@@ -3748,7 +3752,7 @@ describe("Mori studio page", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: "Start export" }))
 
     expect(await within(dialog).findByRole("alert")).toHaveTextContent("Retry will safely resume the same request.")
-    const failedExportButton = screen.getByRole("button", { name: "Export needs attention" })
+    const failedExportButton = screen.getByRole("button", { name: "Export needs attention", hidden: true })
     expect(failedExportButton).toHaveAttribute("data-export-status", "failed")
     expect(failedExportButton.querySelector('[data-export-icon="failed"]')).toBeInTheDocument()
     expect(within(dialog).getByRole("radio", { name: "WAV" })).toBeChecked()

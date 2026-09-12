@@ -3,6 +3,7 @@
 import { ListMusic, Pause, Play, X } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import type { Candidate } from "../domain"
+import { useMoriModalLayer } from "./mori-modal-isolation"
 import styles from "../mori-workspace.module.css"
 
 type PlaybackQueueProps = {
@@ -73,13 +74,7 @@ export function PlaybackQueue({ candidates, currentVersionRef, playing, onChoose
     }
   }, [onClose])
 
-  useEffect(() => {
-    const previousOverflow = document.body.style.overflow
-    if (isMobileViewport) document.body.style.overflow = "hidden"
-    return () => {
-      document.body.style.overflow = previousOverflow
-    }
-  }, [isMobileViewport])
+  useMoriModalLayer(isMobileViewport)
 
   return (
     <div className={styles.playbackQueueLayer}>

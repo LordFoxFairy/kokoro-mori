@@ -4,6 +4,7 @@ import { AudioWaveform, Check, Download, FileAudio, Layers3, LoaderCircle, Music
 import { useEffect, useId, useRef, useState, type FormEvent } from "react"
 import { createPortal } from "react-dom"
 import { createExportRequest, type MoriExportFormat, type MoriExportInput, type MoriExportSnapshot, type MoriExportStatus, type MoriMixRevision } from "@/lib/mori-api"
+import { useMoriModalLayer } from "./mori-modal-isolation"
 import styles from "./studio-export-dialog.module.css"
 
 type StudioExportDialogProps = {
@@ -66,6 +67,7 @@ export function StudioExportDialog({
       ? selectedRange
       : inputRange
   const canSelectRange = activeRange !== undefined && activeRange.endMs > activeRange.startMs
+  useMoriModalLayer()
 
   useEffect(() => {
     onCloseRef.current = onClose
@@ -77,8 +79,6 @@ export function StudioExportDialog({
 
   useEffect(() => {
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = "hidden"
     sourceRef.current?.focus()
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -107,7 +107,6 @@ export function StudioExportDialog({
     window.addEventListener("keydown", handleKeyDown)
     return () => {
       window.removeEventListener("keydown", handleKeyDown)
-      document.body.style.overflow = previousOverflow
       if (previousFocus?.isConnected) previousFocus.focus()
     }
   }, [])

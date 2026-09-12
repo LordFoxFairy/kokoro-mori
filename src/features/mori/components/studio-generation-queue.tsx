@@ -2,6 +2,7 @@
 
 import { AlertCircle, Check, ChevronRight, Clock3, ListChecks, LoaderCircle, X } from "lucide-react"
 import Link from "next/link"
+import { createPortal } from "react-dom"
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import {
   emptyGenerationQueueState,
@@ -13,6 +14,7 @@ import {
   readGenerationQueueState,
   subscribeGenerationQueueState,
 } from "../generation-queue-storage"
+import { useMoriModalLayer } from "./mori-modal-isolation"
 import styles from "./studio-generation-queue.module.css"
 
 type StudioGenerationQueueProps = {
@@ -34,6 +36,7 @@ export function StudioGenerationQueue({ projectRef, activeVersionRef }: StudioGe
   const activeCount = items.filter((item) => isActiveQueueStatus(item.status)).length
   const attentionCount = items.filter((item) => isAttentionQueueStatus(item.status)).length
   const queueStateLabel = activeCount > 0 ? "active" : attentionCount > 0 ? "attention" : "idle"
+  useMoriModalLayer(open)
 
   const refresh = useCallback(() => setQueueState(readGenerationQueueState()), [])
 
@@ -81,12 +84,9 @@ export function StudioGenerationQueue({ projectRef, activeVersionRef }: StudioGe
         first.focus()
       }
     }
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = "hidden"
     window.addEventListener("keydown", handleKeyDown)
     return () => {
       window.removeEventListener("keydown", handleKeyDown)
-      document.body.style.overflow = previousOverflow
       if (previousFocus?.isConnected) previousFocus.focus()
     }
   }, [open])
@@ -108,42 +108,45 @@ export function StudioGenerationQueue({ projectRef, activeVersionRef }: StudioGe
       {items.length > 0 ? <b>{items.length}</b> : null}
     </button>
 
-    {open ? <div className={styles.studioQueueLayer}>
-      <button className={styles.studioQueueBackdrop} type="button" onClick={() => setOpen(false)} aria-label="Dismiss generation queue" />
-      <aside
-        ref={panelRef}
-        id={panelId}
-        className={styles.studioQueuePanel}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        tabIndex={-1}
-      >
-        <header className={styles.studioQueueHeader}>
-          <div>
-            <span className={styles.studioQueueKicker}>THIS PROJECT</span>
-            <h2 id={titleId}>Generation queue</h2>
-            <p>Keep creating while Mori renders your next take.</p>
-          </div>
-          <button className={styles.studioQueueClose} type="button" onClick={() => setOpen(false)} aria-label="Close generation queue"><X size={16} /></button>
-        </header>
-        <div className={styles.studioQueueBody}>
-          {items.length === 0 ? <div className={styles.studioQueueEmpty} role="status">
-            <span className={styles.studioQueueEmptyIcon}><Clock3 size={17} /></span>
-            <strong>No runs for this project yet</strong>
-            <span>Start a Create direction or shape a version in Studio. Your work will appear here.</span>
-          </div> : <>
-            <div className={styles.studioQueueSummary}>
-              <span>{items.length} {items.length === 1 ? "run" : "runs"}</span>
-              <span>{activeCount > 0 ? `${activeCount} in progress` : attentionCount > 0 ? `${attentionCount} needs attention` : "Up to date"}</span>
+    {open && typeof document !== "undefined" ? createPortal(
+      <div className={styles.studioQueueLayer}>
+        <button className={styles.studioQueueBackdrop} type="button" onClick={() => setOpen(false)} aria-label="Dismiss generation queue" />
+        <aside
+          ref={panelRef}
+          id={panelId}
+          className={styles.studioQueuePanel}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={titleId}
+          tabIndex={-1}
+        >
+          <header className={styles.studioQueueHeader}>
+            <div>
+              <span className={styles.studioQueueKicker}>THIS PROJECT</span>
+              <h2 id={titleId}>Generation queue</h2>
+              <p>Keep creating while Mori renders your next take.</p>
             </div>
-            <ol className={styles.studioQueueItems} aria-label="Project generation runs">
-              {items.map((item) => <StudioQueueItem key={item.generation_ref} item={item} activeGenerationRef={queueState.active_generation_ref} activeVersionRef={activeVersionRef} onNavigate={() => setOpen(false)} />)}
-            </ol>
-          </>}
-        </div>
-      </aside>
-    </div> : null}
+            <button className={styles.studioQueueClose} type="button" onClick={() => setOpen(false)} aria-label="Close generation queue"><X size={16} /></button>
+          </header>
+          <div className={styles.studioQueueBody}>
+            {items.length === 0 ? <div className={styles.studioQueueEmpty} role="status">
+              <span className={styles.studioQueueEmptyIcon}><Clock3 size={17} /></span>
+              <strong>No runs for this project yet</strong>
+              <span>Start a Create direction or shape a version in Studio. Your work will appear here.</span>
+            </div> : <>
+              <div className={styles.studioQueueSummary}>
+                <span>{items.length} {items.length === 1 ? "run" : "runs"}</span>
+                <span>{activeCount > 0 ? `${activeCount} in progress` : attentionCount > 0 ? `${attentionCount} needs attention` : "Up to date"}</span>
+              </div>
+              <ol className={styles.studioQueueItems} aria-label="Project generation runs">
+                {items.map((item) => <StudioQueueItem key={item.generation_ref} item={item} activeGenerationRef={queueState.active_generation_ref} activeVersionRef={activeVersionRef} onNavigate={() => setOpen(false)} />)}
+              </ol>
+            </>}
+          </div>
+        </aside>
+      </div>,
+      document.body,
+    ) : null}
   </>
 }
 

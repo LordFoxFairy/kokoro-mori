@@ -9,6 +9,7 @@ import { isActiveStudioChangeStatus } from "../studio-change"
 import type { StudioFinishView } from "../studio-release"
 import type { StudioAiRunState } from "./studio-ai-composer"
 import { StudioReleasePanel, type StudioReleasePanelProps } from "./studio-release-panel"
+import { useMoriModalLayer } from "./mori-modal-isolation"
 import styles from "./studio-finish-dialog.module.css"
 
 type StudioFinishDialogProps = {
@@ -75,6 +76,7 @@ export function StudioFinishDialog({
   const visiblePlan = runPlan ?? reviewedPlan
   const busy = runPlan !== null && isActiveStudioChangeStatus(run.status)
   const blockedByOtherChange = runPlan === null && isActiveStudioChangeStatus(run.status)
+  useMoriModalLayer()
 
   useEffect(() => {
     onCloseRef.current = onClose
@@ -86,8 +88,6 @@ export function StudioFinishDialog({
 
   useEffect(() => {
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = "hidden"
     if (initialHasReleaseRef.current && initialViewRef.current === "release") releaseTabRef.current?.focus()
     else sourceRef.current?.focus()
 
@@ -117,7 +117,6 @@ export function StudioFinishDialog({
     window.addEventListener("keydown", handleKeyDown)
     return () => {
       window.removeEventListener("keydown", handleKeyDown)
-      document.body.style.overflow = previousOverflow
       if (previousFocus?.isConnected) previousFocus.focus()
     }
   }, [])

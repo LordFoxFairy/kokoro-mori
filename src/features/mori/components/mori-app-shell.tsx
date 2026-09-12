@@ -6,6 +6,7 @@ import { useMoriApp } from "./mori-app-provider"
 import { MoriRail, type MoriNavigationKey } from "./mori-rail"
 import { PlaybackQueue } from "./playback-queue"
 import { PersistentPlayer } from "./persistent-player"
+import { lockMoriModalBody } from "./mori-modal-isolation"
 import { MoriSettingsPage } from "../settings-page"
 import styles from "../mori-workspace.module.css"
 
@@ -85,7 +86,7 @@ export function MoriAppShell({ activeKey, ariaLabel, projectRef, children }: Mor
   useEffect(() => {
     if (!mobileRailOpen) return
 
-    const previousOverflow = document.body.style.overflow
+    const releaseBodyLock = lockMoriModalBody()
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault()
@@ -110,13 +111,12 @@ export function MoriAppShell({ activeKey, ariaLabel, projectRef, children }: Mor
       }
     }
 
-    document.body.style.overflow = "hidden"
     window.addEventListener("keydown", handleKeyDown)
     const focusTimer = window.requestAnimationFrame(() => railToggleRef.current?.focus())
     return () => {
       window.cancelAnimationFrame(focusTimer)
       window.removeEventListener("keydown", handleKeyDown)
-      document.body.style.overflow = previousOverflow
+      releaseBodyLock()
     }
   }, [handleRailToggle, mobileRailOpen])
 

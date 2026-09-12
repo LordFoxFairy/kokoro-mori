@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useEffect, useId, useRef, type MouseEvent as ReactMouseEvent } from "react"
 import { createPortal } from "react-dom"
 import type { Candidate } from "../domain"
+import { useMoriModalLayer } from "./mori-modal-isolation"
 import styles from "./studio-version-history.module.css"
 
 type StudioVersionHistoryProps = {
@@ -40,6 +41,7 @@ export function StudioVersionHistoryDrawer({ id, onClose, ...history }: StudioVe
   const closeRef = useRef<HTMLButtonElement>(null)
   const onCloseRef = useRef(onClose)
   const restoreFocusRef = useRef(true)
+  useMoriModalLayer()
 
   useEffect(() => {
     onCloseRef.current = onClose
@@ -47,8 +49,6 @@ export function StudioVersionHistoryDrawer({ id, onClose, ...history }: StudioVe
 
   useEffect(() => {
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = "hidden"
     closeRef.current?.focus()
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -77,7 +77,6 @@ export function StudioVersionHistoryDrawer({ id, onClose, ...history }: StudioVe
     window.addEventListener("keydown", handleKeyDown)
     return () => {
       window.removeEventListener("keydown", handleKeyDown)
-      document.body.style.overflow = previousOverflow
       if (restoreFocusRef.current && previousFocus?.isConnected) previousFocus.focus()
     }
   }, [])

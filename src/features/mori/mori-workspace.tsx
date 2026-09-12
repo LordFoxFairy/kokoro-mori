@@ -57,6 +57,7 @@ import {
 } from "./project-workspace-memory"
 import { CreateCanvas, type CreationDraft } from "./components/create-canvas"
 import { InspectorPanel } from "./components/inspector-panel"
+import { useMoriModalLayer } from "./components/mori-modal-isolation"
 import { useMoriApp } from "./components/mori-app-provider"
 import { MoriAppShell } from "./components/mori-app-shell"
 import styles from "./mori-workspace.module.css"
@@ -955,17 +956,16 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, generationRef: 
     }
   }, [api, backgroundQueueSignature, generationQueueHydrated, generationRef, initialGenerationRef, updateQueue])
 
+  useMoriModalLayer(queueOpen && queuePresentation === "drawer")
+
   useEffect(() => {
     if (!queueOpen || queuePresentation !== "drawer") return
-    const previousOverflow = document.body.style.overflow
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") setQueueOpen(false)
     }
-    document.body.style.overflow = "hidden"
     window.addEventListener("keydown", closeOnEscape)
     return () => {
       window.removeEventListener("keydown", closeOnEscape)
-      document.body.style.overflow = previousOverflow
     }
   }, [queueOpen, queuePresentation])
 

@@ -4,6 +4,7 @@ import { AlertCircle, ArrowRight, LoaderCircle, Save, X } from "lucide-react"
 import { useEffect, useId, useRef } from "react"
 import { createPortal } from "react-dom"
 import type { ProjectWorkspaceSaveRun } from "../project-workspace-memory"
+import { useMoriModalLayer } from "./mori-modal-isolation"
 import styles from "./studio-unsaved-lyrics-dialog.module.css"
 
 type StudioUnsavedLyricsDialogProps = {
@@ -38,6 +39,7 @@ export function StudioUnsavedLyricsDialog({
   const needsRefresh = (saveRun.status === "failed" && !saveRun.retryable)
     || (saveRun.status === "idle" && !canSave && canRefreshWorkspace)
   const retryableFailure = saveRun.status === "failed" && saveRun.retryable
+  useMoriModalLayer()
 
   useEffect(() => {
     onStayRef.current = onStay
@@ -48,8 +50,6 @@ export function StudioUnsavedLyricsDialog({
       document.activeElement instanceof HTMLElement
         ? document.activeElement
         : null
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = "hidden"
     stayRef.current?.focus()
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -77,7 +77,6 @@ export function StudioUnsavedLyricsDialog({
     window.addEventListener("keydown", handleKeyDown)
     return () => {
       window.removeEventListener("keydown", handleKeyDown)
-      document.body.style.overflow = previousOverflow
       if (previousFocus?.isConnected) previousFocus.focus()
     }
   }, [])

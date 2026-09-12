@@ -1,3 +1,5 @@
+import { useEffect } from "react"
+
 type AttributeSnapshot = {
   element: HTMLElement
   ariaHidden: string | null
@@ -12,6 +14,18 @@ type ShellIsolation = {
 const shellIsolations = new WeakMap<HTMLElement, ShellIsolation>()
 let bodyLockCount = 0
 let bodyOverflowBeforeLock = ""
+
+export function useMoriModalLayer(active = true): void {
+  useEffect(() => {
+    if (!active) return
+    const releaseBodyLock = lockMoriModalBody()
+    const releaseShellIsolation = isolateMoriShellBackground()
+    return () => {
+      releaseShellIsolation()
+      releaseBodyLock()
+    }
+  }, [active])
+}
 
 export function lockMoriModalBody(): () => void {
   if (bodyLockCount === 0) {
