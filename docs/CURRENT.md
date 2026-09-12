@@ -108,10 +108,10 @@ pnpm exec vitest run --maxWorkers=1 src/features/mori/studio-page.test.tsx
 pnpm exec vitest run --maxWorkers=1 <affected composition tests>
                                   passed: 6 files / 36 tests
 pnpm exec vitest run --maxWorkers=1 src/features/mori/mori-workspace.test.tsx
-                                  passed: 1 file / 69 tests
+                                  passed: 1 file / 71 tests
 pnpm exec vitest run --maxWorkers=1 src/features/mori/use-audio-recorder.test.tsx
                                   passed: 1 file / 2 tests
-pnpm test                         passed: 80 files / 594 tests
+pnpm test                         passed: 80 files / 599 tests
 pnpm build                        passed
 ```
 
