@@ -7,9 +7,9 @@ import styles from "./composition-lane.module.css"
 
 export type CompositionInsertSource = { sourceRef: string; label: string; description: string; durationMs: number }
 
-type CompositionLaneProps = { tracks: CompositionTrack[]; durationMs: number; disabled?: boolean; selectedClipRef?: string; onSelectClip?: (clipRef: string) => void; onEditClip?: (operation: "move" | "trim" | "split" | "crop" | "fade", clipRef: string) => void; onDuplicateClip?: (clipRef: string) => void; insertSources?: readonly CompositionInsertSource[]; onInsertClip?: (sourceRef: string) => void }
+type CompositionLaneProps = { tracks: CompositionTrack[]; durationMs: number; disabled?: boolean; selectedClipRef?: string; selectedTrackRef?: string; onSelectClip?: (clipRef: string, trackRef: string) => void; onEditClip?: (operation: "move" | "trim" | "split" | "crop" | "fade", clipRef: string, trackRef: string) => void; onDuplicateClip?: (clipRef: string, trackRef: string) => void; insertSources?: readonly CompositionInsertSource[]; onInsertClip?: (sourceRef: string, trackRef: string) => void }
 
-export function CompositionLane({ tracks, durationMs, disabled = false, selectedClipRef, onSelectClip, onEditClip, onDuplicateClip, insertSources = [], onInsertClip }: CompositionLaneProps) {
+export function CompositionLane({ tracks, durationMs, disabled = false, selectedClipRef, selectedTrackRef, onSelectClip, onEditClip, onDuplicateClip, insertSources = [], onInsertClip }: CompositionLaneProps) {
   const [insertOpen, setInsertOpen] = useState(false)
   const canInsert = onInsertClip !== undefined && insertSources.length > 0
 
@@ -21,7 +21,7 @@ export function CompositionLane({ tracks, durationMs, disabled = false, selected
         {insertOpen ? <div className={styles.insertPanel} role="group" aria-label="Insert a clip">
           <span>Insert into selected range</span>
           <div className={styles.insertOptions}>
-            {insertSources.map((source) => <button className={styles.insertOption} type="button" key={source.sourceRef} aria-label={`Insert ${source.label} into selected range`} onClick={() => { onInsertClip?.(source.sourceRef); setInsertOpen(false) }}>
+            {insertSources.map((source) => <button className={styles.insertOption} type="button" key={source.sourceRef} aria-label={`Insert ${source.label} into selected range`} onClick={() => { const trackRef = selectedTrackRef ?? tracks[0]?.trackRef; if (trackRef !== undefined) onInsertClip?.(source.sourceRef, trackRef); setInsertOpen(false) }}>
               <span><strong>{source.label}</strong><small>{source.description}</small></span>
               <span>{formatClipDuration(source.durationMs)}</span>
             </button>)}
@@ -30,8 +30,8 @@ export function CompositionLane({ tracks, durationMs, disabled = false, selected
       </div> : null}
     </header>
     {selectedClipRef !== undefined && onEditClip !== undefined ? <nav className={styles.actions} aria-label="Clip editing actions">
-      {(["move", "trim", "split", "crop", "fade"] as const).map((operation) => <button disabled={disabled} key={operation} type="button" onClick={() => onEditClip(operation, selectedClipRef)}>{operation[0]?.toUpperCase()}{operation.slice(1)}</button>)}
-      {onDuplicateClip !== undefined ? <button disabled={disabled} type="button" onClick={() => onDuplicateClip(selectedClipRef)}>Duplicate</button> : null}
+      {(["move", "trim", "split", "crop", "fade"] as const).map((operation) => <button disabled={disabled} key={operation} type="button" onClick={() => { const track = tracks.find((item) => item.trackRef === selectedTrackRef && item.clips.some((clip) => clip.clipRef === selectedClipRef)) ?? tracks.find((item) => item.clips.some((clip) => clip.clipRef === selectedClipRef)); if (track !== undefined) onEditClip(operation, selectedClipRef, track.trackRef) }}>{operation[0]?.toUpperCase()}{operation.slice(1)}</button>)}
+      {onDuplicateClip !== undefined ? <button disabled={disabled} type="button" onClick={() => { const track = tracks.find((item) => item.trackRef === selectedTrackRef && item.clips.some((clip) => clip.clipRef === selectedClipRef)) ?? tracks.find((item) => item.clips.some((clip) => clip.clipRef === selectedClipRef)); if (track !== undefined) onDuplicateClip(selectedClipRef, track.trackRef) }}>Duplicate</button> : null}
     </nav> : null}
     <div className={styles.tracks}>
       {tracks.map((track) => <div className={styles.track} key={track.trackRef}>
@@ -44,7 +44,7 @@ export function CompositionLane({ tracks, durationMs, disabled = false, selected
             type="button"
             aria-label={`${track.name} clip ${clip.clipRef}`}
             disabled={disabled}
-            onClick={() => onSelectClip?.(clip.clipRef)}
+            onClick={() => onSelectClip?.(clip.clipRef, track.trackRef)}
             style={{ left: `${(clip.startMs / durationMs) * 100}%`, width: `${(clip.durationMs / durationMs) * 100}%` }}
           ><span>{clip.clipRef}</span></button>)}
         </div>

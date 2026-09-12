@@ -1196,7 +1196,7 @@ describe("Mori studio page", () => {
       "version_preview_first_light_a",
       expect.objectContaining({
         expected_revision: 0,
-        commands: [expect.objectContaining({ type: "insert_clip", source_ref: "version_preview_first_light_b" })],
+        commands: [expect.objectContaining({ type: "insert_clip", track_ref: "version_preview_first_light_a:main", source_ref: "version_preview_first_light_b" })],
       }),
       expect.stringMatching(/^mori-composition-version_preview_first_light_a-/u),
     ))

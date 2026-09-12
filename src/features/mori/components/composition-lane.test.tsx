@@ -10,11 +10,11 @@ describe("CompositionLane", () => {
     render(<CompositionLane durationMs={10_000} onDuplicateClip={onDuplicate} onEditClip={onEdit} onSelectClip={onSelect} selectedClipRef="clip_1" tracks={[{ trackRef: "track_1", kind: "vocals", name: "Lead", clips: [{ clipRef: "clip_1", sourceRef: "asset_1", startMs: 2_000, durationMs: 4_000, offsetMs: 0 }] }]} />)
     expect(screen.getByRole("region", { name: "Composition tracks" })).toBeTruthy()
     fireEvent.click(screen.getByRole("button", { name: "Lead clip clip_1" }))
-    expect(onSelect).toHaveBeenCalledWith("clip_1")
+    expect(onSelect).toHaveBeenCalledWith("clip_1", "track_1")
     fireEvent.click(screen.getByRole("button", { name: "Split" }))
-    expect(onEdit).toHaveBeenCalledWith("split", "clip_1")
+    expect(onEdit).toHaveBeenCalledWith("split", "clip_1", "track_1")
     fireEvent.click(screen.getByRole("button", { name: "Duplicate" }))
-    expect(onDuplicate).toHaveBeenCalledWith("clip_1")
+    expect(onDuplicate).toHaveBeenCalledWith("clip_1", "track_1")
   })
 
   it("disables editing while the timeline is busy", () => {
@@ -41,7 +41,7 @@ describe("CompositionLane", () => {
     fireEvent.click(addClip)
     expect(addClip).toHaveAttribute("aria-expanded", "true")
     fireEvent.click(screen.getByRole("button", { name: "Insert Afterglow take into selected range" }))
-    expect(onInsert).toHaveBeenCalledWith("version_take_2")
+    expect(onInsert).toHaveBeenCalledWith("version_take_2", "track_1")
     expect(addClip).toHaveAttribute("aria-expanded", "false")
   })
 })

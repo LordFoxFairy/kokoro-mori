@@ -48,7 +48,7 @@ Create -> Generation Queue -> Candidate -> Project/Version -> Studio -> Take Lan
 5. 瞬时故障保留原 command，重试复用原幂等身份；
 6. 冲突显示 Refresh/Review，不静默覆盖用户当前版本。
 
-Composition 当前是浏览器侧 revision foundation：Move、Trim、Split、Crop、Fade、Duplicate 可形成本地 history 并通过同源 seam 保存；真实 owner projection/persistence 仍未接入。
+Composition 当前以 `Composition { tracks[] }` 作为浏览器侧 revision foundation：每条编辑 command 都携带 `track_ref`，Move、Trim、Split、Crop、Fade、Insert、Duplicate 可形成本地 history 并通过同源 seam 保存；当前 preview 仅提供一条 Main track，真实 owner projection、track placement 与持久化仍未接入。
 
 ## 5. 依赖规则
 

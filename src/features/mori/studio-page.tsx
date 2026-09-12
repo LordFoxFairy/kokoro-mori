@@ -49,7 +49,7 @@ import { useMoriApp } from "./components/mori-app-provider"
 import { Waveform } from "./components/waveform"
 import { previewCandidates, previewProject, previewSongPlan } from "./preview-data"
 import type { StudioEntryIntent, StudioEntrySurface } from "./studio-entry"
-import type { CompositionTrack } from "./composition"
+import type { Composition, CompositionTrack } from "./composition"
 import { useCompositionEditor } from "./use-composition-editor"
 import { buildStudioTimelineSections, isActiveStudioChangeStatus, type StudioChangePlan, type StudioTimelineSection } from "./studio-change"
 import { createStudioLyricsRevisionDraft, defaultStudioLyrics, isActiveLyricsRevisionStatus, studioLyricsScopeLabel, type StudioLyricsPlan } from "./studio-lyrics"
@@ -2002,12 +2002,14 @@ function ArrangementEditor({ compositionSave, compositionRevision, onRefreshWork
   }))
   const selection = selectionState.versionRef === candidate.versionRef ? selectionState.selection : defaultSection
   const changeActive = isActiveStudioChangeStatus(studioChangeRun.status)
-  const [selectedClipRef, setSelectedClipRef] = useState<string | undefined>(undefined)
   const compositionTracks = useMemo<CompositionTrack[]>(() => [{
     trackRef: `${candidate.versionRef}:main`, kind: "other", name: "Main version",
     clips: [{ clipRef: `${candidate.versionRef}:clip`, sourceRef: candidate.versionRef, startMs: 0, durationMs: Math.round(candidate.durationSeconds * 1_000), offsetMs: 0 }],
   }], [candidate.durationSeconds, candidate.versionRef])
-  const compositionEditor = useCompositionEditor(compositionTracks[0] as CompositionTrack, async (input) => (await compositionSave(candidate.versionRef, input as MoriCompositionRevisionInput, `mori-composition-${candidate.versionRef}-${Date.now()}`)).data, compositionRevision)
+  const compositionDocument = useMemo<Composition>(() => ({ tracks: compositionTracks }), [compositionTracks])
+  const compositionEditor = useCompositionEditor(compositionDocument, async (input) => (await compositionSave(candidate.versionRef, input as MoriCompositionRevisionInput, `mori-composition-${candidate.versionRef}-${Date.now()}`)).data, compositionRevision)
+  const [selectedClipRef, setSelectedClipRef] = useState<string | undefined>(undefined)
+  const [selectedTrackRef, setSelectedTrackRef] = useState<string | undefined>(compositionTracks[0]?.trackRef)
   const [editOperation, setEditOperation] = useState<"move" | "trim" | "split" | "crop" | "fade" | null>(null)
   const insertSources = useMemo<CompositionInsertSource[]>(() => takes.map((take) => ({
     sourceRef: take.versionRef,
@@ -2015,23 +2017,26 @@ function ArrangementEditor({ compositionSave, compositionRevision, onRefreshWork
     description: take.subtitle,
     durationMs: Math.round(take.durationSeconds * 1_000),
   })), [takes])
-  const duplicateClip = (clipRef: string) => {
-    const source = compositionEditor.composition.clips.find((clip) => clip.clipRef === clipRef)
+  const duplicateClip = (clipRef: string, trackRef: string) => {
+    const track = compositionEditor.composition.find((item) => item.trackRef === trackRef)
+    const source = track?.clips.find((clip) => clip.clipRef === clipRef)
     if (source === undefined) return
-    const endMs = Math.max(...compositionEditor.composition.clips.map((clip) => clip.startMs + clip.durationMs))
-    compositionEditor.editAndQueue({ operation: "insert", clip: { ...source, clipRef: `${source.clipRef}:copy-${compositionEditor.composition.clips.length + 1}`, startMs: endMs + 250 } })
+    const endMs = Math.max(...(track?.clips.map((clip) => clip.startMs + clip.durationMs) ?? [0]))
+    compositionEditor.editAndQueue({ operation: "insert", trackRef, clip: { ...source, clipRef: `${source.clipRef}:copy-${(track?.clips.length ?? 0) + 1}`, startMs: endMs + 250 } })
     setSelectedClipRef(undefined)
   }
   if (selection === undefined) return null
 
-  const insertClip = (sourceRef: string) => {
+  const insertClip = (sourceRef: string, trackRef: string) => {
     const source = takes.find((take) => take.versionRef === sourceRef)
-    if (source === undefined) return
+    const track = compositionEditor.composition.find((item) => item.trackRef === trackRef)
+    if (source === undefined || track === undefined) return
     const selectionDurationMs = Math.max(1_000, selection.endMs - selection.startMs)
     const durationMs = Math.min(selectionDurationMs, Math.max(1_000, Math.round(source.durationSeconds * 1_000)))
-    const clipRef = `${candidate.versionRef}:insert-${compositionEditor.composition.clips.length + 1}`
-    compositionEditor.editAndQueue({ operation: "insert", clip: { clipRef, sourceRef: source.versionRef, startMs: selection.startMs, durationMs, offsetMs: 0 } })
+    const clipRef = `${candidate.versionRef}:${trackRef}:insert-${track.clips.length + 1}`
+    compositionEditor.editAndQueue({ operation: "insert", trackRef, clip: { clipRef, sourceRef: source.versionRef, startMs: selection.startMs, durationMs, offsetMs: 0 } })
     setSelectedClipRef(clipRef)
+    setSelectedTrackRef(trackRef)
     setEditOperation(null)
   }
 
@@ -2055,8 +2060,8 @@ function ArrangementEditor({ compositionSave, compositionRevision, onRefreshWork
           {compositionEditor.saveState === "conflict" ? "Refresh to resolve" : compositionEditor.saveState === "failed" ? "Retry save" : "Save arrangement"}
         </button>
       </div>
-      <StudioTimeline candidate={candidate} sections={timelineSections} selection={selection} positionSeconds={positionSeconds} playing={playing} disabled={changeActive} onSeek={onSeekTimeline} onSelect={selectTimelineRange} compositionTracks={[compositionEditor.composition]} selectedClipRef={selectedClipRef} onSelectClip={setSelectedClipRef} onEditClip={(operation, clipRef) => { setSelectedClipRef(clipRef); setEditOperation(operation) }} onDuplicateClip={duplicateClip} insertSources={insertSources} onInsertClip={insertClip} />
-      {selectedClipRef !== undefined && editOperation !== null ? <CompositionEditPanel clipRef={selectedClipRef} operation={editOperation} onApply={(edit) => { compositionEditor.editAndQueue(edit); setEditOperation(null) }} /> : null}
+      <StudioTimeline candidate={candidate} sections={timelineSections} selection={selection} positionSeconds={positionSeconds} playing={playing} disabled={changeActive} onSeek={onSeekTimeline} onSelect={selectTimelineRange} compositionTracks={compositionEditor.composition} selectedClipRef={selectedClipRef} selectedTrackRef={selectedTrackRef} onSelectClip={(clipRef, trackRef) => { setSelectedClipRef(clipRef); setSelectedTrackRef(trackRef) }} onEditClip={(operation, clipRef, trackRef) => { setSelectedClipRef(clipRef); setSelectedTrackRef(trackRef); setEditOperation(operation) }} onDuplicateClip={duplicateClip} insertSources={insertSources} onInsertClip={insertClip} />
+      {selectedClipRef !== undefined && selectedTrackRef !== undefined && editOperation !== null ? <CompositionEditPanel clipRef={selectedClipRef} trackRef={selectedTrackRef} operation={editOperation} onApply={(edit) => { compositionEditor.editAndQueue(edit); setEditOperation(null) }} /> : null}
       <StudioAiComposer
         selectedSection={selection}
         run={studioChangeRun}

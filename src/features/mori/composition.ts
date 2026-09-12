@@ -2,6 +2,7 @@ import type { MoriRef } from "@/features/mori/domain"
 
 export type CompositionClip = { clipRef: MoriRef; sourceRef: MoriRef; startMs: number; durationMs: number; offsetMs: number; fadeInMs?: number; fadeOutMs?: number }
 export type CompositionTrack = { trackRef: MoriRef; kind: "vocals" | "instrumental" | "other"; name: string; clips: CompositionClip[] }
+export type Composition = { tracks: CompositionTrack[] }
 
 export function insertClip(track: CompositionTrack, clip: CompositionClip): CompositionTrack {
   if (clip.startMs < 0 || clip.durationMs < 1 || clip.offsetMs < 0) throw new Error("composition_clip_invalid")

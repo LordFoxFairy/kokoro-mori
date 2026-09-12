@@ -1,12 +1,12 @@
-import type { CompositionTrack } from "./composition"
+import type { Composition } from "./composition"
 
-export type CompositionHistory = { past: CompositionTrack[]; present: CompositionTrack; future: CompositionTrack[] }
+export type CompositionHistory = { past: Composition[]; present: Composition; future: Composition[] }
 
-export function createCompositionHistory(initial: CompositionTrack): CompositionHistory {
-  return { past: [], present: initial, future: [] }
+export function createCompositionHistory(initial: Composition): CompositionHistory {
+  return { past: [], present: { tracks: initial.tracks.map((track) => ({ ...track, clips: [...track.clips] })) }, future: [] }
 }
 
-export function commitComposition(history: CompositionHistory, next: CompositionTrack): CompositionHistory {
+export function commitComposition(history: CompositionHistory, next: Composition): CompositionHistory {
   if (next === history.present) return history
   return { past: [...history.past, history.present], present: next, future: [] }
 }

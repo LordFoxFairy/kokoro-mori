@@ -7,13 +7,13 @@ const second: CompositionTrack = { ...first, name: "Lead vocal" }
 
 describe("composition history", () => {
   it("undoes and redoes a committed edit", () => {
-    const history = commitComposition(createCompositionHistory(first), second)
-    expect(undoComposition(history).present.name).toBe("Lead")
-    expect(redoComposition(undoComposition(history)).present.name).toBe("Lead vocal")
+    const history = commitComposition(createCompositionHistory({ tracks: [first] }), { tracks: [second] })
+    expect(undoComposition(history).present.tracks[0]?.name).toBe("Lead")
+    expect(redoComposition(undoComposition(history)).present.tracks[0]?.name).toBe("Lead vocal")
   })
   it("clears redo after a new branch", () => {
-    const history = commitComposition(createCompositionHistory(first), second)
-    const branched = commitComposition(undoComposition(history), { ...first, name: "Vocal" })
+    const history = commitComposition(createCompositionHistory({ tracks: [first] }), { tracks: [second] })
+    const branched = commitComposition(undoComposition(history), { tracks: [{ ...first, name: "Vocal" }] })
     expect(branched.future).toEqual([])
   })
 })
