@@ -49,6 +49,7 @@ type PendingReleaseCommand = {
 }
 const releasePublishRecoveryKey = "mori-release-publish-recovery-v1"
 const releaseShareRecoveryKey = "mori-release-share-recovery-v1"
+const releaseStatusPollDelaysMs = [250, 500, 1_000, 2_000, 4_000] as const
 
 type UseStudioReleaseWorkflowInput = {
   versionRef: string | null
@@ -178,6 +179,104 @@ export function useStudioReleaseWorkflow({ versionRef, versionTitle, api }: UseS
     }
     return () => { disposed = true }
   }, [api, versionRef])
+
+  useEffect(() => {
+    if (versionRef === null || releasePublish.status !== "publishing" || releasePublish.releaseRef === null || api.getRelease === undefined) return
+    const sourceVersionRef = versionRef
+    const releaseRef = releasePublish.releaseRef
+    let disposed = false
+    let attempt = 0
+    let timer: number | undefined
+    const isCurrent = () => !disposed && activeVersionRef.current === sourceVersionRef
+    const scheduleRetry = (sync: () => Promise<void>) => {
+      if (!isCurrent() || attempt >= releaseStatusPollDelaysMs.length) {
+        if (isCurrent()) setReleasePublish((current) => ({ ...current, status: "failed", message: "Publish status could not be confirmed. Try again." }))
+        return
+      }
+      const delay = releaseStatusPollDelaysMs[attempt]
+      attempt += 1
+      timer = window.setTimeout(() => { void sync() }, delay)
+    }
+    const sync = async () => {
+      if (!isCurrent()) return
+      try {
+        const response = await api.getRelease(releaseRef)
+        if (!isCurrent()) return
+        if (response.data.release_ref !== releaseRef || response.data.version_ref !== sourceVersionRef) {
+          setReleasePublish((current) => ({ ...current, status: "failed", message: "The returned release did not match this Version. Try again." }))
+          return
+        }
+        setReleasePublish((current) => ({
+          ...current,
+          status: response.data.status,
+          releaseRef: response.data.release_ref,
+          publicUrl: response.data.public_url,
+          message: response.data.status === "failed" ? "Publish failed. Try again." : null,
+        }))
+        if (response.data.status !== "publishing") {
+          pendingPublishCommand.current = null
+          return
+        }
+        scheduleRetry(sync)
+      } catch {
+        scheduleRetry(sync)
+      }
+    }
+    void sync()
+    return () => {
+      disposed = true
+      if (timer !== undefined) window.clearTimeout(timer)
+    }
+  }, [api, releasePublish.releaseRef, releasePublish.status, versionRef])
+
+  useEffect(() => {
+    if (versionRef === null || releaseShare.status !== "creating" || releaseShare.shareRef === null || api.getShare === undefined) return
+    const sourceVersionRef = versionRef
+    const shareRef = releaseShare.shareRef
+    let disposed = false
+    let attempt = 0
+    let timer: number | undefined
+    const isCurrent = () => !disposed && activeVersionRef.current === sourceVersionRef
+    const scheduleRetry = (sync: () => Promise<void>) => {
+      if (!isCurrent() || attempt >= releaseStatusPollDelaysMs.length) {
+        if (isCurrent()) setReleaseShare((current) => ({ ...current, status: "failed", message: "Share status could not be confirmed. Try again." }))
+        return
+      }
+      const delay = releaseStatusPollDelaysMs[attempt]
+      attempt += 1
+      timer = window.setTimeout(() => { void sync() }, delay)
+    }
+    const sync = async () => {
+      if (!isCurrent()) return
+      try {
+        const response = await api.getShare(shareRef)
+        if (!isCurrent()) return
+        if (response.data.share_ref !== shareRef || response.data.version_ref !== sourceVersionRef) {
+          setReleaseShare((current) => ({ ...current, status: "failed", message: "The returned share did not match this Version. Try again." }))
+          return
+        }
+        setReleaseShare((current) => ({
+          ...current,
+          status: response.data.status,
+          shareRef: response.data.share_ref,
+          shareUrl: response.data.share_url,
+          message: response.data.status === "failed" ? "The share link could not be prepared. Try again." : null,
+        }))
+        if (response.data.status !== "creating") {
+          pendingShareCommand.current = null
+          return
+        }
+        scheduleRetry(sync)
+      } catch {
+        scheduleRetry(sync)
+      }
+    }
+    void sync()
+    return () => {
+      disposed = true
+      if (timer !== undefined) window.clearTimeout(timer)
+    }
+  }, [api, releaseShare.shareRef, releaseShare.status, versionRef])
 
   const generateArtwork = async (plan: StudioArtworkPlan) => {
     const sourceVersionRef = activeVersionRef.current
@@ -434,8 +533,13 @@ export function useStudioReleaseWorkflow({ versionRef, versionTitle, api }: UseS
         : { versionRef: sourceVersionRef, draftRef: snapshot.release_draft_ref, revision: snapshot.revision, idempotencyKey: `mori-publish-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` }
       pendingPublishCommand.current = command
       const response = await api.publishRelease(sourceVersionRef, { release_draft_ref: command.draftRef, expected_draft_revision: command.revision }, command.idempotencyKey)
-      pendingPublishCommand.current = null
-      setReleasePublish({ status: response.data.status, releaseRef: response.data.release_ref, publicUrl: response.data.public_url, message: null })
+      setReleasePublish({
+        status: response.data.status,
+        releaseRef: response.data.release_ref,
+        publicUrl: response.data.public_url,
+        message: response.data.status === "failed" ? "Publish failed. Try again." : null,
+      })
+      if (response.data.status !== "publishing") pendingPublishCommand.current = null
       window.localStorage.setItem(releasePublishRecoveryKey, JSON.stringify({ versionRef: sourceVersionRef, releaseRef: response.data.release_ref }))
     } catch { setReleasePublish((current) => ({ ...current, status: "failed", message: "Publish needs another try." })) }
   }
@@ -462,8 +566,13 @@ export function useStudioReleaseWorkflow({ versionRef, versionTitle, api }: UseS
       pendingShareCommand.current = command
       const input: CreateShareInput = { release_draft_ref: command.draftRef, expected_draft_revision: command.revision }
       const response = await api.createShare(sourceVersionRef, input, command.idempotencyKey)
-      pendingShareCommand.current = null
-      setReleaseShare({ status: response.data.status, shareRef: response.data.share_ref, shareUrl: response.data.share_url, message: null })
+      setReleaseShare({
+        status: response.data.status,
+        shareRef: response.data.share_ref,
+        shareUrl: response.data.share_url,
+        message: response.data.status === "failed" ? "The share link could not be prepared. Try again." : null,
+      })
+      if (response.data.status !== "creating") pendingShareCommand.current = null
       window.localStorage.setItem(releaseShareRecoveryKey, JSON.stringify({ versionRef: sourceVersionRef, shareRef: response.data.share_ref }))
     } catch { setReleaseShare((current) => ({ ...current, status: "failed", message: "The share link needs another try." })) }
   }
@@ -484,16 +593,18 @@ export function useStudioReleaseWorkflow({ versionRef, versionTitle, api }: UseS
     } catch { setReleaseShare((current) => ({ ...current, status: "failed", message: "The share link could not be revoked. Try again." })) }
   }
 
-  const active = isActiveArtworkGenerationStatus(artworkRun.status) || releaseSave.status === "saving" || releaseShare.status === "creating" || releaseShare.status === "revoking"
+  const active = isActiveArtworkGenerationStatus(artworkRun.status) || releaseSave.status === "saving" || releasePublish.status === "publishing" || releaseShare.status === "creating" || releaseShare.status === "revoking"
   const activityDescription = isActiveArtworkGenerationStatus(artworkRun.status)
-    ? "Release artwork is being created"
-    : releaseSave.status === "saving"
-      ? "Release draft is being saved"
-      : releaseShare.status === "creating"
-        ? "Share link is being prepared"
-        : releaseShare.status === "revoking"
-          ? "Share link is being revoked"
-        : null
+      ? "Release artwork is being created"
+      : releaseSave.status === "saving"
+        ? "Release draft is being saved"
+        : releasePublish.status === "publishing"
+          ? "Release is being published"
+          : releaseShare.status === "creating"
+            ? "Share link is being prepared"
+            : releaseShare.status === "revoking"
+              ? "Share link is being revoked"
+              : null
 
   return {
     finishView,

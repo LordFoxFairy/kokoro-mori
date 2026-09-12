@@ -149,10 +149,11 @@ Workspace nav    内容随项目上下文变化                     跨页面保
   去向后再运行。任务可在窗口关闭后继续并恢复；snapshot 来源或强度不匹配时拒绝挂接，成功结果只进入 Take Lanes，
   用户显式 Use take 前不改变 Current。
 - 已落地第一版：Finish 的 Release 页签把 Title、Description、Visibility、Remix permission、Explicit content 与
-  Artwork 保存为当前 Version 的 draft。默认 Private，可见性与允许 Remix 分开；唯一主动作是 Save release draft，
-  当前没有 Publish command。Artwork 可沿用当前图，或先 Review 固定 1:1、无文字、四候选的异步计划，再从成功结果中
-  选择一张图片。Artwork snapshot 必须完整匹配 Version 与计划，图片只进入 draft，不进入音频 Take Lanes；关闭窗口后
-  草稿与任务仍可恢复，切换 Version 时清理旧上下文。
+  Artwork 保存为当前 Version 的 draft。默认 Private；保存确认后，Public 才显示独立 Publish，Link-only 才显示独立
+  Create share link。两种 202 异步结果均以原始幂等命令为边界、只轮询 GET 状态并支持刷新恢复；终态才提供复制、撤销或
+  重试。Artwork 可沿用当前图，或先 Review 固定 1:1、无文字、四候选的异步计划，再从成功结果中选择一张图片。
+  Artwork snapshot 必须完整匹配 Version 与计划，图片只进入 draft，不进入音频 Take Lanes；关闭窗口后草稿与任务仍可恢复，
+  切换 Version 时清理旧上下文。
 - 已落地第一版：Stems 已形成 Voice & stems 上下文工作面，在 Separate mix 旁提供 Add vocals 与 Add instrumental。
   Vocal layer 将必填 Lyrics、可选 Voice profile 和 Vocal direction 分开；Instrumental layer 只要求编曲方向。
   两者都先显示 whole-song Layer Plan，复用 version-scoped `add_part` Generation lifecycle，并把结果送入现有

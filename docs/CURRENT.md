@@ -62,8 +62,9 @@
   不回退到旧的 Song Plan POST。唯一例外是本地 preview Project：它仍可用 legacy POST 演示流程，并明确标为 preview。
 - Create 的 Song idea 提供 `Surprise me` 随机起点：只替换未提交 prompt、清理旧 Song Plan preview，并把焦点返回输入框；不改变 Smart / Custom、歌词输出选择或生成 payload。
 - P0.3 Release / Share / Publish 已接入浏览器链路：Release Draft 保存确认后，`public` 才开放 Publish，`link_only` 才开放
-  Create share link；两者各自支持状态、幂等重试、刷新恢复、复制与撤销。Library Version projection 可显示 Published /
-  Publishing / Unpublished 与公开链接；真实 Release、Share 权限和 URL 仍由 BFF / Storage owner 提供 integration smoke。
+  Create share link；两者各自支持状态、幂等重试、刷新恢复、复制与撤销。收到 `202` 的 `publishing` / `creating` receipt 后，
+  浏览器只用原 ref 以有界递增间隔读取 GET 状态，直到终态或明确提示重试，不重复 POST；Project / Version 切换和卸载会丢弃迟到结果。
+  Library Version projection 可显示 Published / Publishing / Unpublished 与公开链接；真实 Release、Share 权限和 URL 仍由 BFF / Storage owner 提供 integration smoke。
 - Studio Lyrics 已接入该 Workspace foundation：不再读写浏览器 localStorage。显式 Studio URL 会优先同步为用户的
   Open Version，完成确认前不会允许把文字写到错误 Version；保存期间文字与 AI Apply 锁定，只有完整 owner projection
   被当前 Project / Version 接受后才显示 `Saved`。短暂故障复用原 `Idempotency-Key`，冲突转为 Refresh；在有未保存文字时
