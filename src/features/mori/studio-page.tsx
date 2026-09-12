@@ -22,6 +22,7 @@ import {
   type StudioCoverGenerationInput,
   type StudioCoverGenerationSnapshot,
   type StudioChangeGenerationSnapshot,
+  type StudioChangeGenerationInput,
   type StudioRestyleGenerationInput,
   type StudioRestyleGenerationSnapshot,
 } from "@/lib/mori-api"
@@ -1960,9 +1961,15 @@ function studioChangeSnapshotMatchesPlan(snapshot: StudioChangeGenerationSnapsho
       || (tracked.plan.source.type === "mix_revision" && snapshot.source.mix_revision_ref === tracked.plan.source.mixRevisionRef)
   }
 
-  if (tracked.plan.draft.operation !== "transform") return snapshot.operation !== "transform"
+  if (snapshot.operation !== "transform") {
+    const expected = createStudioChangeRequest(tracked.plan.draft)
+    if (expected.operation === "transform") return false
+    return studioStandardContextMatches(snapshot, expected)
+  }
+
   const expected = createStudioChangeRequest(tracked.plan.draft)
-  if (expected.operation !== "transform" || expected.intent === "remaster") return false
+  if (expected.operation !== "transform") return false
+  if (expected.intent === "remaster") return false
 
   if (expected.intent === "restyle") {
     return snapshot.intent === "restyle" && studioTransformContextMatches(snapshot, expected)
@@ -1971,6 +1978,33 @@ function studioChangeSnapshotMatchesPlan(snapshot: StudioChangeGenerationSnapsho
     && studioTransformContextMatches(snapshot, expected)
     && snapshot.cover_mode === expected.cover_mode
     && snapshot.voice_ref === expected.voice_ref
+}
+
+function studioStandardContextMatches(
+  snapshot: Exclude<StudioChangeGenerationSnapshot, { operation: "transform" }>,
+  expected: Exclude<StudioChangeGenerationInput, { operation: "transform" }>,
+): boolean {
+  if (
+    snapshot.operation !== expected.operation
+    || snapshot.instruction !== expected.instruction
+    || !orderedValuesMatch(snapshot.preserve, expected.preserve)
+    || !orderedValuesMatch(snapshot.reference_asset_refs, expected.reference_asset_refs)
+    || snapshot.output_count !== expected.output_count
+    || snapshot.scope.type !== expected.scope.type
+  ) return false
+
+  if (expected.scope.type === "insertion_point" || expected.scope.type === "from_position") {
+    return snapshot.scope.type === expected.scope.type && snapshot.scope.position_ms === expected.scope.position_ms
+  }
+  if (expected.scope.type === "time_range") {
+    return snapshot.scope.type === "time_range"
+      && snapshot.scope.start_ms === expected.scope.start_ms
+      && snapshot.scope.end_ms === expected.scope.end_ms
+  }
+  if (snapshot.scope.type !== "whole_version" || !("part_kind" in expected) || !("part_kind" in snapshot)) return false
+  return snapshot.part_kind === expected.part_kind
+    && snapshot.lyrics === (expected.lyrics?.trim() || null)
+    && snapshot.voice_ref === (expected.voice_ref?.trim() || null)
 }
 
 function studioTransformContextMatches(

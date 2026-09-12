@@ -2,14 +2,15 @@ import type {
   MoriStudioRemasterSource,
   StudioChangeGenerationSnapshot,
   StudioChangePreserve,
+  StandardStudioChangeGenerationSnapshot,
 } from "@/lib/mori-api"
 import {
   buildStudioChangePlan,
   createStudioTimelineRange,
-  defaultStudioChangePreserve,
   type StudioChangePlan,
   type StudioTimelineSection,
 } from "./studio-change"
+import { buildStudioLayerPlan } from "./studio-layers"
 import { buildStudioRemasterPlan } from "./studio-remaster"
 
 /**
@@ -22,13 +23,24 @@ export function studioChangePlanFromSnapshot(
   durationSeconds: number,
 ): StudioChangePlan {
   if (snapshot.operation !== "transform") {
+    if ("part_kind" in snapshot) {
+      return buildStudioLayerPlan(snapshot.part_kind, {
+        instruction: snapshot.instruction,
+        lyrics: snapshot.lyrics ?? undefined,
+        voiceRef: snapshot.voice_ref ?? undefined,
+        durationSeconds,
+        outputCount: snapshot.output_count,
+      })
+    }
+
+    const selection = standardSelection(snapshot)
     return buildStudioChangePlan(
       snapshot.operation,
-      wholeVersionSelection(durationSeconds),
-      "Continue the reviewed Studio change from this Version.",
+      selection,
+      snapshot.instruction,
       {
-        preserve: [...defaultStudioChangePreserve],
-        outputCount: 2,
+        preserve: [...snapshot.preserve],
+        outputCount: snapshot.output_count,
         transformScope: "whole_version",
         transformIntent: "restyle",
         coverMode: "vocal",
@@ -67,13 +79,33 @@ export function studioChangePlanFromSnapshot(
 
   return buildStudioChangePlan("transform", selection, snapshot.instruction, {
     preserve,
-    outputCount: normalizeOutputCount(snapshot.output_count),
+    outputCount: snapshot.output_count,
     transformScope: snapshot.scope.type === "whole_version" ? "whole_version" : "selected_section",
     transformIntent: "restyle",
     coverMode: "vocal",
     coverVoiceRef: null,
     referenceAssetRefs: [...snapshot.reference_asset_refs],
   })
+}
+
+function standardSelection(snapshot: StandardStudioChangeGenerationSnapshot): StudioTimelineSection {
+  if (snapshot.scope.type === "time_range") {
+    return {
+      id: "recovered-range",
+      label: "Recovered range",
+      startMs: snapshot.scope.start_ms,
+      endMs: snapshot.scope.end_ms,
+      weight: 1,
+    }
+  }
+  const positionMs = snapshot.scope.position_ms
+  return {
+    id: snapshot.scope.type === "insertion_point" ? "recovered-insertion-point" : "recovered-from-position",
+    label: snapshot.scope.type === "insertion_point" ? "Recovered insertion point" : "Recovered start point",
+    startMs: Math.max(0, positionMs - 1_000),
+    endMs: positionMs,
+    weight: 1,
+  }
 }
 
 function wholeVersionSelection(durationSeconds: number): StudioTimelineSection {
@@ -87,9 +119,4 @@ function wholeVersionSelection(durationSeconds: number): StudioTimelineSection {
     endMs: durationMs,
     weight: 1,
   }
-}
-
-function normalizeOutputCount(value: number): 1 | 2 | 4 {
-  if (value === 1 || value === 4) return value
-  return 2
 }

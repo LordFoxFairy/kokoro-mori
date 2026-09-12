@@ -1446,9 +1446,14 @@
           "mode",
           "source_version_ref",
           "operation",
+          "scope",
           "status",
           "progress",
           "candidate_refs",
+          "instruction",
+          "preserve",
+          "reference_asset_refs",
+          "output_count",
           "created_at"
         ],
         "properties": {
@@ -1481,6 +1486,64 @@
               "extend"
             ]
           },
+          "scope": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/InsertionPointScope"
+              },
+              {
+                "$ref": "#/components/schemas/TimeRangeScope"
+              },
+              {
+                "$ref": "#/components/schemas/FromPositionScope"
+              },
+              {
+                "$ref": "#/components/schemas/WholeVersionScope"
+              }
+            ]
+          },
+          "instruction": {
+            "$ref": "#/components/schemas/Instruction"
+          },
+          "preserve": {
+            "$ref": "#/components/schemas/PreserveList"
+          },
+          "reference_asset_refs": {
+            "$ref": "#/components/schemas/ReferenceAssetRefs"
+          },
+          "output_count": {
+            "$ref": "#/components/schemas/OutputCount"
+          },
+          "part_kind": {
+            "type": "string",
+            "enum": [
+              "vocals",
+              "instrumental"
+            ]
+          },
+          "lyrics": {
+            "oneOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 20000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "voice_ref": {
+            "oneOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "status": {
             "$ref": "#/components/schemas/GenerationStatus"
           },
@@ -1496,7 +1559,120 @@
             "type": "string",
             "format": "date-time"
           }
-        }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "operation": {
+                  "const": "replace_section"
+                }
+              },
+              "required": [
+                "operation"
+              ]
+            },
+            "then": {
+              "properties": {
+                "scope": {
+                  "$ref": "#/components/schemas/TimeRangeScope"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "operation": {
+                  "const": "extend"
+                }
+              },
+              "required": [
+                "operation"
+              ]
+            },
+            "then": {
+              "properties": {
+                "scope": {
+                  "$ref": "#/components/schemas/FromPositionScope"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "operation": {
+                  "const": "add_part"
+                },
+                "scope": {
+                  "properties": {
+                    "type": {
+                      "const": "whole_version"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ]
+                }
+              },
+              "required": [
+                "operation",
+                "scope"
+              ]
+            },
+            "then": {
+              "required": [
+                "part_kind",
+                "lyrics",
+                "voice_ref"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "part_kind": {
+                  "const": "vocals"
+                }
+              },
+              "required": [
+                "part_kind"
+              ]
+            },
+            "then": {
+              "properties": {
+                "lyrics": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 20000
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "part_kind": {
+                  "const": "instrumental"
+                }
+              },
+              "required": [
+                "part_kind"
+              ]
+            },
+            "then": {
+              "properties": {
+                "lyrics": {
+                  "const": null
+                },
+                "voice_ref": {
+                  "const": null
+                }
+              }
+            }
+          }
+        ]
       },
       "StudioRemasterGenerationSnapshot": {
         "type": "object",

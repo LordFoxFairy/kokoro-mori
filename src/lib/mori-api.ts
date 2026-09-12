@@ -563,6 +563,13 @@ type GenerationSnapshotBase = {
   created_at: string
 }
 
+type StudioChangeGenerationSnapshotBase = GenerationSnapshotBase & {
+  generation_kind: "studio_change"
+  song_plan_ref: null
+  mode: null
+  source_version_ref: MoriRef
+}
+
 export type NewSongGenerationSnapshot = GenerationSnapshotBase & {
   generation_kind: "new_song"
   song_plan_ref: MoriRef | null
@@ -572,22 +579,28 @@ export type NewSongGenerationSnapshot = GenerationSnapshotBase & {
   output_count: 2
 }
 
-export type StandardStudioChangeGenerationSnapshot = GenerationSnapshotBase & {
-  generation_kind: "studio_change"
-  song_plan_ref: null
-  mode: null
-  source_version_ref: MoriRef
-  operation: Exclude<StudioChangeOperation, "transform">
-  intent?: never
-  source?: never
-  variation_strength?: never
+type StandardStudioChangeSnapshotContext = {
+  instruction: string
+  preserve: StudioChangePreserve[]
+  reference_asset_refs: MoriRef[]
+  output_count: StudioChangeOutputCount
 }
 
-export type StudioRestyleGenerationSnapshot = GenerationSnapshotBase & {
-  generation_kind: "studio_change"
-  song_plan_ref: null
-  mode: null
-  source_version_ref: MoriRef
+export type StandardStudioChangeGenerationSnapshot = StudioChangeGenerationSnapshotBase & StandardStudioChangeSnapshotContext & (
+  | { operation: "add_part"; scope: StudioChangeInsertionScope }
+  | { operation: "replace_section"; scope: StudioChangeRangeScope }
+  | { operation: "extend"; scope: StudioChangeFromScope }
+)
+
+export type StudioLayerGenerationSnapshot = StudioChangeGenerationSnapshotBase & StandardStudioChangeSnapshotContext & {
+  operation: "add_part"
+  scope: StudioChangeWholeVersionScope
+  part_kind: StudioLayerKind
+  lyrics: string | null
+  voice_ref: MoriRef | null
+}
+
+export type StudioRestyleGenerationSnapshot = StudioChangeGenerationSnapshotBase & {
   operation: "transform"
   intent: "restyle"
   scope: StudioChangeRangeScope | StudioChangeWholeVersionScope
@@ -597,11 +610,7 @@ export type StudioRestyleGenerationSnapshot = GenerationSnapshotBase & {
   output_count: StudioChangeOutputCount
 }
 
-export type StudioCoverGenerationSnapshot = GenerationSnapshotBase & {
-  generation_kind: "studio_change"
-  song_plan_ref: null
-  mode: null
-  source_version_ref: MoriRef
+export type StudioCoverGenerationSnapshot = StudioChangeGenerationSnapshotBase & {
   operation: "transform"
   intent: "cover"
   scope: StudioChangeWholeVersionScope
@@ -613,11 +622,7 @@ export type StudioCoverGenerationSnapshot = GenerationSnapshotBase & {
   output_count: 2
 }
 
-export type StudioRemasterGenerationSnapshot = GenerationSnapshotBase & {
-  generation_kind: "studio_change"
-  song_plan_ref: null
-  mode: null
-  source_version_ref: MoriRef
+export type StudioRemasterGenerationSnapshot = StudioChangeGenerationSnapshotBase & {
   operation: "transform"
   intent: "remaster"
   source: StudioRemasterSource
@@ -626,6 +631,7 @@ export type StudioRemasterGenerationSnapshot = GenerationSnapshotBase & {
 
 export type StudioChangeGenerationSnapshot =
   | StandardStudioChangeGenerationSnapshot
+  | StudioLayerGenerationSnapshot
   | StudioRestyleGenerationSnapshot
   | StudioCoverGenerationSnapshot
   | StudioRemasterGenerationSnapshot

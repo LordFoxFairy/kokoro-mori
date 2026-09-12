@@ -74,10 +74,13 @@ import type {
   StemSeparationSnapshot,
   StemSeparationStatus,
   StemTargetKind,
+  StudioChangeFromScope,
+  StudioChangeInsertionScope,
   StudioChangePreserve,
   StudioChangeRangeScope,
   StudioChangeOperation,
   StudioChangeOutputCount,
+  StudioLayerKind,
   StudioChangeWholeVersionScope,
   StudioCoverMode,
   StudioRemasterSource,
@@ -181,6 +184,21 @@ function studioTransformScope(value: unknown): StudioChangeRangeScope | StudioCh
     return { type: "time_range", start_ms: value.start_ms, end_ms: value.end_ms }
   }
   return null
+}
+
+function studioStandardScope(value: unknown): StudioChangeInsertionScope | StudioChangeRangeScope | StudioChangeFromScope | StudioChangeWholeVersionScope | null {
+  if (!isRecord(value)) return null
+  if (value.type === "insertion_point" && integer(value.position_ms)) return { type: "insertion_point", position_ms: value.position_ms }
+  if (value.type === "time_range" && integer(value.start_ms) && integer(value.end_ms, 1) && value.end_ms > value.start_ms) {
+    return { type: "time_range", start_ms: value.start_ms, end_ms: value.end_ms }
+  }
+  if (value.type === "from_position" && integer(value.position_ms)) return { type: "from_position", position_ms: value.position_ms }
+  if (value.type === "whole_version") return { type: "whole_version" }
+  return null
+}
+
+function studioLayerKind(value: unknown): value is StudioLayerKind {
+  return value === "vocals" || value === "instrumental"
 }
 
 function studioChangePreserve(value: unknown): value is StudioChangePreserve {
@@ -681,13 +699,89 @@ export function parseGenerationSnapshot(value: unknown): GenerationSnapshot | nu
     if (value.song_plan_ref !== null || value.mode !== null || !nonEmptyString(value.source_version_ref) || !studioChangeOperation(value.operation)) return null
     if (value.operation !== "transform") {
       if ("intent" in value) return null
+      const scope = studioStandardScope(value.scope)
+      const preserve = studioChangePreserveList(value.preserve)
+      const referenceAssetRefs = studioReferenceAssetRefs(value.reference_asset_refs)
+      if (
+        scope === null
+        || !nonEmptyString(value.instruction)
+        || value.instruction.length > 2_000
+        || preserve === null
+        || referenceAssetRefs === null
+        || !studioChangeOutputCount(value.output_count)
+      ) return null
+      if (value.operation === "replace_section" && scope.type !== "time_range") return null
+      if (value.operation === "extend" && scope.type !== "from_position") return null
+      if (value.operation === "add_part" && scope.type === "whole_version") {
+        if (
+          !studioLayerKind(value.part_kind)
+          || !nullableString(value.lyrics)
+          || !nullableString(value.voice_ref)
+          || (value.part_kind === "vocals" && !nonEmptyString(value.lyrics))
+          || (value.part_kind === "instrumental" && (value.lyrics !== null || value.voice_ref !== null))
+        ) return null
+        return {
+          ...common,
+          generation_kind: "studio_change",
+          song_plan_ref: null,
+          mode: null,
+          source_version_ref: value.source_version_ref,
+          operation: "add_part",
+          scope,
+          part_kind: value.part_kind,
+          lyrics: value.lyrics,
+          voice_ref: value.voice_ref,
+          instruction: value.instruction,
+          preserve,
+          reference_asset_refs: referenceAssetRefs,
+          output_count: value.output_count,
+        }
+      }
+      if (value.operation === "replace_section") {
+        if (scope.type !== "time_range") return null
+        return {
+          ...common,
+          generation_kind: "studio_change",
+          song_plan_ref: null,
+          mode: null,
+          source_version_ref: value.source_version_ref,
+          operation: "replace_section",
+          scope,
+          instruction: value.instruction,
+          preserve,
+          reference_asset_refs: referenceAssetRefs,
+          output_count: value.output_count,
+        }
+      }
+      if (value.operation === "extend") {
+        if (scope.type !== "from_position") return null
+        return {
+          ...common,
+          generation_kind: "studio_change",
+          song_plan_ref: null,
+          mode: null,
+          source_version_ref: value.source_version_ref,
+          operation: "extend",
+          scope,
+          instruction: value.instruction,
+          preserve,
+          reference_asset_refs: referenceAssetRefs,
+          output_count: value.output_count,
+        }
+      }
+      if (scope.type !== "insertion_point") return null
       return {
         ...common,
         generation_kind: "studio_change",
         song_plan_ref: null,
         mode: null,
         source_version_ref: value.source_version_ref,
-        operation: value.operation,
+        operation: "add_part",
+        scope,
+        instruction: value.instruction,
+        preserve,
+        reference_asset_refs: referenceAssetRefs,
+        output_count: value.output_count,
       }
     }
 

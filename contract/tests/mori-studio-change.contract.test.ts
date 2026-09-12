@@ -237,6 +237,13 @@ describe("Mori Studio change OpenAPI contract", () => {
     ])
 
     const standardStudioSnapshot = recordValue(schemas.StandardStudioChangeGenerationSnapshot, "StandardStudioChangeGenerationSnapshot")
+    expect(arrayValue(standardStudioSnapshot.required, "Standard Studio snapshot required fields")).toEqual(expect.arrayContaining([
+      "scope",
+      "instruction",
+      "preserve",
+      "reference_asset_refs",
+      "output_count",
+    ]))
     const studioProperties = recordValue(standardStudioSnapshot.properties, "Studio snapshot properties")
     expect(recordValue(studioProperties.generation_kind, "Studio generation kind").const).toBe("studio_change")
     expect(recordValue(studioProperties.operation, "Studio operation").enum).toEqual([
@@ -244,6 +251,8 @@ describe("Mori Studio change OpenAPI contract", () => {
       "replace_section",
       "extend",
     ])
+    expect(arrayValue(recordValue(studioProperties.scope, "Standard Studio snapshot scope").oneOf, "Standard Studio snapshot scopes")).toHaveLength(4)
+    expect(recordValue(studioProperties.part_kind, "Standard Studio snapshot layer kind").enum).toEqual(["vocals", "instrumental"])
 
     const restyleSnapshot = recordValue(schemas.StudioRestyleGenerationSnapshot, "StudioRestyleGenerationSnapshot")
     expect(arrayValue(restyleSnapshot.required, "Restyle snapshot required fields")).toEqual(expect.arrayContaining([

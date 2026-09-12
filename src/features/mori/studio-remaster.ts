@@ -65,8 +65,11 @@ export function isStudioRemasterPlan(plan: StudioChangePlan | null): plan is Stu
     && plan.draft.intent === "remaster"
 }
 
-export function isStudioRemasterSnapshot(snapshot: { intent?: unknown }): snapshot is StudioRemasterGenerationSnapshot {
-  return snapshot.intent === "remaster"
+export function isStudioRemasterSnapshot(snapshot: unknown): snapshot is StudioRemasterGenerationSnapshot {
+  return typeof snapshot === "object"
+    && snapshot !== null
+    && "intent" in snapshot
+    && snapshot.intent === "remaster"
 }
 
 function wholeVersionSelection(durationSeconds: number): StudioTimelineSection {
