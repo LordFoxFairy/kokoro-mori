@@ -20,7 +20,7 @@ const createTestStemPlaybackController: StemPlaybackFactory = () => ({
 })
 
 describe("Mori studio page", () => {
-  function renderStudio(api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "putCurrentVersion" | "listCandidates" | "createStudioChange" | "getGeneration" | "getGenerationEvents" | "cancelGeneration" | "createLyricsRevision" | "getLyricsRevision" | "getLyricsRevisionEvents" | "cancelLyricsRevision" | "createStemSeparation" | "getStemSeparation" | "getStemSeparationEvents" | "cancelStemSeparation" | "createArtworkGeneration" | "getArtworkGeneration" | "getArtworkGenerationEvents" | "cancelArtworkGeneration" | "getReleaseDraft" | "putReleaseDraft" | "createMixRevision">>, studioCandidate = previewCandidates[0]) {
+  function renderStudio(api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "putCurrentVersion" | "listCandidates" | "listCreativeSources" | "createStudioChange" | "getGeneration" | "getGenerationEvents" | "cancelGeneration" | "createLyricsRevision" | "getLyricsRevision" | "getLyricsRevisionEvents" | "cancelLyricsRevision" | "createStemSeparation" | "getStemSeparation" | "getStemSeparationEvents" | "cancelStemSeparation" | "createArtworkGeneration" | "getArtworkGeneration" | "getArtworkGenerationEvents" | "cancelArtworkGeneration" | "getReleaseDraft" | "putReleaseDraft" | "createMixRevision">>, studioCandidate = previewCandidates[0]) {
     return render(
       <MoriAppProvider>
         <StudioPageContent candidate={studioCandidate} api={api} stemPlaybackFactory={createTestStemPlaybackController} />
@@ -1154,6 +1154,29 @@ describe("Mori studio page", () => {
     expect(within(takeLanes).getByRole("article", { name: "Take 4: First Light · City Lights Afterglow" })).toBeInTheDocument()
     expect(within(takeLanes).queryByText("First Light · Unlinked take")).not.toBeInTheDocument()
     expect(within(takeLanes).getByRole("article", { name: "Take 1: First Light" })).toHaveTextContent("Current version")
+  })
+
+  it("loads the live Creative Source projection into the Studio composer", async () => {
+    const listCreativeSources = vi.fn<MoriApi["listCreativeSources"]>(async () => ({
+      data: {
+        sources: [
+          { source_kind: "audio", source_ref: "asset_live_room", name: "Live room guide", description: "18 sec · brushed pulse", duration_seconds: 18, created_at: "2026-09-12T12:00:00.000Z" },
+          { source_kind: "voice", source_ref: "voice_live_aria", name: "Aria", description: "Clear mezzo · close phrasing", created_at: "2026-09-12T12:00:01.000Z" },
+        ],
+        next_cursor: null,
+      },
+      meta: { request_id: "request_studio_sources" },
+    }))
+    renderStudio({ listCreativeSources })
+
+    await waitFor(() => expect(listCreativeSources).toHaveBeenCalledWith({ limit: 20 }))
+    const aiChanges = screen.getByRole("region", { name: "Mori AI changes" })
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Transform" }))
+    expect(within(aiChanges).getByRole("button", { name: "Use Live room guide as reference" })).toBeInTheDocument()
+    expect(within(aiChanges).queryByRole("button", { name: "Use City Lights demo as reference" })).not.toBeInTheDocument()
+
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Cover" }))
+    expect(within(aiChanges).getByRole("option", { name: "Aria · Clear mezzo · close phrasing" })).toBeInTheDocument()
   })
 
   it("creates a typed Vocal Cover as two new Takes without replacing Current", async () => {

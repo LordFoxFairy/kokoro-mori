@@ -12,6 +12,7 @@ import {
   type MoriApi,
   type MoriCompositionRevisionInput,
   type MoriCandidate,
+  type MoriCreativeSource,
   type MoriExportInput,
   type MoriExportSnapshot,
   type MoriExportStatus,
@@ -83,7 +84,7 @@ type StudioPageContentProps = {
   initialSurface?: StudioEntrySurface
   initialIntent?: StudioEntryIntent
   initialGenerationRef?: string | null
-  api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "getProjectWorkspace" | "putCurrentVersion" | "putLyricsDraft" | "putProjectWorkspaceOpenVersion" | "listCandidates" | "createStudioChange" | "getGeneration" | "getGenerationEvents" | "cancelGeneration" | "createLyricsRevision" | "getLyricsRevision" | "getLyricsRevisionEvents" | "cancelLyricsRevision" | "createStemSeparation" | "getStemSeparation" | "getStemSeparationEvents" | "cancelStemSeparation" | "createArtworkGeneration" | "getArtworkGeneration" | "getArtworkGenerationEvents" | "cancelArtworkGeneration" | "getReleaseDraft" | "putReleaseDraft" | "createMixRevision">>
+  api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "getProjectWorkspace" | "putCurrentVersion" | "putLyricsDraft" | "putProjectWorkspaceOpenVersion" | "listCandidates" | "listCreativeSources" | "createStudioChange" | "getGeneration" | "getGenerationEvents" | "cancelGeneration" | "createLyricsRevision" | "getLyricsRevision" | "getLyricsRevisionEvents" | "cancelLyricsRevision" | "createStemSeparation" | "getStemSeparation" | "getStemSeparationEvents" | "cancelStemSeparation" | "createArtworkGeneration" | "getArtworkGeneration" | "getArtworkGenerationEvents" | "cancelArtworkGeneration" | "getReleaseDraft" | "putReleaseDraft" | "createMixRevision">>
   stemPlaybackFactory?: StemPlaybackFactory
 }
 
@@ -210,6 +211,25 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
   const finishStatusDescriptionId = useId()
   const defaultApi = useMemo(() => createMoriApiClient(), [])
   const studioApi = useMemo(() => ({ ...defaultApi, ...(api ?? {}) }), [api, defaultApi])
+  const sourceListApi = api === undefined ? defaultApi.listCreativeSources : api.listCreativeSources
+  const [resolvedCreativeSources, setResolvedCreativeSources] = useState<readonly MoriCreativeLibrarySource[] | undefined>(() => creativeSources)
+  useEffect(() => {
+    if (creativeSources !== undefined) {
+      setResolvedCreativeSources(creativeSources)
+      return
+    }
+    if (sourceListApi === undefined) {
+      setResolvedCreativeSources(undefined)
+      return
+    }
+    let disposed = false
+    void sourceListApi({ limit: 20 }).then((response) => {
+      if (!disposed) setResolvedCreativeSources(response.data.sources.map(toStudioCreativeSource))
+    }).catch(() => {
+      if (!disposed) setResolvedCreativeSources(undefined)
+    })
+    return () => { disposed = true }
+  }, [creativeSources, sourceListApi])
   const initialCandidate = resolveInitialCandidate(candidate, projectRef, versionRef)
   const activeProjectRef = projectRef?.trim() || previewProject.projectRef
   const [activeCandidate, setActiveCandidate] = useState<Candidate | null>(() => initialCandidate)
@@ -1596,7 +1616,7 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
         <section className={styles.studioCanvas} aria-label="Studio editor">
           <div className={styles.studioCanvasTop}><div><span className={styles.eyebrow}><span className={styles.eyebrowDot} />Editing with intention</span><h2>Shape the feeling.</h2></div></div>
           <div id="mori-studio-panel-arrangement" role="tabpanel" aria-labelledby="mori-studio-tool-arrangement" hidden={activeTool !== "arrangement"}>
-            {activeTool === "arrangement" ? <ArrangementEditor key={`${activeCandidate.versionRef}:${projectWorkspaceMemory.projection?.open_version?.revision ?? 0}`} compositionSave={(api !== undefined && "createCompositionRevision" in api ? api.createCompositionRevision : studioApi.createCompositionRevision) as MoriApi["createCompositionRevision"]} compositionRevision={projectWorkspaceMemory.projection?.open_version?.revision ?? 0} onRefreshWorkspace={projectWorkspaceMemory.refresh} candidate={activeCandidate} creativeSources={creativeSources} takes={studioCandidates} structure={hasPreviewProjectContent ? previewSongPlan.structure : wholeSongStructure} lyricsPreview={initialStudioLyrics} currentVersionRef={currentVersionRef} playerVersionRef={playerCandidate?.versionRef ?? ""} positionSeconds={playerCandidate?.versionRef === activeCandidate.versionRef ? positionSeconds : 0} playing={playerCandidate?.versionRef === activeCandidate.versionRef && playing} initialIntent={initialIntent} studioChangeRun={studioChangeRun} currentVersionCommitRun={currentVersionCommitRun} onSeekTimeline={(nextPositionSeconds) => seekTimeline(activeCandidate, nextPositionSeconds)} onGenerateStudioChange={(plan) => { void generateStudioChange(plan) }} onCancelStudioChange={() => { void cancelStudioChange() }} onResetStudioChange={resetStudioChange} onSelectTake={selectTake} onPreviewTake={previewTake} onPromoteTake={(take) => { void commitCurrentVersion(take) }} onRetryCurrentVersion={retryCurrentVersionCommit} onDismissCurrentVersion={dismissCurrentVersionCommit} onOpenLyrics={() => {
+            {activeTool === "arrangement" ? <ArrangementEditor key={`${activeCandidate.versionRef}:${projectWorkspaceMemory.projection?.open_version?.revision ?? 0}`} compositionSave={(api !== undefined && "createCompositionRevision" in api ? api.createCompositionRevision : studioApi.createCompositionRevision) as MoriApi["createCompositionRevision"]} compositionRevision={projectWorkspaceMemory.projection?.open_version?.revision ?? 0} onRefreshWorkspace={projectWorkspaceMemory.refresh} candidate={activeCandidate} creativeSources={resolvedCreativeSources} takes={studioCandidates} structure={hasPreviewProjectContent ? previewSongPlan.structure : wholeSongStructure} lyricsPreview={initialStudioLyrics} currentVersionRef={currentVersionRef} playerVersionRef={playerCandidate?.versionRef ?? ""} positionSeconds={playerCandidate?.versionRef === activeCandidate.versionRef ? positionSeconds : 0} playing={playerCandidate?.versionRef === activeCandidate.versionRef && playing} initialIntent={initialIntent} studioChangeRun={studioChangeRun} currentVersionCommitRun={currentVersionCommitRun} onSeekTimeline={(nextPositionSeconds) => seekTimeline(activeCandidate, nextPositionSeconds)} onGenerateStudioChange={(plan) => { void generateStudioChange(plan) }} onCancelStudioChange={() => { void cancelStudioChange() }} onResetStudioChange={resetStudioChange} onSelectTake={selectTake} onPreviewTake={previewTake} onPromoteTake={(take) => { void commitCurrentVersion(take) }} onRetryCurrentVersion={retryCurrentVersionCommit} onDismissCurrentVersion={dismissCurrentVersionCommit} onOpenLyrics={() => {
               setActiveTool("lyrics")
               window.requestAnimationFrame(() => document.getElementById("mori-studio-tool-lyrics")?.focus())
             }} /> : null}
@@ -2087,4 +2107,15 @@ function LyricsCard({ lyrics, onOpen }: { lyrics: string; onOpen: () => void }) 
     </div>
     {hasLyrics ? <p className={styles.lyricsPreview}>{lyrics}</p> : <div className={styles.lyricsEmpty}><strong>No lyric draft attached</strong><span>Start words for this Version without leaving the Studio context.</span></div>}
   </section>
+}
+
+function toStudioCreativeSource(source: MoriCreativeSource): MoriCreativeLibrarySource {
+  return {
+    sourceKind: source.source_kind,
+    ref: source.source_ref,
+    name: source.name,
+    description: source.description,
+    ...(source.source_kind === "audio" ? { durationSeconds: source.duration_seconds } : {}),
+    ...(source.source_kind === "inspiration" ? { style: source.style } : {}),
+  }
 }
