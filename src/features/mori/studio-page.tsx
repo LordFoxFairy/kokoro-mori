@@ -308,6 +308,7 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
     versionRef: activeVersionRef,
     versionTitle: activeCandidate?.title ?? "",
     api: studioApi,
+    activeTasks: projectWorkspaceMemory.activeTasks,
   })
   const activeVersionRefRef = useRef(activeVersionRef)
   const activeProjectRefRef = useRef(activeProjectRef)
@@ -327,6 +328,7 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
   const recoveredStudioGenerationSnapshotRef = useRef<StudioChangeGenerationSnapshot | null>(null)
   const ignoredStemSeparationsRef = useRef(new Set<string>())
   const activeStemEventRequestRef = useRef<{ stemSeparationRef: string; controller: AbortController } | null>(null)
+  const exportRecoveryTaskRef = useRef<string | null>(null)
   const preserveInitialFinishEntryRef = useRef(initialSurface === "finish")
   const previousStudioContextRef = useRef({ projectRef: activeProjectRef, versionRef: activeVersionRef })
   const linkCopyResetTimerRef = useRef<number | null>(null)
@@ -372,6 +374,7 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
     exportCommandEpochRef.current += 1
     mixRevisionHydrationEpochRef.current += 1
     pendingExportCommandRef.current = null
+    exportRecoveryTaskRef.current = null
     if (contextChanged) pendingStudioChangeCommandRef.current = null
     setTrackedStemSeparation((current) => {
       if (current === null || current.sourceVersionRef === activeVersionRef) return current
@@ -459,6 +462,72 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
       disposed = true
     }
   }, [activeVersionRef, api, projectWorkspaceMemory.projection, projectWorkspaceMemory.workspaceStatus, shouldUseWorkspaceMemory, studioApi])
+
+  useEffect(() => {
+    const getExport = studioApi.getExport
+    const task = projectWorkspaceMemory.activeTasks.find((candidate) => (
+      candidate.kind === "export"
+      && candidate.project_ref === activeProjectRef
+      && candidate.version_ref === activeVersionRef
+    ))
+    if (
+      activeVersionRef === null
+      || projectWorkspaceMemory.workspaceStatus !== "ready"
+      || getExport === undefined
+      || task === undefined
+      || exportRecoveryTaskRef.current === task.task_ref
+    ) return
+
+    exportRecoveryTaskRef.current = task.task_ref
+    const sourceProjectRef = activeProjectRef
+    const sourceVersionRef = activeVersionRef
+    const commandEpoch = exportCommandEpochRef.current + 1
+    exportCommandEpochRef.current = commandEpoch
+    pendingExportCommandRef.current = null
+    let disposed = false
+
+    void getExport(task.task_ref).then((response) => {
+      if (
+        disposed
+        || exportCommandEpochRef.current !== commandEpoch
+        || activeProjectRefRef.current !== sourceProjectRef
+        || activeVersionRefRef.current !== sourceVersionRef
+      ) return
+      const snapshot = response.data
+      if (
+        snapshot.export_ref !== task.task_ref
+        || snapshot.project_ref !== sourceProjectRef
+        || snapshot.version_ref !== sourceVersionRef
+      ) throw new Error("export_snapshot_context_mismatch")
+      const input = exportInputFromSnapshot(snapshot)
+      setExportInput(input)
+      setExportSnapshot(snapshot)
+      setExportMessage(snapshot.status === "failed" ? "The export did not finish. Your choices are still here." : null)
+      exportFeedbackRef.current = snapshot.status
+      setExportFeedback(snapshot.status)
+      if (snapshot.status === "queued" || snapshot.status === "processing") {
+        setTrackedExport({ exportRef: snapshot.export_ref, projectRef: sourceProjectRef, sourceVersionRef, input, commandEpoch })
+      } else {
+        setTrackedExport(null)
+      }
+    }).catch((error) => {
+      if (
+        disposed
+        || exportCommandEpochRef.current !== commandEpoch
+        || activeProjectRefRef.current !== sourceProjectRef
+        || activeVersionRefRef.current !== sourceVersionRef
+      ) return
+      exportFeedbackRef.current = "failed"
+      setExportFeedback("failed")
+      setExportMessage(error instanceof Error && error.message === "export_snapshot_context_mismatch"
+        ? "The export result did not match this Version. Your choices are still here."
+        : "Mori could not reconnect to this export. Your Version is still available to export again.")
+    })
+
+    return () => {
+      disposed = true
+    }
+  }, [activeProjectRef, activeVersionRef, projectWorkspaceMemory.activeTasks, projectWorkspaceMemory.workspaceStatus, studioApi])
 
   useEffect(() => {
     const requestedProjectRef = projectRef?.trim()
@@ -1911,6 +1980,18 @@ function mixRevisionMatchesInput(revision: MoriMixRevision, input: MixRevisionIn
 
 function exportSnapshotMatchesInput(snapshot: MoriExportSnapshot, input: MoriExportInput): boolean {
   return exportInputsMatch({ source: snapshot.source, scope: snapshot.scope, format: snapshot.format }, input)
+}
+
+function exportInputFromSnapshot(snapshot: MoriExportSnapshot): MoriExportInput {
+  return {
+    source: snapshot.source.type === "version"
+      ? { type: "version" }
+      : { type: "mix_revision", mix_revision_ref: snapshot.source.mix_revision_ref },
+    scope: snapshot.scope.type === "full_song"
+      ? { type: "full_song" }
+      : { type: "time_range", start_ms: snapshot.scope.start_ms, end_ms: snapshot.scope.end_ms },
+    format: snapshot.format,
+  }
 }
 
 function exportInputsMatch(left: MoriExportInput, right: MoriExportInput): boolean {

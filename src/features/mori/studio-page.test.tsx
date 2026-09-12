@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { StrictMode } from "react"
 import { describe, expect, it, vi } from "vitest"
-import type { ArtworkGenerationInput, MoriApi, MoriExportInput, ReleaseDraftInput, StudioChangeGenerationInput, StudioRestyleGenerationSnapshot } from "@/lib/mori-api"
+import type { ArtworkGenerationInput, MoriApi, MoriExportInput, MoriProjectWorkspaceProjection, ReleaseDraftInput, StudioChangeGenerationInput, StudioRestyleGenerationSnapshot } from "@/lib/mori-api"
 import { MoriApiRequestError } from "@/lib/mori-api-client"
 import { MoriAppProvider } from "./components/mori-app-provider"
 import { previewCandidates } from "./preview-data"
@@ -20,7 +20,7 @@ const createTestStemPlaybackController: StemPlaybackFactory = () => ({
 })
 
 describe("Mori studio page", () => {
-  function renderStudio(api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "putCurrentVersion" | "getCompositionRevision" | "listCandidates" | "listCreativeSources" | "createStudioChange" | "createCompositionRevision" | "getGeneration" | "getGenerationEvents" | "cancelGeneration" | "createLyricsRevision" | "getLyricsRevision" | "getLyricsRevisionEvents" | "cancelLyricsRevision" | "createStemSeparation" | "getStemSeparation" | "getStemSeparationEvents" | "cancelStemSeparation" | "createArtworkGeneration" | "getArtworkGeneration" | "getArtworkGenerationEvents" | "cancelArtworkGeneration" | "getReleaseDraft" | "putReleaseDraft" | "createMixRevision">>, studioCandidate = previewCandidates[0]) {
+  function renderStudio(api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "getProjectWorkspace" | "putCurrentVersion" | "getCompositionRevision" | "listCandidates" | "listCreativeSources" | "createStudioChange" | "createCompositionRevision" | "getGeneration" | "getGenerationEvents" | "cancelGeneration" | "createLyricsRevision" | "getLyricsRevision" | "getLyricsRevisionEvents" | "cancelLyricsRevision" | "createStemSeparation" | "getStemSeparation" | "getStemSeparationEvents" | "cancelStemSeparation" | "createArtworkGeneration" | "getArtworkGeneration" | "getArtworkGenerationEvents" | "cancelArtworkGeneration" | "getReleaseDraft" | "putReleaseDraft" | "createMixRevision">>, studioCandidate = previewCandidates[0]) {
     return render(
       <MoriAppProvider>
         <StudioPageContent candidate={studioCandidate} api={api} stemPlaybackFactory={createTestStemPlaybackController} />
@@ -3756,6 +3756,64 @@ describe("Mori studio page", () => {
     const exportingButton = screen.getByRole("button", { name: "Exporting", hidden: true })
     expect(exportingButton).toHaveAttribute("data-export-status", "queued")
     expect(exportingButton.querySelector('[data-export-icon="queued"]')).toBeInTheDocument()
+  })
+
+  it("recovers an active export from the durable Project workspace", async () => {
+    const exportSnapshot = {
+      export_ref: "export_workspace_recovery",
+      project_ref: "project_preview_first_light",
+      version_ref: "version_preview_first_light_a",
+      source: { type: "version" as const },
+      scope: { type: "full_song" as const },
+      format: "wav" as const,
+      status: "processing" as const,
+      download_url: null,
+      created_at: "2026-09-12T12:00:00.000Z",
+    }
+    const workspace: MoriProjectWorkspaceProjection = {
+      project: {
+        project_ref: "project_preview_first_light",
+        title: "First Light",
+        description: "A bright, patient song about finding your way home.",
+        current_version_ref: "version_preview_first_light_a",
+        candidate_count: 2,
+        last_activity_at: "2026-09-12T12:00:00.000Z",
+      },
+      current_song_plan: null,
+      open_version: {
+        project_ref: "project_preview_first_light",
+        version_ref: "version_preview_first_light_a",
+        revision: 1,
+        updated_at: "2026-09-12T12:00:00.000Z",
+      },
+      latest_lyrics_draft: null,
+      latest_mix_revision: null,
+      active_tasks: [{
+        task_ref: exportSnapshot.export_ref,
+        kind: "export" as const,
+        project_ref: exportSnapshot.project_ref,
+        version_ref: exportSnapshot.version_ref,
+        status: "running" as const,
+        progress: 61,
+        updated_at: exportSnapshot.created_at,
+      }],
+      revision_cursor: "workspace_export_recovery_1",
+      observed_at: exportSnapshot.created_at,
+    }
+    const getExport = vi.fn<MoriApi["getExport"]>(async () => ({
+      data: exportSnapshot,
+      meta: { request_id: "request_export_workspace_recovery" },
+    }))
+    renderStudio({
+      getProjectWorkspace: async () => ({ data: workspace, meta: { request_id: "request_workspace_export_recovery" } }),
+      getExport,
+    })
+
+    await waitFor(() => expect(getExport).toHaveBeenCalledWith(exportSnapshot.export_ref))
+    fireEvent.click(screen.getByRole("button", { name: "Exporting", hidden: true }))
+    const dialog = screen.getByRole("dialog", { name: "Export First Light" })
+    expect(within(dialog).getByRole("radio", { name: "WAV" })).toBeChecked()
+    expect(await within(dialog).findByRole("status")).toHaveTextContent("Rendering WAV")
   })
 
   it("carries the selected Arrangement range into the export request", async () => {

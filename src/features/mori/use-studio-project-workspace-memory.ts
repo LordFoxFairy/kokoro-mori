@@ -33,6 +33,7 @@ export type StudioProjectWorkspaceMemory = {
   lyricsDraft: MoriLyricsDraftRevision | null
   canSaveLyrics: boolean
   canSyncOpenVersion: boolean
+  activeTasks: MoriProjectWorkspaceProjection["active_tasks"]
   saveRun: ProjectWorkspaceSaveRun
   saveLyrics: (text: string) => void
   retrySave: () => void
@@ -59,6 +60,7 @@ export function useStudioProjectWorkspaceMemory({ projectRef, activeVersionRef, 
   const saveRun = saveState.contextKey === contextKey ? saveState.run : idleProjectWorkspaceSaveRun
   const confirmedProjection = saveState.contextKey === contextKey ? saveState.confirmedProjection : null
   const projection = workspace.projection
+  const activeTasks = projection?.active_tasks ?? []
   const openVersionMatches = activeVersionRef !== null && projection?.open_version?.version_ref === activeVersionRef
   const lyricsDraft = openVersionMatches ? projection?.latest_lyrics_draft ?? null : null
   const canSaveLyrics = workspace.status === "ready" && openVersionMatches && putLyricsDraft !== undefined
@@ -190,6 +192,7 @@ export function useStudioProjectWorkspaceMemory({ projectRef, activeVersionRef, 
     lyricsDraft,
     canSaveLyrics,
     canSyncOpenVersion: putProjectWorkspaceOpenVersion !== undefined,
+    activeTasks,
     saveRun,
     saveLyrics,
     retrySave,

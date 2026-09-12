@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import type { CreateShareInput, MoriApi, ReleaseDraftInput } from "@/lib/mori-api"
+import type { ArtworkGenerationSnapshot, CreateShareInput, MoriApi, MoriProjectWorkspaceActiveTask, ReleaseDraftInput } from "@/lib/mori-api"
 import { MoriApiRequestError } from "@/lib/mori-api-client"
 import {
   artworkSnapshotMatchesPlan,
@@ -55,6 +55,7 @@ type UseStudioReleaseWorkflowInput = {
   versionRef: string | null
   versionTitle: string
   api: StudioReleaseApi
+  activeTasks?: readonly MoriProjectWorkspaceActiveTask[]
 }
 
 export type StudioReleaseWorkflow = {
@@ -80,7 +81,7 @@ export type StudioReleaseWorkflow = {
   revokeShare: () => Promise<void>
 }
 
-export function useStudioReleaseWorkflow({ versionRef, versionTitle, api }: UseStudioReleaseWorkflowInput): StudioReleaseWorkflow {
+export function useStudioReleaseWorkflow({ versionRef, versionTitle, api, activeTasks = [] }: UseStudioReleaseWorkflowInput): StudioReleaseWorkflow {
   const [finishView, setFinishView] = useState<StudioFinishView>("remaster")
   const [releaseDraft, setReleaseDraft] = useState<StudioReleaseDraft>(() => createInitialStudioReleaseDraft(versionTitle))
   const [artworkDraft, setArtworkDraft] = useState<StudioArtworkDraft>({ prompt: "", style: "abstract", palette: "warm_dawn" })
@@ -99,6 +100,7 @@ export function useStudioReleaseWorkflow({ versionRef, versionTitle, api }: UseS
   const pendingShareCommand = useRef<{ versionRef: string; draftRef: string; revision: number; idempotencyKey: string } | null>(null)
   const pendingShareRevokeCommand = useRef<{ shareRef: string; idempotencyKey: string } | null>(null)
   const activeArtworkEventRequest = useRef<{ artworkGenerationRef: string; controller: AbortController } | null>(null)
+  const artworkRecoveryTaskRef = useRef<string | null>(null)
   activeVersionRef.current = versionRef
 
   useEffect(() => {
@@ -110,6 +112,7 @@ export function useStudioReleaseWorkflow({ versionRef, versionTitle, api }: UseS
     pendingPublishCommand.current = null
     pendingShareCommand.current = null
     pendingShareRevokeCommand.current = null
+    artworkRecoveryTaskRef.current = null
     activeArtworkEventRequest.current?.controller.abort()
     activeArtworkEventRequest.current = null
     setFinishView("remaster")
@@ -121,6 +124,57 @@ export function useStudioReleaseWorkflow({ versionRef, versionTitle, api }: UseS
     setReleasePublish(idleStudioReleasePublish)
     setReleaseShare(idleStudioReleaseShare)
   }, [versionRef, versionTitle])
+
+  useEffect(() => {
+    if (versionRef === null || api.getArtworkGeneration === undefined) return
+    const task = activeTasks.find((candidate) => candidate.kind === "artwork_generation" && candidate.version_ref === versionRef)
+    if (task === undefined || artworkRecoveryTaskRef.current === task.task_ref) return
+    artworkRecoveryTaskRef.current = task.task_ref
+    const sourceVersionRef = versionRef
+    const contextEpoch = versionContextEpoch.current
+    let disposed = false
+
+    void api.getArtworkGeneration(task.task_ref).then((response) => {
+      if (disposed || versionContextEpoch.current !== contextEpoch || activeVersionRef.current !== sourceVersionRef) return
+      const snapshot = response.data
+      const tracked: TrackedArtworkGeneration = {
+        artworkGenerationRef: snapshot.artwork_generation_ref,
+        sourceVersionRef,
+        plan: studioArtworkPlanFromSnapshot(snapshot),
+      }
+      if (snapshot.artwork_generation_ref !== task.task_ref || !artworkSnapshotMatchesPlan(snapshot, tracked)) {
+        throw new Error("artwork_generation_snapshot_context_mismatch")
+      }
+      setArtworkRun({
+        status: snapshot.status,
+        artworkGenerationRef: snapshot.artwork_generation_ref,
+        progress: snapshot.progress,
+        plan: tracked.plan,
+        candidates: snapshot.status === "succeeded" ? snapshot.candidates : [],
+        message: snapshot.status === "failed" || snapshot.status === "cancelled" || snapshot.status === "expired"
+          ? artworkGenerationTerminalMessage(snapshot.status)
+          : null,
+      })
+      if (isActiveArtworkGenerationStatus(snapshot.status)) setTrackedArtworkGeneration(tracked)
+    }).catch((error) => {
+      if (disposed || versionContextEpoch.current !== contextEpoch || activeVersionRef.current !== sourceVersionRef) return
+      setTrackedArtworkGeneration(null)
+      setArtworkRun({
+        status: "failed",
+        artworkGenerationRef: task.task_ref,
+        progress: task.progress,
+        plan: null,
+        candidates: [],
+        message: error instanceof Error && error.message === "artwork_generation_snapshot_context_mismatch"
+          ? "The artwork task did not match this Version. Try again."
+          : "Mori could not reconnect to this artwork task. Try again.",
+      })
+    })
+
+    return () => {
+      disposed = true
+    }
+  }, [activeTasks, api, versionRef])
 
   useEffect(() => {
     if (versionRef === null) return
@@ -660,6 +714,17 @@ function releaseInputsMatch(left: ReleaseDraftInput, right: ReleaseDraftInput): 
   ) return false
   return left.artwork.type === "current"
     || (right.artwork.type === "artwork_candidate" && left.artwork.artwork_candidate_ref === right.artwork.artwork_candidate_ref)
+}
+
+function studioArtworkPlanFromSnapshot(snapshot: ArtworkGenerationSnapshot): StudioArtworkPlan {
+  return {
+    prompt: snapshot.prompt,
+    style: snapshot.style,
+    palette: snapshot.palette,
+    aspectRatio: snapshot.aspect_ratio,
+    textPolicy: snapshot.text_policy,
+    outputCount: snapshot.output_count,
+  }
 }
 
 function artworkGenerationFailureMessage(error: unknown): string {

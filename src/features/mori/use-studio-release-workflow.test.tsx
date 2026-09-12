@@ -1,6 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import type { MoriApi, MoriRelease, MoriReleaseDraft, MoriShare } from "@/lib/mori-api"
+import type { MoriApi, MoriProjectWorkspaceActiveTask, MoriRelease, MoriReleaseDraft, MoriShare } from "@/lib/mori-api"
 import { useStudioReleaseWorkflow } from "./use-studio-release-workflow"
 
 type ReleaseApi = Parameters<typeof useStudioReleaseWorkflow>[0]["api"]
@@ -168,5 +168,48 @@ describe("useStudioReleaseWorkflow release tracking", () => {
 
     expect(result.current.releasePublish.status).toBe("idle")
     expect(result.current.releasePublish.releaseRef).toBeNull()
+  })
+
+  it("recovers an active artwork task from the project workspace", async () => {
+    const artworkSnapshot = {
+      artwork_generation_ref: "artwork_generation_1",
+      version_ref: "version_1",
+      status: "generating" as const,
+      progress: 42,
+      prompt: "A quiet dawn",
+      style: "abstract" as const,
+      palette: "warm_dawn" as const,
+      aspect_ratio: "1:1" as const,
+      text_policy: "no_text" as const,
+      output_count: 4 as const,
+      candidates: [],
+      created_at: "2026-09-12T12:00:00.000Z",
+    }
+    const getArtworkGeneration = vi.fn<MoriApi["getArtworkGeneration"]>(async () => ({
+      data: artworkSnapshot,
+      meta: { request_id: "request_artwork_recovery" },
+    }))
+    const activeTasks: MoriProjectWorkspaceActiveTask[] = [{
+      task_ref: "artwork_generation_1",
+      kind: "artwork_generation",
+      project_ref: "project_1",
+      version_ref: "version_1",
+      status: "running",
+      progress: 42,
+      updated_at: "2026-09-12T12:00:00.000Z",
+    }]
+    const api = createApi({ getArtworkGeneration })
+    const { result } = renderHook(() => useStudioReleaseWorkflow({
+      versionRef: "version_1",
+      versionTitle: "Morning Lines",
+      api,
+      activeTasks,
+    }))
+
+    await waitFor(() => expect(result.current.artworkRun.status).toBe("generating"))
+    expect(getArtworkGeneration).toHaveBeenCalledWith("artwork_generation_1")
+    expect(result.current.artworkRun.artworkGenerationRef).toBe("artwork_generation_1")
+    expect(result.current.artworkRun.progress).toBe(42)
+    expect(result.current.artworkRun.plan?.prompt).toBe("A quiet dawn")
   })
 })
