@@ -73,4 +73,25 @@ describe("CompositionLane", () => {
     fireEvent.click(screen.getByRole("button", { name: "Select Backing vocal track" }))
     expect(onSelectTrack).toHaveBeenCalledWith("track_2")
   })
+
+  it("moves a clip when it is dropped onto its track timeline", () => {
+    const onMove = vi.fn()
+    const { container } = render(<CompositionLane durationMs={10_000} onMoveClip={onMove} tracks={[{ trackRef: "track_1", kind: "other", name: "Main", clips: [{ clipRef: "clip_1", sourceRef: "asset_1", startMs: 0, durationMs: 4_000, offsetMs: 0 }] }]} />)
+    const rail = container.querySelector('[class*="clipRail"]')
+    const clip = screen.getByRole("button", { name: "Main clip Audio clip · 0:04" })
+    if (!(rail instanceof HTMLElement)) throw new Error("Expected a clip rail")
+    Object.defineProperty(rail, "getBoundingClientRect", { value: () => ({ left: 10, width: 100 }) })
+    const dataTransfer = {
+      effectAllowed: "",
+      dropEffect: "none",
+      setData: vi.fn(),
+      getData: vi.fn(() => JSON.stringify({ clipRef: "clip_1", trackRef: "track_1" })),
+    }
+    fireEvent.dragStart(clip, { dataTransfer })
+    const drop = new Event("drop", { bubbles: true })
+    Object.defineProperties(drop, { clientX: { value: 50 }, dataTransfer: { value: dataTransfer } })
+    rail.dispatchEvent(drop)
+    expect(dataTransfer.setData).toHaveBeenCalledWith("application/x-mori-composition-clip", JSON.stringify({ clipRef: "clip_1", trackRef: "track_1" }))
+    expect(onMove).toHaveBeenCalledWith("clip_1", "track_1", 4_000)
+  })
 })

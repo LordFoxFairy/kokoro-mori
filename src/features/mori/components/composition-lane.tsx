@@ -7,9 +7,9 @@ import styles from "./composition-lane.module.css"
 
 export type CompositionInsertSource = { sourceRef: string; label: string; description: string; durationMs: number }
 
-type CompositionLaneProps = { tracks: CompositionTrack[]; durationMs: number; disabled?: boolean; selectedClipRef?: string; selectedTrackRef?: string; onSelectTrack?: (trackRef: string) => void; onSelectClip?: (clipRef: string, trackRef: string) => void; onEditClip?: (operation: "move" | "trim" | "split" | "crop" | "fade", clipRef: string, trackRef: string) => void; onDeleteClip?: (clipRef: string, trackRef: string) => void; onDuplicateClip?: (clipRef: string, trackRef: string) => void; insertSources?: readonly CompositionInsertSource[]; onInsertClip?: (sourceRef: string, trackRef: string) => void; resolveClipLabel?: (clip: CompositionClip, track: CompositionTrack) => string }
+type CompositionLaneProps = { tracks: CompositionTrack[]; durationMs: number; disabled?: boolean; selectedClipRef?: string; selectedTrackRef?: string; onSelectTrack?: (trackRef: string) => void; onSelectClip?: (clipRef: string, trackRef: string) => void; onEditClip?: (operation: "move" | "trim" | "split" | "crop" | "fade", clipRef: string, trackRef: string) => void; onMoveClip?: (clipRef: string, trackRef: string, startMs: number) => void; onDeleteClip?: (clipRef: string, trackRef: string) => void; onDuplicateClip?: (clipRef: string, trackRef: string) => void; insertSources?: readonly CompositionInsertSource[]; onInsertClip?: (sourceRef: string, trackRef: string) => void; resolveClipLabel?: (clip: CompositionClip, track: CompositionTrack) => string }
 
-export function CompositionLane({ tracks, durationMs, disabled = false, selectedClipRef, selectedTrackRef, onSelectTrack, onSelectClip, onEditClip, onDeleteClip, onDuplicateClip, insertSources = [], onInsertClip, resolveClipLabel }: CompositionLaneProps) {
+export function CompositionLane({ tracks, durationMs, disabled = false, selectedClipRef, selectedTrackRef, onSelectTrack, onSelectClip, onEditClip, onMoveClip, onDeleteClip, onDuplicateClip, insertSources = [], onInsertClip, resolveClipLabel }: CompositionLaneProps) {
   const [insertOpen, setInsertOpen] = useState(false)
   const selectedTrack = selectedTrackRef === undefined ? undefined : tracks.find((track) => track.trackRef === selectedTrackRef)
   const activeTrack = selectedTrack?.clips.some((clip) => clip.clipRef === selectedClipRef) ? selectedTrack : undefined
@@ -40,7 +40,30 @@ export function CompositionLane({ tracks, durationMs, disabled = false, selected
     <div className={styles.tracks}>
       {tracks.map((track) => <div className={styles.track} data-active={selectedTrack?.trackRef === track.trackRef ? "true" : "false"} key={track.trackRef}>
         <button className={styles.trackName} type="button" aria-pressed={selectedTrackRef === track.trackRef} aria-label={`Select ${track.name} track`} disabled={disabled} onClick={() => onSelectTrack?.(track.trackRef)}>{track.name}</button>
-        <div className={styles.clipRail}>
+        <div
+          className={styles.clipRail}
+          aria-label={`Drop clips on ${track.name} timeline`}
+          onDragOver={(event) => {
+            if (disabled || onMoveClip === undefined) return
+            const payload = readClipDragPayload(event.dataTransfer)
+            if (payload?.trackRef !== track.trackRef) return
+            event.preventDefault()
+            event.dataTransfer.dropEffect = "move"
+          }}
+          onDrop={(event) => {
+            if (disabled || onMoveClip === undefined) return
+            const payload = readClipDragPayload(event.dataTransfer)
+            if (payload === null || payload.trackRef !== track.trackRef) return
+            const clip = track.clips.find((item) => item.clipRef === payload.clipRef)
+            const width = event.currentTarget.getBoundingClientRect().width
+            if (clip === undefined || width <= 0) return
+            event.preventDefault()
+            const rawStartMs = ((event.clientX - event.currentTarget.getBoundingClientRect().left) / width) * durationMs
+            const maxStartMs = Math.max(0, durationMs - clip.durationMs)
+            const startMs = Math.min(maxStartMs, Math.max(0, Math.round(rawStartMs / 100) * 100))
+            onMoveClip(payload.clipRef, track.trackRef, startMs)
+          }}
+        >
           {track.clips.map((clip) => {
             const label = resolveClipLabel?.(clip, track).trim() || defaultClipLabel(clip)
             const durationLabel = formatClipDuration(clip.durationMs)
@@ -49,10 +72,16 @@ export function CompositionLane({ tracks, durationMs, disabled = false, selected
               data-selected={selectedTrackRef === track.trackRef && selectedClipRef === clip.clipRef ? "true" : "false"}
               key={clip.clipRef}
               type="button"
+              draggable={onMoveClip !== undefined && !disabled}
               aria-label={`${track.name} clip ${label} · ${durationLabel}`}
               title={`${label} · ${durationLabel}`}
               disabled={disabled}
               onClick={() => onSelectClip?.(clip.clipRef, track.trackRef)}
+              onDragStart={(event) => {
+                if (onMoveClip === undefined || disabled) return
+                event.dataTransfer.effectAllowed = "move"
+                event.dataTransfer.setData(clipDragMimeType, JSON.stringify({ clipRef: clip.clipRef, trackRef: track.trackRef }))
+              }}
               onKeyDown={(event) => {
                 if ((event.key === "Delete" || event.key === "Backspace") && onDeleteClip !== undefined && !disabled) {
                   event.preventDefault()
@@ -66,6 +95,21 @@ export function CompositionLane({ tracks, durationMs, disabled = false, selected
       </div>)}
     </div>
   </section>
+}
+
+const clipDragMimeType = "application/x-mori-composition-clip"
+
+function readClipDragPayload(dataTransfer: DataTransfer): { clipRef: string; trackRef: string } | null {
+  try {
+    const raw = dataTransfer.getData(clipDragMimeType)
+    if (raw === "") return null
+    const value = JSON.parse(raw) as { clipRef?: unknown; trackRef?: unknown }
+    return typeof value.clipRef === "string" && value.clipRef.trim() !== "" && typeof value.trackRef === "string" && value.trackRef.trim() !== ""
+      ? { clipRef: value.clipRef, trackRef: value.trackRef }
+      : null
+  } catch {
+    return null
+  }
 }
 
 function formatClipDuration(durationMs: number): string {
