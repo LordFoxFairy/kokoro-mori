@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react"
+import { fireEvent, render, screen, within } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 import { previewCandidates } from "../preview-data"
 import { buildStudioTimelineSections } from "../studio-change"
@@ -38,5 +38,32 @@ describe("Studio timeline", () => {
     const sectionButtons = within(sectionScroller).getAllByRole("button")
     expect(sectionButtons).toHaveLength(5)
     expect(sectionButtons.at(-1)).toHaveAccessibleName("Select Outro section")
+  })
+
+  it("exposes the selected range preview without replacing the global transport", () => {
+    const candidate = previewCandidates[0]
+    const sections = buildStudioTimelineSections(["Intro", "Verse", "Lift", "Chorus", "Outro"], candidate.durationSeconds)
+    const selection = sections[3]
+    const onPreviewSelection = vi.fn()
+
+    if (selection === undefined) throw new Error("Expected a chorus timeline section")
+
+    render(
+      <StudioTimeline
+        candidate={candidate}
+        sections={sections}
+        selection={selection}
+        positionSeconds={0}
+        playing={false}
+        disabled={false}
+        onSeek={vi.fn()}
+        onSelect={vi.fn()}
+        onPreviewSelection={onPreviewSelection}
+      />,
+    )
+
+    const preview = screen.getByRole("button", { name: "Preview selection" })
+    fireEvent.click(preview)
+    expect(onPreviewSelection).toHaveBeenCalledTimes(1)
   })
 })

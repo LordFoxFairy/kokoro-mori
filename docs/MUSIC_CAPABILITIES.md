@@ -595,6 +595,8 @@ Composition 的第一组 provider-neutral 纯函数已落地到 `composition.ts`
 
 - 已完成可拖选时间范围、动态时间标尺、全局播放头与段落联动；Custom range 直接复用既有
   provider-neutral `time_range` 契约，调整范围后会使旧的 Review Plan 失效，避免错用过期选区。
+- 当前选区提供 `Preview selection`：仍只使用全局 Player 的单一 transport，从选区起点试听并在终点暂停、回到起点；Player
+  回显 Range audition 上下文，切换整曲/Take 会清除该窗口，试听不会改写 Current Version、Open Version 或 AI Scope。
 - Lyrics 已完成按 Verse / Chorus / Whole lyrics 组织的 Rewrite、Continue、Find rhyme、Restructure
   界面闭环，并支持 Review、可编辑 Suggestion、Apply 与 Undo；Lyrics Revision contract、client、response parser、
   snapshot / SSE / cancel seam 已接入组件运行态，多候选保持独立且只应用用户选中的草稿。

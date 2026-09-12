@@ -17,7 +17,7 @@ type MoriAppShellProps = {
 }
 
 export function MoriAppShell({ activeKey, ariaLabel, projectRef, children }: MoriAppShellProps) {
-  const { railCollapsed, toggleRail, playerCandidate, playbackQueue, playing, playerMediaStatus, playerMediaMessage, muted, positionSeconds, togglePlaying, retryPlayerPlayback, toggleMuted, setPlaying, seekPlayer, selectPlayerCandidate, previousPlayerCandidate, nextPlayerCandidate, preferences } = useMoriApp()
+  const { railCollapsed, toggleRail, playerCandidate, playbackQueue, playerAuditionScope, playing, playerMediaStatus, playerMediaMessage, muted, positionSeconds, togglePlaying, retryPlayerPlayback, toggleMuted, setPlaying, seekPlayer, selectPlayerCandidate, previousPlayerCandidate, nextPlayerCandidate, preferences } = useMoriApp()
   const [playbackQueueOpen, setPlaybackQueueOpen] = useState(false)
   const [settingsReturnTo, setSettingsReturnTo] = useState<string | null>(null)
   const [{ isMobileViewport, mobileRailExpanded }, setViewportState] = useState({
@@ -157,6 +157,7 @@ export function MoriAppShell({ activeKey, ariaLabel, projectRef, children }: Mor
           onRetryPlayback={retryPlayerPlayback}
           onPrevious={playbackQueue.length > 1 ? previousPlayerCandidate : undefined}
           onNext={playbackQueue.length > 1 ? nextPlayerCandidate : undefined}
+          auditionScope={playerAuditionScope}
           queueOpen={playbackQueueOpen}
           onSelectQueue={playbackQueue.length > 0 ? openPlaybackQueue : undefined}
         />

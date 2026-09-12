@@ -1167,7 +1167,6 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, generationRef: 
       onRetry={canRetryGeneration ? retryLastGeneration : undefined}
       onSelectGeneration={selectQueuedGeneration}
       onPlay={(candidate) => {
-        setSelectedCandidateRef(candidate.candidateRef)
         if (playerCandidate?.versionRef === candidate.versionRef) togglePlaying()
         else { selectPlayerCandidate(candidate); setPlaying(true) }
       }}

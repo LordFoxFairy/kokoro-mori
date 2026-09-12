@@ -3,7 +3,7 @@
 import { ListMusic, Music2, Pause, Play, SkipBack, SkipForward, Volume2, VolumeX } from "lucide-react"
 import type { Candidate } from "../domain"
 import { isPlayableCandidate } from "../player-media"
-import type { PlayerMediaStatus } from "./mori-app-provider"
+import type { PlayerAuditionScope, PlayerMediaStatus } from "./mori-app-provider"
 import { Waveform } from "./waveform"
 import styles from "../mori-workspace.module.css"
 
@@ -22,6 +22,7 @@ type PersistentPlayerProps = {
   onSelectQueue?: () => void
   onPrevious?: () => void
   onNext?: () => void
+  auditionScope?: PlayerAuditionScope | null
 }
 
 function formatDuration(seconds: number): string {
@@ -30,7 +31,7 @@ function formatDuration(seconds: number): string {
   return `${minutes}:${remaining}`
 }
 
-export function PersistentPlayer({ candidate, playing, muted, positionSeconds, onToggle, onToggleMute, onSeek, playerMediaStatus = "ready", playerMediaMessage = null, onRetryPlayback, queueOpen = false, onSelectQueue, onPrevious, onNext }: PersistentPlayerProps) {
+export function PersistentPlayer({ candidate, playing, muted, positionSeconds, onToggle, onToggleMute, onSeek, playerMediaStatus = "ready", playerMediaMessage = null, onRetryPlayback, queueOpen = false, onSelectQueue, onPrevious, onNext, auditionScope = null }: PersistentPlayerProps) {
   const hasCandidate = candidate !== null
   const playableCandidate = candidate !== null && isPlayableCandidate(candidate) ? candidate : null
   const canPlay = playableCandidate !== null
@@ -42,7 +43,8 @@ export function PersistentPlayer({ candidate, playing, muted, positionSeconds, o
         <div className={`${styles.playerArtwork} ${hasCandidate ? "" : styles.playerArtworkEmpty}`} aria-hidden="true">{hasCandidate ? <span>01</span> : <Music2 size={18} />}</div>
         <div className={styles.playerInfo}>
           <strong>{candidate?.title ?? "Choose a version"}</strong>
-          <span>{candidate?.subtitle ?? "Your next listen starts here"}</span>
+          <span>{auditionScope === null ? (candidate?.subtitle ?? "Your next listen starts here") : `${auditionScope.trackName} · ${auditionScope.label}`}</span>
+          {auditionScope !== null ? <span className={styles.playerStatus}>{auditionScope.kind === "clip" ? "Clip audition" : "Range audition"} · {formatDuration(auditionScope.startSeconds)}–{formatDuration(auditionScope.endSeconds)}</span> : null}
           {!canPlay && hasCandidate ? <span className={styles.playerStatus}>Preview audio is unavailable</span> : null}
           {canPlay && playerMediaStatus === "loading" ? <span className={styles.playerStatus}>Loading audio…</span> : null}
           {playerMediaStatus === "error" ? <div className={styles.playerError} role="alert"><span>{playerMediaMessage ?? "Audio could not be loaded."}</span>{onRetryPlayback ? <button className={styles.playerRetry} type="button" onClick={onRetryPlayback}>Retry playback</button> : null}</div> : null}
@@ -60,20 +62,20 @@ export function PersistentPlayer({ candidate, playing, muted, positionSeconds, o
           <div className={styles.playerProgress} role="group" aria-label="Playback progress">
             <span className={styles.time}>{formatDuration(positionSeconds)}</span>
             <div className={styles.playerSeek}>
-              <Waveform seed={playableCandidate.waveformSeed} compact progress={playableCandidate.durationSeconds > 0 ? positionSeconds / playableCandidate.durationSeconds : 0} />
+              <Waveform seed={playableCandidate.waveformSeed} compact progress={progressForScope(positionSeconds, auditionScope, playableCandidate.durationSeconds)} />
               <input
                 className={styles.playerSeekInput}
                 type="range"
-                min={0}
-                max={playableCandidate.durationSeconds}
+                min={auditionScope?.startSeconds ?? 0}
+                max={auditionScope?.endSeconds ?? playableCandidate.durationSeconds}
                 step={1}
-                value={Math.min(positionSeconds, playableCandidate.durationSeconds)}
+                value={Math.max(auditionScope?.startSeconds ?? 0, Math.min(positionSeconds, auditionScope?.endSeconds ?? playableCandidate.durationSeconds))}
                 onChange={(event) => onSeek(Number(event.target.value))}
                 disabled={!canPlay}
-                aria-label="Seek through current version"
+                aria-label={auditionScope === null ? "Seek through current version" : "Seek through current audition"}
               />
             </div>
-            <span className={styles.time}>{formatDuration(playableCandidate.durationSeconds)}</span>
+            <span className={styles.time}>{formatDuration(auditionScope?.endSeconds ?? playableCandidate.durationSeconds)}</span>
           </div>
         </> : <div className={styles.playerEmptyState} role="status" aria-live="polite">
           {hasCandidate ? <><strong>Preview audio is unavailable</strong><span>Choose another Version or keep shaping this one.</span></> : <><strong>Ready when you are</strong><span>Choose a Version to start listening.</span></>}
@@ -85,4 +87,11 @@ export function PersistentPlayer({ candidate, playing, muted, positionSeconds, o
       </div>
     </section>
   )
+}
+
+function progressForScope(positionSeconds: number, scope: PlayerAuditionScope | null, durationSeconds: number): number {
+  const startSeconds = scope?.startSeconds ?? 0
+  const endSeconds = scope?.endSeconds ?? durationSeconds
+  if (endSeconds <= startSeconds) return 0
+  return Math.max(0, Math.min(1, (positionSeconds - startSeconds) / (endSeconds - startSeconds)))
 }

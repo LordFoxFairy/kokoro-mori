@@ -57,6 +57,41 @@
   font-variant-numeric: tabular-nums;
 }
 
+.previewSelection {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 9px;
+  border: 1px solid rgba(109, 92, 231, 0.18);
+  border-radius: 8px;
+  color: var(--mori-primary-deep);
+  background: rgba(255, 255, 255, 0.82);
+  font: inherit;
+  font-size: 9px;
+  font-weight: 750;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.previewSelection:hover:not(:disabled),
+.previewSelection:focus-visible,
+.previewSelection[aria-pressed="true"] {
+  border-color: rgba(109, 92, 231, 0.34);
+  background: rgba(238, 234, 255, 0.86);
+}
+
+.previewSelection:focus-visible {
+  outline: 3px solid rgba(109, 92, 231, 0.16);
+  outline-offset: 2px;
+}
+
+.previewSelection:disabled {
+  cursor: progress;
+  opacity: 0.58;
+}
+
 .ruler {
   display: flex;
   justify-content: space-between;
@@ -282,6 +317,11 @@
 
   .playbackContext {
     min-width: 0;
+  }
+
+  .previewSelection {
+    min-height: 36px;
+    padding-inline: 10px;
   }
 
   .ruler span:nth-child(even) {

@@ -11,6 +11,7 @@
 - Create → Generation Queue → Candidate → Project / Version → Studio → Take Lanes → Current Version 的本地闭环。
 - Studio Arrangement / Lyrics / Stems / Finish 工作面，以及 Add part、Replace section、Extend、Transform（Restyle / Cover）的一层 AI 意图模型。
 - Studio Arrangement 已挂载 `Composition { tracks[] }` 文档与 Clip 编辑面板；每个 Move / Trim / Split / Crop / Fade / Insert 命令都显式绑定 `track_ref`，通过本地 history、revisioned command、保存状态和冲突 rebase 串成浏览器侧闭环，并支持从候选 Take 将 Clip 插入已选时间范围、从已选 Clip Duplicate 到时间线末端；时间线用 Take / Source 标题替代内部 ref，选中 Clip 会显示轨道、来源与时间范围，且明确不改变 AI Scope；同源 GET/PUT Composition seam 已接入，加载到的多轨 owner projection 会成为本地基线，加载失败或空投影才保留一条 Main track fallback。
+- Studio Arrangement 的当前 AI edit range 现在可以直接通过全局 Player 试听：Preview selection 复用同一个媒体通道，从选区起点开始并在终点自动暂停、回到起点；Player 显示 Range audition 上下文，普通整曲试听、Take 切换和 AI Scope 仍保持独立，不创建第二个播放器。
 - Studio AI 的 Reference audio 与 Cover voice 不再绑定单一 preview 常量；Studio 默认通过 `/library/sources` 读取 live Creative Source projection，组件接受同一 catalog，加载失败时才使用明确的 preview fallback。
 - Composition API seam 已固定 Version ref、幂等键与 revisioned input 的分离，并已提供同源 GET/PUT revision client；保存成功后会校验并采用 owner 返回的轨道投影，真实 BFF owner persistence 与 recovery smoke 仍待接入。
 - Studio Change 在 Review Plan 后才生成；请求 builder 统一 snake_case、范围、保护项、references 和输出数量，并保持当前 Version 非破坏式。
@@ -91,7 +92,7 @@
 ```text
 pnpm lint                         passed
 pnpm typecheck                    passed
-pnpm test                         passed: 77 files / 557 tests
+pnpm test                         passed: 77 files / 559 tests
 pnpm build                        passed
 ```
 

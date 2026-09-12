@@ -109,6 +109,49 @@ describe("Mori global player media integration", () => {
     expect(screen.getByRole("slider", { name: "Seek through current version" })).toHaveValue("72")
   })
 
+  it("auditions a selected range through the same global transport and stops at its boundary", async () => {
+    const harness = createMediaHarness()
+    const auditionScope = {
+      kind: "range" as const,
+      label: "Chorus",
+      trackName: "Arrangement",
+      startSeconds: 30,
+      endSeconds: 35,
+    }
+
+    function CandidateHarness() {
+      const { selectPlayerCandidate } = useMoriApp()
+      return <button type="button" onClick={() => selectPlayerCandidate(firstCandidate, auditionScope.startSeconds, auditionScope)}>Preview Chorus</button>
+    }
+
+    render(
+      <MoriAppProvider mediaFactory={harness.factory}>
+        <CandidateHarness />
+        <MoriCatalogShell activeKey="library" ariaLabel="Library">
+          <div>Library content</div>
+        </MoriCatalogShell>
+      </MoriAppProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Preview Chorus" }))
+    expect(harness.controller.setSource).toHaveBeenLastCalledWith(firstCandidate)
+    expect(screen.getByRole("button", { name: "Play" })).toBeInTheDocument()
+    expect(screen.getByRole("slider", { name: "Seek through current audition" })).toHaveAttribute("min", "30")
+    expect(screen.getByRole("slider", { name: "Seek through current audition" })).toHaveAttribute("max", "35")
+    expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("Range audition · 0:30–0:35")
+
+    fireEvent.click(screen.getByRole("button", { name: "Play" }))
+    await waitFor(() => expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument())
+    harness.callbacks.onTimeUpdate(33)
+    await waitFor(() => expect(screen.getByRole("slider", { name: "Seek through current audition" })).toHaveValue("33"))
+    harness.callbacks.onTimeUpdate(35)
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Play" })).toBeInTheDocument())
+    expect(harness.controller.pause).toHaveBeenCalled()
+    expect(harness.controller.seek).toHaveBeenLastCalledWith(30)
+    expect(screen.getByRole("slider", { name: "Seek through current audition" })).toHaveValue("30")
+  })
+
   it("does not fake playback for preview candidates without media", () => {
     render(
       <MoriAppProvider>
