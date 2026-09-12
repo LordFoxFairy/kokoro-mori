@@ -34,6 +34,18 @@ describe("Mori application navigation", () => {
     expect(screen.getByRole("link", { name: "Library" })).toHaveAttribute("href", "/library")
   })
 
+  it("keeps New creation in the active Project context", async () => {
+    render(
+      <MoriAppProvider>
+        <MoriCatalogShell activeKey="projects" ariaLabel="Project overview" projectRef="project_live_1">
+          <div>Project overview</div>
+        </MoriCatalogShell>
+      </MoriAppProvider>,
+    )
+
+    await waitFor(() => expect(screen.getByRole("link", { name: "New creation" })).toHaveAttribute("href", "/create?project_ref=project_live_1"))
+  })
+
   it("keeps the empty global player quiet until a Version is chosen", () => {
     render(
       <MoriAppProvider>

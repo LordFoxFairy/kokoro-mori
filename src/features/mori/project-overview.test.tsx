@@ -6,6 +6,7 @@ import { MoriAppProvider, useMoriApp } from "./components/mori-app-provider"
 import { MoriCatalogShell } from "./components/mori-catalog-shell"
 import type { PlayerMediaFactory } from "./player-media"
 import { ProjectOverviewPageContent } from "./project-overview"
+import { previewProject } from "./preview-data"
 
 const activeListen: Candidate = {
   candidateRef: "candidate_active_listen",
@@ -42,7 +43,7 @@ describe("Mori project overview", () => {
   it("continues the confirmed Current Version through project-scoped AI intents", () => {
     render(
       <MoriAppProvider>
-        <MoriCatalogShell activeKey="projects" ariaLabel="Project overview">
+        <MoriCatalogShell activeKey="projects" ariaLabel="Project overview" projectRef={previewProject.projectRef}>
           <ProjectOverviewPageContent />
         </MoriCatalogShell>
       </MoriAppProvider>,

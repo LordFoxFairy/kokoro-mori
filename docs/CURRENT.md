@@ -50,6 +50,8 @@
 - Project Overview 的非 Current Candidate 提供明确 `Set as current`：它复用 Project-scoped、带幂等键与
   `expected_current_version_ref` 的 CAS command，等待 owner 精确确认后才更新 Current、`Open Studio` 与
   `Continue making`；瞬时失败允许重试，冲突引导刷新 Project，过程中不抢占 Global Player。
+- Project Overview 与 Studio 会把当前 `project_ref` 传给全局 Rail；从作品上下文点击 `New creation` 会回到同一 Project
+  创建新方向，不再意外丢失 Project-first 上下文；Home、Library 等无项目上下文的入口仍从全新 Project 开始。
 - P0.1 Durable Project Memory 已落地浏览器 foundation：Project Workspace 以同源、完整 projection 恢复
   Current Song Plan、用户 Open Version、该 Version 的 Lyrics Draft、最新 Mix 摘要与活动任务；Song Plan、Lyrics
   Draft、Open Version 的写入分别携带 revision 与 `Idempotency-Key`，只在完整返回投影精确确认下一 revision 后

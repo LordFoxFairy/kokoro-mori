@@ -17,6 +17,18 @@ const activeListen: Candidate = {
 }
 
 describe("Mori studio shell", () => {
+  it("keeps New creation in the active Project context", async () => {
+    render(
+      <MoriAppProvider>
+        <MoriStudioShell projectRef="project_live_1">
+          <div>Studio canvas</div>
+        </MoriStudioShell>
+      </MoriAppProvider>,
+    )
+
+    await waitFor(() => expect(screen.getByRole("link", { name: "New creation" })).toHaveAttribute("href", "/create?project_ref=project_live_1"))
+  })
+
   it("keeps Studio inside the global navigation and player shell", () => {
     render(
       <MoriAppProvider>

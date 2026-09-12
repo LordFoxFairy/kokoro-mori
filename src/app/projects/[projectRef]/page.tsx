@@ -9,7 +9,7 @@ export default async function ProjectOverviewPage({ params }: ProjectOverviewPag
 
   return (
     <main className={styles.catalogApp}>
-      <MoriCatalogShell activeKey="projects" ariaLabel="Project overview"><ProjectOverviewPageContent projectRef={projectRef} /></MoriCatalogShell>
+      <MoriCatalogShell activeKey="projects" ariaLabel="Project overview" projectRef={projectRef}><ProjectOverviewPageContent projectRef={projectRef} /></MoriCatalogShell>
     </main>
   )
 }
