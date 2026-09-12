@@ -89,7 +89,7 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
   const referenceUploadEpochRef = useRef(0)
   const referenceUploadCommandRef = useRef<PendingReferenceUploadCommand | null>(null)
   const referenceUploadNameRef = useRef<string | null>(initialReferenceAudio?.name ?? null)
-  const generationSubmitPendingRef = useRef(false)
+  const generationSubmitFingerprintsRef = useRef(new Set<string>())
   const [prompt, setPrompt] = useState(() => initialPrompt?.trim() || DEFAULT_PROMPT)
   const [lyrics, setLyrics] = useState("")
   const [lyricsModeOverride, setLyricsModeOverride] = useState<LyricsMode | null>(initialVoiceProfile === null ? null : "lyrics")
@@ -125,7 +125,8 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
   const lyricsMode = lyricsModeOverride ?? preferences.lyricsMode
   const durationSeconds = durationOverride ?? preferences.durationSeconds
   const planPreviewVisible = planPreview !== null
-  const planBusy = planActionPending || planSaveLoading || planSaveRun.status === "saving" || generationSubmitPending
+  const planBusy = planActionPending || planSaveLoading || planSaveRun.status === "saving"
+  const generationSubmissionPendingForCurrentDraft = generationSubmitPending && generationSubmitFingerprintsRef.current.has(creationDraftFingerprint(toCreationDraft()))
   const visiblePlanSaveRun = planSubmitAttempted ? planSaveRun : idleProjectWorkspaceSaveRun
   const workspacePlanRefreshToken = workspacePlanRefresh?.token ?? null
   const refreshedWorkspacePlan = workspacePlanRefresh?.plan ?? null
@@ -423,21 +424,21 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
     clearPlanPreview()
   }
 
-  function beginGenerationSubmission(): boolean {
-    if (generationSubmitPendingRef.current) return false
-    generationSubmitPendingRef.current = true
+  function beginGenerationSubmission(fingerprint: string): boolean {
+    if (generationSubmitFingerprintsRef.current.has(fingerprint)) return false
+    generationSubmitFingerprintsRef.current.add(fingerprint)
     setGenerationSubmitPending(true)
     return true
   }
 
-  function endGenerationSubmission() {
-    generationSubmitPendingRef.current = false
-    setGenerationSubmitPending(false)
+  function endGenerationSubmission(fingerprint: string) {
+    generationSubmitFingerprintsRef.current.delete(fingerprint)
+    setGenerationSubmitPending(generationSubmitFingerprintsRef.current.size > 0)
   }
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (planBusy || generationSubmitPendingRef.current || recordingStatus !== "idle" || isReferenceUploadActive(referenceUploadStatus)) return
+    if (planBusy || recordingStatus !== "idle" || isReferenceUploadActive(referenceUploadStatus)) return
     if (mode === "smart" && planPreview === null) {
       setPlanSubmitAttempted(false)
       setPlanDirtySinceSave(false)
@@ -449,19 +450,21 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
       void confirmPlan()
       return
     }
-    if (!beginGenerationSubmission()) return
+    const draft = toCreationDraft()
+    const fingerprint = creationDraftFingerprint(draft)
+    if (!beginGenerationSubmission(fingerprint)) return
     try {
-      const result = onGenerate(toCreationDraft())
-      queueMicrotask(endGenerationSubmission)
-      if (result !== undefined) void Promise.resolve(result).catch(() => undefined)
+      const result = onGenerate(draft)
+      if (result === undefined) endGenerationSubmission(fingerprint)
+      else void Promise.resolve(result).finally(() => endGenerationSubmission(fingerprint)).catch(() => undefined)
     } catch (error) {
-      endGenerationSubmission()
+      endGenerationSubmission(fingerprint)
       throw error
     }
   }
 
   async function confirmPlan() {
-    if (planPreview === null || planBusy || generationSubmitPendingRef.current || recordingStatus !== "idle" || isReferenceUploadActive(referenceUploadStatus)) return
+    if (planPreview === null || planBusy || recordingStatus !== "idle" || isReferenceUploadActive(referenceUploadStatus)) return
     const validationError = validateSongPlan(planPreview)
     if (validationError !== null) {
       setPlanValidationError(validationError)
@@ -471,15 +474,16 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
     setPlanValidationError(null)
     setPlanSubmitAttempted(true)
     setPlanDirtySinceSave(false)
-    if (!beginGenerationSubmission()) return
+    const draft = toCreationDraft(planPreview)
+    const fingerprint = creationDraftFingerprint(draft)
+    if (!beginGenerationSubmission(fingerprint)) return
     setPlanActionPending(true)
     try {
-      const result = onGenerate(toCreationDraft(planPreview))
-      queueMicrotask(endGenerationSubmission)
+      const result = onGenerate(draft)
       await result
     } finally {
       setPlanActionPending(false)
-      endGenerationSubmission()
+      endGenerationSubmission(fingerprint)
     }
   }
 
@@ -628,8 +632,8 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
 
           <div className={styles.composerBottom}>
             <div className={styles.promptHint}><AudioLines /> <span>{mode === "smart" ? "Review an editable plan before creating." : "Your controls go straight to the generation queue."} · Creates 2 alternatives.</span></div>
-            <button className={styles.generateButton} type="submit" disabled={recordingStatus !== "idle" || isReferenceUploadActive(referenceUploadStatus) || generationSubmitPending}>
-              {generationSubmitPending ? <><LoaderCircle /> Queueing…</> : <><Sparkles /> {mode === "smart" ? "Review plan" : t("generateLabel")}</>}
+            <button className={styles.generateButton} type="submit" disabled={recordingStatus !== "idle" || isReferenceUploadActive(referenceUploadStatus) || generationSubmissionPendingForCurrentDraft}>
+              {generationSubmissionPendingForCurrentDraft ? <><LoaderCircle /> Queueing…</> : <><Sparkles /> {mode === "smart" ? "Review plan" : t("generateLabel")}</>}
             </button>
           </div>
         </> : null}
@@ -722,7 +726,7 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
               {planPersistence === "preview" ? <span className={styles.planPersistenceHint}>Preview only · not saved to Project workspace.</span> : null}
               {planPersistence === "unavailable" ? <span className={styles.planPersistenceHint}>Project workspace saving is not connected.</span> : null}
               <button className={styles.generateButton} type="button" disabled={planBusy || recordingStatus !== "idle" || isReferenceUploadActive(referenceUploadStatus)} onClick={() => { void confirmPlan() }}>
-                {generationSubmitPending
+                {generationSubmissionPendingForCurrentDraft
                   ? <><LoaderCircle size={14} /> Queueing…</>
                   : planSaveLoading || visiblePlanSaveRun.status === "saving"
                   ? <><LoaderCircle size={14} /> Saving plan…</>
@@ -783,4 +787,8 @@ function isReferenceUploadActive(status: MoriCreativeSourceUploadStatus | null):
 function formatFileSize(bytes: number): string {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function creationDraftFingerprint(draft: CreationDraft): string {
+  return JSON.stringify(draft)
 }
