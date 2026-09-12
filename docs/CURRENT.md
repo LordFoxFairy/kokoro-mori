@@ -100,7 +100,7 @@
 ```text
 pnpm lint                         passed
 pnpm typecheck                    passed
-pnpm test                         passed: 79 files / 579 tests
+pnpm test                         passed: 79 files / 580 tests
 pnpm build                        passed
 ```
 

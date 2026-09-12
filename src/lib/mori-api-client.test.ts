@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { createExportRequest, createGenerationRequest, createLyricsRevisionRequest, createMixRevisionRequest, createStemSeparationRequest, createStudioChangeRequest } from "./mori-api"
 import { createMoriApiClient, MoriApiRequestError } from "./mori-api-client"
+import { parseMoriMixTrack } from "./mori-api-validation"
 
 describe("Mori same-origin API client", () => {
   it("normalizes a generation snapshot network failure as retryable", async () => {
@@ -1152,6 +1153,13 @@ describe("Mori same-origin API client", () => {
       name: "Invalid pan",
       tracks: [{ stemRef: "stem_vocals_1", gain: 1, muted: false, pan: 1.01 }],
     })).toThrow("mix_revision_tracks_invalid")
+
+    expect(parseMoriMixTrack({ stem_ref: "stem_vocals_legacy", gain: 1, muted: false })).toEqual({
+      stem_ref: "stem_vocals_legacy",
+      gain: 1,
+      muted: false,
+      pan: 0,
+    })
   })
 
   it("returns the first complete stem event without waiting for the SSE connection to close", async () => {
