@@ -214,6 +214,22 @@ describe("Mori same-origin API client", () => {
     })
   })
 
+  it("normalizes generation asset refs and enforces the shared reference limit", () => {
+    expect(createGenerationRequest({
+      mode: "custom",
+      prompt: "A textured instrumental",
+      lyricsMode: "instrumental",
+      referenceAssetRefs: [" asset_room ", "asset_room", "  ", "asset_piano"],
+    }).reference_asset_refs).toEqual(["asset_room", "asset_piano"])
+
+    expect(() => createGenerationRequest({
+      mode: "custom",
+      prompt: "Too many references",
+      lyricsMode: "instrumental",
+      referenceAssetRefs: Array.from({ length: 9 }, (_, index) => `asset_${index}`),
+    })).toThrow("generation_reference_limit_exceeded")
+  })
+
   it("posts a version-bound studio change through the shared generation lifecycle", async () => {
     let capturedUrl = ""
     let capturedInit: RequestInit | undefined
@@ -1348,7 +1364,8 @@ describe("Mori same-origin API client", () => {
           data: {
             sources: [{
               source_kind: "audio",
-              source_ref: "asset_city_lights",
+              source_ref: "source_city_lights",
+              asset_ref: "asset_city_lights",
               name: "City Lights demo",
               description: "24 sec · soft city pulse",
               duration_seconds: 24,
@@ -1365,7 +1382,8 @@ describe("Mori same-origin API client", () => {
 
     expect(response.data.sources).toEqual([{
       source_kind: "audio",
-      source_ref: "asset_city_lights",
+      source_ref: "source_city_lights",
+      asset_ref: "asset_city_lights",
       name: "City Lights demo",
       description: "24 sec · soft city pulse",
       duration_seconds: 24,
@@ -1777,6 +1795,27 @@ describe("Mori same-origin API client", () => {
     })
 
     await expect(api.getCreativeSourceUpload("upload_invalid")).rejects.toMatchObject({ code: "invalid_api_response" })
+  })
+
+  it("rejects an audio source projection without its playable asset ref", async () => {
+    const api = createMoriApiClient({
+      fetchImpl: async () => jsonResponse({
+        data: {
+          sources: [{
+            source_kind: "audio",
+            source_ref: "source_without_asset",
+            name: "Incomplete source",
+            description: "Missing playable identity",
+            duration_seconds: 12,
+            created_at: "2026-09-05T00:00:00Z",
+          }],
+          next_cursor: null,
+        },
+        meta: { request_id: "source_missing_asset" },
+      }),
+    })
+
+    await expect(api.listCreativeSources()).rejects.toMatchObject({ code: "invalid_api_response" })
   })
 
   it("publishes a release with the draft revision and idempotency key", async () => {

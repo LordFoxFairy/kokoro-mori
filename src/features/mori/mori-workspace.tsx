@@ -1423,14 +1423,13 @@ function toDomainCandidate(candidate: import("@/lib/mori-api").MoriCandidate, in
 }
 
 function toDomainCreativeSource(source: MoriCreativeSource): MoriCreativeLibrarySource {
-  return {
-    sourceKind: source.source_kind,
-    ref: source.source_ref,
-    name: source.name,
-    description: source.description,
-    ...(source.source_kind === "audio" ? { durationSeconds: source.duration_seconds } : {}),
-    ...(source.source_kind === "inspiration" ? { style: source.style } : {}),
+  if (source.source_kind === "audio") {
+    return { sourceKind: "audio", ref: source.source_ref, assetRef: source.asset_ref, name: source.name, description: source.description, durationSeconds: source.duration_seconds }
   }
+  if (source.source_kind === "voice") {
+    return { sourceKind: "voice", ref: source.source_ref, name: source.name, description: source.description }
+  }
+  return { sourceKind: "inspiration", ref: source.source_ref, name: source.name, description: source.description, style: source.style }
 }
 
 function toDomainSongPlan(plan: import("@/lib/mori-api").MoriSongPlan): SongPlan {

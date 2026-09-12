@@ -98,10 +98,11 @@
       "MoriAudioCreativeSource": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["source_kind", "source_ref", "name", "description", "duration_seconds", "created_at"],
+        "required": ["source_kind", "source_ref", "asset_ref", "name", "description", "duration_seconds", "created_at"],
         "properties": {
           "source_kind": { "const": "audio" },
-          "source_ref": { "type": "string", "minLength": 1, "maxLength": 500 },
+          "source_ref": { "type": "string", "minLength": 1, "maxLength": 500, "description": "Reusable Creative Source identity used by Library and deep links." },
+          "asset_ref": { "type": "string", "minLength": 1, "maxLength": 500, "description": "Ready Storage Asset identity used by generation and media access." },
           "name": { "type": "string", "minLength": 1, "maxLength": 200 },
           "description": { "type": "string", "minLength": 1, "maxLength": 500 },
           "duration_seconds": { "type": "integer", "minimum": 1 },

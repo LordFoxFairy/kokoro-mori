@@ -131,7 +131,7 @@ describe("Studio AI composer", () => {
 
   it("uses the injected Creative Source catalog for references and voices", () => {
     const sources: readonly MoriCreativeLibrarySource[] = [
-      { sourceKind: "audio", ref: "asset_live_room", name: "Live room guide", description: "18 sec · brushed pulse", durationSeconds: 18 },
+      { sourceKind: "audio", ref: "source_live_room", assetRef: "asset_live_room", name: "Live room guide", description: "18 sec · brushed pulse", durationSeconds: 18 },
       { sourceKind: "voice", ref: "voice_live_aria", name: "Aria", description: "Clear mezzo · close phrasing" },
     ]
     const onGenerate = vi.fn<(plan: StudioChangePlan) => void>()
@@ -150,6 +150,14 @@ describe("Studio AI composer", () => {
     fireEvent.click(screen.getByText("Keep & compare"))
     expect(screen.getByRole("button", { name: "Use Live room guide as reference" })).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Use City Lights demo as reference" })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole("button", { name: "Use Live room guide as reference" }))
+    fireEvent.change(screen.getByRole("textbox", { name: "Tell Mori what to change" }), { target: { value: "Match the live room pulse." } })
+    fireEvent.click(screen.getByRole("button", { name: "Review change" }))
+    fireEvent.click(within(screen.getByRole("region", { name: "AI change plan" })).getByRole("button", { name: "Generate 2 takes" }))
+    expect(onGenerate).toHaveBeenCalledWith(expect.objectContaining({
+      draft: expect.objectContaining({ referenceAssetRefs: ["asset_live_room"] }),
+    }))
 
     fireEvent.click(screen.getByRole("button", { name: "Cover" }))
     fireEvent.change(screen.getByRole("combobox", { name: "Voice profile" }), { target: { value: "voice_live_aria" } })

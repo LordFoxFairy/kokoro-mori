@@ -626,6 +626,7 @@
         }
       },
       "ReferenceAssetRefs": {
+        "description": "Ready Storage Asset identities only; source_ref values are not accepted.",
         "type": "array",
         "maxItems": 8,
         "uniqueItems": true,

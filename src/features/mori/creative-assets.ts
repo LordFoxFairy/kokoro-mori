@@ -6,13 +6,15 @@ export type MoriVoiceProfile = {
 
 export type MoriReferenceAudio = {
   ref: string
+  assetRef: string
   name: string
   description: string
   durationSeconds: number
 }
 
 export type MoriAudioReferenceSelection = {
-  ref: string
+  sourceRef: string
+  assetRef: string
   name: string
   detail: string
 }
@@ -31,18 +33,22 @@ export type MoriCreativeSourceSelection = {
   ref: string
 }
 
-export type MoriCreativeLibrarySource = {
-  sourceKind: MoriCreativeSourceKind
+type MoriCreativeLibrarySourceCommon = {
   ref: string
   name: string
   description: string
-  durationSeconds?: number
   style?: string
 }
 
+export type MoriCreativeLibrarySource =
+  | (MoriCreativeLibrarySourceCommon & { sourceKind: "audio"; assetRef: string; durationSeconds: number })
+  | (MoriCreativeLibrarySourceCommon & { sourceKind: "voice" })
+  | (MoriCreativeLibrarySourceCommon & { sourceKind: "inspiration"; style: string })
+
 export const previewReferenceAudios = [
   {
-    ref: "asset_preview_city_lights",
+    ref: "source_preview_city_lights",
+    assetRef: "asset_preview_city_lights",
     name: "City Lights demo",
     description: "24 sec · soft city pulse",
     durationSeconds: 24,
@@ -87,6 +93,7 @@ export const previewCreativeSources = [
   ...previewReferenceAudios.map((audio) => ({
     sourceKind: "audio" as const,
     ref: audio.ref,
+    assetRef: audio.assetRef,
     name: audio.name,
     description: audio.description,
     durationSeconds: audio.durationSeconds,

@@ -1734,7 +1734,7 @@ describe("Mori workspace", () => {
         <CreateCanvas
           projectRef="project_preview_first_light"
           mode="custom"
-          initialCreativeSource={{ kind: "audio", ref: "asset_preview_city_lights" }}
+          initialCreativeSource={{ kind: "audio", ref: "source_preview_city_lights" }}
           onModeChange={() => undefined}
           onGenerate={onGenerate}
         />

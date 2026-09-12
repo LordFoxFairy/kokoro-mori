@@ -669,7 +669,7 @@ type MoriCreativeSourceCommon = {
 }
 
 export type MoriCreativeSource =
-  | (MoriCreativeSourceCommon & { source_kind: "audio"; duration_seconds: number })
+  | (MoriCreativeSourceCommon & { source_kind: "audio"; asset_ref: MoriRef; duration_seconds: number })
   | (MoriCreativeSourceCommon & { source_kind: "voice" })
   | (MoriCreativeSourceCommon & { source_kind: "inspiration"; style: string })
 
@@ -913,13 +913,15 @@ export type MoriExportDraft = {
 }
 
 export function createGenerationRequest(draft: MoriGenerationDraft): GenerationCreateInput {
+  const referenceAssetRefs = uniqueNonEmpty(draft.referenceAssetRefs ?? [])
+  if (referenceAssetRefs.length > 8) throw new Error("generation_reference_limit_exceeded")
   return {
     mode: draft.mode,
     prompt: draft.prompt.trim(),
     song_plan_ref: draft.songPlanRef?.trim() || null,
     lyrics: draft.lyricsMode === "lyrics" ? draft.lyrics?.trim() || null : null,
     style: draft.style?.trim() || null,
-    reference_asset_refs: draft.referenceAssetRefs ?? [],
+    reference_asset_refs: referenceAssetRefs,
     voice_ref: draft.lyricsMode === "lyrics" ? draft.voiceRef?.trim() || null : null,
     duration_seconds: draft.durationSeconds ?? null,
     lyrics_mode: draft.lyricsMode,

@@ -70,7 +70,7 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
     ? sourceCatalog.find((source) => source.sourceKind === "inspiration" && source.ref === initialCreativeSource.ref) ?? null
     : null
   const initialReferenceAudio = initialCreativeSource?.kind === "audio"
-    ? sourceCatalog.find((source) => source.sourceKind === "audio" && source.ref === initialCreativeSource.ref) ?? null
+    ? sourceCatalog.find((source): source is Extract<MoriCreativeLibrarySource, { sourceKind: "audio" }> => source.sourceKind === "audio" && source.ref === initialCreativeSource.ref) ?? null
     : null
   const smartTabRef = useRef<HTMLButtonElement>(null)
   const customTabRef = useRef<HTMLButtonElement>(null)
@@ -89,7 +89,8 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
   const [inspirationRef, setInspirationRef] = useState<string | null>(initialInspiration?.ref ?? null)
   const [durationOverride, setDurationOverride] = useState<number | null>(null)
   const [referenceSource, setReferenceSource] = useState<MoriAudioReferenceSelection | null>(() => initialReferenceAudio === null ? null : {
-    ref: initialReferenceAudio.ref,
+    sourceRef: initialReferenceAudio.ref,
+    assetRef: initialReferenceAudio.assetRef,
     name: initialReferenceAudio.name,
     detail: `${initialReferenceAudio.description} · from Library`,
   })
@@ -115,8 +116,8 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
 
   function applyReferenceUpload(upload: MoriCreativeSourceUpload, fileName: string) {
     setReferenceUploadStatus(upload.status)
-    if (upload.status === "ready" && upload.asset_ref !== null) {
-      setReferenceSource({ ref: upload.asset_ref, name: fileName, detail: `${formatFileSize(upload.byte_size)} · ready to guide this direction` })
+    if (upload.status === "ready" && upload.asset_ref !== null && upload.source_ref !== null) {
+      setReferenceSource({ sourceRef: upload.source_ref, assetRef: upload.asset_ref, name: fileName, detail: `${formatFileSize(upload.byte_size)} · ready to guide this direction` })
       setReferenceError(null)
       referenceUploadCommandRef.current = null
       referenceUploadNameRef.current = fileName
@@ -196,7 +197,7 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
         setStyle(source.style ?? source.description)
         setInspirationRef(source.ref)
       } else {
-        setReferenceSource({ ref: source.ref, name: source.name, detail: `${source.description} · from Library` })
+        setReferenceSource({ sourceRef: source.ref, assetRef: source.assetRef, name: source.name, detail: `${source.description} · from Library` })
       }
     })
     return () => window.cancelAnimationFrame(frame)
@@ -301,7 +302,7 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
     const createUpload = api?.createCreativeSourceUpload
     const uploadContent = api?.uploadCreativeSourceContent
     if (projectRef === "project_preview_first_light") {
-      setReferenceSource({ ref: "asset_preview_reference", name: file.name, detail: `${formatFileSize(file.size)} · selected for this direction` })
+      setReferenceSource({ sourceRef: "source_preview_reference", assetRef: "asset_preview_reference", name: file.name, detail: `${formatFileSize(file.size)} · selected for this direction` })
       return
     }
     if (projectRef === "project_pending") {
@@ -430,7 +431,7 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
       prompt,
       lyricsMode,
       style,
-      referenceAssetRefs: referenceSource === null ? [] : [referenceSource.ref],
+      referenceAssetRefs: referenceSource === null ? [] : [referenceSource.assetRef],
       voice,
       durationSeconds,
       ...(lyricsMode === "lyrics" && normalizedLyrics !== "" ? { lyrics: normalizedLyrics } : {}),

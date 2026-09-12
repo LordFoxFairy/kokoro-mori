@@ -37,9 +37,12 @@ describe("Mori Library Sources OpenAPI contract", () => {
         inspiration: "#/components/schemas/MoriInspirationCreativeSource",
       },
     })
-    expect(arrayValue(recordValue(schemas.MoriAudioCreativeSource, "audio source").required, "audio required")).toContain("duration_seconds")
+    const audio = recordValue(schemas.MoriAudioCreativeSource, "audio source")
+    expect(arrayValue(audio.required, "audio required")).toEqual(expect.arrayContaining(["source_ref", "asset_ref", "duration_seconds"]))
+    expect(recordValue(audio.properties, "audio properties").asset_ref).toMatchObject({ type: "string", minLength: 1 })
     expect(arrayValue(recordValue(schemas.MoriInspirationCreativeSource, "inspiration source").required, "inspiration required")).toContain("style")
     expect(arrayValue(recordValue(schemas.MoriVoiceCreativeSource, "voice source").required, "voice required")).not.toContain("style")
+    expect(recordValue(recordValue(schemas.MoriVoiceCreativeSource, "voice source").properties, "voice properties").asset_ref).toBeUndefined()
   })
 
   it("keeps sources authenticated, provider-neutral, and absent from write operations", () => {

@@ -1078,10 +1078,11 @@ export function parseMoriLibraryPage(value: unknown): { items: MoriLibraryItem[]
 
 export function parseMoriCreativeSource(value: unknown): MoriCreativeSource | null {
   if (!isRecord(value) || !moriCreativeSourceKind(value.source_kind) || !nonEmptyString(value.source_ref) || !nonEmptyString(value.name) || !nonEmptyString(value.description) || !dateString(value.created_at)) return null
-  if (value.source_kind === "audio" && integer(value.duration_seconds, 1)) {
+  if (value.source_kind === "audio" && nonEmptyString(value.asset_ref) && integer(value.duration_seconds, 1)) {
     return {
       source_kind: "audio",
       source_ref: value.source_ref,
+      asset_ref: value.asset_ref,
       name: value.name,
       description: value.description,
       duration_seconds: value.duration_seconds,

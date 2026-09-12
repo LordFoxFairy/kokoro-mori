@@ -394,7 +394,8 @@ describe("Mori catalog surfaces", () => {
           data: {
             sources: [{
               source_kind: "audio" as const,
-              source_ref: "asset_live_room_tone",
+              source_ref: "source_live_room_tone",
+              asset_ref: "asset_live_room_tone",
               name: "Room Tone Live",
               description: "A quiet room tone for texture",
               duration_seconds: 18,

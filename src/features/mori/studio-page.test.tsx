@@ -1173,7 +1173,7 @@ describe("Mori studio page", () => {
     const listCreativeSources = vi.fn<MoriApi["listCreativeSources"]>(async () => ({
       data: {
         sources: [
-          { source_kind: "audio", source_ref: "asset_live_room", name: "Live room guide", description: "18 sec · brushed pulse", duration_seconds: 18, created_at: "2026-09-12T12:00:00.000Z" },
+          { source_kind: "audio", source_ref: "source_live_room", asset_ref: "asset_live_room", name: "Live room guide", description: "18 sec · brushed pulse", duration_seconds: 18, created_at: "2026-09-12T12:00:00.000Z" },
           { source_kind: "voice", source_ref: "voice_live_aria", name: "Aria", description: "Clear mezzo · close phrasing", created_at: "2026-09-12T12:00:01.000Z" },
         ],
         next_cursor: null,

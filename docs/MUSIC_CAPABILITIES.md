@@ -88,7 +88,7 @@ Create 不再把 Reference、Voice、Style 拆成互相重复的快捷按钮或�
 
 | 来源 | 用户意图 | 当前行为 | 契约事实 |
 |---|---|---|---|
-| Audio | “参考这段节奏、旋律或质感” | 选择、校验、替换或移除本地音频 | 上传完成后进入 `reference_asset_refs[]` |
+| Audio | “参考这段节奏、旋律或质感” | 选择、校验、替换或移除本地音频 | `source_ref` 保留可复用来源身份；解析出的 `asset_ref` 进入 `reference_asset_refs[]` |
 | Voice | “沿用这个可复用的演唱身份” | 从渐进式 Voice profiles 中选择 | 稳定资产引用进入 `voice_ref` |
 | Inspiration | “从一个完整创作方向开始” | 选择少量策展预设并把结果写入可编辑 Style | 当前进入 provider-neutral `style` 文本 |
 
@@ -102,6 +102,8 @@ Audio / Voice / Inspiration 语义建立可复用素材层：默认 All 视图�
 类型筛选；Project 只留在独立的 Projects 工作区，不作为 Library 筛选或重复行。Version 与 Creative Source 使用独立的
 cursor feed，避免一个 Version 页把 Source 挤出首屏；`Use in Create` 只传递 provider-neutral 的 `source_kind` 与
 `source_ref`，Library 通过 `next_cursor` 渐进加载更多来源并支持单页重试，Create 再通过 source detail projection 恢复不在第一页的来源。
+Audio Source 同时返回 `source_ref` 与已就绪的 `asset_ref`：前者用于来源列表和 deep link，后者才可进入 Generation 的
+`reference_asset_refs[]`；Voice / Inspiration 不携带 `asset_ref`。
 当前使用确定性 preview assets，正式资产接线后位置、层级和交互保持不变。参考 Suno 的
 [Studio Library](https://help.suno.com/en/articles/13670849)、[Voices](https://help.suno.com/en/articles/11362369)
 和 [Audio Uploads](https://help.suno.com/en/articles/6141569)。

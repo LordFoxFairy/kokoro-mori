@@ -355,14 +355,14 @@ export function StudioAiComposer({ selectedSection, run, creativeSources, select
               <button
                 type="button"
                 aria-label={`Use ${reference.name} as reference`}
-                aria-pressed={referenceAssetRefs.includes(reference.ref)}
+                aria-pressed={referenceAssetRefs.includes(reference.assetRef)}
                 disabled={busy}
                 key={reference.ref}
-                onClick={() => toggleReference(reference.ref)}
+                onClick={() => toggleReference(reference.assetRef)}
               >
                 <AudioLines size={13} />
                 <span><strong>{reference.name}</strong><small>{reference.description}</small></span>
-                {referenceAssetRefs.includes(reference.ref) ? <Check size={13} /> : null}
+                {referenceAssetRefs.includes(reference.assetRef) ? <Check size={13} /> : null}
               </button>
             )) : <span className={styles.studioAiSourcesEmpty}>No audio references available yet.</span>}
           </div>
@@ -511,7 +511,7 @@ export function StudioAiComposer({ selectedSection, run, creativeSources, select
             {visibleCoverDraft !== null ? <span><strong>Mode</strong>{coverModeLabel(visibleCoverDraft.coverMode)}</span> : null}
             {visibleCoverDraft?.coverMode === "vocal" ? <span><strong>Voice</strong>{coverVoiceLabel(visibleCoverDraft.voiceRef, voiceProfiles)}</span> : null}
             {visiblePlan.draft.operation === "transform" && visiblePlan.draft.intent === "restyle" && visiblePlan.draft.referenceAssetRefs?.map((referenceRef) => {
-              const reference = referenceAudios.find((item) => item.ref === referenceRef)
+              const reference = referenceAudios.find((item) => item.assetRef === referenceRef)
               return reference === undefined ? null : <span key={reference.ref}><strong>Reference</strong>{reference.name} · {reference.description}</span>
             })}
             <span><strong>Keep</strong>{preserveLabel(visiblePlan.preserve)}</span>

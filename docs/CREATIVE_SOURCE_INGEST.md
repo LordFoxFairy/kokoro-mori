@@ -77,6 +77,8 @@ idle → creating → uploading → processing → ready
 }
 ```
 
+`source_ref` 是可复用 Creative Source 的持久身份，用于 Library、deep link 和 Source detail；`asset_ref` 是已通过
+Storage 处理、可被媒体读取和 Generation 使用的资产身份。`reference_asset_refs[]` 只接受后者，不接受 `source_ref`。
 `ready` 时 `asset_ref` 与 `source_ref` 必须同时非空；除 `ready` 外二者必须为 `null`。错误只使用稳定
 `code` / `message` / `retryable`，不向浏览器暴露 Storage 或 provider 原始信息。
 
@@ -85,7 +87,8 @@ idle → creating → uploading → processing → ready
 1. 选择文件后先校验扩展名、MIME、大小，再创建 Upload Session；未进入 `ready` 前 Generate disabled。
 2. 上传状态位于 Creative Sources 卡内，不弹出阻断式全局窗口；用户可以继续编辑 prompt、style 与 lyrics。
 3. `ready` 才写入 `reference_asset_refs[]`；取消、失败或过期会清除该引用并保留 Retry。
-4. Generation command 只接收 ready 的 opaque `asset_ref`；上传重试与生成重试是两套幂等边界。
+4. Generation command 只接收 ready 的 opaque `asset_ref`；Library 选择先保留 `source_ref` 作为来源身份，再解析出同一 Source 的
+   `asset_ref`；上传重试与生成重试是两套幂等边界。
 5. Library 只展示 ready Source；Source deep link 进入 Create 后先读取 owner detail，再恢复选择状态。
 
 当前浏览器实现还额外保证：live Project 缺少上传 seam 时不会把 `asset_preview_reference` 写入生成请求；上传命令在首个
