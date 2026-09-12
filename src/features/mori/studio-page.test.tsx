@@ -2815,6 +2815,99 @@ describe("Mori studio page", () => {
     expect(within(finishDialog).getByRole("radio", { name: /Mix revision 1/u })).toBeChecked()
   }, 15_000)
 
+  it("rehydrates the latest saved Mix Revision for Finish and Export after opening a Version", async () => {
+    const projectRef = "project_mix_restore"
+    const versionRef = "version_mix_restore"
+    const mixRevisionRef = "mix_revision_restore_4"
+    const workspace = {
+      project: {
+        project_ref: projectRef,
+        title: "First Light",
+        description: "A project with a saved mix.",
+        current_version_ref: versionRef,
+        candidate_count: 1,
+        last_activity_at: "2026-09-12T12:00:00.000Z",
+      },
+      current_song_plan: null,
+      open_version: {
+        project_ref: projectRef,
+        version_ref: versionRef,
+        revision: 3,
+        updated_at: "2026-09-12T12:00:00.000Z",
+      },
+      latest_lyrics_draft: null,
+      latest_mix_revision: {
+        mix_revision_ref: mixRevisionRef,
+        version_ref: versionRef,
+        revision: 4,
+        name: "Wide chorus",
+        track_count: 2,
+        created_at: "2026-09-12T11:59:00.000Z",
+      },
+      active_tasks: [],
+      revision_cursor: "workspace_mix_restore_4",
+      observed_at: "2026-09-12T12:00:00.000Z",
+    }
+    const getMixRevision = vi.fn<MoriApi["getMixRevision"]>(async () => ({
+      data: {
+        mix_revision_ref: mixRevisionRef,
+        version_ref: versionRef,
+        source_stem_separation_ref: "stem_separation_restore",
+        name: "Wide chorus",
+        revision: 4,
+        tracks: [
+          { stem_ref: "stem_vocals", gain: 0.72, muted: false, pan: -0.2 },
+          { stem_ref: "stem_drums", gain: 0.94, muted: false, pan: 0.18 },
+        ],
+        created_at: "2026-09-12T11:59:00.000Z",
+      },
+      meta: { request_id: "request_mix_restore_4" },
+    }))
+
+    render(
+      <MoriAppProvider>
+        <StudioPageContent
+          candidate={previewCandidates[0]}
+          projectRef={projectRef}
+          versionRef={versionRef}
+          initialSurface="finish"
+          api={{
+            listCandidates: async () => ({
+              data: {
+                candidates: [{
+                  candidate_ref: "candidate_mix_restore",
+                  generation_ref: "generation_mix_restore",
+                  version_ref: versionRef,
+                  project_ref: projectRef,
+                  title: "First Light",
+                  duration_seconds: 182,
+                  audio_asset_ref: "asset_mix_restore",
+                  waveform_asset_ref: "waveform_mix_restore",
+                  style_tags: ["warm", "wide"],
+                  created_at: "2026-09-12T11:58:00.000Z",
+                }],
+                next_cursor: null,
+              },
+              meta: { request_id: "request_candidates_mix_restore" },
+            }),
+            getProjectWorkspace: async () => ({ data: workspace, meta: { request_id: "request_workspace_mix_restore" } }),
+            getMixRevision,
+          }}
+          stemPlaybackFactory={createTestStemPlaybackController}
+        />
+      </MoriAppProvider>,
+    )
+
+    const finishDialog = await screen.findByRole("dialog", { name: "Finish First Light" })
+    await waitFor(() => expect(getMixRevision).toHaveBeenCalledWith(mixRevisionRef))
+    expect(await within(finishDialog).findByRole("radio", { name: /Mix revision 4/u })).toBeChecked()
+
+    fireEvent.click(within(finishDialog).getByRole("button", { name: "Close Finish" }))
+    fireEvent.click(screen.getByRole("button", { name: "Export" }))
+    const exportDialog = screen.getByRole("dialog", { name: "Export First Light" })
+    expect(within(exportDialog).getByRole("radio", { name: /Mix revision 4/u })).toBeChecked()
+  })
+
   it("keeps an active stem separation across Studio tools and lets the user cancel it", async () => {
     let cancelledStemSeparationRef = ""
     renderStudio({

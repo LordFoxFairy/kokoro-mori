@@ -77,6 +77,7 @@ type StudioLinkCopyStatus = "idle" | "copying" | "copied" | "failed"
 type StudioExportFeedback = "idle" | MoriExportStatus
 type StudioVersionLoadState = "ready" | "loading" | "error"
 type CompositionLoadState = "loading" | "ready" | "empty" | "unavailable"
+type StudioMixRevisionLoadStatus = "idle" | "loading" | "ready" | "unavailable"
 
 const studioToolOrder: readonly StudioTool[] = ["arrangement", "lyrics", "stems"]
 
@@ -88,7 +89,7 @@ type StudioPageContentProps = {
   initialSurface?: StudioEntrySurface
   initialIntent?: StudioEntryIntent
   initialGenerationRef?: string | null
-  api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "getProjectWorkspace" | "putCurrentVersion" | "putLyricsDraft" | "putProjectWorkspaceOpenVersion" | "listCandidates" | "listCreativeSources" | "createStudioChange" | "createCompositionRevision" | "getCompositionRevision" | "getGeneration" | "getGenerationEvents" | "cancelGeneration" | "createLyricsRevision" | "getLyricsRevision" | "getLyricsRevisionEvents" | "cancelLyricsRevision" | "createStemSeparation" | "getStemSeparation" | "getStemSeparationEvents" | "cancelStemSeparation" | "createArtworkGeneration" | "getArtworkGeneration" | "getArtworkGenerationEvents" | "cancelArtworkGeneration" | "getReleaseDraft" | "putReleaseDraft" | "createMixRevision">>
+  api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "getProjectWorkspace" | "putCurrentVersion" | "putLyricsDraft" | "putProjectWorkspaceOpenVersion" | "listCandidates" | "listCreativeSources" | "createStudioChange" | "createCompositionRevision" | "getCompositionRevision" | "getGeneration" | "getGenerationEvents" | "cancelGeneration" | "createLyricsRevision" | "getLyricsRevision" | "getLyricsRevisionEvents" | "cancelLyricsRevision" | "createStemSeparation" | "getStemSeparation" | "getStemSeparationEvents" | "cancelStemSeparation" | "createArtworkGeneration" | "getArtworkGeneration" | "getArtworkGenerationEvents" | "cancelArtworkGeneration" | "getReleaseDraft" | "putReleaseDraft" | "createMixRevision" | "getMixRevision">>
   stemPlaybackFactory?: StemPlaybackFactory
 }
 
@@ -255,6 +256,7 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
   const [exportMessage, setExportMessage] = useState<string | null>(null)
   const [trackedExport, setTrackedExport] = useState<TrackedExport | null>(null)
   const [latestMixRevision, setLatestMixRevision] = useState<MoriMixRevision | null>(null)
+  const [mixRevisionLoadStatus, setMixRevisionLoadStatus] = useState<StudioMixRevisionLoadStatus>("idle")
   const [studioChangeRun, setStudioChangeRun] = useState<StudioAiRunState>(idleStudioChangeRun)
   const [trackedStudioChange, setTrackedStudioChange] = useState<TrackedStudioChange | null>(null)
   const [lyricsRevisionRun, setLyricsRevisionRun] = useState<StudioLyricsRunState>(idleLyricsRevisionRun)
@@ -315,6 +317,7 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
   const pendingCurrentVersionCommandRef = useRef<PendingCurrentVersionCommand | null>(null)
   const lyricsRevisionCommandEpochRef = useRef(0)
   const stemSeparationCommandEpochRef = useRef(0)
+  const mixRevisionHydrationEpochRef = useRef(0)
   const studioChangeCommandEpochRef = useRef(0)
   const studioChangeObservationEpochRef = useRef(0)
   const studioChangeCancelRequestRef = useRef<string | null>(null)
@@ -365,6 +368,7 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
     studioChangeObservationEpochRef.current += 1
     studioChangeCancelRequestRef.current = null
     exportCommandEpochRef.current += 1
+    mixRevisionHydrationEpochRef.current += 1
     pendingExportCommandRef.current = null
     setTrackedStemSeparation((current) => {
       if (current === null || current.sourceVersionRef === activeVersionRef) return current
@@ -379,6 +383,7 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
         : idleStemSeparationRun
     ))
     setLatestMixRevision((current) => current?.version_ref === activeVersionRef ? current : null)
+    if (contextChanged) setMixRevisionLoadStatus("idle")
     setTrackedExport(null)
     exportFeedbackRef.current = "idle"
     setExportFeedback("idle")
@@ -404,6 +409,53 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
     }
     setExportDialogOpen(false)
   }, [activeProjectRef, activeVersionRef])
+
+  useEffect(() => {
+    if (!shouldUseWorkspaceMemory || activeVersionRef === null || projectWorkspaceMemory.workspaceStatus !== "ready") return
+
+    const summary = projectWorkspaceMemory.projection?.latest_mix_revision ?? null
+    const mixReader = api === undefined ? studioApi.getMixRevision : api.getMixRevision
+    const hydrationEpoch = mixRevisionHydrationEpochRef.current + 1
+    mixRevisionHydrationEpochRef.current = hydrationEpoch
+
+    if (summary === null || summary.version_ref !== activeVersionRef) {
+      setLatestMixRevision(null)
+      setMixRevisionLoadStatus("ready")
+      return
+    }
+    if (mixReader === undefined) {
+      setLatestMixRevision(null)
+      setMixRevisionLoadStatus("unavailable")
+      return
+    }
+
+    setMixRevisionLoadStatus("loading")
+    let disposed = false
+    void mixReader(summary.mix_revision_ref).then((response) => {
+      const revision = response.data
+      const valid = revision.mix_revision_ref === summary.mix_revision_ref
+        && revision.version_ref === activeVersionRef
+        && revision.revision === summary.revision
+        && revision.name === summary.name
+        && revision.tracks.length === summary.track_count
+      if (disposed || mixRevisionHydrationEpochRef.current !== hydrationEpoch) return
+      if (!valid) {
+        setLatestMixRevision(null)
+        setMixRevisionLoadStatus("unavailable")
+        return
+      }
+      setLatestMixRevision(revision)
+      setMixRevisionLoadStatus("ready")
+    }).catch(() => {
+      if (disposed || mixRevisionHydrationEpochRef.current !== hydrationEpoch) return
+      setLatestMixRevision(null)
+      setMixRevisionLoadStatus("unavailable")
+    })
+
+    return () => {
+      disposed = true
+    }
+  }, [activeVersionRef, api, projectWorkspaceMemory.projection, projectWorkspaceMemory.workspaceStatus, shouldUseWorkspaceMemory, studioApi])
 
   useEffect(() => {
     const requestedProjectRef = projectRef?.trim()
@@ -1219,6 +1271,7 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
       || !mixRevisionMatchesInput(revision, input)
     ) throw new Error("mix_revision_context_mismatch")
     setLatestMixRevision(revision)
+    setMixRevisionLoadStatus("ready")
     if (exportFeedbackRef.current === "failed" || exportFeedbackRef.current === "succeeded") resetExport()
     return revision
   }
@@ -1721,6 +1774,7 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
         versionTitle={activeCandidate.title}
         durationSeconds={activeCandidate.durationSeconds}
         latestMixRevision={latestMixRevision}
+        latestMixRevisionStatus={mixRevisionLoadStatus}
         status={exportFeedback}
         activeInput={exportInput}
         selectedRange={exportRange?.versionRef === activeCandidate.versionRef ? exportRange : undefined}
@@ -1734,6 +1788,7 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
         versionTitle={activeCandidate.title}
         durationSeconds={activeCandidate.durationSeconds}
         latestMixRevision={latestMixRevision}
+        latestMixRevisionStatus={mixRevisionLoadStatus}
         run={studioChangeRun}
         view={releaseWorkflow.finishView}
         onViewChange={releaseWorkflow.setFinishView}

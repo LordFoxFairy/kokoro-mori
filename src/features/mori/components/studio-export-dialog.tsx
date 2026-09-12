@@ -10,6 +10,7 @@ type StudioExportDialogProps = {
   versionTitle: string
   durationSeconds: number
   latestMixRevision: MoriMixRevision | null
+  latestMixRevisionStatus?: "idle" | "loading" | "ready" | "unavailable"
   status: "idle" | MoriExportStatus
   activeInput: MoriExportInput | null
   selectedRange?: StudioExportRange
@@ -32,6 +33,7 @@ export function StudioExportDialog({
   versionTitle,
   durationSeconds,
   latestMixRevision,
+  latestMixRevisionStatus = "idle",
   status,
   activeInput,
   selectedRange,
@@ -47,7 +49,8 @@ export function StudioExportDialog({
   const onCloseRef = useRef(onClose)
   const initialSource = activeInput?.source.type ?? (latestMixRevision === null ? "version" : "mix_revision")
   const sourceRef = useRef<HTMLInputElement>(null)
-  const [sourceType, setSourceType] = useState<"version" | "mix_revision">(initialSource)
+  const sourceSelectionTouchedRef = useRef(activeInput?.source !== undefined)
+  const [sourceType, setSourceType] = useState<"version" | "mix_revision">(initialSource === "mix_revision" && latestMixRevision === null ? "version" : initialSource)
   const [format, setFormat] = useState<MoriExportFormat>(activeInput?.format ?? "mp3")
   const initialScope = activeInput?.scope.type ?? "full_song"
   const [scopeType, setScopeType] = useState<ExportScopeType>(initialScope)
@@ -67,6 +70,10 @@ export function StudioExportDialog({
   useEffect(() => {
     onCloseRef.current = onClose
   }, [onClose])
+
+  useEffect(() => {
+    if (latestMixRevision !== null && !sourceSelectionTouchedRef.current && activeInput?.source === undefined) setSourceType("mix_revision")
+  }, [activeInput?.source, latestMixRevision])
 
   useEffect(() => {
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
@@ -165,6 +172,8 @@ export function StudioExportDialog({
             <fieldset className={styles.fieldset} disabled={busy || ready}>
               <legend>Render source</legend>
               <p className={styles.fieldHint}>Start from the Version itself or include your latest saved mixer choices.</p>
+              {latestMixRevisionStatus === "loading" ? <p className={styles.fieldHint} role="status">Loading the latest saved Mix Revision…</p> : null}
+              {latestMixRevisionStatus === "unavailable" ? <p className={styles.fieldHint} role="status">Saved Mix Revision is unavailable. The Open Version remains available to export.</p> : null}
               <div className={styles.sourceList}>
                 <label className={`${styles.sourceChoice} ${sourceType === "version" ? styles.choiceActive : ""}`}>
                   <input
@@ -175,7 +184,7 @@ export function StudioExportDialog({
                     value="version"
                     aria-label="Open version"
                     checked={sourceType === "version"}
-                    onChange={() => setSourceType("version")}
+                    onChange={() => { sourceSelectionTouchedRef.current = true; setSourceType("version") }}
                   />
                   <span className={styles.choiceIcon}><Music2 size={16} /></span>
                   <span className={styles.choiceCopy}>
@@ -196,7 +205,7 @@ export function StudioExportDialog({
                       value="mix_revision"
                       aria-label={`Mix revision ${latestMixRevision.revision} — ${latestMixRevision.name}`}
                       checked={sourceType === "mix_revision"}
-                      onChange={() => setSourceType("mix_revision")}
+                      onChange={() => { sourceSelectionTouchedRef.current = true; setSourceType("mix_revision") }}
                     />
                     <span className={styles.choiceIcon}><Layers3 size={16} /></span>
                     <span className={styles.choiceCopy}>

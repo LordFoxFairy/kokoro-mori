@@ -204,8 +204,9 @@ Finish 与独立 Export 使用同一套来源心智：**Open version** 显示歌
 
 这个层级吸收 Suno Remaster 的“保持作品身份、用强度控制制作变化”，以及 Tad 把 AI 能力意图说清楚的优点；
 但 Mori 把来源、约束和结果去向全部结构化。运行中关闭 Finish 不会取消任务，重新打开可恢复进度；snapshot 的
-source 或 strength 与 Review Plan 不一致时不会挂接任何 Candidate。保存过 Mix 时默认选择最新 Mix Revision，
-否则默认当前 Version，避免用户刚完成的 Gain / Mute 调整在精修时悄悄丢失。
+source 或 strength 与 Review Plan 不一致时不会挂接任何 Candidate。保存过 Mix 时默认选择最新 Mix Revision；重新打开
+live Version 时先从 Workspace 摘要重新水合完整 Mix Revision，只有 ref、Version、revision、名称和轨道数全部匹配才会
+提供给 Finish / Export；否则明确保留当前 Version，避免用户刚完成的 Gain / Mute / Pan 调整在精修时悄悄丢失。
 
 ### Finish / Release 的完成信息模型
 

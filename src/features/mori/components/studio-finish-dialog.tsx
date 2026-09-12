@@ -15,6 +15,7 @@ type StudioFinishDialogProps = {
   versionTitle: string
   durationSeconds: number
   latestMixRevision: MoriMixRevision | null
+  latestMixRevisionStatus?: "idle" | "loading" | "ready" | "unavailable"
   run: StudioAiRunState
   view?: StudioFinishView
   onViewChange?: (view: StudioFinishView) => void
@@ -41,6 +42,7 @@ export function StudioFinishDialog({
   versionTitle,
   durationSeconds,
   latestMixRevision,
+  latestMixRevisionStatus = "idle",
   run,
   view = "remaster",
   onViewChange,
@@ -65,8 +67,9 @@ export function StudioFinishDialog({
   const initialHasReleaseRef = useRef(release !== undefined)
   const onCloseRef = useRef(onClose)
   const runPlan = isStudioRemasterPlan(run.plan) ? run.plan : null
+  const sourceSelectionTouchedRef = useRef(runPlan !== null)
   const initialSource = runPlan?.source.type ?? (latestMixRevision === null ? "version" : "mix_revision")
-  const [sourceType, setSourceType] = useState<"version" | "mix_revision">(initialSource)
+  const [sourceType, setSourceType] = useState<"version" | "mix_revision">(initialSource === "mix_revision" && latestMixRevision === null ? "version" : initialSource)
   const [variationStrength, setVariationStrength] = useState<StudioRemasterStrength>(runPlan?.variationStrength ?? "balanced")
   const [reviewedPlan, setReviewedPlan] = useState<StudioRemasterPlan | null>(null)
   const visiblePlan = runPlan ?? reviewedPlan
@@ -76,6 +79,10 @@ export function StudioFinishDialog({
   useEffect(() => {
     onCloseRef.current = onClose
   }, [onClose])
+
+  useEffect(() => {
+    if (latestMixRevision !== null && !sourceSelectionTouchedRef.current) setSourceType("mix_revision")
+  }, [latestMixRevision])
 
   useEffect(() => {
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
@@ -243,6 +250,8 @@ export function StudioFinishDialog({
               <fieldset className={styles.fieldset}>
                 <legend>Polish source</legend>
                 <p className={styles.fieldHint}>Start from this Version or include the latest mixer choices you explicitly saved.</p>
+                {latestMixRevisionStatus === "loading" ? <p className={styles.fieldHint} role="status">Loading the latest saved Mix Revision…</p> : null}
+                {latestMixRevisionStatus === "unavailable" ? <p className={styles.fieldHint} role="status">Saved Mix Revision is unavailable. The Open Version remains available to polish.</p> : null}
                 <div className={styles.sourceList}>
                   <SourceChoice
                     inputRef={sourceType === "version" ? sourceRef : undefined}
@@ -251,7 +260,7 @@ export function StudioFinishDialog({
                     description={`${versionTitle} · ${formatDuration(durationSeconds)}`}
                     detail="Base audio before saved mixer changes"
                     icon={<Music2 size={16} />}
-                    onSelect={() => setSourceType("version")}
+                    onSelect={() => { sourceSelectionTouchedRef.current = true; setSourceType("version") }}
                   />
                   {latestMixRevision !== null ? (
                     <SourceChoice
@@ -261,7 +270,7 @@ export function StudioFinishDialog({
                       description={latestMixRevision.name}
                       detail={`${latestMixRevision.tracks.length} saved tracks`}
                       icon={<Layers3 size={16} />}
-                      onSelect={() => setSourceType("mix_revision")}
+                      onSelect={() => { sourceSelectionTouchedRef.current = true; setSourceType("mix_revision") }}
                     />
                   ) : null}
                 </div>
