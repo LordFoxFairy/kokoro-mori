@@ -31,6 +31,7 @@ describe("Mori Mix Revision OpenAPI contract", () => {
     const properties = recordValue(track.properties, "track properties")
     expect(recordValue(properties.gain, "gain")).toMatchObject({ type: "number", minimum: 0, maximum: 1 })
     expect(properties.solo).toBeUndefined()
+    expect(recordValue(properties.pan, "pan")).toMatchObject({ type: "number", minimum: -1, maximum: 1, multipleOf: 0.01, default: 0 })
 
     const revision = recordValue(schemas.MixRevision, "MixRevision")
     expect(arrayValue(revision.required, "revision required")).toEqual(expect.arrayContaining(["mix_revision_ref", "version_ref", "revision", "created_at"]))

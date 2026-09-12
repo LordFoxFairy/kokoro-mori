@@ -6,6 +6,7 @@ export type StemMixTrack = {
   gain: number
   muted: boolean
   solo: boolean
+  pan?: number
 }
 
 export type StemPlaybackCallbacks = {
@@ -30,10 +31,12 @@ type StemMediaEvent = "timeupdate" | "ended" | "error"
 export type StemMediaChannel = {
   currentTime: number
   volume: number
+  pan: number
   play: () => Promise<void>
   pause: () => void
   on: (event: StemMediaEvent, listener: () => void) => void
   off: (event: StemMediaEvent, listener: () => void) => void
+  dispose?: () => void
 }
 
 export type StemMediaChannelFactory = (url: string) => StemMediaChannel
@@ -68,6 +71,7 @@ export function createHtmlStemPlaybackController(
     pause()
     loadedChannels.forEach(({ channel, listeners }) => {
       listeners.forEach(({ event, listener }) => channel.off(event, listener))
+      channel.dispose?.()
     })
     loadedChannels = []
   }
@@ -128,9 +132,11 @@ export function createHtmlStemPlaybackController(
       const track = trackSettings.get(stemRef)
       if (track === undefined || track.muted || (hasSolo && !track.solo)) {
         channel.volume = 0
+        channel.pan = 0
         return
       }
       channel.volume = clamp(track.gain, 0, 1)
+      channel.pan = clamp(track.pan ?? 0, -1, 1)
     })
   }
 
@@ -145,15 +151,49 @@ export function createHtmlStemPlaybackController(
 function createBrowserStemMediaChannel(url: string): StemMediaChannel {
   const audio = new Audio(url)
   audio.preload = "metadata"
+  let context: AudioContext | null = null
+  let panner: StereoPannerNode | null = null
+  let source: MediaElementAudioSourceNode | null = null
+
+  try {
+    const audioContextConstructor = window.AudioContext ?? (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+    if (audioContextConstructor !== undefined) {
+      context = new audioContextConstructor()
+      source = context.createMediaElementSource(audio)
+      panner = context.createStereoPanner()
+      source.connect(panner)
+      panner.connect(context.destination)
+    }
+  } catch {
+    source?.disconnect()
+    panner?.disconnect()
+    context = null
+    panner = null
+    source = null
+  }
+
   return {
     get currentTime() { return audio.currentTime },
     set currentTime(value: number) { audio.currentTime = value },
     get volume() { return audio.volume },
     set volume(value: number) { audio.volume = value },
-    play: () => audio.play(),
+    get pan() { return panner?.pan.value ?? 0 },
+    set pan(value: number) { if (panner !== null) panner.pan.value = clamp(value, -1, 1) },
+    play: async () => {
+      if (context?.state === "suspended") await context.resume()
+      return audio.play()
+    },
     pause: () => audio.pause(),
     on: (event, listener) => audio.addEventListener(event, listener),
     off: (event, listener) => audio.removeEventListener(event, listener),
+    dispose: () => {
+      audio.pause()
+      audio.removeAttribute("src")
+      audio.load()
+      source?.disconnect()
+      panner?.disconnect()
+      void context?.close()
+    },
   }
 }
 

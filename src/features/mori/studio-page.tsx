@@ -1840,7 +1840,10 @@ function mixRevisionMatchesInput(revision: MoriMixRevision, input: MixRevisionIn
   const returnedTracks = new Map(revision.tracks.map((track) => [track.stem_ref, track]))
   return input.tracks.every((track) => {
     const returned = returnedTracks.get(track.stem_ref)
-    return returned !== undefined && returned.gain === track.gain && returned.muted === track.muted
+    return returned !== undefined
+      && returned.gain === track.gain
+      && returned.muted === track.muted
+      && (returned.pan ?? 0) === (track.pan ?? 0)
   })
 }
 

@@ -1056,8 +1056,8 @@ describe("Mori same-origin API client", () => {
       name: "Close vocal mix",
       revision: 1,
       tracks: [
-        { stem_ref: "stem_vocals_1", gain: 0.48, muted: false },
-        { stem_ref: "stem_drums_1", gain: 1, muted: true },
+        { stem_ref: "stem_vocals_1", gain: 0.48, muted: false, pan: -0.2 },
+        { stem_ref: "stem_drums_1", gain: 1, muted: true, pan: 0 },
       ],
       created_at: "2026-09-03T12:00:00.000Z",
     }
@@ -1079,8 +1079,8 @@ describe("Mori same-origin API client", () => {
       sourceStemSeparationRef: "stem_separation_1",
       name: "  Close vocal mix  ",
       tracks: [
-        { stemRef: "stem_vocals_1", gain: 0.478, muted: false },
-        { stemRef: "stem_drums_1", gain: 1, muted: true },
+        { stemRef: "stem_vocals_1", gain: 0.478, muted: false, pan: -0.2 },
+        { stemRef: "stem_drums_1", gain: 1, muted: true, pan: 0 },
       ],
     })
 
@@ -1095,8 +1095,8 @@ describe("Mori same-origin API client", () => {
           source_stem_separation_ref: "stem_separation_1",
           name: "Close vocal mix",
           tracks: [
-            { stem_ref: "stem_vocals_1", gain: 0.48, muted: false },
-            { stem_ref: "stem_drums_1", gain: 1, muted: true },
+            { stem_ref: "stem_vocals_1", gain: 0.48, muted: false, pan: -0.2 },
+            { stem_ref: "stem_drums_1", gain: 1, muted: true, pan: 0 },
           ],
         },
         headers: { "Content-Type": "application/json", "Idempotency-Key": "idem-mix-revision-1" },
@@ -1111,8 +1111,8 @@ describe("Mori same-origin API client", () => {
       sourceStemSeparationRef: "stem_separation_1",
       name: "Mix",
       tracks: [
-        { stemRef: "stem_vocals_1", gain: 1, muted: false },
-        { stemRef: "stem_vocals_1", gain: 0.5, muted: true },
+        { stemRef: "stem_vocals_1", gain: 1, muted: false, pan: 0 },
+        { stemRef: "stem_vocals_1", gain: 0.5, muted: true, pan: 0 },
       ],
     })).toThrow("mix_revision_tracks_invalid")
 
@@ -1124,7 +1124,7 @@ describe("Mori same-origin API client", () => {
           source_stem_separation_ref: "stem_separation_1",
           name: "Invalid mix",
           revision: 1,
-          tracks: [{ stem_ref: "stem_vocals_1", gain: 1.4, muted: false }],
+          tracks: [{ stem_ref: "stem_vocals_1", gain: 1.4, muted: false, pan: 0 }],
           created_at: "2026-09-03T12:00:00.000Z",
         },
         meta: { request_id: "request_mix_revision_invalid" },
@@ -1132,6 +1132,26 @@ describe("Mori same-origin API client", () => {
     })
 
     await expect(api.getMixRevision("mix_revision_invalid")).rejects.toMatchObject({ code: "invalid_api_response" })
+  })
+
+  it("normalizes Pan to two decimals and keeps older revisions centered", async () => {
+    expect(createMixRevisionRequest({
+      sourceStemSeparationRef: "stem_separation_1",
+      name: "Pan test",
+      tracks: [{ stemRef: "stem_vocals_1", gain: 1, muted: false, pan: -0.236 }],
+    }).tracks).toEqual([{ stem_ref: "stem_vocals_1", gain: 1, muted: false, pan: -0.24 }])
+
+    expect(createMixRevisionRequest({
+      sourceStemSeparationRef: "stem_separation_1",
+      name: "Legacy center",
+      tracks: [{ stemRef: "stem_vocals_1", gain: 1, muted: false }],
+    }).tracks).toEqual([{ stem_ref: "stem_vocals_1", gain: 1, muted: false, pan: 0 }])
+
+    expect(() => createMixRevisionRequest({
+      sourceStemSeparationRef: "stem_separation_1",
+      name: "Invalid pan",
+      tracks: [{ stemRef: "stem_vocals_1", gain: 1, muted: false, pan: 1.01 }],
+    })).toThrow("mix_revision_tracks_invalid")
   })
 
   it("returns the first complete stem event without waiting for the SSE connection to close", async () => {

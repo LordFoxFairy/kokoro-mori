@@ -2800,7 +2800,7 @@ describe("Mori studio page", () => {
       source_stem_separation_ref: "stem_separation_ui_1",
       name: "Stem mix",
     })
-    expect(submittedMixInputs[0]?.tracks[0]).toEqual({ stem_ref: "stem_ui_vocals", gain: 0.48, muted: true })
+    expect(submittedMixInputs[0]?.tracks[0]).toEqual({ stem_ref: "stem_ui_vocals", gain: 0.48, muted: true, pan: 0 })
     expect(await within(stemTracks).findByText("Mix revision 1 saved")).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole("button", { name: "Export" }))

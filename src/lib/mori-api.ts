@@ -374,6 +374,8 @@ export type MoriMixTrack = {
   stem_ref: MoriRef
   gain: number
   muted: boolean
+  /** -1 is hard left, 0 is center, and 1 is hard right. Older revisions default to center. */
+  pan?: number
 }
 
 export type MixRevisionInput = {
@@ -919,6 +921,7 @@ export type MoriMixRevisionDraft = {
     stemRef: MoriRef
     gain: number
     muted: boolean
+    pan?: number
   }>
 }
 
@@ -1172,6 +1175,7 @@ export function createMixRevisionRequest(draft: MoriMixRevisionDraft): MixRevisi
       || track.gain < 0
       || track.gain > 1
       || typeof track.muted !== "boolean"
+      || track.pan !== undefined && (!Number.isFinite(track.pan) || track.pan < -1 || track.pan > 1)
     ) throw new Error("mix_revision_tracks_invalid")
 
     seenStemRefs.add(stemRef)
@@ -1179,6 +1183,7 @@ export function createMixRevisionRequest(draft: MoriMixRevisionDraft): MixRevisi
       stem_ref: stemRef,
       gain: Math.round(track.gain * 100) / 100,
       muted: track.muted,
+      pan: Math.round((track.pan ?? 0) * 100) / 100,
     }
   })
 

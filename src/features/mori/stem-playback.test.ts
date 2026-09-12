@@ -12,7 +12,7 @@ const stems: MoriStem[] = [
 ]
 
 describe("HTML stem playback controller", () => {
-  it("aligns returned tracks, drives one clock, and applies effective Mute/Solo/Level", async () => {
+  it("aligns returned tracks, drives one clock, and applies effective Mute/Solo/Level/Pan", async () => {
     const channels: FakeStemMediaChannel[] = []
     const urls: string[] = []
     const onPosition = vi.fn()
@@ -33,10 +33,11 @@ describe("HTML stem playback controller", () => {
     ])
 
     controller.setMix([
-      { stemRef: "stem_vocal", gain: 0.75, muted: false, solo: true },
-      { stemRef: "stem_drums", gain: 0.4, muted: false, solo: false },
+      { stemRef: "stem_vocal", gain: 0.75, muted: false, solo: true, pan: -0.35 },
+      { stemRef: "stem_drums", gain: 0.4, muted: false, solo: false, pan: 0.4 },
     ])
     expect(channels.map((channel) => channel.volume)).toEqual([0.75, 0])
+    expect(channels.map((channel) => channel.pan)).toEqual([-0.35, 0])
 
     await controller.play(18)
     expect(channels.map((channel) => channel.currentTime)).toEqual([18, 18])
@@ -79,6 +80,7 @@ describe("HTML stem playback controller", () => {
 class FakeStemMediaChannel implements StemMediaChannel {
   currentTime = 0
   volume = 1
+  pan = 0
   readonly play = vi.fn(async () => undefined)
   readonly pause = vi.fn()
   private readonly listeners = new Map<string, Set<() => void>>()

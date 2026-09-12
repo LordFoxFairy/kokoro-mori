@@ -99,7 +99,7 @@
 ```text
 pnpm lint                         passed
 pnpm typecheck                    passed
-pnpm test                         passed: 79 files / 577 tests
+pnpm test                         passed: 79 files / 578 tests
 pnpm build                        passed
 ```
 

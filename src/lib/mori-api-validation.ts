@@ -892,11 +892,13 @@ export function parseMoriMixTrack(value: unknown): MoriMixTrack | null {
     || value.gain < 0
     || value.gain > 1
     || typeof value.muted !== "boolean"
+    || value.pan !== undefined && (typeof value.pan !== "number" || !Number.isFinite(value.pan) || value.pan < -1 || value.pan > 1)
   ) return null
   return {
     stem_ref: value.stem_ref,
     gain: value.gain,
     muted: value.muted,
+    pan: value.pan === undefined ? 0 : value.pan,
   }
 }
 

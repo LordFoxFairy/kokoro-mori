@@ -134,7 +134,7 @@
 
 .track {
   display: grid;
-  grid-template-columns: minmax(130px, 0.7fr) minmax(110px, 1fr) auto minmax(105px, 0.52fr) auto;
+  grid-template-columns: minmax(130px, 0.7fr) minmax(110px, 1fr) auto minmax(96px, 0.46fr) minmax(88px, 0.42fr) auto;
   gap: 10px;
   min-height: 54px;
   align-items: center;
@@ -188,15 +188,25 @@
   gap: 5px;
 }
 
+.pan {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+}
+
 .level > span,
-.level output {
+.level output,
+.pan > span,
+.pan output {
   color: var(--mori-faint);
   font-size: 8px;
   font-weight: 700;
   text-transform: uppercase;
 }
 
-.level output {
+.level output,
+.pan output {
   min-width: 18px;
   font-family: var(--mori-font-mono);
   text-align: right;
@@ -222,6 +232,33 @@
 }
 
 .level input::-moz-range-thumb {
+  width: 6px;
+  height: 6px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--mori-primary);
+}
+
+.pan input {
+  width: 100%;
+  min-width: 40px;
+  height: 3px;
+  appearance: none;
+  border-radius: 99px;
+  background: linear-gradient(90deg, rgba(226, 151, 125, 0.25), rgba(109, 92, 231, 0.14) 50%, rgba(109, 92, 231, 0.28));
+}
+
+.pan input::-webkit-slider-thumb {
+  width: 9px;
+  height: 9px;
+  appearance: none;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--mori-primary);
+  box-shadow: 0 1px 3px rgba(62, 45, 86, 0.22);
+}
+
+.pan input::-moz-range-thumb {
   width: 6px;
   height: 6px;
   border: 2px solid #fff;
@@ -378,7 +415,8 @@
 .trackActions button:focus-visible,
 .trackActions a:focus-visible,
 .mixName input:focus-visible,
-.saveButton:focus-visible {
+.saveButton:focus-visible,
+.pan input:focus-visible {
   outline: 2px solid rgba(109, 92, 231, 0.48);
   outline-offset: 2px;
 }
@@ -406,6 +444,11 @@
   .level {
     grid-column: 1 / -1;
     grid-row: 3;
+  }
+
+  .pan {
+    grid-column: 1 / -1;
+    grid-row: 4;
   }
 
   .savePanel {

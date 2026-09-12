@@ -303,8 +303,8 @@ Option       可选 MIDI transcription
 Review       先确认输出数量、来源与结果去向
 Run          snapshot / SSE 进度、取消、失败重试
 Result       实际返回的 version-bound stem assets
-Audition     一个同步 Transport + Seek；逐轨 Mute / Solo / Level
-Save         完整 Gain / Mute → 不可变 Mix Revision；Solo 不持久化
+Audition     一个同步 Transport + Seek；逐轨 Mute / Solo / Level / Pan
+Save         完整 Gain / Mute / Pan → 不可变 Mix Revision；Solo 不持久化
 Export       每个返回音轨可独立下载
 ```
 
@@ -536,7 +536,7 @@ GET  /api/v1/mori/mix_revisions/{mix_revision_ref}
 MixRevisionInput
   source_stem_separation_ref
   name                1–120 字符
-  tracks[]            1–12；stem_ref + gain(0–1) + muted
+  tracks[]            1–12；stem_ref + gain(0–1) + muted + pan(-1–1，缺失按 0)
 
 MixRevision
   mix_revision_ref + version_ref + revision
@@ -545,7 +545,7 @@ MixRevision
 ```
 
 owner 必须验证 separation 属于路径 Version，并要求请求中的 stem 集合与完成的 separation 精确一致。
-Command 使用 `Idempotency-Key`；相同内容没有变化时浏览器禁用重复提交，任一 Gain / Mute / Name 改动后再次保存
+Command 使用 `Idempotency-Key`；相同内容没有变化时浏览器禁用重复提交，任一 Gain / Mute / Pan / Name 改动后再次保存
 创建新的 revision。Solo 是监听状态，不属于 durable contract。机器事实源见
 [`contract/openapi/mori-mix-revision.v1.json`](../contract/openapi/mori-mix-revision.v1.json)。
 
@@ -608,9 +608,10 @@ Composition 的第一组 provider-neutral 纯函数已落地到 `composition.ts`
   界面闭环，并支持 Review、可编辑 Suggestion、Apply 与 Undo；Lyrics Revision contract、client、response parser、
   snapshot / SSE / cancel seam 已接入组件运行态，多候选保持独立且只应用用户选中的草稿。
 - Stem split 已完成浏览器侧闭环：Vocals or one part、Full stem split、Choose parts、可选 MIDI、Review、snapshot / SSE、
-  取消、重试与实际资产。成功结果已接入同步 Transport、Seek、逐轨 Mute / Solo / Level 与单轨下载；媒体通过
-  同源、支持 Range 的 asset content seam 读取，失败不回退到假音频。Gain / Mute 现可明确保存为不可变
-  Mix Revision，保存失败保留当前调整，未变化时不重复创建；Solo 保持 preview-only。
+  取消、重试与实际资产。成功结果已接入同步 Transport、Seek、逐轨 Mute / Solo / Level / Pan 与单轨下载；Pan
+  作用于真实 Web Audio 试听通道，媒体通过同源、支持 Range 的 asset content seam 读取，失败不回退到假音频。
+  Gain / Mute / Pan 现可明确保存为不可变 Mix Revision，旧 revision 缺失 Pan 时按中心解析，保存失败保留当前调整，
+  未变化时不重复创建；Solo 保持 preview-only。
 - Add Vocal、Add Instrumental 已落地为 Stems 内的 whole-Version `add_part` 图层工作流：意图选择、结构化输入、
   单步 Review、进度/取消/重试与 Take Lanes 去向均复用既有 Generation lifecycle，不新增全局工具或第二套任务状态机。
 - Create 已建立 Audio / Voice / Inspiration 的统一选择位，并把 `voice_ref` 与 Vocal direction 分离；Library

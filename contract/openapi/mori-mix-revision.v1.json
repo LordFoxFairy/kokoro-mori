@@ -118,7 +118,15 @@
         "properties": {
           "stem_ref": { "type": "string", "minLength": 1 },
           "gain": { "type": "number", "minimum": 0, "maximum": 1, "multipleOf": 0.01 },
-          "muted": { "type": "boolean" }
+          "muted": { "type": "boolean" },
+          "pan": {
+            "type": "number",
+            "minimum": -1,
+            "maximum": 1,
+            "multipleOf": 0.01,
+            "default": 0,
+            "description": "Stereo position: -1 is hard left, 0 is center, and 1 is hard right. Missing values are interpreted as center."
+          }
         }
       },
       "MixRevisionInput": {

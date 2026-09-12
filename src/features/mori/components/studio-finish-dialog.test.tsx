@@ -21,8 +21,8 @@ const mixRevision: MoriMixRevision = {
   name: "Close vocal mix",
   revision: 7,
   tracks: [
-    { stem_ref: "stem_vocals", gain: 0.72, muted: false },
-    { stem_ref: "stem_drums", gain: 1, muted: false },
+    { stem_ref: "stem_vocals", gain: 0.72, muted: false, pan: 0 },
+    { stem_ref: "stem_drums", gain: 1, muted: false, pan: 0 },
   ],
   created_at: "2026-09-03T12:00:00.000Z",
 }

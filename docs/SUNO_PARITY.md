@@ -67,7 +67,7 @@ Prompt / Upload
 | Library / Workspace 搜索与素材复用 | 浏览器 foundation 已对齐 | Projects、Versions、Audio/Voice/Inspiration Sources、cursor/search/filter；Studio Asset Dock v1 支持当前 Track / Range 内搜索、Audio 试听与 `source_ref` 插入，Voice / Inspiration 明确 reference-only | 接入真实 Source 生命周期、媒体投影与拖放；扩展多轨 Placement |
 | Song Editor 的 Split / Crop / Fade / Move | 浏览器 foundation 已对齐 | `Composition { tracks[] }`、轨道上下文选择、空轨道选择、可读的 Take / Source Clip 标签、Clip 时间范围摘要、Clip 与 AI Scope 的显式分离、Clip 编辑面板与 Move / Trim / Split / Crop / Fade / Insert 原语、Undo / Redo 已存在；候选 Take 可以插入已选时间范围；命令均有 `track_ref`、revision 与 owner seam，Studio 已能加载非空多轨 projection；无 owner projection 时保留 Main track fallback | P1 接入真实 Composition owner persistence，并扩展 Track / Placement projection |
 | 多轨 timeline、录音、loop、tempo | 部分对齐 | 当前已有 provider-neutral Track / Clip projection 与单轨浏览器编辑；录音、loop、tempo 和真实多轨 owner 尚缺 | P1：扩展 Track / Clip / Placement，并接入真实 owner |
-| Advanced Stems 与 mixer | 部分对齐 | Split intent、异步恢复、同步试听、Mute/Solo/Gain、Mix Revision | 补 Pan、真实 stem manifest 与 composition placement |
+| Advanced Stems 与 mixer | 部分对齐 | Split intent、异步恢复、同步试听、Mute/Solo/Gain/Pan、Mix Revision | 补真实 stem manifest 与 composition placement |
 | 整曲 / 选区 / 多轨 / MIDI 导出 | 部分对齐 | Export 已支持默认 Full song 与 Arrangement 当前 selected time range 的 MP3/WAV；snapshot 严格回显范围 | P1：Multitrack、单 clip、MIDI 与 artifact manifest |
 | Link-only 分享与 Public 发布 | 浏览器已对齐 | Release draft、独立 Share/Publish/Unpublish 命令、Copy share/public link；真实 owner 权限与 URL smoke 待接通 | **P0：完成真实 Share / Publish owner 集成** |
 | MIDI、Effects、Automation、Synth | 缺失 | 无可靠 Composition Revision 承载 | P1 后段；先做最小 track inspector 与 automation lane |

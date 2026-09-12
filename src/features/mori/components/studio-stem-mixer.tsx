@@ -31,6 +31,7 @@ export function StudioStemMixer({ stems, sourceStemSeparationRef, externalPlayba
   const [mutedStemRefs, setMutedStemRefs] = useState<string[]>([])
   const [soloStemRef, setSoloStemRef] = useState<string | null>(null)
   const [gains, setGains] = useState<Record<string, number>>(() => initialGains(stems))
+  const [pans, setPans] = useState<Record<string, number>>(() => initialPans(stems))
   const [playbackError, setPlaybackError] = useState<string | null>(null)
   const [mixName, setMixName] = useState("Stem mix")
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "failed">("idle")
@@ -44,7 +45,8 @@ export function StudioStemMixer({ stems, sourceStemSeparationRef, externalPlayba
     gain: gains[stem.stem_ref] ?? 1,
     muted: mutedStemRefs.includes(stem.stem_ref),
     solo: soloStemRef === stem.stem_ref,
-  })), [gains, mutedStemRefs, soloStemRef, stems])
+    pan: pans[stem.stem_ref] ?? 0,
+  })), [gains, mutedStemRefs, pans, soloStemRef, stems])
   const mixRevisionInput = useMemo(() => buildMixRevisionInput(sourceStemSeparationRef, mixName, mix), [mix, mixName, sourceStemSeparationRef])
   const mixFingerprint = mixRevisionInput === null ? null : JSON.stringify(mixRevisionInput)
   const mixChanged = mixFingerprint !== savedFingerprint
@@ -133,6 +135,10 @@ export function StudioStemMixer({ stems, sourceStemSeparationRef, externalPlayba
     setGains((current) => ({ ...current, [stemRef]: clamp(gainPercent / 100, 0, 1) }))
   }
 
+  const setPan = (stemRef: string, panPercent: number) => {
+    setPans((current) => ({ ...current, [stemRef]: clamp(panPercent / 100, -1, 1) }))
+  }
+
   const saveMix = async () => {
     if (mixRevisionInput === null || mixFingerprint === null || saveStatus === "saving") return
     const submittedFingerprint = mixFingerprint
@@ -192,6 +198,7 @@ export function StudioStemMixer({ stems, sourceStemSeparationRef, externalPlayba
           const solo = soloStemRef === stem.stem_ref
           const suppressedBySolo = soloStemRef !== null && !solo
           const gain = gains[stem.stem_ref] ?? 1
+          const pan = pans[stem.stem_ref] ?? 0
           return (
             <article className={`${styles.track} ${muted || suppressedBySolo ? styles.trackSuppressed : ""}`} aria-label={`${stem.label} stem`} key={stem.stem_ref}>
               <div className={styles.identity}>
@@ -204,6 +211,11 @@ export function StudioStemMixer({ stems, sourceStemSeparationRef, externalPlayba
                 <span>Level</span>
                 <input type="range" min={0} max={100} step={1} value={Math.round(gain * 100)} aria-label={`Volume ${stem.label}`} onChange={(event) => setGain(stem.stem_ref, Number(event.target.value))} />
                 <output>{Math.round(gain * 100)}</output>
+              </label>
+              <label className={styles.pan}>
+                <span>Pan</span>
+                <input type="range" min={-100} max={100} step={1} value={Math.round(pan * 100)} aria-label={`Pan ${stem.label}`} onChange={(event) => setPan(stem.stem_ref, Number(event.target.value))} />
+                <output>{formatPan(pan)}</output>
               </label>
               <div className={styles.trackActions}>
                 <button type="button" aria-pressed={muted} aria-label={`${muted ? "Unmute" : "Mute"} ${stem.label}`} title={`${muted ? "Unmute" : "Mute"} ${stem.label}`} onClick={() => toggleMute(stem.stem_ref)}>{muted ? <VolumeX size={14} /> : <Volume2 size={14} />}</button>
@@ -221,7 +233,7 @@ export function StudioStemMixer({ stems, sourceStemSeparationRef, externalPlayba
         </label>
         <div className={styles.saveCopy}>
           <strong>Keep this balance</strong>
-          <span>Gain and mute are saved as a new immutable Mix Revision. Solo is preview-only.</span>
+          <span>Gain, pan and mute are saved as a new immutable Mix Revision. Solo is preview-only.</span>
         </div>
         <button
           className={styles.saveButton}
@@ -252,6 +264,7 @@ function buildMixRevisionInput(sourceStemSeparationRef: string, name: string, mi
         stemRef: track.stemRef,
         gain: track.gain,
         muted: track.muted,
+        pan: track.pan,
       })),
     })
   } catch {
@@ -261,6 +274,10 @@ function buildMixRevisionInput(sourceStemSeparationRef: string, name: string, mi
 
 function initialGains(stems: readonly MoriStem[]): Record<string, number> {
   return Object.fromEntries(stems.map((stem) => [stem.stem_ref, 1]))
+}
+
+function initialPans(stems: readonly MoriStem[]): Record<string, number> {
+  return Object.fromEntries(stems.map((stem) => [stem.stem_ref, 0]))
 }
 
 function stemDetail(stem: MoriStem): string {
@@ -287,6 +304,12 @@ function stemSeed(stem: MoriStem, index: number): number {
 function formatDuration(durationSeconds: number): string {
   const safeDuration = Math.max(0, Math.floor(durationSeconds))
   return `${Math.floor(safeDuration / 60)}:${String(safeDuration % 60).padStart(2, "0")}`
+}
+
+function formatPan(pan: number): string {
+  const percent = Math.round(Math.abs(pan) * 100)
+  if (percent === 0) return "C"
+  return pan < 0 ? `L${percent}` : `R${percent}`
 }
 
 function seekBackground(positionSeconds: number, durationSeconds: number): string {

@@ -31,12 +31,13 @@ describe("Studio stem mixer", () => {
     expect(harness.controller.play).toHaveBeenCalledWith(0)
 
     fireEvent.change(screen.getByRole("slider", { name: "Volume Lead vocal" }), { target: { value: "35" } })
+    fireEvent.change(screen.getByRole("slider", { name: "Pan Lead vocal" }), { target: { value: "-40" } })
     fireEvent.click(screen.getByRole("button", { name: "Mute Drums" }))
     fireEvent.click(screen.getByRole("button", { name: "Solo Lead vocal" }))
     const latestMix = harness.controller.setMix.mock.calls.at(-1)?.[0]
     expect(latestMix).toEqual([
-      { stemRef: "stem_vocal", gain: 0.35, muted: false, solo: true },
-      { stemRef: "stem_drums", gain: 1, muted: true, solo: false },
+      { stemRef: "stem_vocal", gain: 0.35, muted: false, solo: true, pan: -0.4 },
+      { stemRef: "stem_drums", gain: 1, muted: true, solo: false, pan: 0 },
     ])
 
     fireEvent.change(screen.getByRole("textbox", { name: "Mix name" }), { target: { value: "  Close vocal mix  " } })
@@ -45,8 +46,8 @@ describe("Studio stem mixer", () => {
       source_stem_separation_ref: "stem_separation_1",
       name: "Close vocal mix",
       tracks: [
-        { stem_ref: "stem_vocal", gain: 0.35, muted: false },
-        { stem_ref: "stem_drums", gain: 1, muted: true },
+        { stem_ref: "stem_vocal", gain: 0.35, muted: false, pan: -0.4 },
+        { stem_ref: "stem_drums", gain: 1, muted: true, pan: 0 },
       ],
     }))
     expect(screen.getByText("Mix revision 1 saved")).toBeInTheDocument()
@@ -128,8 +129,8 @@ function savedMixRevision() {
     name: "Close vocal mix",
     revision: 1,
     tracks: [
-      { stem_ref: "stem_vocal", gain: 0.35, muted: false },
-      { stem_ref: "stem_drums", gain: 1, muted: true },
+      { stem_ref: "stem_vocal", gain: 0.35, muted: false, pan: 0 },
+      { stem_ref: "stem_drums", gain: 1, muted: true, pan: 0 },
     ],
     created_at: "2026-09-03T12:00:00.000Z",
   }
