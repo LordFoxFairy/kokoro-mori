@@ -168,6 +168,117 @@
   gap: 2px;
 }
 
+.studioAiSources {
+  margin-top: 8px;
+  padding: 9px;
+  border: 1px solid rgba(109, 92, 231, 0.13);
+  border-radius: 12px;
+  background: linear-gradient(110deg, rgba(247, 244, 255, 0.92), rgba(255, 248, 243, 0.72));
+}
+
+.studioAiSources > header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 7px;
+}
+
+.studioAiSources > header > div {
+  display: grid;
+  gap: 2px;
+}
+
+.studioAiSources > header span {
+  color: var(--mori-faint);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.studioAiSources > header strong,
+.studioAiSources > header small {
+  color: var(--mori-muted);
+  font-size: 10px;
+}
+
+.studioAiSources > header strong {
+  color: var(--mori-foreground);
+  font-weight: 750;
+}
+
+.studioAiSources > header small {
+  font-size: 9px;
+}
+
+.studioAiSourceChoices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.studioAiSourceChoices > button {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 1px solid rgba(109, 92, 231, 0.15);
+  border-radius: 9px;
+  color: var(--mori-muted);
+  background: rgba(255, 255, 255, 0.74);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.studioAiSourceChoices > button:hover:not(:disabled),
+.studioAiSourceChoices > button:focus-visible,
+.studioAiSourceChoices > button[aria-pressed="true"] {
+  border-color: rgba(109, 92, 231, 0.34);
+  color: var(--mori-primary-deep);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 4px 10px rgba(76, 60, 103, 0.07);
+}
+
+.studioAiSourceChoices > button[aria-pressed="true"] {
+  background: rgba(238, 234, 255, 0.82);
+}
+
+.studioAiSourceChoices > button:disabled {
+  cursor: progress;
+  opacity: 0.58;
+}
+
+.studioAiSourceChoices > button > span {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.studioAiSourceChoices > button strong,
+.studioAiSourceChoices > button small {
+  overflow: hidden;
+  max-width: 190px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studioAiSourceChoices > button strong {
+  font-size: 9px;
+}
+
+.studioAiSourceChoices > button small {
+  color: var(--mori-faint);
+  font-size: 8px;
+}
+
+.studioAiSourcesEmpty {
+  color: var(--mori-faint);
+  font-size: 9px;
+}
+
 .studioAiOperationSummary strong {
   font-size: 10px;
 }

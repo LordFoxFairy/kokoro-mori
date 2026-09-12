@@ -86,6 +86,7 @@ describe("Studio AI composer", () => {
   it("lets Restyle use an audio reference without exposing it to Cover", () => {
     const onGenerate = renderComposer()
     fireEvent.click(screen.getByRole("button", { name: "Transform" }))
+    expect(screen.getByRole("button", { name: "Use City Lights demo as reference" })).toBeInTheDocument()
     fireEvent.click(screen.getByText("Keep & compare"))
 
     const reference = screen.getByRole("button", { name: "Use City Lights demo as reference" })

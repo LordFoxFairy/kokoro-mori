@@ -336,6 +336,31 @@ export function StudioAiComposer({ selectedSection, run, creativeSources, initia
         </div>
       </div>
 
+      {operation === "transform" && !isCover ? (
+        <section className={styles.studioAiSources} aria-label="Creative sources">
+          <header>
+            <div><span>Creative sources</span><strong>Reference sound</strong></div>
+            <small>Optional · guide the texture without replacing your Version</small>
+          </header>
+          <div className={styles.studioAiSourceChoices} role="group" aria-label="Reference audio">
+            {referenceAudios.length > 0 ? referenceAudios.map((reference) => (
+              <button
+                type="button"
+                aria-label={`Use ${reference.name} as reference`}
+                aria-pressed={referenceAssetRefs.includes(reference.ref)}
+                disabled={busy}
+                key={reference.ref}
+                onClick={() => toggleReference(reference.ref)}
+              >
+                <AudioLines size={13} />
+                <span><strong>{reference.name}</strong><small>{reference.description}</small></span>
+                {referenceAssetRefs.includes(reference.ref) ? <Check size={13} /> : null}
+              </button>
+            )) : <span className={styles.studioAiSourcesEmpty}>No audio references available yet.</span>}
+          </div>
+        </section>
+      ) : null}
+
       {operation === "transform" ? (
         <div className={styles.studioAiIntents} role="group" aria-label="Transform intent">
           {transformIntents.map(({ id, label, description, Icon }) => (
@@ -444,25 +469,6 @@ export function StudioAiComposer({ selectedSection, run, creativeSources, initia
               ))}
             </div>
           </div>
-          {operation === "transform" ? (
-            <div className={`${styles.studioAiControlGroup} ${styles.studioAiReferenceGroup}`} role="group" aria-label="Reference audio">
-              <span className={styles.studioAiControlLabel}>Reference audio <small>Optional</small></span>
-              <div className={styles.studioAiChoices}>
-                {referenceAudios.map((reference) => (
-                  <button
-                    type="button"
-                    aria-label={`Use ${reference.name} as reference`}
-                    aria-pressed={referenceAssetRefs.includes(reference.ref)}
-                    disabled={busy}
-                    key={reference.ref}
-                    onClick={() => toggleReference(reference.ref)}
-                  >
-                    {reference.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : null}
           {operation === "transform" ? (
             <div className={styles.studioAiControlGroup} role="group" aria-label="Transform scope">
               <span className={styles.studioAiControlLabel}>Apply to</span>
