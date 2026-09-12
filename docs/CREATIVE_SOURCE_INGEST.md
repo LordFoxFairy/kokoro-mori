@@ -1,6 +1,6 @@
 # Creative Source Ingest 设计
 
-> 状态：浏览器 foundation 已实现，Storage integration 待接入（2026-09-12）
+> 状态：浏览器文件上传与麦克风录音 foundation 已实现，Storage integration 待接入（2026-09-12）
 > Owner：`kokoro-mori` 负责页面状态与同源 API 映射；真实 Asset / Upload 事实由 Storage owner 保存。
 
 ## 目标
@@ -90,6 +90,7 @@ Storage 处理、可被媒体读取和 Generation 使用的资产身份。`refer
 4. Generation command 只接收 ready 的 opaque `asset_ref`；Library 选择先保留 `source_ref` 作为来源身份，再解析出同一 Source 的
    `asset_ref`；上传重试与生成重试是两套幂等边界。
 5. Library 只展示 ready Source；Source deep link 进入 Create 后先读取 owner detail，再恢复选择状态。
+6. Audio reference 同时支持选择本地文件与浏览器录音；录音中的 Generate 保持禁用，停止后复用同一 Upload Session 状态机，不新增第二套资产身份。
 
 当前浏览器实现还额外保证：live Project 缺少上传 seam 时不会把 `asset_preview_reference` 写入生成请求；上传命令在首个
 请求前固定 `Idempotency-Key`，同一文件的失败重试复用已有 `upload_ref`（若已创建）或同一创建幂等键；processing 状态由
@@ -97,7 +98,7 @@ Storage 处理、可被媒体读取和 Generation 使用的资产身份。`refer
 
 ## 暂不开放
 
-- 批量上传、浏览器录音、波形裁剪、分片断点续传。
+- 批量上传、波形裁剪、分片断点续传。
 - 在 Mori 内实现 Storage、病毒扫描、音频转码或 provider upload URL。
 - 将 `File`、`Blob` 或音频字节放入 Project Workspace、Generation Queue 或 URL。
 
@@ -106,4 +107,4 @@ Storage 处理、可被媒体读取和 Generation 使用的资产身份。`refer
 - 机器契约与 TypeScript parser 对齐，ready / failed / cancelled / expired 均有测试。
 - Playwright 覆盖选择文件 → uploading → processing → ready → Generate，以及失败 Retry 和刷新恢复。
 - Storage integration smoke 证明有效文件成功率、重复 cancel、过期会话和重试幂等。
-- `MUSIC_CAPABILITIES.md` 与 `SUNO_PARITY.md` 只在上述浏览器门禁通过后把 P0.2 标成完成；当前仍为设计阶段。
+- `MUSIC_CAPABILITIES.md` 与 `SUNO_PARITY.md` 的 P0.2 仍需真实 Storage integration、设备矩阵与 Playwright 全流程证据后才可标成完成；当前已完成浏览器 foundation。

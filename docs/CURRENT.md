@@ -15,7 +15,7 @@
 - Studio Export 已支持 Full song 或当前 Arrangement 选区：默认仍导出整曲，用户在同一窗口选择 `Selected range` 后，选区的 `start_ms` / `end_ms` 会随 Version 或 Mix Revision 一起进入异步 render request 与 snapshot；多轨 / MIDI 仍未暴露。
 - Studio Arrangement 的当前 AI edit range 现在可以直接通过全局 Player 试听：Preview selection 复用同一个媒体通道，从选区起点开始并在终点自动暂停、回到起点；Player 显示 Range audition 上下文，普通整曲试听、Take 切换和 AI Scope 仍保持独立，不创建第二个播放器。
 - 多 Take 对比现在是 Studio 的可达主路径：当 Version 有多个候选时，顶栏显示带数量的 `Takes` 入口，点击会滚动到 Take Lanes、把焦点交给对比区域，并为固定底部 Player 保留滚动安全区；单候选时不显示无意义入口。
-- Creative Source ingest 的浏览器 foundation 已收紧：live Project 不再把缺失的上传能力伪装成 preview asset；上传 command 在首个请求前生成稳定幂等键，同一文件失败重试会复用会话，并持续以退避轮询 processing 状态直到 owner 返回终态；Generate 在上传进行中保持禁用。
+- Creative Source ingest 的浏览器 foundation 已收紧：live Project 不再把缺失的上传能力伪装成 preview asset；选择文件或完成麦克风录音后都复用同一 Upload Session，上传 command 在首个请求前生成稳定幂等键，同一文件失败重试会复用会话，并持续以退避轮询 processing 状态直到 owner 返回终态；录音中和上传进行中 Generate 都保持禁用。
 - Creative Source 的身份边界已固定：Audio Source 同时携带 Library/deep-link 使用的 `source_ref` 与可播放、可生成的 `asset_ref`；Create / Studio 只把后者写入 `reference_asset_refs[]`，Voice / Inspiration 不携带 Asset 身份。
 - Studio AI 的 Reference audio 与 Cover voice 不再绑定单一 preview 常量；Studio 默认通过 `/library/sources` 读取 live Creative Source projection，组件接受同一 catalog，加载失败时才使用明确的 preview fallback。
 - Composition API seam 已固定 Version ref、幂等键与 revisioned input 的分离；`move_clip` 缺省为同轨移动，跨轨时携带可选 `target_track_ref`，并已提供同源 GET/PUT revision client；保存成功后会校验并采用 owner 返回的轨道投影，真实 BFF owner persistence 与 recovery smoke 仍待接入。
@@ -106,8 +106,10 @@ pnpm exec vitest run --maxWorkers=1 src/features/mori/studio-page.test.tsx
 pnpm exec vitest run --maxWorkers=1 <affected composition tests>
                                   passed: 6 files / 36 tests
 pnpm exec vitest run --maxWorkers=1 src/features/mori/mori-workspace.test.tsx
-                                  passed: 1 file / 68 tests
-pnpm test                         passed: 79 files / 590 tests
+                                  passed: 1 file / 69 tests
+pnpm exec vitest run --maxWorkers=1 src/features/mori/use-audio-recorder.test.tsx
+                                  passed: 1 file / 2 tests
+pnpm test                         passed: 80 files / 593 tests
 pnpm build                        passed
 ```
 
@@ -115,7 +117,7 @@ pnpm build                        passed
 
 - 当前页面仍保留 preview fallback；真实 provider 适配、持久化 Project/Version/Source 和公开 Product API
   由后续 owner contract 驱动，不在组件内伪造。Library 的浏览器契约已先固定投影形状，供后续同源 owner 接入。
-- Creative Source ingest 仍未达到 P0.2 完成门槛：跨刷新恢复只保留 `upload_ref` 元数据，真实字节上传、Storage 扫描、过期/取消 integration smoke 与 Playwright 全流程仍待 owner 接入和验证。
+- Creative Source ingest 仍未达到 P0.2 完成门槛：跨刷新恢复只保留 `upload_ref` 元数据，真实字节上传、麦克风权限/设备矩阵、Storage 扫描、过期/取消 integration smoke 与 Playwright 全流程仍待 owner 接入和验证。
 - Durable Project Memory 仍处于 browser foundation：Studio Lyrics 与 Create Smart Song Plan 已通过 owner-confirmed
   Workspace command 接入浏览器 seam；BFF 仍尚未提供 projection 组合、revision 存储、幂等 receipt 与 recovery smoke。
   因此不把 preview Workspace 计为跨刷新、跨设备的 Runtime 恢复证据。

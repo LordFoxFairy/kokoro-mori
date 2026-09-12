@@ -66,6 +66,30 @@ const silentMediaFactory: PlayerMediaFactory = () => ({
   dispose: vi.fn(),
 })
 
+class CreateFakeMediaRecorder {
+  static isTypeSupported = vi.fn(() => true)
+  state: RecordingState = "inactive"
+  mimeType = "audio/webm"
+  ondataavailable: ((event: { data: Blob }) => void) | null = null
+  onerror: (() => void) | null = null
+  onstop: (() => void) | null = null
+
+  constructor(stream: MediaStream, options?: { mimeType?: string }) {
+    void stream
+    void options
+  }
+
+  start() {
+    this.state = "recording"
+    this.ondataavailable?.({ data: new Blob(["recorded reference"], { type: "audio/webm" }) })
+  }
+
+  stop() {
+    this.state = "inactive"
+    this.onstop?.()
+  }
+}
+
 function ActivePlayerHarness() {
   const { playbackQueue, playerCandidate, playing, positionSeconds, selectPlayerCandidate, setPlaying } = useMoriApp()
   return <>
@@ -1130,6 +1154,7 @@ describe("Mori workspace", () => {
 
     const sources = screen.getByRole("region", { name: "Creative sources" })
     expect(within(sources).getByRole("button", { name: "Add audio reference" })).toBeInTheDocument()
+    expect(within(sources).getByRole("button", { name: "Record audio reference" })).toBeInTheDocument()
     expect(within(sources).getByRole("button", { name: "Choose voice profile" })).toBeInTheDocument()
     expect(within(sources).getByRole("button", { name: "Choose inspiration" })).toBeInTheDocument()
     expect(within(sources).getByText("Audio reference")).toBeInTheDocument()
@@ -1947,6 +1972,43 @@ describe("Mori workspace", () => {
     expect(screen.getByRole("button", { name: "Generate" })).toBeDisabled()
     await waitFor(() => expect(screen.getByRole("button", { name: "Replace reference audio guide.wav" })).toBeInTheDocument())
     expect(uploadContent).toHaveBeenCalledOnce()
+  })
+
+  it("sends a recorded reference through the existing upload session", async () => {
+    const createUpload = vi.fn<MoriApi["createCreativeSourceUpload"]>(async (input) => ({
+      data: { upload_ref: "upload_recorded_1", status: "creating", expires_at: "2026-09-06T00:00:00Z" },
+      meta: { request_id: `upload_create_${input.file_name}` },
+    }))
+    const uploadContent = vi.fn<MoriApi["uploadCreativeSourceContent"]>(async (_uploadRef, content, contentType) => {
+      expect(content).toBeInstanceOf(Blob)
+      expect(contentType).toBe("audio/webm")
+      const byteSize = content instanceof Blob ? content.size : 0
+      return {
+        data: { upload_ref: "upload_recorded_1", source_kind: "audio", status: "ready", bytes_received: byteSize, byte_size: byteSize, asset_ref: "asset_recorded_1", source_ref: "source_recorded_1", error: null, created_at: "2026-09-05T00:00:00Z", updated_at: "2026-09-05T00:00:02Z", expires_at: "2026-09-06T00:00:00Z" },
+        meta: { request_id: "upload_recorded_ready" },
+      }
+    })
+    const stopTrack = vi.fn()
+    vi.stubGlobal("MediaRecorder", CreateFakeMediaRecorder)
+    Object.defineProperty(navigator, "mediaDevices", { configurable: true, value: { getUserMedia: vi.fn(async () => ({ getTracks: () => [{ stop: stopTrack }] })) } })
+
+    try {
+      const api: Partial<MoriApi> = { createCreativeSourceUpload: createUpload, uploadCreativeSourceContent: uploadContent }
+      render(<MoriAppProvider><CreateCanvas projectRef="project_live_1" mode="custom" api={api} onModeChange={() => undefined} onGenerate={() => undefined} /></MoriAppProvider>)
+
+      fireEvent.click(screen.getByRole("button", { name: "Record audio reference" }))
+      await waitFor(() => expect(screen.getByRole("button", { name: "Stop recording audio reference" })).toBeInTheDocument())
+      expect(screen.getByRole("button", { name: "Generate" })).toBeDisabled()
+
+      fireEvent.click(screen.getByRole("button", { name: "Stop recording audio reference" }))
+      await waitFor(() => expect(screen.getByRole("button", { name: /^Replace reference audio mori-recording-/u })).toBeInTheDocument())
+      expect(createUpload).toHaveBeenCalledOnce()
+      expect(createUpload.mock.calls[0]?.[0]).toMatchObject({ source_kind: "audio", content_type: "audio/webm" })
+      expect(uploadContent).toHaveBeenCalledOnce()
+      expect(stopTrack).toHaveBeenCalledOnce()
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 
   it("preserves the current audio reference when a replacement is rejected", () => {

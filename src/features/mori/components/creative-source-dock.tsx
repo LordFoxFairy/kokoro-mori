@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronDown, FileAudio, Mic2, Plus, Sparkles, X } from "lucide-react"
+import { ChevronDown, FileAudio, Mic2, Plus, Sparkles, Square, X } from "lucide-react"
 import { useState } from "react"
 import {
   previewCreativeSources,
@@ -9,6 +9,7 @@ import {
   type MoriInspirationPreset,
 } from "../creative-assets"
 import type { MoriCreativeSourceUploadStatus } from "@/lib/mori-api"
+import type { AudioRecordingStatus } from "../use-audio-recorder"
 import styles from "./creative-source-dock.module.css"
 
 type CreativeSourceDockProps = {
@@ -24,6 +25,10 @@ type CreativeSourceDockProps = {
   onInspirationChange: (preset: MoriInspirationPreset | null) => void
   creativeSources?: readonly MoriCreativeLibrarySource[]
   referenceUploadStatus?: MoriCreativeSourceUploadStatus | null
+  recordingStatus?: AudioRecordingStatus
+  recordingSeconds?: number
+  onStartRecording?: () => void
+  onStopRecording?: () => void
 }
 
 type OpenPicker = "voice" | "inspiration" | null
@@ -38,7 +43,13 @@ export function CreativeSourceDock({
   onRemoveReference,
   onVoiceChange,
   onInspirationChange,
-  creativeSources, referenceUploadStatus = null, onRetryReference,
+  creativeSources,
+  referenceUploadStatus = null,
+  recordingStatus = "idle",
+  recordingSeconds = 0,
+  onRetryReference,
+  onStartRecording,
+  onStopRecording,
 }: CreativeSourceDockProps) {
   const [openPicker, setOpenPicker] = useState<OpenPicker>(null)
   const sourceCatalog: readonly MoriCreativeLibrarySource[] = creativeSources ?? previewCreativeSources
@@ -55,6 +66,8 @@ export function CreativeSourceDock({
   }))
   const selectedVoice = voiceProfiles.find((profile) => profile.ref === voiceRef) ?? null
   const selectedInspiration = inspirationPresets.find((preset) => preset.ref === inspirationRef) ?? null
+  const recording = recordingStatus !== "idle"
+  const referenceUploadPending = referenceUploadStatus !== null && !["ready", "failed", "cancelled", "expired"].includes(referenceUploadStatus)
 
   function togglePicker(picker: Exclude<OpenPicker, null>) {
     setOpenPicker((current) => current === picker ? null : picker)
@@ -69,19 +82,32 @@ export function CreativeSourceDock({
 
       <div className={`${styles.sourceGrid} ${voiceEnabled ? "" : styles.sourceGridTwo}`}>
         <div className={styles.sourceCell}>
-          <button
-            className={`${styles.sourceButton} ${referenceSource === null ? "" : `${styles.sourceButtonSelected} ${styles.sourceButtonRemovable}`}`}
-            type="button"
-            onClick={() => { setOpenPicker(null); onChooseReference() }}
-            aria-label={referenceSource === null ? "Add audio reference" : `Replace reference audio ${referenceSource.name}`}
-          >
-            <span className={styles.sourceIcon}><FileAudio /></span>
-            <span className={styles.sourceCopy}>
-              <strong>{referenceSource?.name ?? "Audio reference"}</strong>
-              <small>{referenceSource?.detail ?? (referenceUploadStatus === null ? "Guide rhythm, melody, or texture" : `${referenceUploadStatus} · preparing your reference`)}</small>
-            </span>
-            {referenceSource === null ? <Plus className={styles.sourceChevron} /> : null}
-          </button>
+          <div className={styles.sourceActions}>
+            <button
+              className={`${styles.sourceButton} ${referenceSource === null ? "" : `${styles.sourceButtonSelected} ${styles.sourceButtonRemovable}`}`}
+              type="button"
+              disabled={recording || referenceUploadPending}
+              onClick={() => { setOpenPicker(null); onChooseReference() }}
+              aria-label={recording ? "Recording reference audio" : referenceSource === null ? "Add audio reference" : `Replace reference audio ${referenceSource.name}`}
+            >
+              <span className={styles.sourceIcon}><FileAudio /></span>
+              <span className={styles.sourceCopy}>
+                <strong>{recording ? "Recording reference" : referenceSource?.name ?? "Audio reference"}</strong>
+                <small>{recording ? `${formatRecordingDuration(recordingSeconds)} · tap Stop when you’re done` : referenceSource?.detail ?? (referenceUploadStatus === null ? "Guide rhythm, melody, or texture" : `${referenceUploadStatus} · preparing your reference`)}</small>
+              </span>
+              {referenceSource === null && !recording ? <Plus className={styles.sourceChevron} /> : null}
+            </button>
+            {referenceSource === null && recording && onStopRecording !== undefined ? (
+              <button className={styles.recordButton} type="button" disabled={recordingStatus === "stopping"} onClick={onStopRecording} aria-label={recordingStatus === "stopping" ? "Finishing audio reference recording" : "Stop recording audio reference"}>
+                <Square /> {recordingStatus === "stopping" ? "Preparing…" : "Stop"}
+              </button>
+            ) : null}
+            {referenceSource === null && !recording && !referenceUploadPending && onStartRecording !== undefined ? (
+              <button className={styles.recordButton} type="button" onClick={onStartRecording} aria-label="Record audio reference">
+                <Mic2 /> Record
+              </button>
+            ) : null}
+          </div>
           {referenceSource !== null ? (
             <button className={styles.sourceRemove} type="button" onClick={onRemoveReference} aria-label={`Remove reference audio ${referenceSource.name}`}>
               <X />
@@ -183,4 +209,10 @@ export function CreativeSourceDock({
       ) : null}
     </section>
   )
+}
+
+function formatRecordingDuration(seconds: number): string {
+  const minutes = Math.floor(seconds / 60).toString().padStart(2, "0")
+  const remainder = Math.max(0, seconds % 60).toString().padStart(2, "0")
+  return `${minutes}:${remainder}`
 }

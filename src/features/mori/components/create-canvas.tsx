@@ -16,6 +16,7 @@ import { buildSongPlan } from "../song-plan"
 import { idleProjectWorkspaceSaveRun, type ProjectWorkspaceSaveRun } from "../project-workspace-memory"
 import { CreativeSourceDock } from "./creative-source-dock"
 import { useMoriApp } from "./mori-app-provider"
+import { useAudioRecorder } from "../use-audio-recorder"
 import styles from "../mori-workspace.module.css"
 
 const DEFAULT_PROMPT = "A warm, late-night track for the drive home, slowly opening into sunrise."
@@ -65,7 +66,7 @@ type PendingReferenceUploadCommand = {
   byteSize: number
   idempotencyKey: string
   uploadRef: string | null
-  file: File
+  file: Blob
 }
 
 export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeSource, creativeSources, planPersistence = "preview", planSaveRun = idleProjectWorkspaceSaveRun, planSaveLoading = false, workspacePlanRefresh, onModeChange, onGenerate, onRetryPlanSave, onRefreshPlanWorkspace, api }: CreateCanvasProps) {
@@ -114,6 +115,10 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
   const [planDirtySinceSave, setPlanDirtySinceSave] = useState(false)
   const [planValidationError, setPlanValidationError] = useState<string | null>(null)
   const [promptAnnouncement, setPromptAnnouncement] = useState("")
+  const { elapsedSeconds: recordingSeconds, start: startRecording, status: recordingStatus, stop: stopRecording } = useAudioRecorder({
+    onComplete: (recording) => { void uploadReferenceFile(recording.blob, recording.fileName, recording.contentType, recording.byteSize) },
+    onError: (message) => setReferenceError(message),
+  })
 
   const lyricsMode = lyricsModeOverride ?? preferences.lyricsMode
   const durationSeconds = durationOverride ?? preferences.durationSeconds
@@ -299,6 +304,84 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
     referenceInputRef.current?.click()
   }
 
+  function startReferenceRecording() {
+    if (projectRef === "project_pending") {
+      setReferenceError("Create the project before recording a reference audio file.")
+      return
+    }
+    if (projectRef !== "project_preview_first_light" && (api?.createCreativeSourceUpload === undefined || api?.uploadCreativeSourceContent === undefined)) {
+      setReferenceError("Reference audio upload is not connected right now. Try again later.")
+      return
+    }
+    setReferenceError(null)
+    clearPlanPreview()
+    void startRecording()
+  }
+
+  async function uploadReferenceFile(file: Blob, fileName: string, contentType: string, byteSize: number) {
+    setReferenceError(null)
+    clearPlanPreview()
+    const uploadEpoch = referenceUploadEpochRef.current + 1
+    referenceUploadEpochRef.current = uploadEpoch
+    const createUpload = api?.createCreativeSourceUpload
+    const uploadContent = api?.uploadCreativeSourceContent
+    if (projectRef === "project_preview_first_light") {
+      setReferenceSource({ sourceRef: "source_preview_reference", assetRef: "asset_preview_reference", name: fileName, detail: `${formatFileSize(byteSize)} · selected for this direction` })
+      return
+    }
+    if (projectRef === "project_pending") {
+      setReferenceUploadStatus("failed")
+      setReferenceError("Create the project before adding a reference audio file.")
+      return
+    }
+    if (createUpload === undefined || uploadContent === undefined) {
+      setReferenceUploadStatus("failed")
+      setReferenceError("Reference audio upload is not connected right now. Try again later.")
+      return
+    }
+
+    const normalizedContentType = contentType || "application/octet-stream"
+    const previousCommand = referenceUploadCommandRef.current
+    const canResumePrevious = previousCommand !== null
+      && previousCommand.projectRef === projectRef
+      && previousCommand.fileName === fileName
+      && previousCommand.contentType === normalizedContentType
+      && previousCommand.byteSize === byteSize
+    if (!canResumePrevious && previousCommand !== null && previousCommand.uploadRef !== null && api?.cancelCreativeSourceUpload !== undefined) {
+      void api.cancelCreativeSourceUpload(previousCommand.uploadRef, `mori-upload-cancel-${Date.now()}`).catch(() => undefined)
+    }
+    const command: PendingReferenceUploadCommand = canResumePrevious && previousCommand !== null
+      ? { ...previousCommand, file }
+      : {
+          projectRef,
+          fileName,
+          contentType: normalizedContentType,
+          byteSize,
+          idempotencyKey: `mori-upload-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          uploadRef: null,
+          file,
+        }
+    referenceUploadCommandRef.current = command
+    referenceUploadNameRef.current = fileName
+    setReferenceSource(null)
+    setReferenceUploadStatus("creating")
+    try {
+      const uploadRef = command.uploadRef ?? (await createUpload({ source_kind: "audio", file_name: command.fileName, content_type: command.contentType, byte_size: command.byteSize, project_ref: command.projectRef }, command.idempotencyKey)).data.upload_ref
+      command.uploadRef = uploadRef
+      if (referenceUploadEpochRef.current !== uploadEpoch) return
+      setReferenceUploadRef(uploadRef)
+      window.localStorage.setItem(creativeUploadRecoveryKey, JSON.stringify({ projectRef, uploadRef, name: fileName }))
+      setReferenceUploadStatus("uploading")
+      const upload = await uploadContent(uploadRef, file, command.contentType)
+      if (referenceUploadEpochRef.current !== uploadEpoch) return
+      applyReferenceUpload(upload.data, fileName)
+    } catch {
+      if (referenceUploadEpochRef.current !== uploadEpoch) return
+      setReferenceUploadStatus("failed")
+      setReferenceError("Audio reference upload failed. Try again.")
+    }
+  }
+
   async function changeReference(event: ChangeEvent<HTMLInputElement>) {
     const file = event.currentTarget.files?.[0]
     if (file === undefined) return
@@ -314,66 +397,7 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
     }
 
     event.currentTarget.value = ""
-    setReferenceError(null)
-    clearPlanPreview()
-    const uploadEpoch = referenceUploadEpochRef.current + 1
-    referenceUploadEpochRef.current = uploadEpoch
-    const createUpload = api?.createCreativeSourceUpload
-    const uploadContent = api?.uploadCreativeSourceContent
-    if (projectRef === "project_preview_first_light") {
-      setReferenceSource({ sourceRef: "source_preview_reference", assetRef: "asset_preview_reference", name: file.name, detail: `${formatFileSize(file.size)} · selected for this direction` })
-      return
-    }
-    if (projectRef === "project_pending") {
-      setReferenceUploadStatus("failed")
-      setReferenceError("Create the project before adding a reference audio file.")
-      return
-    }
-    if (createUpload === undefined || uploadContent === undefined) {
-      setReferenceUploadStatus("failed")
-      setReferenceError("Reference audio upload is not connected right now. Try again later.")
-      return
-    }
-
-    const previousCommand = referenceUploadCommandRef.current
-    const canResumePrevious = previousCommand !== null
-      && previousCommand.projectRef === projectRef
-      && previousCommand.fileName === file.name
-      && previousCommand.contentType === (file.type || "application/octet-stream")
-      && previousCommand.byteSize === file.size
-    if (!canResumePrevious && previousCommand !== null && previousCommand.uploadRef !== null && api?.cancelCreativeSourceUpload !== undefined) {
-      void api.cancelCreativeSourceUpload(previousCommand.uploadRef, `mori-upload-cancel-${Date.now()}`).catch(() => undefined)
-    }
-    const command: PendingReferenceUploadCommand = canResumePrevious && previousCommand !== null
-      ? { ...previousCommand, file }
-      : {
-          projectRef,
-          fileName: file.name,
-          contentType: file.type || "application/octet-stream",
-          byteSize: file.size,
-          idempotencyKey: `mori-upload-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-          uploadRef: null,
-          file,
-        }
-    referenceUploadCommandRef.current = command
-    referenceUploadNameRef.current = file.name
-    setReferenceSource(null)
-    setReferenceUploadStatus("creating")
-    try {
-      const uploadRef = command.uploadRef ?? (await createUpload({ source_kind: "audio", file_name: command.fileName, content_type: command.contentType, byte_size: command.byteSize, project_ref: command.projectRef }, command.idempotencyKey)).data.upload_ref
-      command.uploadRef = uploadRef
-      if (referenceUploadEpochRef.current !== uploadEpoch) return
-      setReferenceUploadRef(uploadRef)
-      window.localStorage.setItem(creativeUploadRecoveryKey, JSON.stringify({ projectRef, uploadRef, name: file.name }))
-      setReferenceUploadStatus("uploading")
-      const upload = await uploadContent(uploadRef, file, command.contentType)
-      if (referenceUploadEpochRef.current !== uploadEpoch) return
-      applyReferenceUpload(upload.data, file.name)
-    } catch {
-      if (referenceUploadEpochRef.current !== uploadEpoch) return
-      setReferenceUploadStatus("failed")
-      setReferenceError("Audio reference upload failed. Try again.")
-    }
+    await uploadReferenceFile(file, file.name, file.type || "application/octet-stream", file.size)
   }
 
   function removeReference() {
@@ -399,7 +423,7 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (planBusy || isReferenceUploadActive(referenceUploadStatus)) return
+    if (planBusy || recordingStatus !== "idle" || isReferenceUploadActive(referenceUploadStatus)) return
     if (mode === "smart" && planPreview === null) {
       setPlanSubmitAttempted(false)
       setPlanDirtySinceSave(false)
@@ -415,7 +439,7 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
   }
 
   async function confirmPlan() {
-    if (planPreview === null || planBusy || isReferenceUploadActive(referenceUploadStatus)) return
+    if (planPreview === null || planBusy || recordingStatus !== "idle" || isReferenceUploadActive(referenceUploadStatus)) return
     const validationError = validateSongPlan(planPreview)
     if (validationError !== null) {
       setPlanValidationError(validationError)
@@ -560,12 +584,16 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
             key={lyricsMode}
             referenceSource={referenceSource}
             referenceUploadStatus={referenceUploadStatus}
+            recordingStatus={recordingStatus}
+            recordingSeconds={recordingSeconds}
             onRetryReference={() => referenceInputRef.current?.click()}
             referenceError={referenceError}
             voiceRef={voiceProfileRef}
             voiceEnabled={lyricsMode === "lyrics"}
             inspirationRef={inspirationRef}
             onChooseReference={addReference}
+            onStartRecording={startReferenceRecording}
+            onStopRecording={stopRecording}
             onRemoveReference={removeReference}
             onVoiceChange={(nextVoiceRef) => { setVoiceProfileRef(nextVoiceRef); clearPlanPreview() }}
             onInspirationChange={chooseInspiration}
@@ -574,7 +602,7 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
 
           <div className={styles.composerBottom}>
             <div className={styles.promptHint}><AudioLines /> <span>{mode === "smart" ? "Review an editable plan before creating." : "Your controls go straight to the generation queue."}</span></div>
-            <button className={styles.generateButton} type="submit" disabled={isReferenceUploadActive(referenceUploadStatus)}><Sparkles /> {mode === "smart" ? "Review plan" : t("generateLabel")}</button>
+            <button className={styles.generateButton} type="submit" disabled={recordingStatus !== "idle" || isReferenceUploadActive(referenceUploadStatus)}><Sparkles /> {mode === "smart" ? "Review plan" : t("generateLabel")}</button>
           </div>
         </> : null}
 
@@ -665,7 +693,7 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
               {planEditing ? <span className={styles.planEditHint}>{visiblePlanSaveRun.status === "saved" && !planDirtySinceSave ? "Saved as the current Project plan." : planPersistence === "preview" ? "Changes apply to this creation only." : "Changes will be saved to this Project when you create."}</span> : null}
               {planPersistence === "preview" ? <span className={styles.planPersistenceHint}>Preview only · not saved to Project workspace.</span> : null}
               {planPersistence === "unavailable" ? <span className={styles.planPersistenceHint}>Project workspace saving is not connected.</span> : null}
-              <button className={styles.generateButton} type="button" disabled={planBusy || isReferenceUploadActive(referenceUploadStatus)} onClick={() => { void confirmPlan() }}>
+              <button className={styles.generateButton} type="button" disabled={planBusy || recordingStatus !== "idle" || isReferenceUploadActive(referenceUploadStatus)} onClick={() => { void confirmPlan() }}>
                 {planSaveLoading || visiblePlanSaveRun.status === "saving"
                   ? <><LoaderCircle size={14} /> Saving plan…</>
                   : <><Check size={14} /> Create from this plan</>}
