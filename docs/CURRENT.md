@@ -67,11 +67,12 @@
   被当前 Project / Version 接受后才显示 `Saved`。短暂故障复用原 `Idempotency-Key`，冲突转为 Refresh；在有未保存文字时
   选择另一 Version 会明确提供 Keep editing、Discard & open、Save & open，不让导航静默丢稿。preview 文字可编辑但始终
   明确标为非耐久草稿。
-- Generation 生命周期已补齐 Create、snapshot、SSE replay、cancel 与 Project Candidate list 的本仓 OpenAPI；Candidate
+- Generation 生命周期已补齐 Create、snapshot、SSE replay、cancel 与 Project Candidate list 的本仓 OpenAPI；Create 明确固定 `output_count: 2`，snapshot 回显同一输出上下文；Candidate
   list 使用 opaque cursor/limit/generation filter，页面投影统一消费全部分页并按 `candidate_ref` 去重。Generation queue
   以显式字段白名单保存多任务摘要、状态、进度、候选引用和 event cursor，不保存 prompt、lyrics、provider payload 或音频字节；
   Create 与 Studio Change 共用这份队列；Create 不会接管 Studio Change，Studio 路由会从 active generation ref 拉回 snapshot 并恢复工作上下文，
-  网络瞬时错误按退避重试而非立即伪装成失败，在切换任务时保持其他进行中任务的后台轮询。
+  工作区在切换任务或回到 Create 时也会按队列 kind 校验并同步后台 Studio Change，网络瞬时错误按退避重试而非立即伪装成失败，
+  在切换任务时保持其他进行中任务的后台轮询。
   Generation SSE 支持 AbortSignal，页面卸载时停止长连接；Create / Studio Change 的生成与取消命令带 epoch/context guard，
   Generation 与 Lyrics Revision 会在收到首批完整 SSE frame 后立即解析并取消本次 reader，不再等待长连接关闭；
   Lyrics Revision 同样把 AbortSignal 贯穿到同源 fetch，切换 Version 或卸载 Studio 会中止旧事件流。

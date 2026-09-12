@@ -34,6 +34,7 @@ export type GenerationCreateInput = {
   voice_ref: string | null
   duration_seconds: number | null
   lyrics_mode: LyricsMode
+  output_count: 2
 }
 
 export type StudioChangeOperation = "add_part" | "replace_section" | "extend" | "transform"
@@ -564,6 +565,7 @@ export type NewSongGenerationSnapshot = GenerationSnapshotBase & {
   mode: CreationMode
   source_version_ref: null
   operation: null
+  output_count: 2
 }
 
 export type StandardStudioChangeGenerationSnapshot = GenerationSnapshotBase & {
@@ -947,6 +949,7 @@ export function createGenerationRequest(draft: MoriGenerationDraft): GenerationC
     voice_ref: draft.lyricsMode === "lyrics" ? draft.voiceRef?.trim() || null : null,
     duration_seconds: draft.durationSeconds ?? null,
     lyrics_mode: draft.lyricsMode,
+    output_count: 2,
   }
 }
 

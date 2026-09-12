@@ -653,7 +653,8 @@
           "reference_asset_refs",
           "voice_ref",
           "duration_seconds",
-          "lyrics_mode"
+          "lyrics_mode",
+          "output_count"
         ],
         "properties": {
           "mode": {
@@ -733,6 +734,10 @@
               "lyrics",
               "instrumental"
             ]
+          },
+          "output_count": {
+            "type": "integer",
+            "const": 2
           }
         },
         "allOf": [
@@ -807,6 +812,7 @@
           "status",
           "progress",
           "candidate_refs",
+          "output_count",
           "created_at"
         ],
         "properties": {
@@ -855,6 +861,10 @@
           },
           "candidate_refs": {
             "$ref": "#/components/schemas/CandidateRefs"
+          },
+          "output_count": {
+            "type": "integer",
+            "const": 2
           },
           "created_at": {
             "type": "string",

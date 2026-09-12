@@ -334,8 +334,9 @@ GET  /api/v1/mori/generations/{generation_ref}/events
 POST /api/v1/mori/generations/{generation_ref}/cancel
 ```
 
-Create 从 Project 发起 Generation，Studio 从不可变 Version 发起 Generation；两者最终都输出
-Candidate 并进入 Take Lanes。浏览器仍只调用同源 BFF。Studio 请求的 provider-neutral 结构为：
+Create 从 Project 发起 Generation，默认一次产出两条 alternatives；Studio 从不可变 Version 发起 Generation；两者最终都输出
+Candidate 并进入 Take Lanes。浏览器仍只调用同源 BFF。Create 的 provider-neutral 请求固定携带 `output_count: 2`，
+Studio 请求的 provider-neutral 结构为：
 
 ```text
 StudioChangeGenerationInput

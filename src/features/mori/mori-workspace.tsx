@@ -937,12 +937,13 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, generationRef: 
         if (disposed) return
         const item = snapshot.data
         const queueContext = generationQueueRef.current.items.find((candidate) => candidate.generation_ref === ref)
-        if (queueContext?.kind !== "create" || !createGenerationSnapshotMatchesContext(item, ref, queueContext.project_ref)) return
-        void updateQueue((current) => updateGenerationQueueItem(current, ref, {
+        if (queueContext === undefined || !generationSnapshotMatchesQueueContext(item, ref, queueContext)) return
+        await updateQueue((current) => updateGenerationQueueItem(current, ref, {
           status: item.status,
           progress: item.progress,
           candidate_refs: item.candidate_refs,
         }))
+        if (disposed) return
         if (isActiveQueueStatus(item.status)) schedule(ref, 900)
       } catch {
         schedule(ref, 1_500)
@@ -1266,6 +1267,18 @@ function createGenerationSnapshotMatchesContext(
     && (projectRef === null || snapshot.project_ref === projectRef)
 }
 
+function generationSnapshotMatchesQueueContext(
+  snapshot: GenerationSnapshot,
+  generationRef: string,
+  queueContext: GenerationQueueItem,
+): boolean {
+  if (snapshot.generation_ref !== generationRef || snapshot.project_ref !== queueContext.project_ref) return false
+  if (queueContext.kind === "create") return createGenerationSnapshotMatchesContext(snapshot, generationRef, queueContext.project_ref)
+  return snapshot.generation_kind === "studio_change"
+    && queueContext.source_version_ref !== null
+    && snapshot.source_version_ref === queueContext.source_version_ref
+}
+
 function generationFeedbackLabel(status: GenerationFeedback): string {
   switch (status) {
     case "active": return "Generating"
@@ -1321,6 +1334,7 @@ function generationInputsMatch(left: GenerationCreateInput, right: GenerationCre
     && left.voice_ref === right.voice_ref
     && left.duration_seconds === right.duration_seconds
     && left.lyrics_mode === right.lyrics_mode
+    && left.output_count === right.output_count
 }
 
 function songPlansMatch(left: SongPlan, right: SongPlan): boolean {

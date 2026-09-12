@@ -203,6 +203,7 @@ describe("Mori workspace", () => {
         mode: "custom",
         source_version_ref: null,
         operation: null,
+        output_count: 2 as const,
         status: "generating",
         progress: 42,
         candidate_refs: [],
@@ -232,6 +233,7 @@ describe("Mori workspace", () => {
         mode: "smart",
         source_version_ref: null,
         operation: null,
+        output_count: 2 as const,
         status: "generating",
         progress: 47,
         candidate_refs: [],
@@ -274,6 +276,7 @@ describe("Mori workspace", () => {
         mode: "smart",
         source_version_ref: null,
         operation: null,
+        output_count: 2 as const,
         status: "failed",
         progress: 0,
         candidate_refs: [],
@@ -312,6 +315,7 @@ describe("Mori workspace", () => {
           mode: "custom",
           source_version_ref: null,
           operation: null,
+          output_count: 2 as const,
           status: "generating",
           progress: 28,
           candidate_refs: [],
@@ -344,6 +348,7 @@ describe("Mori workspace", () => {
         mode: "custom",
         source_version_ref: null,
         operation: null,
+        output_count: 2 as const,
         status: "generating",
         progress: 39,
         candidate_refs: [],
@@ -383,6 +388,7 @@ describe("Mori workspace", () => {
         mode: "custom",
         source_version_ref: null,
         operation: null,
+        output_count: 2 as const,
         status: "succeeded",
         progress: 100,
         candidate_refs: ["candidate_cross_project_create"],
@@ -442,6 +448,7 @@ describe("Mori workspace", () => {
         mode: "custom",
         source_version_ref: null,
         operation: null,
+        output_count: 2 as const,
         status: "succeeded",
         progress: 100,
         candidate_refs: ["candidate_wrong_context_create"],
@@ -492,6 +499,7 @@ describe("Mori workspace", () => {
         mode: "custom",
         source_version_ref: null,
         operation: null,
+        output_count: 2 as const,
         status: "generating",
         progress: 40,
         candidate_refs: [],
@@ -537,6 +545,7 @@ describe("Mori workspace", () => {
         mode: "custom",
         source_version_ref: null,
         operation: null,
+        output_count: 2 as const,
         status: "generating",
         progress: 40,
         candidate_refs: [],
@@ -587,6 +596,7 @@ describe("Mori workspace", () => {
           mode: "custom",
           source_version_ref: null,
           operation: null,
+          output_count: 2 as const,
           status: "generating",
           progress: 44,
           candidate_refs: [],
@@ -639,6 +649,7 @@ describe("Mori workspace", () => {
         mode: "custom",
         source_version_ref: null,
         operation: null,
+        output_count: 2 as const,
         status: generationRef === "generation_multi_active" ? "generating" : "succeeded",
         progress: generationRef === "generation_multi_active" ? 30 : 100,
         candidate_refs: [],
@@ -685,6 +696,7 @@ describe("Mori workspace", () => {
         mode: "custom",
         source_version_ref: null,
         operation: null,
+        output_count: 2 as const,
         status: "generating",
         progress: 35,
         candidate_refs: [],
@@ -702,6 +714,54 @@ describe("Mori workspace", () => {
     }))
 
     await waitFor(() => expect(getGeneration).toHaveBeenCalledWith(background.generation_ref))
+  })
+
+  it("keeps a background Studio Change task current while Create is open", async () => {
+    const background = {
+      generation_ref: "generation_background_studio",
+      project_ref: "project_background_studio",
+      source_version_ref: "version_background_studio",
+      kind: "studio_change" as const,
+      label: "Restyle section",
+      created_at: "2026-09-04T12:02:00.000Z",
+      status: "generating" as const,
+      progress: 35,
+      candidate_refs: [],
+      last_event_id: null,
+    }
+    writeGenerationQueueState(createGenerationQueueState({
+      items: [background],
+      active_generation_ref: background.generation_ref,
+    }))
+    const getGeneration = vi.fn<MoriApi["getGeneration"]>(async () => ({
+      data: {
+        generation_ref: background.generation_ref,
+        generation_kind: "studio_change" as const,
+        project_ref: background.project_ref,
+        song_plan_ref: null,
+        mode: null,
+        source_version_ref: background.source_version_ref,
+        operation: "replace_section" as const,
+        status: "succeeded" as const,
+        progress: 100,
+        candidate_refs: ["candidate_background_studio"],
+        created_at: background.created_at,
+      },
+      meta: { request_id: "request_background_studio" },
+    }))
+
+    render(<MoriAppProvider><MoriWorkspace projectRef={background.project_ref} api={createWorkspaceApi({ getGeneration })} /></MoriAppProvider>)
+
+    await waitFor(() => expect(getGeneration).toHaveBeenCalledWith(background.generation_ref))
+    await waitFor(() => expect(readGenerationQueueState().items).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        generation_ref: background.generation_ref,
+        status: "succeeded",
+        progress: 100,
+        candidate_refs: ["candidate_background_studio"],
+      }),
+    ])))
+    localStorage.clear()
   })
 
   it("does not let stale event replay move the visible generation back from a terminal snapshot", async () => {
@@ -746,6 +806,7 @@ describe("Mori workspace", () => {
             mode: "custom",
             source_version_ref: null,
             operation: null,
+            output_count: 2 as const,
             status: "succeeded",
             progress: 100,
             candidate_refs: [],
@@ -795,6 +856,7 @@ describe("Mori workspace", () => {
           mode: "custom" as const,
           source_version_ref: null,
           operation: null,
+          output_count: 2 as const,
           status: "queued" as const,
           progress: 0,
           candidate_refs: [],
@@ -913,6 +975,7 @@ describe("Mori workspace", () => {
           mode: "custom" as const,
           source_version_ref: null,
           operation: null,
+          output_count: 2 as const,
           status: "queued" as const,
           progress: 0,
           candidate_refs: [],
@@ -970,6 +1033,7 @@ describe("Mori workspace", () => {
           mode: "custom" as const,
           source_version_ref: null,
           operation: null,
+          output_count: 2 as const,
           status: generationRef === "generation_storage_stale" ? "failed" as const : "queued" as const,
           progress: 0,
           candidate_refs: [],
@@ -1038,6 +1102,7 @@ describe("Mori workspace", () => {
           mode: "custom" as const,
           source_version_ref: null,
           operation: null,
+          output_count: 2 as const,
           status: "queued" as const,
           progress: 0,
           candidate_refs: [],
@@ -1100,6 +1165,7 @@ describe("Mori workspace", () => {
           mode: "custom" as const,
           source_version_ref: null,
           operation: null,
+          output_count: 2 as const,
           status: "queued" as const,
           progress: 0,
           candidate_refs: [],
@@ -1136,8 +1202,34 @@ describe("Mori workspace", () => {
     expect(screen.getByLabelText(/^lyrics$/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/vocal direction/i)).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Add audio reference" })).toBeInTheDocument()
-    expect(screen.getByText("Your controls go straight to the generation queue.")).toBeInTheDocument()
+    expect(screen.getByText(/Your controls go straight to the generation queue/u)).toBeInTheDocument()
     expect(screen.queryByText(/Song Plan will map the mood/u)).not.toBeInTheDocument()
+  })
+
+  it("prevents duplicate Custom submissions while queueing", async () => {
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => { release = resolve })
+    const onGenerate = vi.fn<(draft: CreationDraft) => Promise<void>>(() => gate)
+
+    render(
+      <MoriAppProvider>
+        <CreateCanvas
+          projectRef="project_duplicate_submission"
+          mode="custom"
+          onModeChange={() => undefined}
+          onGenerate={onGenerate}
+        />
+      </MoriAppProvider>,
+    )
+
+    const form = screen.getByRole("textbox", { name: "Song idea" }).closest("form") as HTMLFormElement
+    fireEvent.submit(form)
+    fireEvent.submit(form)
+
+    expect(onGenerate).toHaveBeenCalledOnce()
+    expect(screen.getByRole("button", { name: "Queueing…" })).toBeDisabled()
+    release()
+    await waitFor(() => expect(screen.getByRole("button", { name: "Generate" })).toBeEnabled())
   })
 
   it("puts required Custom controls before optional creative sources", () => {
@@ -1218,6 +1310,7 @@ describe("Mori workspace", () => {
           mode: "smart" as const,
           source_version_ref: null,
           operation: null,
+          output_count: 2 as const,
           status: "queued" as const,
           progress: 0,
           candidate_refs: [],
@@ -1321,6 +1414,7 @@ describe("Mori workspace", () => {
           mode: "smart" as const,
           source_version_ref: null,
           operation: null,
+          output_count: 2 as const,
           status: "queued" as const,
           progress: 0,
           candidate_refs: [],
@@ -1390,6 +1484,7 @@ describe("Mori workspace", () => {
           mode: "smart" as const,
           source_version_ref: null,
           operation: null,
+          output_count: 2 as const,
           status: "queued" as const,
           progress: 0,
           candidate_refs: [],
@@ -1532,6 +1627,7 @@ describe("Mori workspace", () => {
           mode: "custom" as const,
           source_version_ref: null,
           operation: null,
+          output_count: 2 as const,
           status: "queued" as const,
           progress: 0,
           candidate_refs: [],
@@ -1646,7 +1742,7 @@ describe("Mori workspace", () => {
     expect(screen.queryByLabelText(/vocal direction/i)).not.toBeInTheDocument()
     expect(screen.getByLabelText("Style")).toBeInTheDocument()
     expect(screen.getByLabelText("Duration")).toBeInTheDocument()
-    expect(screen.getByText("Your controls go straight to the generation queue.")).toBeInTheDocument()
+    expect(screen.getByText(/Your controls go straight to the generation queue/u)).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole("button", { name: "Song with lyrics" }))
     expect(screen.getByRole("button", { name: "Change voice profile Mira" })).toBeInTheDocument()
@@ -1859,6 +1955,7 @@ describe("Mori workspace", () => {
           mode: "custom" as const,
           source_version_ref: null,
           operation: null,
+          output_count: 2 as const,
           status: "queued" as const,
           progress: 0,
           candidate_refs: [],
@@ -2237,6 +2334,7 @@ describe("Mori workspace", () => {
           mode: "custom",
           source_version_ref: null,
           operation: null,
+          output_count: 2 as const,
           status: "succeeded",
           progress: 100,
           candidate_refs: ["candidate_live_queue_b"],
@@ -2298,6 +2396,7 @@ describe("Mori workspace", () => {
           mode: "custom",
           source_version_ref: null,
           operation: null,
+          output_count: 2 as const,
           status: "succeeded",
           progress: 100,
           candidate_refs: ["candidate_projection_race_b"],
@@ -2392,6 +2491,7 @@ describe("Mori workspace", () => {
           mode: "smart" as const,
           source_version_ref: null,
           operation: null,
+          output_count: 2 as const,
           status: "generating" as const,
           progress: 52,
           candidate_refs: [],
@@ -2449,6 +2549,7 @@ describe("Mori workspace", () => {
           mode: "custom",
           source_version_ref: null,
           operation: null,
+          output_count: 2 as const,
           status: cancellationAcknowledged ? "succeeded" : "generating",
           progress: cancellationAcknowledged ? 100 : 42,
           candidate_refs: [],
@@ -2499,6 +2600,7 @@ describe("Mori workspace", () => {
           mode: "custom" as const,
           source_version_ref: null,
           operation: null,
+          output_count: 2 as const,
           status: "failed" as const,
           progress: 0,
           candidate_refs: [],
@@ -2583,6 +2685,7 @@ describe("Mori workspace", () => {
           mode: "custom" as const,
           source_version_ref: null,
           operation: null,
+          output_count: 2 as const,
           status: "succeeded" as const,
           progress: 100,
           candidate_refs: [],

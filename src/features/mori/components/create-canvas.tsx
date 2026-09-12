@@ -89,6 +89,7 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
   const referenceUploadEpochRef = useRef(0)
   const referenceUploadCommandRef = useRef<PendingReferenceUploadCommand | null>(null)
   const referenceUploadNameRef = useRef<string | null>(initialReferenceAudio?.name ?? null)
+  const generationSubmitPendingRef = useRef(false)
   const [prompt, setPrompt] = useState(() => initialPrompt?.trim() || DEFAULT_PROMPT)
   const [lyrics, setLyrics] = useState("")
   const [lyricsModeOverride, setLyricsModeOverride] = useState<LyricsMode | null>(initialVoiceProfile === null ? null : "lyrics")
@@ -111,6 +112,7 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
   const [planEditing, setPlanEditing] = useState(false)
   const [planBackup, setPlanBackup] = useState<SongPlan | null>(null)
   const [planActionPending, setPlanActionPending] = useState(false)
+  const [generationSubmitPending, setGenerationSubmitPending] = useState(false)
   const [planSubmitAttempted, setPlanSubmitAttempted] = useState(false)
   const [planDirtySinceSave, setPlanDirtySinceSave] = useState(false)
   const [planValidationError, setPlanValidationError] = useState<string | null>(null)
@@ -123,7 +125,7 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
   const lyricsMode = lyricsModeOverride ?? preferences.lyricsMode
   const durationSeconds = durationOverride ?? preferences.durationSeconds
   const planPreviewVisible = planPreview !== null
-  const planBusy = planActionPending || planSaveLoading || planSaveRun.status === "saving"
+  const planBusy = planActionPending || planSaveLoading || planSaveRun.status === "saving" || generationSubmitPending
   const visiblePlanSaveRun = planSubmitAttempted ? planSaveRun : idleProjectWorkspaceSaveRun
   const workspacePlanRefreshToken = workspacePlanRefresh?.token ?? null
   const refreshedWorkspacePlan = workspacePlanRefresh?.plan ?? null
@@ -421,9 +423,21 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
     clearPlanPreview()
   }
 
+  function beginGenerationSubmission(): boolean {
+    if (generationSubmitPendingRef.current) return false
+    generationSubmitPendingRef.current = true
+    setGenerationSubmitPending(true)
+    return true
+  }
+
+  function endGenerationSubmission() {
+    generationSubmitPendingRef.current = false
+    setGenerationSubmitPending(false)
+  }
+
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (planBusy || recordingStatus !== "idle" || isReferenceUploadActive(referenceUploadStatus)) return
+    if (planBusy || generationSubmitPendingRef.current || recordingStatus !== "idle" || isReferenceUploadActive(referenceUploadStatus)) return
     if (mode === "smart" && planPreview === null) {
       setPlanSubmitAttempted(false)
       setPlanDirtySinceSave(false)
@@ -435,11 +449,19 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
       void confirmPlan()
       return
     }
-    onGenerate(toCreationDraft())
+    if (!beginGenerationSubmission()) return
+    try {
+      const result = onGenerate(toCreationDraft())
+      queueMicrotask(endGenerationSubmission)
+      if (result !== undefined) void Promise.resolve(result).catch(() => undefined)
+    } catch (error) {
+      endGenerationSubmission()
+      throw error
+    }
   }
 
   async function confirmPlan() {
-    if (planPreview === null || planBusy || recordingStatus !== "idle" || isReferenceUploadActive(referenceUploadStatus)) return
+    if (planPreview === null || planBusy || generationSubmitPendingRef.current || recordingStatus !== "idle" || isReferenceUploadActive(referenceUploadStatus)) return
     const validationError = validateSongPlan(planPreview)
     if (validationError !== null) {
       setPlanValidationError(validationError)
@@ -449,11 +471,15 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
     setPlanValidationError(null)
     setPlanSubmitAttempted(true)
     setPlanDirtySinceSave(false)
+    if (!beginGenerationSubmission()) return
     setPlanActionPending(true)
     try {
-      await onGenerate(toCreationDraft(planPreview))
+      const result = onGenerate(toCreationDraft(planPreview))
+      queueMicrotask(endGenerationSubmission)
+      await result
     } finally {
       setPlanActionPending(false)
+      endGenerationSubmission()
     }
   }
 
@@ -601,8 +627,10 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
           />
 
           <div className={styles.composerBottom}>
-            <div className={styles.promptHint}><AudioLines /> <span>{mode === "smart" ? "Review an editable plan before creating." : "Your controls go straight to the generation queue."}</span></div>
-            <button className={styles.generateButton} type="submit" disabled={recordingStatus !== "idle" || isReferenceUploadActive(referenceUploadStatus)}><Sparkles /> {mode === "smart" ? "Review plan" : t("generateLabel")}</button>
+            <div className={styles.promptHint}><AudioLines /> <span>{mode === "smart" ? "Review an editable plan before creating." : "Your controls go straight to the generation queue."} · Creates 2 alternatives.</span></div>
+            <button className={styles.generateButton} type="submit" disabled={recordingStatus !== "idle" || isReferenceUploadActive(referenceUploadStatus) || generationSubmitPending}>
+              {generationSubmitPending ? <><LoaderCircle /> Queueing…</> : <><Sparkles /> {mode === "smart" ? "Review plan" : t("generateLabel")}</>}
+            </button>
           </div>
         </> : null}
 
@@ -667,7 +695,7 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
                 <div className={styles.songPlanStats}>
                   <div><span>Mood</span><strong>{planPreview.mood}</strong></div>
                   <div><span>Tempo</span><strong>{planPreview.tempoBpm} BPM</strong></div>
-                  <div><span>Output</span><strong>{lyricsMode === "instrumental" ? "Instrumental" : "Lyrics"}</strong></div>
+                  <div><span>Output</span><strong>{lyricsMode === "instrumental" ? "Instrumental" : "Lyrics"} · 2 alternatives</strong></div>
                 </div>
                 <div className={styles.songPlanRows}>
                   <div><span>Structure</span><div className={styles.tagRow}>{planPreview.structure.map((item) => <span className={`${styles.tag} ${styles.tagSelected}`} key={item}>{item}</span>)}</div></div>
@@ -694,7 +722,9 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
               {planPersistence === "preview" ? <span className={styles.planPersistenceHint}>Preview only · not saved to Project workspace.</span> : null}
               {planPersistence === "unavailable" ? <span className={styles.planPersistenceHint}>Project workspace saving is not connected.</span> : null}
               <button className={styles.generateButton} type="button" disabled={planBusy || recordingStatus !== "idle" || isReferenceUploadActive(referenceUploadStatus)} onClick={() => { void confirmPlan() }}>
-                {planSaveLoading || visiblePlanSaveRun.status === "saving"
+                {generationSubmitPending
+                  ? <><LoaderCircle size={14} /> Queueing…</>
+                  : planSaveLoading || visiblePlanSaveRun.status === "saving"
                   ? <><LoaderCircle size={14} /> Saving plan…</>
                   : <><Check size={14} /> Create from this plan</>}
               </button>

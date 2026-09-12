@@ -467,6 +467,7 @@ export const previewMoriApi: MoriApi = {
         mode: "smart" as const,
         source_version_ref: null,
         operation: null,
+        output_count: 2,
         status: "queued" as const,
         progress: 0,
         candidate_refs: [],

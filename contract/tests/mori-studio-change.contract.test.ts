@@ -39,6 +39,10 @@ describe("Mori Studio change OpenAPI contract", () => {
     const createBody = recordValue(create.requestBody, "Create generation body")
     const createContent = recordValue(createBody.content, "Create generation content")
     expect(recordValue(recordValue(createContent["application/json"], "Create generation JSON").schema, "Create generation schema").$ref).toBe("#/components/schemas/GenerationCreateInput")
+    const schemas = contractSchemas(document)
+    const input = recordValue(schemas.GenerationCreateInput, "GenerationCreateInput")
+    expect(arrayValue(input.required, "Create generation required fields")).toContain("output_count")
+    expect(recordValue(recordValue(input.properties, "Create generation properties").output_count, "Create generation output count")).toMatchObject({ type: "integer", const: 2 })
 
     const eventsPath = recordValue(paths["/api/v1/mori/generations/{generation_ref}/events"], "Generation events path")
     const events = recordValue(eventsPath.get, "Generation events GET")
@@ -214,6 +218,10 @@ describe("Mori Studio change OpenAPI contract", () => {
       "#/components/schemas/NewSongGenerationSnapshot",
       "#/components/schemas/StudioChangeGenerationSnapshot",
     ])
+
+    const newSongSnapshot = recordValue(schemas.NewSongGenerationSnapshot, "NewSongGenerationSnapshot")
+    expect(arrayValue(newSongSnapshot.required, "New song snapshot required fields")).toContain("output_count")
+    expect(recordValue(recordValue(newSongSnapshot.properties, "New song snapshot properties").output_count, "New song snapshot output count")).toMatchObject({ type: "integer", const: 2 })
 
     const studioSnapshot = recordValue(schemas.StudioChangeGenerationSnapshot, "StudioChangeGenerationSnapshot")
     const studioVariants = arrayValue(studioSnapshot.oneOf, "Studio snapshot variants").map((value) => {

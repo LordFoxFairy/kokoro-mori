@@ -27,6 +27,7 @@ describe("Mori generation contract seam", () => {
       voice_ref: "voice_preview_natural",
       duration_seconds: 180,
       lyrics_mode: "lyrics",
+      output_count: 2,
     })
     expect("provider_name" in request).toBe(false)
     expect("provider_task_id" in request).toBe(false)

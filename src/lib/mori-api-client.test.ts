@@ -196,6 +196,7 @@ describe("Mori same-origin API client", () => {
       voice_ref: null,
       duration_seconds: null,
       lyrics_mode: "instrumental",
+      output_count: 2,
     })
     expect(response.data.generation_ref).toBe("generation_request_1")
     expect(response.meta.request_id).toBe("request_1")
@@ -488,6 +489,60 @@ describe("Mori same-origin API client", () => {
       mode: null,
       song_plan_ref: null,
     })
+  })
+
+  it("reads the fixed two-alternative context from a new-song snapshot", async () => {
+    const api = createMoriApiClient({
+      fetchImpl: async () => new Response(JSON.stringify({
+        data: {
+          generation_ref: "generation_new_song_1",
+          generation_kind: "new_song",
+          project_ref: "project_1",
+          song_plan_ref: "song_plan_1",
+          mode: "smart",
+          source_version_ref: null,
+          operation: null,
+          output_count: 2,
+          status: "generating",
+          progress: 46,
+          candidate_refs: [],
+          created_at: "2026-09-03T12:00:00.000Z",
+        },
+        meta: { request_id: "request_new_song_snapshot_1" },
+      }), { status: 200, headers: { "Content-Type": "application/json" } }),
+    })
+
+    const response = await api.getGeneration("generation_new_song_1")
+
+    expect(response.data).toMatchObject({
+      generation_kind: "new_song",
+      song_plan_ref: "song_plan_1",
+      output_count: 2,
+    })
+  })
+
+  it("rejects a new-song snapshot that changes the fixed alternative count", async () => {
+    const api = createMoriApiClient({
+      fetchImpl: async () => new Response(JSON.stringify({
+        data: {
+          generation_ref: "generation_new_song_invalid",
+          generation_kind: "new_song",
+          project_ref: "project_1",
+          song_plan_ref: null,
+          mode: "custom",
+          source_version_ref: null,
+          operation: null,
+          output_count: 4,
+          status: "generating",
+          progress: 46,
+          candidate_refs: [],
+          created_at: "2026-09-03T12:00:00.000Z",
+        },
+        meta: { request_id: "request_new_song_snapshot_invalid" },
+      }), { status: 200, headers: { "Content-Type": "application/json" } }),
+    })
+
+    await expect(api.getGeneration("generation_new_song_invalid")).rejects.toMatchObject({ code: "invalid_api_response" })
   })
 
   it("reads the exact Remaster source and strength from a durable generation snapshot", async () => {
@@ -1357,6 +1412,7 @@ describe("Mori same-origin API client", () => {
       voice_ref: null,
       duration_seconds: null,
       lyrics_mode: "instrumental",
+      output_count: 2,
     }, "idem-2")).rejects.toMatchObject({
       code: "rate_limited",
       retryable: true,

@@ -77,8 +77,10 @@ Studio Change 不建立第二套异步任务状态机。它通过
 Generation snapshot、SSE replay、cancel 和 Candidate 输出。这样 Create 与 Studio 都产生 Candidate，
 但入口上下文和请求 Schema 各自保持明确。
 
-Create 的 Generation command 必须携带幂等键；创建响应不确定或本地 receipt 落盘失败时，消费者复用同一请求输入与
-`Idempotency-Key`，避免 provider 重复执行。收到确定性的输入/权限拒绝后，下一次用户重试才创建新的 command identity。
+Create 的 Generation command 必须携带幂等键，并显式声明 `output_count: 2`；这保持 Suno 式一次生成两条
+alternatives 的核心心智模型，也让请求和刷新恢复的 snapshot 使用同一输出上下文。创建响应不确定或本地 receipt
+落盘失败时，消费者复用同一请求输入与 `Idempotency-Key`，避免 provider 重复执行。收到确定性的输入/权限拒绝后，
+下一次用户重试才创建新的 command identity。
 
 Add Vocals / Add Instrumental 仍是 `add_part` 的二层意图，不扩张 Studio 的一层 operation 集合。时间线插入继续
 使用 `insertion_point`；整首图层使用 `whole_version`，并显式携带 `part_kind`、`lyrics` 与 `voice_ref`。
@@ -98,7 +100,7 @@ Remaster 仍属于稳定一层操作 `transform`，但使用严格的 `intent: r
 `subtle | balanced | bold`。这样 Finish 能表达“精修当前作品”而不与自由 Restyle 混淆，也不新增另一套 job。
 
 `GET /api/v1/mori/generations/{generation_ref}` 通过 `generation_kind` 区分 `new_song` 与
-`studio_change`。Studio 快照必须返回 `source_version_ref` 和 `operation`；Restyle / Cover 快照必须原样回显
+`studio_change`。New song 快照必须回显 `output_count: 2`；Studio 快照必须返回 `source_version_ref` 和 `operation`；Restyle / Cover 快照必须原样回显
 `intent`、scope、instruction、preserve、references 与 output count，Cover 还必须回显 mode 与 Voice；Remaster
 快照必须原样回显 `intent`、source 与 `variation_strength`。浏览器只接受与已复核计划完全相同的快照，因此页面
 刷新后不依赖内存中的表单状态，也不会把错误任务的 Candidate 挂入当前 Take Lanes。

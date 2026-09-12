@@ -660,7 +660,7 @@ export function parseGenerationSnapshot(value: unknown): GenerationSnapshot | nu
     created_at: value.created_at,
   }
   if (value.generation_kind === "new_song") {
-    if (!nullableString(value.song_plan_ref) || (value.mode !== "smart" && value.mode !== "custom") || value.source_version_ref !== null || value.operation !== null) return null
+    if (!nullableString(value.song_plan_ref) || (value.mode !== "smart" && value.mode !== "custom") || value.source_version_ref !== null || value.operation !== null || value.output_count !== 2) return null
     return {
       ...common,
       generation_kind: "new_song",
@@ -668,6 +668,7 @@ export function parseGenerationSnapshot(value: unknown): GenerationSnapshot | nu
       mode: value.mode,
       source_version_ref: null,
       operation: null,
+      output_count: 2,
     }
   }
   if (value.generation_kind === "studio_change") {
