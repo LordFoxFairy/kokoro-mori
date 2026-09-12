@@ -139,8 +139,8 @@ export function HomePageContent({ api }: HomePageContentProps = {}) {
           <p>{featuredProject.description}</p>
           <div className={styles.homeFeatureMeta}><span><Clock3 size={13} /> {featuredProject.lastActivity}</span><span>{featuredProject.candidateCount} directions</span></div>
           {currentCandidate === undefined
-            ? <Link className={styles.projectContinue} href={`/projects/${featuredProject.projectRef}`}>Open project <ArrowRight size={14} /></Link>
-            : <Link className={styles.projectContinue} href={`/projects/${featuredProject.projectRef}/studio/${currentCandidate.versionRef}`}>Continue in Studio <ArrowRight size={14} /></Link>}
+            ? <Link className={styles.projectContinue} href={`/projects/${encodeURIComponent(featuredProject.projectRef)}`}>Open project <ArrowRight size={14} /></Link>
+            : <Link className={styles.projectContinue} href={`/projects/${encodeURIComponent(featuredProject.projectRef)}/studio/${encodeURIComponent(currentCandidate.versionRef)}`}>Continue in Studio <ArrowRight size={14} /></Link>}
         </div>
       </section>}
 
@@ -172,7 +172,7 @@ function HomeDirections({ project, candidates, status, playerVersionRef, playing
   }
 
   if (status === "unavailable" && project !== null) {
-    return <div className={styles.homeDirectionsState} role="status"><span className={styles.homeDirectionsStateIcon} aria-hidden="true"><Music2 size={16} /></span><div><strong>Directions are temporarily unavailable</strong><span>The Project is safe. Open it to continue from its confirmed state.</span></div><Link href={`/projects/${project.projectRef}`} aria-label={`Open ${project.title}`}>Open project <ArrowRight size={13} /></Link></div>
+    return <div className={styles.homeDirectionsState} role="status"><span className={styles.homeDirectionsStateIcon} aria-hidden="true"><Music2 size={16} /></span><div><strong>Directions are temporarily unavailable</strong><span>The Project is safe. Open it to continue from its confirmed state.</span></div><Link href={`/projects/${encodeURIComponent(project.projectRef)}`} aria-label={`Open ${project.title}`}>Open project <ArrowRight size={13} /></Link></div>
   }
 
   if (candidates.length === 0) {
@@ -189,7 +189,7 @@ function HomeDirections({ project, candidates, status, playerVersionRef, playing
         <div className={styles.homeTrackCopy}><strong>{candidate.title}</strong><span>{candidate.subtitle}</span></div>
         <div className={styles.homeTrackWave}><Waveform seed={candidate.waveformSeed} compact progress={index === 0 ? 0.62 : 0.28} /></div>
         <span className={styles.homeTrackDuration}>{Math.floor(candidate.durationSeconds / 60)}:{String(candidate.durationSeconds % 60).padStart(2, "0")}</span>
-        <Link className={styles.homeTrackOpen} href={`/projects/${projectRef}/studio/${candidate.versionRef}`} aria-label={`Open Studio for ${candidate.title}`}><ArrowRight size={14} /></Link>
+        <Link className={styles.homeTrackOpen} href={`/projects/${encodeURIComponent(projectRef)}/studio/${encodeURIComponent(candidate.versionRef)}`} aria-label={`Open Studio for ${candidate.title}`}><ArrowRight size={14} /></Link>
       </article>
     })}
   </div>

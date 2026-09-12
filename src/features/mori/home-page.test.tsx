@@ -149,6 +149,67 @@ describe("Mori home page", () => {
     )
   })
 
+  it("encodes opaque Project and Version refs in continuity links", async () => {
+    const projectRef = "project home / 01"
+    const versionRef = "version?take=2#wide"
+    const api: Pick<MoriApi, "listProjects" | "listCandidates"> = {
+      listProjects: async () => ({
+        data: {
+          projects: [{
+            project_ref: projectRef,
+            title: "Window Seat",
+            description: "A quiet, forward-moving sketch.",
+            current_version_ref: versionRef,
+            candidate_count: 1,
+            last_activity_at: "2026-09-04T12:00:00.000Z",
+          }],
+          next_cursor: null,
+        },
+        meta: { request_id: "request_home_opaque_refs" },
+      }),
+      listCandidates: async () => ({
+        data: {
+          candidates: [{
+            candidate_ref: "candidate_opaque_home",
+            generation_ref: "generation_opaque_home",
+            version_ref: versionRef,
+            project_ref: projectRef,
+            title: "Window Seat · Wide",
+            duration_seconds: 146,
+            audio_asset_ref: "asset_opaque_home",
+            waveform_asset_ref: "waveform_opaque_home",
+            style_tags: ["wide", "patient"],
+            created_at: "2026-09-04T11:59:00.000Z",
+          }],
+          next_cursor: null,
+        },
+        meta: { request_id: "request_home_opaque_candidates" },
+      }),
+    }
+
+    render(
+      <MoriAppProvider>
+        <MoriCatalogShell activeKey="home" ariaLabel="Home">
+          <HomePageContent api={api} />
+        </MoriCatalogShell>
+      </MoriAppProvider>,
+    )
+
+    const continuation = await screen.findByRole("region", { name: "Window Seat" })
+    const encodedProjectRef = encodeURIComponent(projectRef)
+    const encodedVersionRef = encodeURIComponent(versionRef)
+    expect(within(continuation).getByRole("link", { name: "Continue in Studio" })).toHaveAttribute(
+      "href",
+      `/projects/${encodedProjectRef}/studio/${encodedVersionRef}`,
+    )
+
+    const directions = screen.getByRole("region", { name: "Your latest directions" })
+    expect(within(directions).getByRole("link", { name: "Open Studio for Window Seat · Wide" })).toHaveAttribute(
+      "href",
+      `/projects/${encodedProjectRef}/studio/${encodedVersionRef}`,
+    )
+  })
+
   it("does not keep preview directions when a live project projection is incomplete", async () => {
     const api: Pick<MoriApi, "listProjects" | "listCandidates"> = {
       listProjects: async () => ({
