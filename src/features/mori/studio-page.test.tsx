@@ -28,6 +28,10 @@ describe("Mori studio page", () => {
     )
   }
 
+  async function waitForCompositionToLoad() {
+    await waitFor(() => expect(screen.getByRole("region", { name: "Arrangement editor" })).toHaveAttribute("aria-busy", "false"))
+  }
+
   it("restores an active Studio change from the durable queue after refresh", async () => {
     localStorage.clear()
     const snapshot: StudioRestyleGenerationSnapshot = {
@@ -1254,6 +1258,7 @@ describe("Mori studio page", () => {
       meta: { request_id: "request_insert_clip" },
     }))
     renderStudio({ createCompositionRevision })
+    await waitForCompositionToLoad()
 
     const timeline = screen.getByRole("region", { name: "Version timeline" })
     fireEvent.click(within(timeline).getByRole("button", { name: "Add clip" }))
@@ -1277,6 +1282,7 @@ describe("Mori studio page", () => {
       meta: { request_id: "request_insert_library_audio" },
     }))
     renderStudio({ createCompositionRevision })
+    await waitForCompositionToLoad()
 
     const arrangement = screen.getByRole("region", { name: "Arrangement editor" })
     const dock = within(arrangement).getByRole("region", { name: "Studio asset dock" })
@@ -1293,12 +1299,50 @@ describe("Mori studio page", () => {
     ))
   })
 
+  it("waits for the owner arrangement before enabling edits and adopts its revision", async () => {
+    let resolveComposition: ((value: Awaited<ReturnType<MoriApi["getCompositionRevision"]>>) => void) | undefined
+    const getCompositionRevision = vi.fn<MoriApi["getCompositionRevision"]>(() => new Promise((resolve) => { resolveComposition = resolve }))
+    const createCompositionRevision = vi.fn<MoriApi["createCompositionRevision"]>(async (_versionRef, input) => ({
+      data: { version_ref: "version_preview_first_light_a", revision: input.expected_revision + 1, tracks: [] },
+      meta: { request_id: "request_wait_for_composition" },
+    }))
+    renderStudio({ getCompositionRevision, createCompositionRevision })
+
+    const arrangement = screen.getByRole("region", { name: "Arrangement editor" })
+    expect(arrangement).toHaveAttribute("aria-busy", "true")
+    expect(within(arrangement).getByText("Loading arrangement…")).toBeInTheDocument()
+    expect(within(arrangement).getByRole("button", { name: "Save arrangement" })).toBeDisabled()
+    expect(within(arrangement).getByRole("button", { name: "Add clip" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Insert City Lights demo" })).toBeDisabled()
+
+    if (resolveComposition === undefined) throw new Error("Expected composition request to be pending")
+    await act(async () => resolveComposition?.({
+      data: {
+        version_ref: "version_preview_first_light_a",
+        revision: 7,
+        tracks: [{ track_ref: "track_owner_main", kind: "other", name: "Owner arrangement", clips: [{ clip_ref: "clip_owner_main", source_ref: "version_preview_first_light_a", start_ms: 0, duration_ms: 182_000, offset_ms: 0 }] }],
+      },
+      meta: { request_id: "request_owner_composition" },
+    }))
+
+    await waitFor(() => expect(arrangement).toHaveAttribute("aria-busy", "false"))
+    expect(within(arrangement).getAllByText("Owner arrangement")).not.toHaveLength(0)
+    fireEvent.click(within(arrangement).getByRole("button", { name: "Insert City Lights demo" }))
+    fireEvent.click(within(arrangement).getByRole("button", { name: "Save arrangement" }))
+    await waitFor(() => expect(createCompositionRevision).toHaveBeenCalledWith(
+      "version_preview_first_light_a",
+      expect.objectContaining({ expected_revision: 7 }),
+      expect.stringMatching(/^mori-composition-/u),
+    ))
+  })
+
   it("drops Library Audio onto the arrangement at the chosen timeline position", async () => {
     const createCompositionRevision = vi.fn<MoriApi["createCompositionRevision"]>(async (_versionRef, input) => ({
       data: { version_ref: "version_preview_first_light_a", revision: input.expected_revision + 1, tracks: [] },
       meta: { request_id: "request_drop_library_audio" },
     }))
     renderStudio({ createCompositionRevision })
+    await waitForCompositionToLoad()
 
     const arrangement = screen.getByRole("region", { name: "Arrangement editor" })
     const dock = within(arrangement).getByRole("region", { name: "Studio asset dock" })
@@ -1334,8 +1378,9 @@ describe("Mori studio page", () => {
     ))
   })
 
-  it("removes a selected clip with Delete and makes the edit recoverable", () => {
+  it("removes a selected clip with Delete and makes the edit recoverable", async () => {
     renderStudio()
+    await waitForCompositionToLoad()
 
     const timeline = screen.getByRole("region", { name: "Version timeline" })
     const clip = within(timeline).getByRole("button", { name: "Main version clip First Light · 3:02" })

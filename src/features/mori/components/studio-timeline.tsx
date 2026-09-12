@@ -23,6 +23,7 @@ type StudioTimelineProps = {
   positionSeconds: number
   playing: boolean
   disabled: boolean
+  compositionDisabled?: boolean
   onSeek: (positionSeconds: number) => void
   onSelect: (selection: StudioTimelineSection) => void
   onPreviewSelection?: () => void
@@ -43,7 +44,7 @@ type StudioTimelineProps = {
   resolveClipLabel?: (clip: CompositionClip, track: CompositionTrack) => string
 }
 
-export function StudioTimeline({ candidate, sections, selection, positionSeconds, playing, disabled, onSeek, onSelect, onPreviewSelection, previewingSelection = false, compositionTracks = [], selectedClipRef, selectedTrackRef, onSelectTrack, onSelectClip, onEditClip, onMoveClip, onDeleteClip, onDuplicateClip, insertSources, onInsertClip, dropSources, onDropSource, resolveClipLabel }: StudioTimelineProps) {
+export function StudioTimeline({ candidate, sections, selection, positionSeconds, playing, disabled, compositionDisabled = false, onSeek, onSelect, onPreviewSelection, previewingSelection = false, compositionTracks = [], selectedClipRef, selectedTrackRef, onSelectTrack, onSelectClip, onEditClip, onMoveClip, onDeleteClip, onDuplicateClip, insertSources, onInsertClip, dropSources, onDropSource, resolveClipLabel }: StudioTimelineProps) {
   const sectionHintId = useId()
   const durationMs = Math.max(minimumStudioTimelineSelectionMs, Math.round(candidate.durationSeconds * 1_000))
   const positionMs = Math.max(0, Math.min(durationMs, Math.round(positionSeconds * 1_000)))
@@ -97,11 +98,12 @@ export function StudioTimeline({ candidate, sections, selection, positionSeconds
           value={Math.round(positionMs / 1_000)}
           aria-label="Timeline playhead"
           aria-valuetext={`${formatStudioTimelineTime(positionMs)} in ${activeSection?.label ?? "track"}`}
+          disabled={disabled}
           onChange={(event) => onSeek(Number(event.target.value))}
         />
       </div>
 
-      {compositionTracks.length > 0 ? <CompositionLane tracks={compositionTracks} durationMs={durationMs} disabled={disabled} selectedClipRef={selectedClipRef} selectedTrackRef={selectedTrackRef} onSelectTrack={onSelectTrack} onSelectClip={onSelectClip} onEditClip={onEditClip} onMoveClip={onMoveClip} onDeleteClip={onDeleteClip} onDuplicateClip={onDuplicateClip} insertSources={insertSources} onInsertClip={onInsertClip} dropSources={dropSources} onDropSource={onDropSource} resolveClipLabel={resolveClipLabel} /> : null}
+      {compositionTracks.length > 0 ? <CompositionLane tracks={compositionTracks} durationMs={durationMs} disabled={disabled || compositionDisabled} selectedClipRef={selectedClipRef} selectedTrackRef={selectedTrackRef} onSelectTrack={onSelectTrack} onSelectClip={onSelectClip} onEditClip={onEditClip} onMoveClip={onMoveClip} onDeleteClip={onDeleteClip} onDuplicateClip={onDuplicateClip} insertSources={insertSources} onInsertClip={onInsertClip} dropSources={dropSources} onDropSource={onDropSource} resolveClipLabel={resolveClipLabel} /> : null}
 
       <div className={styles.segmentRail}>
         <div
