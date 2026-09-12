@@ -198,6 +198,54 @@ describe("Mori global player media integration", () => {
     expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("Range audition · 0:30–0:35")
   })
 
+  it("keeps playing when the active Version changes audition scope", async () => {
+    const harness = createMediaHarness()
+    const chorus = {
+      kind: "range" as const,
+      label: "Chorus",
+      trackName: "Arrangement",
+      startSeconds: 30,
+      endSeconds: 35,
+    }
+    const verse = {
+      kind: "range" as const,
+      label: "Verse",
+      trackName: "Arrangement",
+      startSeconds: 12,
+      endSeconds: 20,
+    }
+
+    function CandidateHarness() {
+      const { selectPlayerCandidate, setPlaying } = useMoriApp()
+      return (
+        <>
+          <button type="button" onClick={() => selectPlayerCandidate(firstCandidate, chorus.startSeconds, chorus)}>Preview Chorus</button>
+          <button type="button" onClick={() => selectPlayerCandidate(firstCandidate, verse.startSeconds, verse)}>Preview Verse</button>
+          <button type="button" onClick={() => setPlaying(true)}>Start playback</button>
+        </>
+      )
+    }
+
+    render(
+      <MoriAppProvider mediaFactory={harness.factory}>
+        <CandidateHarness />
+        <MoriCatalogShell activeKey="library" ariaLabel="Library">
+          <div>Library content</div>
+        </MoriCatalogShell>
+      </MoriAppProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Preview Chorus" }))
+    fireEvent.click(screen.getByRole("button", { name: "Start playback" }))
+    await waitFor(() => expect(harness.controller.play).toHaveBeenCalledTimes(1))
+
+    fireEvent.click(screen.getByRole("button", { name: "Preview Verse" }))
+
+    await waitFor(() => expect(harness.controller.play).toHaveBeenCalledTimes(2))
+    expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument()
+    expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("Range audition · 0:12–0:20")
+  })
+
   it("does not fake playback for preview candidates without media", () => {
     render(
       <MoriAppProvider>

@@ -338,7 +338,7 @@ export function MoriAppProvider({ children, mediaFactory = createHtmlPlayerMedia
     return () => {
       active = false
     }
-  }, [mediaFactory, playerCandidate, playing])
+  }, [mediaFactory, playerAuditionScope, playerCandidate, playing])
 
   useEffect(() => {
     mediaRef.current?.setMuted(muted)
