@@ -202,7 +202,7 @@ Workspace nav    内容随项目上下文变化                     跨页面保
   失败提供可解释的重试/冲突状态。Overview 只在确认后才更新 `Open Studio` 与 Continue making，既有 Project 的
   `current_version_ref` 会先从 projection 恢复为并发条件。
 - 后续：Song Plan 的服务端版本历史、正式音频上传、版本自动保存，以及建立在真实时间选区和多轨交付模型上的
-  更多导出 scope；AI MV 与真正的 Publish command 保持为完成歌曲后的后置流程。
+  更多导出 scope；AI MV 仍作为完成歌曲后的后置流程，Publish / Share 则继续等待真实 owner integration smoke。
 
 ## 五、明确不做的方向
 
