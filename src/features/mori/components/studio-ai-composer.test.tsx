@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, within } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 import type { StudioChangePlan, StudioTimelineSection } from "../studio-change"
+import type { MoriCreativeLibrarySource } from "../creative-assets"
 import { StudioAiComposer, type StudioAiRunState } from "./studio-ai-composer"
 
 const verse: StudioTimelineSection = {
@@ -106,6 +107,37 @@ describe("Studio AI composer", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Cover" }))
     expect(screen.queryByRole("button", { name: "Use City Lights demo as reference" })).not.toBeInTheDocument()
+  })
+
+  it("uses the injected Creative Source catalog for references and voices", () => {
+    const sources: readonly MoriCreativeLibrarySource[] = [
+      { sourceKind: "audio", ref: "asset_live_room", name: "Live room guide", description: "18 sec · brushed pulse", durationSeconds: 18 },
+      { sourceKind: "voice", ref: "voice_live_aria", name: "Aria", description: "Clear mezzo · close phrasing" },
+    ]
+    const onGenerate = vi.fn<(plan: StudioChangePlan) => void>()
+    render(
+      <StudioAiComposer
+        selectedSection={verse}
+        run={idleRun}
+        creativeSources={sources}
+        onGenerate={onGenerate}
+        onCancel={vi.fn()}
+        onReset={vi.fn()}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Transform" }))
+    fireEvent.click(screen.getByText("Keep & compare"))
+    expect(screen.getByRole("button", { name: "Use Live room guide as reference" })).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Use City Lights demo as reference" })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole("button", { name: "Cover" }))
+    fireEvent.change(screen.getByRole("combobox", { name: "Voice profile" }), { target: { value: "voice_live_aria" } })
+    fireEvent.change(screen.getByRole("textbox", { name: "Tell Mori what to change" }), { target: { value: "Re-perform this with a close live vocal." } })
+    fireEvent.click(screen.getByRole("button", { name: "Review change" }))
+
+    const plan = screen.getByRole("region", { name: "AI change plan" })
+    expect(within(plan).getByText("Aria · Clear mezzo · close phrasing")).toBeInTheDocument()
   })
 
   it("reviews a Vocal Cover from the open Version and sends a protected two-Take plan", () => {

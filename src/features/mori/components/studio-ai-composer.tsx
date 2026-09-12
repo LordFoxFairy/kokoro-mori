@@ -16,7 +16,7 @@ import {
   type StudioTimelineSection,
   type StudioTransformScope,
 } from "../studio-change"
-import { previewReferenceAudios, previewVoiceProfiles } from "../creative-assets"
+import { previewCreativeSources, type MoriCreativeLibrarySource } from "../creative-assets"
 import {
   studioInstrumentalCoverProtectedAnchors,
   studioVocalCoverProtectedAnchors,
@@ -47,6 +47,7 @@ export type StudioAiRunState = {
 type StudioAiComposerProps = {
   selectedSection: StudioTimelineSection
   run: StudioAiRunState
+  creativeSources?: readonly MoriCreativeLibrarySource[]
   initialOperation?: StudioChangeOperation | undefined
   initialTransformScope?: StudioTransformScope | undefined
   initialTransformIntent?: StudioTransformIntent | undefined
@@ -151,7 +152,7 @@ const coverPromptStarters: Readonly<Record<StudioCoverMode, readonly string[]>> 
   ],
 }
 
-export function StudioAiComposer({ selectedSection, run, initialOperation, initialTransformScope, initialTransformIntent, onGenerate, onCancel, onReset }: StudioAiComposerProps) {
+export function StudioAiComposer({ selectedSection, run, creativeSources, initialOperation, initialTransformScope, initialTransformIntent, onGenerate, onCancel, onReset }: StudioAiComposerProps) {
   const promptId = useId()
   const promptRef = useRef<HTMLTextAreaElement>(null)
   const [operation, setOperation] = useState<StudioChangeOperation>(() => run.plan?.operation ?? initialOperation ?? "add_part")
@@ -168,6 +169,9 @@ export function StudioAiComposer({ selectedSection, run, initialOperation, initi
   const [coverVoiceRef, setCoverVoiceRef] = useState<string>(() => coverVoiceFromPlan(run.plan))
   const [referenceAssetRefs, setReferenceAssetRefs] = useState<string[]>(() => referenceAssetsFromPlan(run.plan))
   const [plan, setPlan] = useState<StudioChangePlan | null>(null)
+  const sourceCatalog = creativeSources ?? previewCreativeSources
+  const referenceAudios = sourceCatalog.filter((source) => source.sourceKind === "audio")
+  const voiceProfiles = sourceCatalog.filter((source) => source.sourceKind === "voice")
   const activeOperation = getOperation(operation)
   const isCover = operation === "transform" && transformIntent === "cover"
   const activePreserve = isCover
@@ -367,7 +371,7 @@ export function StudioAiComposer({ selectedSection, run, initialOperation, initi
                 <span>Voice profile <small>Optional</small></span>
                 <select aria-label="Voice profile" value={coverVoiceRef} disabled={busy} onChange={(event) => chooseCoverVoice(event.target.value)}>
                   <option value="">Natural reinterpretation</option>
-                  {previewVoiceProfiles.map((voice) => <option value={voice.ref} key={voice.ref}>{voice.name} · {voice.description}</option>)}
+                  {voiceProfiles.map((voice) => <option value={voice.ref} key={voice.ref}>{voice.name} · {voice.description}</option>)}
                 </select>
               </label>
             ) : null}
@@ -444,7 +448,7 @@ export function StudioAiComposer({ selectedSection, run, initialOperation, initi
             <div className={`${styles.studioAiControlGroup} ${styles.studioAiReferenceGroup}`} role="group" aria-label="Reference audio">
               <span className={styles.studioAiControlLabel}>Reference audio <small>Optional</small></span>
               <div className={styles.studioAiChoices}>
-                {previewReferenceAudios.map((reference) => (
+                {referenceAudios.map((reference) => (
                   <button
                     type="button"
                     aria-label={`Use ${reference.name} as reference`}
@@ -487,9 +491,9 @@ export function StudioAiComposer({ selectedSection, run, initialOperation, initi
           <div className={styles.studioAiPlanFacts}>
             <span><strong>Scope</strong>{visiblePlan.scopeLabel}</span>
             {visibleCoverDraft !== null ? <span><strong>Mode</strong>{coverModeLabel(visibleCoverDraft.coverMode)}</span> : null}
-            {visibleCoverDraft?.coverMode === "vocal" ? <span><strong>Voice</strong>{coverVoiceLabel(visibleCoverDraft.voiceRef)}</span> : null}
+            {visibleCoverDraft?.coverMode === "vocal" ? <span><strong>Voice</strong>{coverVoiceLabel(visibleCoverDraft.voiceRef, voiceProfiles)}</span> : null}
             {visiblePlan.draft.operation === "transform" && visiblePlan.draft.intent === "restyle" && visiblePlan.draft.referenceAssetRefs?.map((referenceRef) => {
-              const reference = previewReferenceAudios.find((item) => item.ref === referenceRef)
+              const reference = referenceAudios.find((item) => item.ref === referenceRef)
               return reference === undefined ? null : <span key={reference.ref}><strong>Reference</strong>{reference.name} · {reference.description}</span>
             })}
             <span><strong>Keep</strong>{preserveLabel(visiblePlan.preserve)}</span>
@@ -583,9 +587,9 @@ function coverModeLabel(mode: StudioCoverMode): string {
   return mode === "vocal" ? "Vocal" : "Instrumental"
 }
 
-function coverVoiceLabel(voiceRef: string | undefined): string {
+function coverVoiceLabel(voiceRef: string | undefined, voiceProfiles: readonly MoriCreativeLibrarySource[]): string {
   if (voiceRef === undefined) return "Natural reinterpretation"
-  const voice = previewVoiceProfiles.find((profile) => profile.ref === voiceRef)
+  const voice = voiceProfiles.find((profile) => profile.ref === voiceRef)
   return voice === undefined ? "Selected Voice profile" : `${voice.name} · ${voice.description}`
 }
 
