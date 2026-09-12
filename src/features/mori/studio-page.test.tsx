@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { StrictMode } from "react"
 import { describe, expect, it, vi } from "vitest"
 import type { ArtworkGenerationInput, MoriApi, MoriExportInput, MoriProjectWorkspaceProjection, ReleaseDraftInput, StudioChangeGenerationInput, StudioRestyleGenerationSnapshot } from "@/lib/mori-api"
@@ -1288,6 +1288,47 @@ describe("Mori studio page", () => {
       "version_preview_first_light_a",
       expect.objectContaining({
         commands: [expect.objectContaining({ type: "insert_clip", source_ref: "source_preview_city_lights" })],
+      }),
+      expect.stringMatching(/^mori-composition-/u),
+    ))
+  })
+
+  it("drops Library Audio onto the arrangement at the chosen timeline position", async () => {
+    const createCompositionRevision = vi.fn<MoriApi["createCompositionRevision"]>(async (_versionRef, input) => ({
+      data: { version_ref: "version_preview_first_light_a", revision: input.expected_revision + 1, tracks: [] },
+      meta: { request_id: "request_drop_library_audio" },
+    }))
+    renderStudio({ createCompositionRevision })
+
+    const arrangement = screen.getByRole("region", { name: "Arrangement editor" })
+    const dock = within(arrangement).getByRole("region", { name: "Studio asset dock" })
+    const sourceCard = within(dock).getByText("City Lights demo").closest("article")
+    const targetRail = within(screen.getByRole("region", { name: "Version timeline" })).getByLabelText("Move clips or drop audio into Main version timeline")
+    if (!(sourceCard instanceof HTMLElement) || !(targetRail instanceof HTMLElement)) throw new Error("Expected a draggable source and arrangement rail")
+    Object.defineProperty(targetRail, "getBoundingClientRect", { value: () => ({ left: 10, width: 100 }) })
+    const values = new Map<string, string>()
+    const dataTransfer = {
+      effectAllowed: "",
+      dropEffect: "none",
+      setData: (type: string, value: string) => { values.set(type, value) },
+      getData: (type: string) => values.get(type) ?? "",
+    }
+
+    fireEvent.dragStart(sourceCard, { dataTransfer })
+    fireEvent.dragOver(targetRail, { dataTransfer })
+    expect(targetRail).toHaveAttribute("data-drop-kind", "source")
+    act(() => {
+      const drop = new Event("drop", { bubbles: true })
+      Object.defineProperties(drop, { clientX: { value: 50 }, dataTransfer: { value: dataTransfer } })
+      targetRail.dispatchEvent(drop)
+    })
+
+    expect(within(screen.getByRole("region", { name: "Version timeline" })).getByRole("button", { name: "Main version clip City Lights demo · 0:24" })).toBeInTheDocument()
+    fireEvent.click(within(arrangement).getByRole("button", { name: "Save arrangement" }))
+    await waitFor(() => expect(createCompositionRevision).toHaveBeenCalledWith(
+      "version_preview_first_light_a",
+      expect.objectContaining({
+        commands: [expect.objectContaining({ type: "insert_clip", track_ref: "version_preview_first_light_a:main", source_ref: "source_preview_city_lights", start_ms: 72_800 })],
       }),
       expect.stringMatching(/^mori-composition-/u),
     ))

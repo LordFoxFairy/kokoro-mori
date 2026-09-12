@@ -620,8 +620,9 @@ Composition 的第一组 provider-neutral 纯函数已落地到 `composition.ts`
   已加入同源 preview 素材架、类型筛选、搜索和 `Use in Create` 上下文恢复。下一步由 storage/music owner
   adapter 提供正式 Audio、Voice、Persona、Style preset 与 Reference projection，替换当前 preview 目录。
 - Studio Asset Dock v1 已把 Library 素材带回 Arrangement 上下文：搜索与类型筛选不离开 Studio，Audio 使用同一个全局
-  Player 试听，插入时携带当前 `track_ref`、选区和 `source_ref`；Voice / Inspiration 以 reference-only 呈现，真实
-  媒体投影、拖放、批量素材与 owner persistence 留在后续 P1。
+  Player 试听，既可点击插入当前 `track_ref` / 选区，也可直接拖到任意 Track / 时间位置（100ms 对齐并按版本边界裁剪），
+  两条路径都携带 `source_ref`；Voice / Inspiration 以 reference-only 呈现，真实媒体投影、批量素材与 owner persistence
+  留在后续 P1。
 
 ### P3 · 完成与发布
 

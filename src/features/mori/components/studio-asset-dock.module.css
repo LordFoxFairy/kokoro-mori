@@ -178,6 +178,19 @@
   transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
 }
 
+.sourceCard[draggable="true"] {
+  cursor: grab;
+}
+
+.sourceCard[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.sourceCard[draggable="true"]:hover {
+  border-color: rgba(196, 121, 90, 0.28);
+  box-shadow: 0 8px 18px rgba(196, 121, 90, 0.08);
+}
+
 .sourceCard:hover {
   border-color: rgba(109, 92, 231, 0.25);
   box-shadow: 0 7px 16px rgba(62, 45, 86, 0.055);

@@ -2506,6 +2506,9 @@ function ArrangementEditor({ compositionSave, compositionLoad, compositionRevisi
     description: take.subtitle,
     durationMs: Math.round(take.durationSeconds * 1_000),
   })), [takes])
+  const dropSources = useMemo<CompositionInsertSource[]>(() => (creativeSources ?? previewCreativeSources)
+    .filter((source): source is Extract<MoriCreativeLibrarySource, { sourceKind: "audio" }> => source.sourceKind === "audio")
+    .map((source) => ({ sourceRef: source.ref, label: source.name, description: source.description, durationMs: Math.round(source.durationSeconds * 1_000) })), [creativeSources])
   const clipTitles = useMemo(() => new Map<string, string>([
     [candidate.versionRef, candidate.title],
     ...takes.map((take) => [take.versionRef, take.title] as const),
@@ -2586,15 +2589,24 @@ function ArrangementEditor({ compositionSave, compositionLoad, compositionRevisi
     setEditOperation(null)
   }
 
-  const insertAudioSource = (source: Extract<MoriCreativeLibrarySource, { sourceKind: "audio" }>) => {
-    const track = compositionEditor.composition.find((item) => item.trackRef === selectedTrackRef)
-    if (track === undefined || selectedTrackRef === undefined) return
-    const selectionDurationMs = Math.max(1_000, selection.endMs - selection.startMs)
-    const durationMs = Math.min(selectionDurationMs, Math.max(1_000, Math.round(source.durationSeconds * 1_000)))
+  const insertAudioSourceAtPosition = (sourceRef: string, trackRef: string, startMs: number, durationLimitMs?: number) => {
+    const source = (creativeSources ?? previewCreativeSources).find((item): item is Extract<MoriCreativeLibrarySource, { sourceKind: "audio" }> => item.sourceKind === "audio" && item.ref === sourceRef)
+    const track = compositionEditor.composition.find((item) => item.trackRef === trackRef)
+    if (source === undefined || track === undefined) return
+    const sourceDurationMs = Math.max(1_000, Math.round(source.durationSeconds * 1_000))
+    const remainingDurationMs = Math.max(1_000, Math.round(candidate.durationSeconds * 1_000) - startMs)
+    const durationMs = Math.min(sourceDurationMs, durationLimitMs ?? remainingDurationMs, remainingDurationMs)
     const clipRef = `${candidate.versionRef}:${track.trackRef}:source-${track.clips.length + 1}`
-    compositionEditor.editAndQueue({ operation: "insert", trackRef: track.trackRef, clip: { clipRef, sourceRef: source.ref, startMs: selection.startMs, durationMs, offsetMs: 0 } })
+    compositionEditor.editAndQueue({ operation: "insert", trackRef: track.trackRef, clip: { clipRef, sourceRef: source.ref, startMs, durationMs, offsetMs: 0 } })
     setSelectedClipRef(clipRef)
+    setSelectedTrackRef(trackRef)
     setEditOperation(null)
+  }
+
+  const insertAudioSource = (source: Extract<MoriCreativeLibrarySource, { sourceKind: "audio" }>) => {
+    if (selectedTrackRef === undefined) return
+    const selectionDurationMs = Math.max(1_000, selection.endMs - selection.startMs)
+    insertAudioSourceAtPosition(source.ref, selectedTrackRef, selection.startMs, selectionDurationMs)
   }
 
   const selectTimelineRange = (nextSelection: StudioTimelineSection) => {
@@ -2623,7 +2635,7 @@ function ArrangementEditor({ compositionSave, compositionLoad, compositionRevisi
           {compositionEditor.saveState === "conflict" ? "Refresh to resolve" : compositionEditor.saveState === "failed" ? "Retry save" : "Save arrangement"}
         </button>
       </div>
-      <StudioTimeline candidate={candidate} sections={timelineSections} selection={selection} positionSeconds={positionSeconds} playing={playing} disabled={changeActive || compositionEditor.saveState === "saving"} onSeek={onSeekTimeline} onSelect={selectTimelineRange} onPreviewSelection={() => onPreviewSelection(selection)} previewingSelection={previewingSelection} compositionTracks={compositionEditor.composition} selectedClipRef={selectedClipRef} selectedTrackRef={selectedTrackRef} onSelectTrack={(trackRef) => { setSelectedTrackRef(trackRef); setSelectedClipRef(undefined); setEditOperation(null) }} onSelectClip={(clipRef, trackRef) => { setSelectedClipRef(clipRef); setSelectedTrackRef(trackRef) }} onEditClip={(operation, clipRef, trackRef) => { setSelectedClipRef(clipRef); setSelectedTrackRef(trackRef); setEditOperation(operation) }} onMoveClip={moveClip} onDeleteClip={deleteClip} onDuplicateClip={duplicateClip} insertSources={insertSources} onInsertClip={insertClip} resolveClipLabel={resolveClipLabel} />
+      <StudioTimeline candidate={candidate} sections={timelineSections} selection={selection} positionSeconds={positionSeconds} playing={playing} disabled={changeActive || compositionEditor.saveState === "saving"} onSeek={onSeekTimeline} onSelect={selectTimelineRange} onPreviewSelection={() => onPreviewSelection(selection)} previewingSelection={previewingSelection} compositionTracks={compositionEditor.composition} selectedClipRef={selectedClipRef} selectedTrackRef={selectedTrackRef} onSelectTrack={(trackRef) => { setSelectedTrackRef(trackRef); setSelectedClipRef(undefined); setEditOperation(null) }} onSelectClip={(clipRef, trackRef) => { setSelectedClipRef(clipRef); setSelectedTrackRef(trackRef) }} onEditClip={(operation, clipRef, trackRef) => { setSelectedClipRef(clipRef); setSelectedTrackRef(trackRef); setEditOperation(operation) }} onMoveClip={moveClip} onDeleteClip={deleteClip} onDuplicateClip={duplicateClip} insertSources={insertSources} onInsertClip={insertClip} dropSources={dropSources} onDropSource={(sourceRef, trackRef, startMs) => insertAudioSourceAtPosition(sourceRef, trackRef, startMs)} resolveClipLabel={resolveClipLabel} />
       <StudioAssetDock sources={creativeSources} selectedTrackName={selectedTrack?.name} selectedRangeLabel={selection.label} selectedRangeTime={`${formatStudioTimelineTime(selection.startMs)}–${formatStudioTimelineTime(selection.endMs)}`} disabled={changeActive || compositionEditor.saveState === "saving"} previewingSourceRef={previewingSourceRef} onPreview={onPreviewSource} onInsert={insertAudioSource} />
       {selectedClipRef !== undefined && selectedTrackRef !== undefined && editOperation !== null ? <CompositionEditPanel clipRef={selectedClipRef} trackRef={selectedTrackRef} trackOptions={compositionEditor.composition.map((track) => ({ trackRef: track.trackRef, name: track.name }))} disabled={changeActive || compositionEditor.saveState === "saving"} operation={editOperation} onApply={(edit) => { compositionEditor.editAndQueue(edit); setEditOperation(null) }} /> : null}
       <StudioAiComposer

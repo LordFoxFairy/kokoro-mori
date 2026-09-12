@@ -4,6 +4,7 @@ import { AudioLines, FileAudio, Filter, Mic2, Pause, Play, Search, Sparkles } fr
 import { useMemo, useState } from "react"
 import type { MoriCreativeLibrarySource } from "../creative-assets"
 import { previewCreativeSources } from "../creative-assets"
+import { compositionSourceDragMimeType } from "./composition-lane"
 import styles from "./studio-asset-dock.module.css"
 
 type AudioCreativeSource = Extract<MoriCreativeLibrarySource, { sourceKind: "audio" }>
@@ -92,7 +93,16 @@ type SourceCardProps = {
 
 function SourceCard({ source, disabled, canInsert, previewing, onPreview, onInsert }: SourceCardProps) {
   const audioSource: AudioCreativeSource | null = source.sourceKind === "audio" ? source : null
-  return <article className={styles.sourceCard} data-source-kind={source.sourceKind}>
+  return <article
+    className={styles.sourceCard}
+    data-source-kind={source.sourceKind}
+    draggable={audioSource !== null && !disabled}
+    onDragStart={(event) => {
+      if (audioSource === null || disabled) return
+      event.dataTransfer.effectAllowed = "copy"
+      event.dataTransfer.setData(compositionSourceDragMimeType, JSON.stringify({ sourceRef: audioSource.ref }))
+    }}
+  >
     <div className={styles.sourceIcon}>{sourceIcon(source.sourceKind)}</div>
     <div className={styles.sourceCopy}>
       <div className={styles.sourceTitleRow}>

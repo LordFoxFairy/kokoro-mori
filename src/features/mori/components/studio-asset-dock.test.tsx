@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, within } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 import type { MoriCreativeLibrarySource } from "../creative-assets"
+import { compositionSourceDragMimeType } from "./composition-lane"
 import { StudioAssetDock } from "./studio-asset-dock"
 
 const sources: readonly MoriCreativeLibrarySource[] = [
@@ -24,7 +25,7 @@ describe("StudioAssetDock", () => {
   })
 
   it("filters sources and keeps non-audio references visibly non-insertable", () => {
-    render(<StudioAssetDock sources={sources} selectedTrackName="Main version" selectedRangeLabel="Chorus" selectedRangeTime="0:42–1:12" onPreview={vi.fn()} onInsert={vi.fn()} />)
+    render(<StudioAssetDock sources={sources} selectedRangeLabel="Chorus" selectedRangeTime="0:42–1:12" onPreview={vi.fn()} onInsert={vi.fn()} />)
     const dock = screen.getByRole("region", { name: "Studio asset dock" })
 
     fireEvent.click(within(dock).getByRole("button", { name: "Voices" }))
@@ -41,5 +42,25 @@ describe("StudioAssetDock", () => {
   it("explains when a track must be selected before insertion", () => {
     render(<StudioAssetDock sources={sources} selectedRangeLabel="Chorus" selectedRangeTime="0:42–1:12" onPreview={vi.fn()} onInsert={vi.fn()} />)
     expect(screen.getByRole("button", { name: "Select a track to insert Room tone" })).toBeDisabled()
+  })
+
+  it("offers audio as a copy drag source while keeping other sources reference-only", () => {
+    const dataTransfer = {
+      effectAllowed: "",
+      setData: vi.fn(),
+    }
+    render(<StudioAssetDock sources={sources} selectedTrackName="Main version" selectedRangeLabel="Chorus" selectedRangeTime="0:42–1:12" onPreview={vi.fn()} onInsert={vi.fn()} />)
+    const dock = screen.getByRole("region", { name: "Studio asset dock" })
+    fireEvent.click(within(dock).getByRole("button", { name: "Voices" }))
+    const voiceCard = within(dock).getByText("Mira").closest("article")
+    fireEvent.click(within(dock).getByRole("button", { name: "Audio" }))
+    const audioCard = within(dock).getByText("Room tone").closest("article")
+
+    expect(audioCard).toHaveAttribute("draggable", "true")
+    expect(voiceCard).toHaveAttribute("draggable", "false")
+    if (!(audioCard instanceof HTMLElement)) throw new Error("Expected an audio source card")
+    fireEvent.dragStart(audioCard, { dataTransfer })
+    expect(dataTransfer.effectAllowed).toBe("copy")
+    expect(dataTransfer.setData).toHaveBeenCalledWith(compositionSourceDragMimeType, JSON.stringify({ sourceRef: "source_room" }))
   })
 })

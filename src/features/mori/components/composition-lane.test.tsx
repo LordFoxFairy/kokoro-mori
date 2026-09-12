@@ -125,4 +125,30 @@ describe("CompositionLane", () => {
     expect(onMove).toHaveBeenCalledWith("clip_1", "track_1", 4_000, "track_2")
     expect(targetRail).toHaveAttribute("data-drop-target", "false")
   })
+
+  it("inserts an audio source at the dropped time and highlights the target track", () => {
+    const onDropSource = vi.fn()
+    const { container } = render(<CompositionLane durationMs={10_000} dropSources={[{ sourceRef: "source_room", label: "Room tone", description: "Brushed pulse", durationMs: 4_000 }]} onDropSource={onDropSource} tracks={[{ trackRef: "track_1", kind: "other", name: "Main", clips: [] }, { trackRef: "track_2", kind: "vocals", name: "Lead", clips: [] }]} />)
+    const rails = Array.from(container.querySelectorAll('[class*="clipRail"]'))
+    const targetRail = rails[1]
+    if (!(targetRail instanceof HTMLElement)) throw new Error("Expected an audio drop target")
+    Object.defineProperty(targetRail, "getBoundingClientRect", { value: () => ({ left: 10, width: 100 }) })
+    const dataTransfer = {
+      effectAllowed: "",
+      dropEffect: "none",
+      getData: vi.fn((type: string) => type === "application/x-mori-composition-source" ? JSON.stringify({ sourceRef: "source_room" }) : ""),
+    }
+
+    fireEvent.dragOver(targetRail, { dataTransfer })
+    expect(targetRail).toHaveAttribute("data-drop-target", "true")
+    expect(targetRail).toHaveAttribute("data-drop-kind", "source")
+    act(() => {
+      const drop = new Event("drop", { bubbles: true })
+      Object.defineProperties(drop, { clientX: { value: 50 }, dataTransfer: { value: dataTransfer } })
+      targetRail.dispatchEvent(drop)
+    })
+
+    expect(onDropSource).toHaveBeenCalledWith("source_room", "track_2", 4_000)
+    expect(targetRail).toHaveAttribute("data-drop-target", "false")
+  })
 })
