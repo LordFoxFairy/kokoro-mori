@@ -66,7 +66,7 @@ Prompt / Upload
 | 保存版本、刷新或跨设备继续 | 浏览器 foundation 已对齐 | Current/Mix/Release 有契约；Workspace projection、Open Version、Studio Lyrics Draft、Lyrics Revision、Stem Separation、Finish Artwork / Export 与 Create Smart Song Plan 的 owner-confirmed 保存/任务恢复状态机已落地浏览器 | **P0 继续：真实 BFF runtime recovery 与 Song Plan 历史** |
 | Library / Workspace 搜索与素材复用 | 浏览器 foundation 已对齐 | Projects、Versions、Audio/Voice/Inspiration Sources、cursor/search/filter；Studio Asset Dock v1 支持当前 Track / Range 内搜索、Audio 试听、点击插入与直接拖到任意 Track / 时间位置（100ms 对齐并按版本边界裁剪），Voice / Inspiration 明确 reference-only | 接入真实 Source 生命周期、媒体投影与拖放后的 owner Placement |
 | Song Editor 的 Split / Crop / Fade / Move / Remove | 浏览器 foundation 已对齐 | `Composition { tracks[] }`、轨道上下文选择、空轨道选择、可读的 Take / Source Clip 标签、Clip 时间范围摘要、Clip 与 AI Scope 的显式分离、Clip 编辑面板与 Move / Trim / Split / Crop / Fade / Insert / Remove 原语、同轨与跨轨直接拖动、目标轨 drop 状态、Undo / Redo 已存在；选中 Clip 可点击 Remove，也可用 Delete / Backspace 快捷键；候选 Take 可以插入已选时间范围；命令均有源 `track_ref`、可选 `target_track_ref`、revision 与 owner seam，Studio 已能加载非空多轨 projection；owner projection 加载期间编辑被锁定并显式标记 busy；无 owner projection 时保留 Main track fallback | P1 接入真实 Composition owner persistence，并扩展 Track / Placement projection |
-| 多轨 timeline、录音编排、loop、tempo | 部分对齐 | Create 已支持录制 Audio reference；当前仍缺绑定 Composition track 的录音编排、loop、tempo 和真实多轨 owner | P1：扩展 Track / Clip / Placement，并接入真实 owner |
+| 多轨 timeline、录音编排、loop、tempo | 部分对齐 | Create 已支持录制 Audio reference；Arrangement 已提供复用全局 Player 的 selected-range loop，但仍缺绑定 Composition track 的录音编排、composition loop、tempo 和真实多轨 owner | P1：扩展 Track / Clip / Placement，并接入真实 owner |
 | Advanced Stems 与 mixer | 部分对齐 | Split intent、异步恢复、同步试听、Mute/Solo/Gain/Pan、Mix Revision | 补真实 stem manifest 与 composition placement |
 | 整曲 / 选区 / 多轨 / MIDI 导出 | 部分对齐 | Export 已支持默认 Full song 与 Arrangement 当前 selected time range 的 MP3/WAV；snapshot 严格回显范围 | P1：Multitrack、单 clip、MIDI 与 artifact manifest |
 | Link-only 分享与 Public 发布 | 浏览器已对齐 | Release draft、独立 Share/Publish/Unpublish 命令、Copy share/public link；真实 owner 权限与 URL smoke 待接通 | **P0：完成真实 Share / Publish owner 集成** |
@@ -108,7 +108,7 @@ Prompt / Upload
 1. **Composition + Studio Asset Dock**：revisioned Track / Clip / Placement；move（含同轨拖动）、split、trim、fade、insert、remove、undo；Asset Dock v1 的搜索、全局试听、当前 Track / Range 点击插入，以及 Audio 到任意 Track / 时间位置的拖放已完成浏览器侧，真实 owner persistence 与拖放后的 Placement projection 仍待接入。
 2. **Selected range / Multitrack Export**：Selected range 已扩展现有 Export；下一刀是等待真实 artifact contract 后接入 Multitrack，不另建一次性工具页。
 3. **Mixer / Effects / Automation / MIDI**：从单轨 inspector、一条 automation lane 和独立 MIDI clip editor 开始。
-4. **Loop / Tempo**：录音入口已落在 Create 的 Creative Source；继续做 loop / tempo 前先建立真实 composition clock 与 input-device 边界。
+4. **Loop / Tempo**：录音入口已落在 Create 的 Creative Source；浏览器侧先提供 selected-range loop 作为 audition 行为，继续做 Composition loop / tempo 前先建立真实 composition clock 与 input-device 边界。
 
 ### P2 · Mori 平台能力
 

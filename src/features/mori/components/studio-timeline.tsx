@@ -13,7 +13,7 @@ import {
 import { Waveform } from "./waveform"
 import { CompositionLane, type CompositionInsertSource } from "./composition-lane"
 import type { CompositionClip, CompositionTrack } from "../composition"
-import { Play, Pause } from "lucide-react"
+import { Pause, Play, Repeat } from "lucide-react"
 import styles from "./studio-timeline.module.css"
 
 type StudioTimelineProps = {
@@ -28,6 +28,8 @@ type StudioTimelineProps = {
   onSelect: (selection: StudioTimelineSection) => void
   onPreviewSelection?: () => void
   previewingSelection?: boolean
+  onToggleLoopSelection?: () => void
+  loopingSelection?: boolean
   compositionTracks?: CompositionTrack[]
   selectedClipRef?: string
   selectedTrackRef?: string
@@ -44,7 +46,7 @@ type StudioTimelineProps = {
   resolveClipLabel?: (clip: CompositionClip, track: CompositionTrack) => string
 }
 
-export function StudioTimeline({ candidate, sections, selection, positionSeconds, playing, disabled, compositionDisabled = false, onSeek, onSelect, onPreviewSelection, previewingSelection = false, compositionTracks = [], selectedClipRef, selectedTrackRef, onSelectTrack, onSelectClip, onEditClip, onMoveClip, onDeleteClip, onDuplicateClip, insertSources, onInsertClip, dropSources, onDropSource, resolveClipLabel }: StudioTimelineProps) {
+export function StudioTimeline({ candidate, sections, selection, positionSeconds, playing, disabled, compositionDisabled = false, onSeek, onSelect, onPreviewSelection, previewingSelection = false, onToggleLoopSelection, loopingSelection = false, compositionTracks = [], selectedClipRef, selectedTrackRef, onSelectTrack, onSelectClip, onEditClip, onMoveClip, onDeleteClip, onDuplicateClip, insertSources, onInsertClip, dropSources, onDropSource, resolveClipLabel }: StudioTimelineProps) {
   const sectionHintId = useId()
   const durationMs = Math.max(minimumStudioTimelineSelectionMs, Math.round(candidate.durationSeconds * 1_000))
   const positionMs = Math.max(0, Math.min(durationMs, Math.round(positionSeconds * 1_000)))
@@ -71,9 +73,14 @@ export function StudioTimeline({ candidate, sections, selection, positionSeconds
         <div className={styles.playbackContext} aria-live="polite">
           <strong>Playhead · {activeSection?.label ?? "Track"}</strong>
           <span>{formatStudioTimelineTime(positionMs)} / {formatStudioTimelineTime(durationMs)}</span>
-          {onPreviewSelection ? <button className={styles.previewSelection} type="button" onClick={onPreviewSelection} disabled={disabled} aria-pressed={previewingSelection}>
-            {previewingSelection ? <Pause size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" />} {previewingSelection ? "Pause selection" : "Preview selection"}
-          </button> : null}
+          {onPreviewSelection || onToggleLoopSelection ? <div className={styles.playbackActions}>
+            {onPreviewSelection ? <button className={styles.previewSelection} type="button" onClick={onPreviewSelection} disabled={disabled} aria-pressed={previewingSelection}>
+              {previewingSelection ? <Pause size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" />} {previewingSelection ? "Pause selection" : "Preview selection"}
+            </button> : null}
+            {onToggleLoopSelection ? <button className={`${styles.previewSelection} ${styles.loopSelection}`} type="button" onClick={onToggleLoopSelection} disabled={disabled} aria-pressed={loopingSelection} aria-label={loopingSelection ? "Stop looping selection" : "Loop selection"}>
+              <Repeat size={12} /> {loopingSelection ? "Looping selection" : "Loop selection"}
+            </button> : null}
+          </div> : null}
         </div>
       </header>
 

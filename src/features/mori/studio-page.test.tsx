@@ -7,6 +7,7 @@ import { MoriAppProvider } from "./components/mori-app-provider"
 import { previewCandidates } from "./preview-data"
 import { readGenerationQueueState } from "./generation-queue-storage"
 import { defaultStudioLyrics } from "./studio-lyrics"
+import type { PlayerMediaFactory } from "./player-media"
 import type { StemPlaybackFactory } from "./stem-playback"
 import { StudioPageContent } from "./studio-page"
 
@@ -20,9 +21,9 @@ const createTestStemPlaybackController: StemPlaybackFactory = () => ({
 })
 
 describe("Mori studio page", () => {
-  function renderStudio(api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "getProjectWorkspace" | "putCurrentVersion" | "getCompositionRevision" | "listCandidates" | "listCreativeSources" | "createStudioChange" | "createCompositionRevision" | "getGeneration" | "getGenerationEvents" | "cancelGeneration" | "createLyricsRevision" | "getLyricsRevision" | "getLyricsRevisionEvents" | "cancelLyricsRevision" | "createStemSeparation" | "getStemSeparation" | "getStemSeparationEvents" | "cancelStemSeparation" | "createArtworkGeneration" | "getArtworkGeneration" | "getArtworkGenerationEvents" | "cancelArtworkGeneration" | "getReleaseDraft" | "putReleaseDraft" | "createMixRevision">>, studioCandidate = previewCandidates[0]) {
+  function renderStudio(api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "getProjectWorkspace" | "putCurrentVersion" | "getCompositionRevision" | "listCandidates" | "listCreativeSources" | "createStudioChange" | "createCompositionRevision" | "getGeneration" | "getGenerationEvents" | "cancelGeneration" | "createLyricsRevision" | "getLyricsRevision" | "getLyricsRevisionEvents" | "cancelLyricsRevision" | "createStemSeparation" | "getStemSeparation" | "getStemSeparationEvents" | "cancelStemSeparation" | "createArtworkGeneration" | "getArtworkGeneration" | "getArtworkGenerationEvents" | "cancelArtworkGeneration" | "getReleaseDraft" | "putReleaseDraft" | "createMixRevision">>, studioCandidate = previewCandidates[0], mediaFactory?: PlayerMediaFactory) {
     return render(
-      <MoriAppProvider>
+      <MoriAppProvider mediaFactory={mediaFactory}>
         <StudioPageContent candidate={studioCandidate} api={api} stemPlaybackFactory={createTestStemPlaybackController} />
       </MoriAppProvider>,
     )
@@ -967,6 +968,29 @@ describe("Mori studio page", () => {
     expect(within(timeline).getByText("Playhead · Lift")).toBeInTheDocument()
     expect(within(timeline).getByText("1:12 / 3:02")).toBeInTheDocument()
     expect(within(timeline).getByRole("button", { name: "Select Lift section" })).toHaveAttribute("data-playhead", "true")
+  })
+
+  it("keeps range looping in the Studio timeline and the global player", async () => {
+    const mediaFactory: PlayerMediaFactory = () => ({
+      setSource: vi.fn(),
+      play: vi.fn(async () => undefined),
+      pause: vi.fn(),
+      seek: vi.fn(),
+      setMuted: vi.fn(),
+      dispose: vi.fn(),
+    })
+    renderStudio(undefined, previewCandidates[0], mediaFactory)
+
+    const timeline = within(screen.getByRole("region", { name: "Arrangement editor" })).getByRole("region", { name: "Version timeline" })
+    const loop = within(timeline).getByRole("button", { name: "Loop selection" })
+    fireEvent.click(loop)
+
+    await waitFor(() => expect(within(timeline).getByRole("button", { name: "Stop looping selection" })).toHaveAttribute("aria-pressed", "true"))
+    expect(within(screen.getByRole("region", { name: "Global player" })).getByRole("button", { name: "Stop looping selection" })).toHaveAttribute("aria-pressed", "true")
+    expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("Looping ·")
+
+    fireEvent.click(within(timeline).getByRole("button", { name: "Stop looping selection" }))
+    expect(within(timeline).getByRole("button", { name: "Loop selection" })).toHaveAttribute("aria-pressed", "false")
   })
 
   it("turns a dragged custom timeline range into the Studio change scope", async () => {

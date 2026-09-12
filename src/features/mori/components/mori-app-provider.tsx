@@ -32,6 +32,7 @@ type MoriAppContextValue = {
   playerCandidate: Candidate | null
   playbackQueue: Candidate[]
   playerAuditionScope: PlayerAuditionScope | null
+  playerAuditionLooping: boolean
   playing: boolean
   playerMediaStatus: PlayerMediaStatus
   playerMediaMessage: string | null
@@ -41,6 +42,7 @@ type MoriAppContextValue = {
   retryPlayerPlayback: () => void
   toggleMuted: () => void
   setPlaying: (playing: boolean) => void
+  setAuditionLoop: (looping: boolean) => void
   seekPlayer: (positionSeconds: number) => void
   selectPlayerCandidate: (candidate: Candidate, positionSeconds?: number, auditionScope?: PlayerAuditionScope | null) => void
   previousPlayerCandidate: () => void
@@ -71,12 +73,13 @@ export function MoriAppProvider({ children, mediaFactory = createHtmlPlayerMedia
   const [playerCandidate, setPlayerCandidate] = useState<Candidate | null>(null)
   const [playbackQueue, setPlaybackQueue] = useState<Candidate[]>([])
   const [playerAuditionScope, setPlayerAuditionScope] = useState<PlayerAuditionScope | null>(null)
+  const [playerAuditionLooping, setPlayerAuditionLooping] = useState(false)
   const [playing, setPlayingState] = useState(false)
   const [playerMediaStatus, setPlayerMediaStatus] = useState<PlayerMediaStatus>(isPlayableCandidate(playerCandidate) ? "ready" : "unavailable")
   const [playerMediaMessage, setPlayerMediaMessage] = useState<string | null>(null)
   const [muted, setMuted] = useState(false)
   const [positionSeconds, setPositionSeconds] = useState(0)
-  const playbackRef = useRef({ candidate: playerCandidate, queue: playbackQueue, positionSeconds, endBehavior: preferences.endBehavior, auditionScope: playerAuditionScope })
+  const playbackRef = useRef({ candidate: playerCandidate, queue: playbackQueue, positionSeconds, endBehavior: preferences.endBehavior, auditionScope: playerAuditionScope, auditionLooping: playerAuditionLooping })
   const playerSelectionRef = useRef<Candidate | null>(playerCandidate)
   const selectionEpochRef = useRef(0)
   const mediaSourceEpochRef = useRef(0)
@@ -128,6 +131,9 @@ export function MoriAppProvider({ children, mediaFactory = createHtmlPlayerMedia
     }
     setPlayingForApp(true)
   }, [setPlayingForApp])
+  const setAuditionLoop = useCallback((looping: boolean) => {
+    setPlayerAuditionLooping(looping)
+  }, [])
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -178,6 +184,7 @@ export function MoriAppProvider({ children, mediaFactory = createHtmlPlayerMedia
     selectionEpochRef.current += 1
     pendingSourcePositionRef.current = { selectionEpoch: selectionEpochRef.current, positionSeconds: nextPositionSeconds }
     playerSelectionRef.current = candidate
+    setPlayerAuditionLooping(false)
     setPlayerAuditionScope(normalizedScope)
     setPlayerCandidate(candidate)
     setPositionSeconds(nextPositionSeconds)
@@ -194,6 +201,7 @@ export function MoriAppProvider({ children, mediaFactory = createHtmlPlayerMedia
     selectionEpochRef.current += 1
     pendingSourcePositionRef.current = { selectionEpoch: selectionEpochRef.current, positionSeconds: 0 }
     playerSelectionRef.current = nextCandidate
+    setPlayerAuditionLooping(false)
     setPlayerAuditionScope(null)
     setPlayerCandidate(nextCandidate)
     setPositionSeconds(0)
@@ -206,6 +214,7 @@ export function MoriAppProvider({ children, mediaFactory = createHtmlPlayerMedia
     selectionEpochRef.current += 1
     pendingSourcePositionRef.current = { selectionEpoch: selectionEpochRef.current, positionSeconds: 0 }
     playerSelectionRef.current = nextCandidate
+    setPlayerAuditionLooping(false)
     setPlayerAuditionScope(null)
     setPlayerCandidate(nextCandidate)
     setPositionSeconds(0)
@@ -213,8 +222,8 @@ export function MoriAppProvider({ children, mediaFactory = createHtmlPlayerMedia
   }, [playbackQueue, playerCandidate])
 
   useEffect(() => {
-    playbackRef.current = { candidate: playerCandidate, queue: playbackQueue, positionSeconds, endBehavior: preferences.endBehavior, auditionScope: playerAuditionScope }
-  }, [playbackQueue, playerAuditionScope, playerCandidate, positionSeconds, preferences.endBehavior])
+    playbackRef.current = { candidate: playerCandidate, queue: playbackQueue, positionSeconds, endBehavior: preferences.endBehavior, auditionScope: playerAuditionScope, auditionLooping: playerAuditionLooping }
+  }, [playbackQueue, playerAuditionLooping, playerAuditionScope, playerCandidate, positionSeconds, preferences.endBehavior])
 
   useEffect(() => {
     const controller = mediaFactory({
@@ -226,10 +235,11 @@ export function MoriAppProvider({ children, mediaFactory = createHtmlPlayerMedia
         const minimum = current.auditionScope?.startSeconds ?? 0
         const maximum = current.auditionScope?.endSeconds ?? currentCandidate.durationSeconds
         if (current.auditionScope !== null && nextPosition >= maximum) {
-          mediaRef.current?.pause()
           mediaRef.current?.seek(minimum)
           current.positionSeconds = minimum
           setPositionSeconds(minimum)
+          if (current.auditionLooping) return
+          mediaRef.current?.pause()
           setPlayingState(false)
           return
         }
@@ -241,9 +251,20 @@ export function MoriAppProvider({ children, mediaFactory = createHtmlPlayerMedia
         if (mediaSourceEpochRef.current !== selectionEpochRef.current) return
         const current = playbackRef.current
         if (current.auditionScope !== null) {
-          mediaRef.current?.seek(current.auditionScope.startSeconds)
-          current.positionSeconds = current.auditionScope.startSeconds
-          setPositionSeconds(current.auditionScope.startSeconds)
+          const startSeconds = current.auditionScope.startSeconds
+          mediaRef.current?.seek(startSeconds)
+          current.positionSeconds = startSeconds
+          setPositionSeconds(startSeconds)
+          if (current.auditionLooping) {
+            void mediaRef.current?.play().catch(() => {
+              if (mediaSourceEpochRef.current !== selectionEpochRef.current) return
+              setPlayerAuditionLooping(false)
+              setPlayingState(false)
+              setPlayerMediaStatus("error")
+              setPlayerMediaMessage("Audio could not be loaded.")
+            })
+            return
+          }
           setPlayingState(false)
           return
         }
@@ -266,6 +287,7 @@ export function MoriAppProvider({ children, mediaFactory = createHtmlPlayerMedia
         setPlayingState(false)
         setPlayerMediaStatus("error")
         setPlayerMediaMessage("Audio could not be loaded.")
+        setPlayerAuditionLooping(false)
       },
     })
     mediaRef.current = controller
@@ -343,6 +365,7 @@ export function MoriAppProvider({ children, mediaFactory = createHtmlPlayerMedia
     playerCandidate,
     playbackQueue,
     playerAuditionScope,
+    playerAuditionLooping,
     playing,
     playerMediaStatus,
     playerMediaMessage,
@@ -351,6 +374,7 @@ export function MoriAppProvider({ children, mediaFactory = createHtmlPlayerMedia
     togglePlaying,
     retryPlayerPlayback,
     setPlaying: setPlayingForApp,
+    setAuditionLoop,
     toggleMuted,
     seekPlayer,
     selectPlayerCandidate,
@@ -358,7 +382,7 @@ export function MoriAppProvider({ children, mediaFactory = createHtmlPlayerMedia
     nextPlayerCandidate,
     preferences,
     updatePreferences,
-  }), [muted, nextPlayerCandidate, playbackQueue, playerAuditionScope, playerCandidate, playerMediaMessage, playerMediaStatus, playing, positionSeconds, preferences, previousPlayerCandidate, railCollapsed, retryPlayerPlayback, seekPlayer, selectPlayerCandidate, setPlayingForApp, setRailCollapsed, toggleMuted, togglePlaying, toggleRail, updatePreferences])
+  }), [muted, nextPlayerCandidate, playbackQueue, playerAuditionLooping, playerAuditionScope, playerCandidate, playerMediaMessage, playerMediaStatus, playing, positionSeconds, preferences, previousPlayerCandidate, railCollapsed, retryPlayerPlayback, seekPlayer, selectPlayerCandidate, setAuditionLoop, setPlayingForApp, setRailCollapsed, toggleMuted, togglePlaying, toggleRail, updatePreferences])
 
   return <MoriAppContext.Provider value={value}>{children}</MoriAppContext.Provider>
 }

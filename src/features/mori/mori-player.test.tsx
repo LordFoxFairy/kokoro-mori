@@ -152,6 +152,52 @@ describe("Mori global player media integration", () => {
     expect(screen.getByRole("slider", { name: "Seek through current audition" })).toHaveValue("30")
   })
 
+  it("loops a selected range without creating a second transport", async () => {
+    const harness = createMediaHarness()
+    const auditionScope = {
+      kind: "range" as const,
+      label: "Chorus",
+      trackName: "Arrangement",
+      startSeconds: 30,
+      endSeconds: 35,
+    }
+
+    function CandidateHarness() {
+      const { selectPlayerCandidate } = useMoriApp()
+      return <button type="button" onClick={() => selectPlayerCandidate(firstCandidate, auditionScope.startSeconds, auditionScope)}>Preview Chorus</button>
+    }
+
+    render(
+      <MoriAppProvider mediaFactory={harness.factory}>
+        <CandidateHarness />
+        <MoriCatalogShell activeKey="library" ariaLabel="Library">
+          <div>Library content</div>
+        </MoriCatalogShell>
+      </MoriAppProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Preview Chorus" }))
+    fireEvent.click(screen.getByRole("button", { name: "Play" }))
+    await waitFor(() => expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument())
+
+    fireEvent.click(screen.getByRole("button", { name: "Loop current selection" }))
+    expect(screen.getByRole("button", { name: "Stop looping selection" })).toHaveAttribute("aria-pressed", "true")
+    expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("Looping · 0:30–0:35")
+
+    harness.controller.pause.mockClear()
+    harness.callbacks.onTimeUpdate(35)
+    await waitFor(() => expect(screen.getByRole("slider", { name: "Seek through current audition" })).toHaveValue("30"))
+    expect(harness.controller.pause).not.toHaveBeenCalled()
+    expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument()
+
+    harness.callbacks.onEnded()
+    await waitFor(() => expect(harness.controller.play).toHaveBeenCalledTimes(2))
+    expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole("button", { name: "Stop looping selection" }))
+    expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("Range audition · 0:30–0:35")
+  })
+
   it("does not fake playback for preview candidates without media", () => {
     render(
       <MoriAppProvider>

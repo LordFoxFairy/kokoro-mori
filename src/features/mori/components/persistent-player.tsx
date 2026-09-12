@@ -1,6 +1,6 @@
 "use client"
 
-import { ListMusic, Music2, Pause, Play, SkipBack, SkipForward, Volume2, VolumeX } from "lucide-react"
+import { ListMusic, Music2, Pause, Play, Repeat, SkipBack, SkipForward, Volume2, VolumeX } from "lucide-react"
 import type { Candidate } from "../domain"
 import { isPlayableCandidate } from "../player-media"
 import type { PlayerAuditionScope, PlayerMediaStatus } from "./mori-app-provider"
@@ -23,6 +23,8 @@ type PersistentPlayerProps = {
   onPrevious?: () => void
   onNext?: () => void
   auditionScope?: PlayerAuditionScope | null
+  auditionLooping?: boolean
+  onToggleAuditionLoop?: () => void
 }
 
 function formatDuration(seconds: number): string {
@@ -31,7 +33,7 @@ function formatDuration(seconds: number): string {
   return `${minutes}:${remaining}`
 }
 
-export function PersistentPlayer({ candidate, playing, muted, positionSeconds, onToggle, onToggleMute, onSeek, playerMediaStatus = "ready", playerMediaMessage = null, onRetryPlayback, queueOpen = false, onSelectQueue, onPrevious, onNext, auditionScope = null }: PersistentPlayerProps) {
+export function PersistentPlayer({ candidate, playing, muted, positionSeconds, onToggle, onToggleMute, onSeek, playerMediaStatus = "ready", playerMediaMessage = null, onRetryPlayback, queueOpen = false, onSelectQueue, onPrevious, onNext, auditionScope = null, auditionLooping = false, onToggleAuditionLoop }: PersistentPlayerProps) {
   const hasCandidate = candidate !== null
   const playableCandidate = candidate !== null && isPlayableCandidate(candidate) ? candidate : null
   const canPlay = playableCandidate !== null
@@ -44,7 +46,7 @@ export function PersistentPlayer({ candidate, playing, muted, positionSeconds, o
         <div className={styles.playerInfo}>
           <strong>{candidate?.title ?? "Choose a version"}</strong>
           <span>{auditionScope === null ? (candidate?.subtitle ?? "Your next listen starts here") : `${auditionScope.trackName} · ${auditionScope.label}`}</span>
-          {auditionScope !== null ? <span className={styles.playerStatus}>{auditionScope.kind === "clip" ? "Clip audition" : "Range audition"} · {formatDuration(auditionScope.startSeconds)}–{formatDuration(auditionScope.endSeconds)}</span> : null}
+          {auditionScope !== null ? <span className={styles.playerStatus}>{auditionLooping ? "Looping" : auditionScope.kind === "clip" ? "Clip audition" : "Range audition"} · {formatDuration(auditionScope.startSeconds)}–{formatDuration(auditionScope.endSeconds)}</span> : null}
           {!canPlay && hasCandidate ? <span className={styles.playerStatus}>Preview audio is unavailable</span> : null}
           {canPlay && playerMediaStatus === "loading" ? <span className={styles.playerStatus}>Loading audio…</span> : null}
           {playerMediaStatus === "error" ? <div className={styles.playerError} role="alert"><span>{playerMediaMessage ?? "Audio could not be loaded."}</span>{onRetryPlayback ? <button className={styles.playerRetry} type="button" onClick={onRetryPlayback}>Retry playback</button> : null}</div> : null}
@@ -83,6 +85,7 @@ export function PersistentPlayer({ candidate, playing, muted, positionSeconds, o
       </div>
       <div className={styles.playerTools} role="group" aria-label="Player tools">
         {canPlay ? <button className={`${styles.playerButton} ${styles.playerMuteButton}`} type="button" onClick={onToggleMute} aria-label={muted ? "Unmute" : "Mute"}>{muted ? <VolumeX /> : <Volume2 />}</button> : null}
+        {canPlay && auditionScope?.kind === "range" && onToggleAuditionLoop ? <button className={styles.playerTool} type="button" onClick={onToggleAuditionLoop} aria-label={auditionLooping ? "Stop looping selection" : "Loop current selection"} aria-pressed={auditionLooping} title={auditionLooping ? "Stop looping selection" : "Loop current selection"}><Repeat /> <span>{auditionLooping ? "Looping" : "Loop"}</span></button> : null}
         {onSelectQueue ? <button className={styles.playerTool} type="button" onClick={onSelectQueue} aria-label="Open playback queue" aria-haspopup="dialog" aria-expanded={queueOpen}><ListMusic /> <span>Up next</span></button> : null}
       </div>
     </section>
