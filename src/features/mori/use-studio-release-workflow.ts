@@ -533,6 +533,7 @@ export function useStudioReleaseWorkflow({ versionRef, versionTitle, api }: UseS
         : { versionRef: sourceVersionRef, draftRef: snapshot.release_draft_ref, revision: snapshot.revision, idempotencyKey: `mori-publish-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` }
       pendingPublishCommand.current = command
       const response = await api.publishRelease(sourceVersionRef, { release_draft_ref: command.draftRef, expected_draft_revision: command.revision }, command.idempotencyKey)
+      if (activeVersionRef.current !== sourceVersionRef) return
       setReleasePublish({
         status: response.data.status,
         releaseRef: response.data.release_ref,
@@ -541,16 +542,24 @@ export function useStudioReleaseWorkflow({ versionRef, versionTitle, api }: UseS
       })
       if (response.data.status !== "publishing") pendingPublishCommand.current = null
       window.localStorage.setItem(releasePublishRecoveryKey, JSON.stringify({ versionRef: sourceVersionRef, releaseRef: response.data.release_ref }))
-    } catch { setReleasePublish((current) => ({ ...current, status: "failed", message: "Publish needs another try." })) }
+    } catch {
+      if (activeVersionRef.current !== sourceVersionRef) return
+      setReleasePublish((current) => ({ ...current, status: "failed", message: "Publish needs another try." }))
+    }
   }
 
   const unpublishRelease = async () => {
+    const sourceVersionRef = activeVersionRef.current
     if (releasePublish.releaseRef === null || api.unpublishRelease === undefined) return
     try {
       const response = await api.unpublishRelease(releasePublish.releaseRef, `mori-unpublish-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
+      if (activeVersionRef.current !== sourceVersionRef) return
       setReleasePublish((current) => ({ ...current, status: response.data.status, publicUrl: response.data.public_url, message: null }))
       window.localStorage.removeItem(releasePublishRecoveryKey)
-    } catch { setReleasePublish((current) => ({ ...current, status: "failed", message: "Unpublish needs another try." })) }
+    } catch {
+      if (activeVersionRef.current !== sourceVersionRef) return
+      setReleasePublish((current) => ({ ...current, status: "failed", message: "Unpublish needs another try." }))
+    }
   }
 
   const createShare = async () => {
@@ -566,6 +575,7 @@ export function useStudioReleaseWorkflow({ versionRef, versionTitle, api }: UseS
       pendingShareCommand.current = command
       const input: CreateShareInput = { release_draft_ref: command.draftRef, expected_draft_revision: command.revision }
       const response = await api.createShare(sourceVersionRef, input, command.idempotencyKey)
+      if (activeVersionRef.current !== sourceVersionRef) return
       setReleaseShare({
         status: response.data.status,
         shareRef: response.data.share_ref,
@@ -574,10 +584,14 @@ export function useStudioReleaseWorkflow({ versionRef, versionTitle, api }: UseS
       })
       if (response.data.status !== "creating") pendingShareCommand.current = null
       window.localStorage.setItem(releaseShareRecoveryKey, JSON.stringify({ versionRef: sourceVersionRef, shareRef: response.data.share_ref }))
-    } catch { setReleaseShare((current) => ({ ...current, status: "failed", message: "The share link needs another try." })) }
+    } catch {
+      if (activeVersionRef.current !== sourceVersionRef) return
+      setReleaseShare((current) => ({ ...current, status: "failed", message: "The share link needs another try." }))
+    }
   }
 
   const revokeShare = async () => {
+    const sourceVersionRef = activeVersionRef.current
     if (releaseShare.shareRef === null || releaseShare.status === "revoking" || api.revokeShare === undefined) return
     setReleaseShare((current) => ({ ...current, status: "revoking", message: null }))
     try {
@@ -587,10 +601,14 @@ export function useStudioReleaseWorkflow({ versionRef, versionTitle, api }: UseS
         : { shareRef: releaseShare.shareRef, idempotencyKey: `mori-share-revoke-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` }
       pendingShareRevokeCommand.current = command
       const response = await api.revokeShare(command.shareRef, command.idempotencyKey)
+      if (activeVersionRef.current !== sourceVersionRef) return
       pendingShareRevokeCommand.current = null
       setReleaseShare((current) => ({ ...current, status: response.data.status, shareUrl: response.data.share_url, message: null }))
       window.localStorage.removeItem(releaseShareRecoveryKey)
-    } catch { setReleaseShare((current) => ({ ...current, status: "failed", message: "The share link could not be revoked. Try again." })) }
+    } catch {
+      if (activeVersionRef.current !== sourceVersionRef) return
+      setReleaseShare((current) => ({ ...current, status: "failed", message: "The share link could not be revoked. Try again." }))
+    }
   }
 
   const active = isActiveArtworkGenerationStatus(artworkRun.status) || releaseSave.status === "saving" || releasePublish.status === "publishing" || releaseShare.status === "creating" || releaseShare.status === "revoking"

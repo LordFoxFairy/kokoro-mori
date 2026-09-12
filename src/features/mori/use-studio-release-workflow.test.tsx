@@ -140,4 +140,33 @@ describe("useStudioReleaseWorkflow release tracking", () => {
     expect(getShare).toHaveBeenCalledTimes(2)
     expect(result.current.releaseShare.shareUrl).toBe("https://mori.local/share/share_1")
   })
+
+  it("drops an in-flight publish response when the user switches Version", async () => {
+    let resolvePublish: (value: Awaited<ReturnType<MoriApi["publishRelease"]>>) => void = () => undefined
+    const publishResponse = {
+      data: {
+        release_ref: "release_1",
+        version_ref: "version_1",
+        status: "published" as const,
+        public_url: "https://mori.local/release/release_1",
+        created_at: "2026-09-12T12:00:00.000Z",
+      },
+      meta: { request_id: "request_publish_stale" },
+    }
+    const publishRelease = vi.fn<MoriApi["publishRelease"]>(() => new Promise((resolve) => { resolvePublish = resolve }))
+    const api = createApi({ publishRelease })
+    const { result, rerender } = renderHook(
+      ({ currentVersionRef }: { currentVersionRef: string }) => useStudioReleaseWorkflow({ versionRef: currentVersionRef, versionTitle: "Morning Lines", api }),
+      { initialProps: { currentVersionRef: "version_1" } },
+    )
+
+    await waitFor(() => expect(result.current.releaseSave.snapshot).not.toBeNull())
+    await act(async () => { await result.current.saveReleaseDraft(result.current.releaseDraft) })
+    act(() => { void result.current.publishRelease() })
+    rerender({ currentVersionRef: "version_2" })
+    await act(async () => { resolvePublish(publishResponse); await Promise.resolve() })
+
+    expect(result.current.releasePublish.status).toBe("idle")
+    expect(result.current.releasePublish.releaseRef).toBeNull()
+  })
 })
