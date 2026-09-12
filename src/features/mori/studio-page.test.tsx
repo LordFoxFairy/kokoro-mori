@@ -20,7 +20,7 @@ const createTestStemPlaybackController: StemPlaybackFactory = () => ({
 })
 
 describe("Mori studio page", () => {
-  function renderStudio(api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "putCurrentVersion" | "listCandidates" | "listCreativeSources" | "createStudioChange" | "getGeneration" | "getGenerationEvents" | "cancelGeneration" | "createLyricsRevision" | "getLyricsRevision" | "getLyricsRevisionEvents" | "cancelLyricsRevision" | "createStemSeparation" | "getStemSeparation" | "getStemSeparationEvents" | "cancelStemSeparation" | "createArtworkGeneration" | "getArtworkGeneration" | "getArtworkGenerationEvents" | "cancelArtworkGeneration" | "getReleaseDraft" | "putReleaseDraft" | "createMixRevision">>, studioCandidate = previewCandidates[0]) {
+  function renderStudio(api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "putCurrentVersion" | "listCandidates" | "listCreativeSources" | "createStudioChange" | "createCompositionRevision" | "getGeneration" | "getGenerationEvents" | "cancelGeneration" | "createLyricsRevision" | "getLyricsRevision" | "getLyricsRevisionEvents" | "cancelLyricsRevision" | "createStemSeparation" | "getStemSeparation" | "getStemSeparationEvents" | "cancelStemSeparation" | "createArtworkGeneration" | "getArtworkGeneration" | "getArtworkGenerationEvents" | "cancelArtworkGeneration" | "getReleaseDraft" | "putReleaseDraft" | "createMixRevision">>, studioCandidate = previewCandidates[0]) {
     return render(
       <MoriAppProvider>
         <StudioPageContent candidate={studioCandidate} api={api} stemPlaybackFactory={createTestStemPlaybackController} />
@@ -1177,6 +1177,29 @@ describe("Mori studio page", () => {
 
     fireEvent.click(within(aiChanges).getByRole("button", { name: "Cover" }))
     expect(within(aiChanges).getByRole("option", { name: "Aria · Clear mezzo · close phrasing" })).toBeInTheDocument()
+  })
+
+  it("inserts a selected take into the chosen arrangement range", async () => {
+    const createCompositionRevision = vi.fn<MoriApi["createCompositionRevision"]>(async (_versionRef, input) => ({
+      data: { version_ref: "version_preview_first_light_a", revision: input.expected_revision + 1, tracks: [] },
+      meta: { request_id: "request_insert_clip" },
+    }))
+    renderStudio({ createCompositionRevision })
+
+    const timeline = screen.getByRole("region", { name: "Version timeline" })
+    fireEvent.click(within(timeline).getByRole("button", { name: "Add clip" }))
+    fireEvent.click(within(timeline).getByRole("button", { name: "Insert First Light · Afterglow into selected range" }))
+    expect(within(timeline).getAllByRole("button", { name: /Main version clip/u })).toHaveLength(2)
+
+    fireEvent.click(screen.getByRole("button", { name: "Save arrangement" }))
+    await waitFor(() => expect(createCompositionRevision).toHaveBeenCalledWith(
+      "version_preview_first_light_a",
+      expect.objectContaining({
+        expected_revision: 0,
+        commands: [expect.objectContaining({ type: "insert_clip", source_ref: "version_preview_first_light_b" })],
+      }),
+      expect.stringMatching(/^mori-composition-version_preview_first_light_a-/u),
+    ))
   })
 
   it("creates a typed Vocal Cover as two new Takes without replacing Current", async () => {

@@ -24,4 +24,24 @@ describe("CompositionLane", () => {
     expect(screen.getByRole("button", { name: "Split" })).toBeDisabled()
     expect(screen.getByRole("button", { name: "Lead clip clip_1" })).toBeDisabled()
   })
+
+  it("inserts a selected source through the composition lane", () => {
+    const onInsert = vi.fn()
+    render(
+      <CompositionLane
+        durationMs={10_000}
+        insertSources={[{ sourceRef: "version_take_2", label: "Afterglow take", description: "Open horizon", durationMs: 12_000 }]}
+        onInsertClip={onInsert}
+        tracks={[{ trackRef: "track_1", kind: "other", name: "Main", clips: [] }]}
+      />,
+    )
+
+    const addClip = screen.getByRole("button", { name: "Add clip" })
+    expect(addClip).toHaveAttribute("aria-expanded", "false")
+    fireEvent.click(addClip)
+    expect(addClip).toHaveAttribute("aria-expanded", "true")
+    fireEvent.click(screen.getByRole("button", { name: "Insert Afterglow take into selected range" }))
+    expect(onInsert).toHaveBeenCalledWith("version_take_2")
+    expect(addClip).toHaveAttribute("aria-expanded", "false")
+  })
 })

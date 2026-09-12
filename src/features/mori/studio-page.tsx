@@ -39,6 +39,7 @@ import { StudioLyricsEditor, type StudioLyricsDraftSource, type StudioLyricsDraf
 import { StudioStemsEditor, type StudioStemSeparationRunState } from "./components/studio-stems-editor"
 import { StudioGenerationQueue } from "./components/studio-generation-queue"
 import { StudioTimeline } from "./components/studio-timeline"
+import type { CompositionInsertSource } from "./components/composition-lane"
 import { CompositionSaveIndicator } from "./components/composition-save-indicator"
 import { CompositionEditPanel } from "./components/composition-edit-panel"
 import { StudioUnsavedLyricsDialog } from "./components/studio-unsaved-lyrics-dialog"
@@ -84,7 +85,7 @@ type StudioPageContentProps = {
   initialSurface?: StudioEntrySurface
   initialIntent?: StudioEntryIntent
   initialGenerationRef?: string | null
-  api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "getProjectWorkspace" | "putCurrentVersion" | "putLyricsDraft" | "putProjectWorkspaceOpenVersion" | "listCandidates" | "listCreativeSources" | "createStudioChange" | "getGeneration" | "getGenerationEvents" | "cancelGeneration" | "createLyricsRevision" | "getLyricsRevision" | "getLyricsRevisionEvents" | "cancelLyricsRevision" | "createStemSeparation" | "getStemSeparation" | "getStemSeparationEvents" | "cancelStemSeparation" | "createArtworkGeneration" | "getArtworkGeneration" | "getArtworkGenerationEvents" | "cancelArtworkGeneration" | "getReleaseDraft" | "putReleaseDraft" | "createMixRevision">>
+  api?: Partial<Pick<MoriApi, "createExport" | "getExport" | "getProject" | "getProjectWorkspace" | "putCurrentVersion" | "putLyricsDraft" | "putProjectWorkspaceOpenVersion" | "listCandidates" | "listCreativeSources" | "createStudioChange" | "createCompositionRevision" | "getGeneration" | "getGenerationEvents" | "cancelGeneration" | "createLyricsRevision" | "getLyricsRevision" | "getLyricsRevisionEvents" | "cancelLyricsRevision" | "createStemSeparation" | "getStemSeparation" | "getStemSeparationEvents" | "cancelStemSeparation" | "createArtworkGeneration" | "getArtworkGeneration" | "getArtworkGenerationEvents" | "cancelArtworkGeneration" | "getReleaseDraft" | "putReleaseDraft" | "createMixRevision">>
   stemPlaybackFactory?: StemPlaybackFactory
 }
 
@@ -2008,6 +2009,12 @@ function ArrangementEditor({ compositionSave, compositionRevision, onRefreshWork
   }], [candidate.durationSeconds, candidate.versionRef])
   const compositionEditor = useCompositionEditor(compositionTracks[0] as CompositionTrack, async (input) => (await compositionSave(candidate.versionRef, input as MoriCompositionRevisionInput, `mori-composition-${candidate.versionRef}-${Date.now()}`)).data, compositionRevision)
   const [editOperation, setEditOperation] = useState<"move" | "trim" | "split" | "crop" | "fade" | null>(null)
+  const insertSources = useMemo<CompositionInsertSource[]>(() => takes.map((take) => ({
+    sourceRef: take.versionRef,
+    label: take.title,
+    description: take.subtitle,
+    durationMs: Math.round(take.durationSeconds * 1_000),
+  })), [takes])
   const duplicateClip = (clipRef: string) => {
     const source = compositionEditor.composition.clips.find((clip) => clip.clipRef === clipRef)
     if (source === undefined) return
@@ -2015,8 +2022,18 @@ function ArrangementEditor({ compositionSave, compositionRevision, onRefreshWork
     compositionEditor.editAndQueue({ operation: "insert", clip: { ...source, clipRef: `${source.clipRef}:copy-${compositionEditor.composition.clips.length + 1}`, startMs: endMs + 250 } })
     setSelectedClipRef(undefined)
   }
-
   if (selection === undefined) return null
+
+  const insertClip = (sourceRef: string) => {
+    const source = takes.find((take) => take.versionRef === sourceRef)
+    if (source === undefined) return
+    const selectionDurationMs = Math.max(1_000, selection.endMs - selection.startMs)
+    const durationMs = Math.min(selectionDurationMs, Math.max(1_000, Math.round(source.durationSeconds * 1_000)))
+    const clipRef = `${candidate.versionRef}:insert-${compositionEditor.composition.clips.length + 1}`
+    compositionEditor.editAndQueue({ operation: "insert", clip: { clipRef, sourceRef: source.versionRef, startMs: selection.startMs, durationMs, offsetMs: 0 } })
+    setSelectedClipRef(clipRef)
+    setEditOperation(null)
+  }
 
   const selectTimelineRange = (nextSelection: StudioTimelineSection) => {
     if (changeActive) return
@@ -2038,7 +2055,7 @@ function ArrangementEditor({ compositionSave, compositionRevision, onRefreshWork
           {compositionEditor.saveState === "conflict" ? "Refresh to resolve" : compositionEditor.saveState === "failed" ? "Retry save" : "Save arrangement"}
         </button>
       </div>
-      <StudioTimeline candidate={candidate} sections={timelineSections} selection={selection} positionSeconds={positionSeconds} playing={playing} disabled={changeActive} onSeek={onSeekTimeline} onSelect={selectTimelineRange} compositionTracks={[compositionEditor.composition]} selectedClipRef={selectedClipRef} onSelectClip={setSelectedClipRef} onEditClip={(operation, clipRef) => { setSelectedClipRef(clipRef); setEditOperation(operation) }} onDuplicateClip={duplicateClip} />
+      <StudioTimeline candidate={candidate} sections={timelineSections} selection={selection} positionSeconds={positionSeconds} playing={playing} disabled={changeActive} onSeek={onSeekTimeline} onSelect={selectTimelineRange} compositionTracks={[compositionEditor.composition]} selectedClipRef={selectedClipRef} onSelectClip={setSelectedClipRef} onEditClip={(operation, clipRef) => { setSelectedClipRef(clipRef); setEditOperation(operation) }} onDuplicateClip={duplicateClip} insertSources={insertSources} onInsertClip={insertClip} />
       {selectedClipRef !== undefined && editOperation !== null ? <CompositionEditPanel clipRef={selectedClipRef} operation={editOperation} onApply={(edit) => { compositionEditor.editAndQueue(edit); setEditOperation(null) }} /> : null}
       <StudioAiComposer
         selectedSection={selection}

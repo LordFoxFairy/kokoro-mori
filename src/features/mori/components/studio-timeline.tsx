@@ -11,7 +11,7 @@ import {
   type StudioTimelineSection,
 } from "../studio-change"
 import { Waveform } from "./waveform"
-import { CompositionLane } from "./composition-lane"
+import { CompositionLane, type CompositionInsertSource } from "./composition-lane"
 import type { CompositionTrack } from "../composition"
 import styles from "./studio-timeline.module.css"
 
@@ -29,9 +29,11 @@ type StudioTimelineProps = {
   onSelectClip?: (clipRef: string) => void
   onEditClip?: (operation: "move" | "trim" | "split" | "crop" | "fade", clipRef: string) => void
   onDuplicateClip?: (clipRef: string) => void
+  insertSources?: readonly CompositionInsertSource[]
+  onInsertClip?: (sourceRef: string) => void
 }
 
-export function StudioTimeline({ candidate, sections, selection, positionSeconds, playing, disabled, onSeek, onSelect, compositionTracks = [], selectedClipRef, onSelectClip, onEditClip, onDuplicateClip }: StudioTimelineProps) {
+export function StudioTimeline({ candidate, sections, selection, positionSeconds, playing, disabled, onSeek, onSelect, compositionTracks = [], selectedClipRef, onSelectClip, onEditClip, onDuplicateClip, insertSources, onInsertClip }: StudioTimelineProps) {
   const sectionHintId = useId()
   const durationMs = Math.max(minimumStudioTimelineSelectionMs, Math.round(candidate.durationSeconds * 1_000))
   const positionMs = Math.max(0, Math.min(durationMs, Math.round(positionSeconds * 1_000)))
@@ -86,7 +88,7 @@ export function StudioTimeline({ candidate, sections, selection, positionSeconds
         />
       </div>
 
-      {compositionTracks.length > 0 ? <CompositionLane tracks={compositionTracks} durationMs={durationMs} disabled={disabled} selectedClipRef={selectedClipRef} onSelectClip={onSelectClip} onEditClip={onEditClip} onDuplicateClip={onDuplicateClip} /> : null}
+      {compositionTracks.length > 0 ? <CompositionLane tracks={compositionTracks} durationMs={durationMs} disabled={disabled} selectedClipRef={selectedClipRef} onSelectClip={onSelectClip} onEditClip={onEditClip} onDuplicateClip={onDuplicateClip} insertSources={insertSources} onInsertClip={onInsertClip} /> : null}
 
       <div className={styles.segmentRail}>
         <div
