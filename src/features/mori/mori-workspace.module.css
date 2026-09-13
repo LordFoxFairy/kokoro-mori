@@ -3569,6 +3569,26 @@
   line-height: 1.45;
 }
 
+.studioSidebarRefresh {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 28px;
+  margin-top: 2px;
+  border: 1px solid var(--mori-border);
+  border-radius: 8px;
+  color: var(--mori-foreground);
+  font-size: 9px;
+  font-weight: 700;
+  background: #fff;
+}
+
+.studioSidebarRefresh:hover {
+  border-color: var(--mori-border-strong);
+  background: var(--mori-primary-soft);
+}
+
 .studioCanvas {
   min-width: 0;
   padding: 32px clamp(24px, 5vw, 70px);
@@ -3871,6 +3891,13 @@
 
 .takeLaneCurrentLabel {
   color: var(--mori-success);
+  font-size: 9px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.takeLaneCurrentUnavailable {
+  color: var(--mori-muted);
   font-size: 9px;
   font-weight: 700;
   white-space: nowrap;

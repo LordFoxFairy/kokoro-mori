@@ -34,6 +34,7 @@ const sharedProps = {
   projectRef: "project /one",
   openVersionRef: "version/a",
   currentVersionRef: "version_b",
+  currentVersionStatus: "known" as const,
 }
 
 describe("Studio Version history", () => {

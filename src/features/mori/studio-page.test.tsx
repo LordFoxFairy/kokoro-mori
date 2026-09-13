@@ -4443,7 +4443,7 @@ describe("Mori studio page", () => {
     expect(screen.getByText("Open take")).toBeInTheDocument()
   })
 
-  it("hydrates the studio version from the requested project projection", async () => {
+  it("keeps Current unavailable when only the requested project candidates load", async () => {
     render(
       <MoriAppProvider>
         <StudioPageContent
@@ -4478,7 +4478,7 @@ describe("Mori studio page", () => {
     expect(screen.getByRole("link", { name: "Project" })).toHaveAttribute("href", "/projects/project_live_1")
     fireEvent.click(screen.getByRole("button", { name: "Open version history" }))
     const history = screen.getByRole("dialog", { name: "Version history" })
-    expect(within(history).getByRole("link", { name: "Window Seat, Current, Open, 2:20" })).toHaveAttribute("href", "/projects/project_live_1/studio/version_live_1")
+    expect(within(history).getByRole("link", { name: "Window Seat, Current unavailable, Open, 2:20" })).toHaveAttribute("href", "/projects/project_live_1/studio/version_live_1")
     fireEvent.click(within(history).getByRole("button", { name: "Close version history" }))
     expect(screen.getAllByText("soft motion · close vocal").length).toBeGreaterThan(0)
     expect(screen.getByRole("button", { name: "Select Whole song section" })).toHaveAttribute("aria-pressed", "true")
@@ -4490,6 +4490,124 @@ describe("Mori studio page", () => {
     expect(screen.getByRole("tab", { name: "Lyrics" })).toHaveAttribute("aria-selected", "true")
     expect(screen.getByRole("textbox", { name: "Lyrics draft" })).toHaveValue("")
     await waitFor(() => expect(screen.getByRole("tab", { name: "Lyrics" })).toHaveFocus())
+  })
+
+  it("does not infer Current from candidate order when the project projection fails", async () => {
+    render(
+      <MoriAppProvider>
+        <StudioPageContent
+          candidate={previewCandidates[0]}
+          projectRef="project_live_unknown"
+          api={{
+            getProject: async () => { throw new Error("project_projection_unavailable") },
+            listCandidates: async () => ({
+              data: {
+                candidates: [
+                  {
+                    candidate_ref: "candidate_unknown_a",
+                    generation_ref: "generation_unknown",
+                    version_ref: "version_unknown_a",
+                    project_ref: "project_live_unknown",
+                    title: "Window Seat",
+                    duration_seconds: 140,
+                    audio_asset_ref: "asset_unknown_a",
+                    waveform_asset_ref: "waveform_unknown_a",
+                    style_tags: ["quiet"],
+                    created_at: "2026-09-03T19:58:00.000Z",
+                  },
+                  {
+                    candidate_ref: "candidate_unknown_b",
+                    generation_ref: "generation_unknown",
+                    version_ref: "version_unknown_b",
+                    project_ref: "project_live_unknown",
+                    title: "Window Seat · Wide",
+                    duration_seconds: 146,
+                    audio_asset_ref: "asset_unknown_b",
+                    waveform_asset_ref: "waveform_unknown_b",
+                    style_tags: ["wide"],
+                    created_at: "2026-09-03T19:59:00.000Z",
+                  },
+                ],
+                next_cursor: null,
+              },
+              meta: { request_id: "request_candidates_unknown" },
+            }),
+          }}
+        />
+      </MoriAppProvider>,
+    )
+
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Window Seat" })).toBeInTheDocument())
+    expect(screen.getAllByText("Current unavailable").length).toBeGreaterThan(0)
+    const takeLanes = screen.getByRole("region", { name: "Take lanes" })
+    expect(within(takeLanes).getAllByText("Current unavailable")).toHaveLength(2)
+    expect(within(takeLanes).queryByText("Current version")).not.toBeInTheDocument()
+    expect(within(takeLanes).queryByRole("button", { name: "Use Window Seat as current" })).not.toBeInTheDocument()
+  })
+
+  it("keeps an explicit empty Current state distinct from an unavailable projection", async () => {
+    render(
+      <MoriAppProvider>
+        <StudioPageContent
+          candidate={previewCandidates[0]}
+          projectRef="project_live_none"
+          api={{
+            getProject: async () => ({
+              data: {
+                project_ref: "project_live_none",
+                title: "Window Seat",
+                description: "No selected direction",
+                current_version_ref: null,
+                candidate_count: 2,
+                last_activity_at: "2026-09-03T20:00:00.000Z",
+              },
+              meta: { request_id: "request_project_none" },
+            }),
+            listCandidates: async () => ({
+              data: {
+                candidates: [
+                  {
+                    candidate_ref: "candidate_none_a",
+                    generation_ref: "generation_none",
+                    version_ref: "version_none_a",
+                    project_ref: "project_live_none",
+                    title: "Window Seat",
+                    duration_seconds: 140,
+                    audio_asset_ref: "asset_none_a",
+                    waveform_asset_ref: "waveform_none_a",
+                    style_tags: ["quiet"],
+                    created_at: "2026-09-03T19:58:00.000Z",
+                  },
+                  {
+                    candidate_ref: "candidate_none_b",
+                    generation_ref: "generation_none",
+                    version_ref: "version_none_b",
+                    project_ref: "project_live_none",
+                    title: "Window Seat · Wide",
+                    duration_seconds: 146,
+                    audio_asset_ref: "asset_none_b",
+                    waveform_asset_ref: "waveform_none_b",
+                    style_tags: ["wide"],
+                    created_at: "2026-09-03T19:59:00.000Z",
+                  },
+                ],
+                next_cursor: null,
+              },
+              meta: { request_id: "request_candidates_none" },
+            }),
+          }}
+        />
+      </MoriAppProvider>,
+    )
+
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Window Seat" })).toBeInTheDocument())
+    expect(screen.getByText("No Current · choose a take")).toBeInTheDocument()
+    const takeLanes = screen.getByRole("region", { name: "Take lanes" })
+    expect(within(takeLanes).queryByText("Current version")).not.toBeInTheDocument()
+    expect(within(takeLanes).getByRole("button", { name: "Use Window Seat as current" })).toBeEnabled()
+    fireEvent.click(screen.getByRole("button", { name: "Open version history" }))
+    const history = screen.getByRole("dialog", { name: "Version history" })
+    expect(within(history).getByRole("link", { name: "Window Seat, No Current, Open, 2:20" })).toBeInTheDocument()
   })
 
   it("shows an explicit unavailable state when the requested version is absent", async () => {

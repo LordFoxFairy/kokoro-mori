@@ -8,11 +8,14 @@ import type { Candidate } from "../domain"
 import { useMoriModalLayer } from "./mori-modal-isolation"
 import styles from "./studio-version-history.module.css"
 
+export type StudioCurrentVersionStatus = "unknown" | "none" | "known"
+
 type StudioVersionHistoryProps = {
   candidates: Candidate[]
   projectRef: string
   openVersionRef: string
-  currentVersionRef: string
+  currentVersionRef: string | null
+  currentVersionStatus: StudioCurrentVersionStatus
   onSelectVersion?: (candidate: Candidate) => void
 }
 
@@ -92,7 +95,7 @@ export function StudioVersionHistoryDrawer({ id, onClose, ...history }: StudioVe
           <div>
             <span>Project history</span>
             <h2 id={titleId}>Version history</h2>
-            <p id={descriptionId}>Open an earlier direction without changing which Version is Current.</p>
+            <p id={descriptionId}>{history.currentVersionStatus === "unknown" ? "Current status is unavailable. Refresh before choosing a Version as Current." : "Open an earlier direction without changing which Version is Current."}</p>
           </div>
           <button ref={closeRef} className={styles.closeButton} type="button" aria-label="Close version history" onClick={onClose}><X size={18} /></button>
         </header>
@@ -106,13 +109,13 @@ export function StudioVersionHistoryDrawer({ id, onClose, ...history }: StudioVe
   )
 }
 
-function VersionHistoryList({ candidates, projectRef, openVersionRef, currentVersionRef, onNavigate, onSelectVersion }: StudioVersionHistoryProps & { onNavigate?: () => void }) {
+function VersionHistoryList({ candidates, projectRef, openVersionRef, currentVersionRef, currentVersionStatus, onNavigate, onSelectVersion }: StudioVersionHistoryProps & { onNavigate?: () => void }) {
   return (
     <nav className={styles.list} aria-label="Project versions">
       {candidates.map((candidate, index) => {
         const isOpen = candidate.versionRef === openVersionRef
-        const isCurrent = candidate.versionRef === currentVersionRef
-        const status = isCurrent ? "Current" : "Draft"
+        const isCurrent = currentVersionStatus === "known" && candidate.versionRef === currentVersionRef
+        const status = isCurrent ? "Current" : currentVersionStatus === "unknown" ? "Current unavailable" : currentVersionStatus === "none" ? "No Current" : "Draft"
         const duration = formatDuration(candidate.durationSeconds)
         const stateLine = [status, isOpen ? "Open" : null, duration].filter((value): value is string => value !== null).join(" · ")
         const accessibleState = [candidate.title, status, isOpen ? "Open" : null, duration].filter((value): value is string => value !== null).join(", ")
