@@ -1,6 +1,6 @@
 # Mori × Suno 能力对齐基线
 
-> 核验日期：2026-09-05
+> 核验日期：2026-09-13
 > 目标：先对齐 Suno 已验证的核心用户任务，再发展 Mori 的可解释、可恢复、provider-neutral AI Music 工作流。
 
 ## 1. 对齐口径
@@ -33,12 +33,13 @@ Runtime   真实 owner / provider 可以持久化、恢复并交付音乐结果
 - [Remaster](https://help.suno.com/en/articles/8105281)：保持作品核心，按 Subtle / Normal / High 调整音质和制作变化。
 - [Voices](https://help.suno.com/en/articles/11362369) 与
   [Voices FAQ](https://help.suno.com/en/articles/11362433)：复用经验证的个人声音；Style Personas 继续保留在 Voices 入口中。
-- [Studio 2.0](https://help.suno.com/en/articles/13670529)：多轨、录音、Chat Bar、MIDI、效果器、automation、synth 与 advanced stems。
+- [Studio 2.0](https://help.suno.com/en/articles/13670529)：多轨、录音、Chat Bar、MIDI、效果器、automation、synth 与 advanced stems；其核心 transport（Play、Record、Loop、Follow Playhead、节拍器、BPM、拍号）位于时间线之上。
 - [Take Lanes](https://help.suno.com/en/articles/13670913)：每次生成两版，原位试听、评价并非破坏性 Commit。
-- [Studio Library](https://help.suno.com/en/articles/13670849)：在 Studio 内搜索、试听、拖放 Library / Upload / Stem / Workspace 资产。
+- [Studio Library](https://help.suno.com/en/articles/13670849)：右侧 dock 内搜索、试听、拖放 Library / Upload / Stem / Workspace 资产，并按项目记忆筛选和搜索视图。
 - [Studio Export](https://help.suno.com/en/articles/8128193)：整曲、选区、多轨、单 clip 与 MIDI 交付。
 - [Share](https://help.suno.com/en/articles/2565761) 与
   [Publish](https://help.suno.com/en/articles/2551361)：Link-only 分享与 Public 发布是不同动作。
+- [Custom Models](https://help.suno.com/en/articles/11362497)：Create 的模型选择器支持基于用户歌曲建立私有模型；这是创作身份与训练生命周期，不是普通 Style 文本。
 - [Suno Platform](https://platform.suno.com/)：官方 REST API 入口已经上线，匿名页确认支持 original songs、covers、mashups；
   API account 和详细文档需要使用关联 Suno 账号登录。登录核验前不猜 endpoint、鉴权、限流、credits 或任务状态机。
 
@@ -62,8 +63,8 @@ Studio。这样“生成结果属于哪个 Project、来自哪次运行、下一
 
 本次直接复核 Suno 的 Create 与 Studio 页面，只记录可见的产品能力，不把账号内容、内部请求或 provider 字段写入 Mori：
 
-- **Create**：Simple / Advanced 两种入口；模型选择；Audio、Voice、Inspo 三类创作上下文；Lyrics 编辑器及写作辅助；Styles 输入与推荐风格；More Options；Save to Workspace；下方还有搜索、筛选、排序、List/Grid 视图和生成 clip 的试听、编辑标题、评价、分享、发布动作。
-- **Studio**：Project 菜单、Preview/Upgrade to edit、Undo/Redo、Back to Start / Record / Play transport、BPM 与拍号、Export、Library；时间线有 Track、Add New Track、Magic Bar，以及 Plugins、Automation、Clip editor、Take lanes、Playable keyboard 和 Zoom。
+- **Create**：Simple / Advanced 两种入口；模型选择（包含私有 Custom Model 入口）；Audio、Voice、Inspo 三类创作上下文；Lyrics 编辑器及写作辅助；Styles 输入与推荐风格；More Options；Save to Workspace；下方还有搜索、筛选、排序、List/Grid 视图和生成 clip 的试听、编辑标题、评价、分享、发布动作。
+- **Studio**：Project 菜单、Preview/Upgrade to edit、Undo/Redo、位于时间线之上的 Back to Start / Record / Play / Loop / Follow Playhead / Metronome / BPM / 拍号 transport、Export、右侧 Library dock；时间线有 Track、Add New Track、Magic Bar，以及 Plugins、Automation、Clip editor、Take lanes、Playable keyboard 和 Zoom。
 
 这次复核将 Mori 的优先级固定为：先把 Create 的输入上下文、Queue 到 Project 的结果交接、Studio 的全局 transport、时间线范围、Take lanes、Library 与非破坏式变更做成一条连续主链；模型目录、BPM/拍号、真实 Add Track、MIDI、Effects、Automation、Synth 只有在 owner contract 和真实 render/clock 边界成立后再开放，不用 disabled 按钮制造“已经支持”的错觉。
 
@@ -86,7 +87,7 @@ Studio。这样“生成结果属于哪个 Project、来自哪次运行、下一
 | Link-only 分享与 Public 发布 | 浏览器已对齐 | Release draft、独立 Share/Publish/Unpublish 命令、Copy share/public link；真实 owner 权限与 URL smoke 待接通 | **P0：完成真实 Share / Publish owner 集成** |
 | MIDI、Effects、Automation、Synth | 缺失 | Track inspector 的 Level / Pan / Mute 与 `set_track_mix` 浏览器基础已存在，但仍无 MIDI、Effects、Automation、Synth 的可靠 Composition Revision 承载 | P1 后段；先接真实 mix render，再做 automation lane / MIDI |
 | AI 自定义插件、Web MIDI controller | 后置 | 不影响核心创作到交付闭环 | 暂不追逐功能数量 |
-| Voices / Personas / Custom Models / Taste | 部分对齐 | Voice source 与 Vocal direction 已分离；尚无创建、验证、训练和版本生命周期 | P2：Creative Identity 与显式 consent |
+| Voices / Personas / Custom Models / Taste | 部分对齐 | Voice source 与 Vocal direction 已分离；尚无创建、验证、训练和版本生命周期；Suno 当前已把 Custom Model 放入 Create 的模型选择器，要求至少六首拥有权明确的歌曲并支持私有模型 | P2：Creative Identity 与显式 consent；先做模型/声音身份的 owner contract，不把 Custom Model 伪装成 Style preset |
 | Sounds / Sample / Mashup | 缺失 | 无独立可交付 sample/loop 模型 | P2；复用 Source + Generation + lineage，不增全局工具墙 |
 
 ## 4. 执行顺序

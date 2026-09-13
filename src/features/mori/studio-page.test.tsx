@@ -652,6 +652,25 @@ describe("Mori studio page", () => {
     expect(screen.getByRole("region", { name: "Stems editor" })).toBeInTheDocument()
   })
 
+  it("keeps the Studio library as a toggleable right-hand dock beside the arrangement", () => {
+    renderStudio()
+
+    const arrangement = screen.getByRole("region", { name: "Arrangement editor" })
+    expect(arrangement).toHaveAttribute("data-arrangement-layout", "timeline-and-library")
+    expect(screen.getByRole("button", { name: "Hide Studio library" })).toHaveAttribute("aria-pressed", "true")
+    const dock = within(arrangement).getByRole("region", { name: "Studio asset dock" })
+    fireEvent.change(within(dock).getByRole("searchbox", { name: "Search creative sources" }), { target: { value: "city" } })
+
+    fireEvent.click(screen.getByRole("button", { name: "Hide Studio library" }))
+
+    expect(screen.getByRole("button", { name: "Show Studio library" })).toHaveAttribute("aria-pressed", "false")
+    expect(within(arrangement).queryByRole("region", { name: "Studio asset dock" })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole("button", { name: "Show Studio library" }))
+    const reopenedDock = within(arrangement).getByRole("region", { name: "Studio asset dock" })
+    expect(within(reopenedDock).getByRole("searchbox", { name: "Search creative sources" })).toHaveValue("city")
+  })
+
   it("opens the Studio workspace selected by a project continuation", () => {
     render(
       <MoriAppProvider>

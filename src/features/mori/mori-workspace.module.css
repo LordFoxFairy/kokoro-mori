@@ -5334,7 +5334,7 @@
   min-height: 100%;
 }
 
-.arrangementTimelineHeader { display:flex; align-items:center; justify-content:flex-end; gap:12px; min-height:32px; margin:0 0 6px; }
+.arrangementTimelineHeader { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:12px; min-height:32px; margin:0 0 6px; }
 .compositionLoadNotice { margin-right:auto; color:var(--mori-muted); font-size:10px; line-height:1.4; }
 .arrangementHistoryActions { display:flex; align-items:center; gap:4px; }
 .arrangementHistoryButton { display:inline-grid; width:30px; height:30px; place-items:center; padding:0; border:1px solid var(--mori-border); border-radius:9px; color:var(--mori-muted); background:rgba(255,255,255,.8); cursor:pointer; }
@@ -5343,6 +5343,25 @@
 .arrangementSaveButton { display:inline-flex; align-items:center; gap:6px; min-height:30px; padding:0 12px; border:1px solid var(--mori-border); border-radius:9px; color:var(--mori-ink); background:rgba(255,255,255,.8); font:inherit; font-size:12px; font-weight:700; cursor:pointer; }
 .arrangementSaveButton:hover:not(:disabled) { border-color:var(--mori-primary); color:var(--mori-primary); }
 .arrangementSaveButton:disabled { cursor:default; opacity:.52; }
+.arrangementLibraryButton { display:inline-flex; align-items:center; gap:6px; min-height:30px; padding:0 10px; border:1px solid rgba(109,92,231,.14); border-radius:9px; color:var(--mori-primary-deep); background:rgba(238,234,255,.52); font:inherit; font-size:11px; font-weight:750; cursor:pointer; }
+.arrangementLibraryButton:hover, .arrangementLibraryButton:focus-visible, .arrangementLibraryButton[aria-pressed="true"] { border-color:rgba(109,92,231,.28); background:rgba(238,234,255,.86); }
+.arrangementLibraryButton:focus-visible { outline:3px solid rgba(109,92,231,.16); outline-offset:2px; }
+.arrangementWorkspace { display:grid; grid-template-columns:minmax(0,1fr); gap:18px; align-items:start; }
+.arrangementMainColumn { display:grid; min-width:0; gap:18px; }
+.arrangementLibraryColumn { min-width:0; }
+.arrangementLibraryColumn .dock { margin-top:0; }
+
+@media (max-width:700px) {
+  .arrangementTimelineHeader { justify-content:flex-start; gap:8px; }
+  .arrangementTimelineHeader .compositionLoadNotice { flex:1 1 100%; margin-right:0; }
+  .arrangementTimelineHeader .arrangementSaveButton { margin-left:auto; }
+}
+
+@media (min-width:1180px) {
+  .arrangementWorkspace { grid-template-columns:minmax(0,1fr) minmax(270px,320px); }
+  .arrangementLibraryColumn { position:sticky; top:18px; max-height:calc(100dvh - var(--mori-player-safe-space) - 104px); overflow:auto; scrollbar-color:rgba(109,92,231,.24) transparent; scrollbar-width:thin; }
+  .arrangementLibraryColumn .sourceList { grid-template-columns:minmax(0,1fr); }
+}
 
 .studioPage .studioHeader {
   min-height: 68px;

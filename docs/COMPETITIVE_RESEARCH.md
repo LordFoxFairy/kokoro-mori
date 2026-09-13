@@ -1,6 +1,6 @@
 # Mori 竞品与供应商研究
 
-> 调研日期：2026-09-04。本文把“观察到的产品事实”与“Mori 的产品决策”分开，避免把竞品页面或
+> 调研日期：2026-09-13。本文把“观察到的产品事实”与“Mori 的产品决策”分开，避免把竞品页面或
 > 供应商实现细节直接当成我们的领域模型。
 
 ## 1. 结论先行
@@ -21,10 +21,12 @@
 官方 [Studio 2.0](https://help.suno.com/en/articles/13670529) 当前把 AI 生成与完整制作环境放在一起：
 
 - Chat Bar 承接生成音频、MIDI、插件与项目操作；Transport 位于时间线上方。
+- Studio Library 位于右侧 dock，支持搜索、快速试听、拖入时间线或 Chat Bar，并按项目记忆筛选与搜索视图；底部仍有 dock 内 mini-player。
 - 自然语言入口仍绑定当前作品上下文，而不是把 AI 协作拆成另一个聊天产品。
 - 每次生成的 alternatives 进入 Take Lanes，再由用户试听并提交到时间线。
 - Studio 已继续扩展到 automation、effects、MIDI、synth、recording 与 advanced stems。
 - 导出覆盖整首、选区、多轨，以及 32-bit WAV / MP3 和独立 stems。
+- Create 的模型选择器已经包含私有 Custom Model：至少六首拥有权明确的歌曲可以建立私有模型；它应作为 Creative Identity 生命周期建模，而不是普通 Style preset。
 
 这说明 Suno 的关键优势不是“功能更多”，而是 **所有功能都围绕同一个作品与时间线上下文连续发生**。
 

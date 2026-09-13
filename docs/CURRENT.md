@@ -9,7 +9,7 @@
 - 浅色、整高 Rail + 内容面 + 全局 Player 三层壳体；桌面展开 Rail 不使用悬浮窗口。
 - 移动端 Rail 默认收起；展开后为带遮罩的导航抽屉，锁定背景滚动、焦点进入并循环在 Rail 内，内容面与 Player 使用 `inert` 隔离，关闭后恢复触发入口。
 - 全局 Player 的 `Up next` 在桌面作为上下文面板，在移动端作为 modal sheet；支持 Escape、焦点恢复和移动端焦点循环。
-- Studio 固定为工具 / 画布两栏；Project Version history 统一由 Studio 顶部 Versions 动作打开上下文抽屉，所有桌面宽度与移动端保持同一入口，不在宽度临界点切换第三栏，也不挤压画布或替代 Global Player。
+- Studio 固定为工具 / 画布两栏；Arrangement 在宽屏内将 Suno-like Library 作为可开关的右侧 dock 放在时间线旁，窄屏自然回到主内容下方；Project Version history 统一由 Studio 顶部 Versions 动作打开上下文抽屉，不挤压画布或替代 Global Player。
 - Create → Generation Queue → Candidate → Project / Version → Studio → Take Lanes → Current Version 的本地闭环。
 - Create 的 Custom controls 现在提供少量 Suno-like Style starters：点击只把策展方向写入可编辑 Style 字段，仍由用户决定最终文本，不增加第二套 provider 或模型契约。
 - Generation Queue 的成功结果现在提供明确的 `Review directions in Project` 去向；Project Overview 接受 `generation_ref` 深链，只加载该次运行的方向并复用同一试听、Set as current 与 Open Studio 决策链，避免生成完成后把用户留在孤立队列里。
@@ -18,6 +18,7 @@
 - Arrangement 的未保存编辑不再因切换 Studio 工具或 Version 静默丢失：Arrangement editor 保持 mounted，切换 Lyrics / Voice & stems、打开另一 Version 或返回 Project 前会出现 Keep editing / Discard & continue / Save & continue；保存仍通过原 Composition revision 与幂等键，冲突提供 Refresh arrangement，浏览器刷新/关闭也会触发离开提醒，Global Player 不受保护层影响。
 - Arrangement 的状态文案现在与数据事实一致：加载中显示 Loading，空 owner projection 显示 Baseline only，不可用 projection 显示 Preview only，不再在未确认 owner 数据时显示 Saved。
 - Studio Arrangement 已增加 Asset Dock v1：在当前时间线上下文内搜索并按 All / Audio / Voices / Inspiration 筛选 Creative Source；Library Audio 可复用同一个全局 Player 试听，也可以从 Audio 卡片直接拖到任意 Composition Track 的时间位置，按 100ms 对齐并在版本边界内裁剪；点击 Insert 仍作为选中 Track / Range 的键盘与低精度指针 fallback，插入动作明确绑定当前 Track、位置和 `source_ref` 并生成新的 Composition revision；Voice / Inspiration 显示为 Arrangement 中的 reference-only，避免把不可插入来源伪装成音频素材。
+- Studio Arrangement 的 Asset Dock 现在以宽屏右侧 Library dock 呈现，可从 Arrangement 工具栏显式隐藏/恢复；关闭只改变浏览器布局，不清空搜索、筛选、选区、Track 或 Composition revision。
 - Studio Arrangement 的 Asset Dock 现在提供 Record a reference：复用 `useAudioRecorder` 和既有 Creative Source Upload Session，录音完成先上传 / processing，ready 后作为新的 Audio Source 出现在当前 Dock；用户仍需明确点击 Insert 才放入选中的 Track / Range，不会自动改变 Composition。Preview Project 使用浏览器本地 Blob 音源，live Project 使用现有 upload contract，上传中可取消、失败可复用当前录音重试，并保留可解释状态；live Source projection 还会在 Dock 内按 opaque cursor Load more，不把 Library 搜索上下文打断。
 - Studio Export 已支持 Full song 或当前 Arrangement 选区：默认仍导出整曲，用户在同一窗口选择 `Selected range` 后，选区的 `start_ms` / `end_ms` 会随 Version 或 Mix Revision 一起进入异步 render request 与 snapshot；多轨 / MIDI 仍未暴露。
 - Studio Arrangement 的当前 AI edit range 现在可以直接通过全局 Player 试听：Preview selection 复用同一个媒体通道，从选区起点开始并在终点自动暂停、回到起点；Loop selection 仍复用同一 transport，在 timeupdate / ended 时回到选区起点并保持播放；修改选区、切换 Version、离开 Arrangement 或媒体失败都会清除 loop 状态。Player 显示 Range audition / Looping 上下文，普通整曲试听、Take 切换和 AI Scope 仍保持独立，不创建第二个播放器。
@@ -138,7 +139,7 @@ pnpm exec vitest run --maxWorkers=1 src/features/mori/mori-workspace.test.tsx
                                   passed: 1 file / 73 tests
 pnpm exec vitest run --maxWorkers=1 src/features/mori/use-audio-recorder.test.tsx
                                   passed: 1 file / 2 tests
-pnpm test                         passed: 85 files / 681 tests
+pnpm test                         passed: 85 files / 682 tests
 pnpm build                        passed
 ```
 

@@ -12,6 +12,7 @@ import styles from "./studio-asset-dock.module.css"
 type AudioCreativeSource = Extract<MoriCreativeLibrarySource, { sourceKind: "audio" }>
 type StudioAssetDockFilter = "all" | MoriCreativeLibrarySource["sourceKind"]
 type StudioAssetDockProps = {
+  id?: string
   sources?: readonly MoriCreativeLibrarySource[]
   selectedTrackName?: string
   selectedRangeLabel: string
@@ -41,7 +42,7 @@ const filters: readonly { id: StudioAssetDockFilter; label: string }[] = [
   { id: "inspiration", label: "Inspiration" },
 ]
 
-export function StudioAssetDock({ sources, selectedTrackName, selectedRangeLabel, selectedRangeTime, disabled = false, previewingSourceRef = null, onPreview, onInsert, onRecordingComplete, onRetryRecording, onCancelRecordingUpload, recordingUploadCancelPending = false, sourceStatus = "preview", onRetrySources, hasMoreSources = false, sourcePageLoading = false, sourcePageError = false, onLoadMoreSources, recordingUploadStatus = null, recordingUploadMessage = null }: StudioAssetDockProps) {
+export function StudioAssetDock({ id, sources, selectedTrackName, selectedRangeLabel, selectedRangeTime, disabled = false, previewingSourceRef = null, onPreview, onInsert, onRecordingComplete, onRetryRecording, onCancelRecordingUpload, recordingUploadCancelPending = false, sourceStatus = "preview", onRetrySources, hasMoreSources = false, sourcePageLoading = false, sourcePageError = false, onLoadMoreSources, recordingUploadStatus = null, recordingUploadMessage = null }: StudioAssetDockProps) {
   const [filter, setFilter] = useState<StudioAssetDockFilter>("audio")
   const [query, setQuery] = useState("")
   const [recordingError, setRecordingError] = useState<string | null>(null)
@@ -71,7 +72,7 @@ export function StudioAssetDock({ sources, selectedTrackName, selectedRangeLabel
   }, [filter, query, sourceCatalog])
 
   return (
-    <section className={styles.dock} aria-label="Studio asset dock">
+    <section className={styles.dock} id={id} aria-label="Studio asset dock">
       <header className={styles.header}>
         <div className={styles.headerCopy}>
           <span className={styles.eyebrow}>Library</span>

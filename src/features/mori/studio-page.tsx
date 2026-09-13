@@ -1,6 +1,6 @@
 "use client"
 
-import { AlertCircle, ArrowLeft, ArrowRight, AudioLines, AudioWaveform, Check, Download, FileText, History, Link2, ListMusic, LoaderCircle, Play, Redo2, RotateCcw, Sparkles, Undo2, X } from "lucide-react"
+import { AlertCircle, ArrowLeft, ArrowRight, AudioLines, AudioWaveform, Check, Download, FileText, History, Library, Link2, ListMusic, LoaderCircle, Play, Redo2, RotateCcw, Sparkles, Undo2, X } from "lucide-react"
 import Link from "next/link"
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent } from "react"
 import {
@@ -2981,6 +2981,7 @@ function ArrangementEditor({ compositionSave, compositionLoad, compositionRevisi
   const [editOperation, setEditOperation] = useState<"move" | "trim" | "split" | "crop" | "fade" | null>(null)
   const [compositionLoadState, setCompositionLoadState] = useState<CompositionLoadState>("loading")
   const [compositionLoadAttempt, setCompositionLoadAttempt] = useState(0)
+  const [assetDockOpen, setAssetDockOpen] = useState(true)
   const replaceCompositionFromOwner = compositionEditor.replaceFromOwner
   const rebaseCompositionFromOwner = compositionEditor.rebase
   const refreshComposition = useCallback(() => setCompositionLoadAttempt((attempt) => attempt + 1), [])
@@ -3180,12 +3181,15 @@ function ArrangementEditor({ compositionSave, compositionLoad, compositionRevisi
   const compositionStatusLabel = compositionSaveIndicatorLabel(compositionLoadState, compositionEditor.saveState)
 
   return (
-    <section aria-label="Arrangement editor" aria-busy={compositionBusy ? "true" : "false"}>
+    <section aria-label="Arrangement editor" aria-busy={compositionBusy ? "true" : "false"} data-arrangement-layout="timeline-and-library">
       <div className={styles.arrangementTimelineHeader}>
         {compositionBusy ? <span className={styles.compositionLoadNotice} role="status">Loading arrangement…</span> : null}
         {compositionLoadState === "empty" ? <span className={styles.compositionLoadNotice} role="status">No saved arrangement yet · using version baseline</span> : null}
         {compositionLoadState === "unavailable" ? <span className={styles.compositionLoadNotice} role="status">{previewBaseline ? "Preview arrangement · using version baseline" : "Arrangement unavailable · using local baseline"}</span> : null}
         <CompositionSaveIndicator state={compositionEditor.saveState} label={compositionStatusLabel} />
+        <button className={styles.arrangementLibraryButton} type="button" aria-pressed={assetDockOpen} aria-controls="mori-studio-asset-dock" aria-label={assetDockOpen ? "Hide Studio library" : "Show Studio library"} onClick={() => setAssetDockOpen((open) => !open)}>
+          <Library aria-hidden="true" size={14} /> <span>Library</span>
+        </button>
         <div className={styles.arrangementHistoryActions} aria-label="Arrangement history">
           <button className={styles.arrangementHistoryButton} type="button" aria-label="Undo arrangement change" title="Undo (⌘/Ctrl+Z)" disabled={compositionBusy || !compositionEditor.canUndo || compositionEditor.saveState === "saving"} onClick={compositionEditor.undo}><Undo2 size={14} /></button>
           <button className={styles.arrangementHistoryButton} type="button" aria-label="Redo arrangement change" title="Redo (⌘/Ctrl+Y)" disabled={compositionBusy || !compositionEditor.canRedo || compositionEditor.saveState === "saving"} onClick={compositionEditor.redo}><Redo2 size={14} /></button>
@@ -3214,9 +3218,15 @@ function ArrangementEditor({ compositionSave, compositionLoad, compositionRevisi
         onCancel={onCancelStudioChange}
         onReset={onResetStudioChange}
       />
-      <StudioTimeline candidate={candidate} sections={timelineSections} selection={selection} positionSeconds={positionSeconds} playing={playing} disabled={changeActive || compositionEditor.saveState === "saving"} compositionDisabled={compositionBusy} onSeek={onSeekTimeline} onSelect={selectTimelineRange} onBackToStart={onBackToStart} onPreviewFromPlayhead={() => onPreviewFromPlayhead(positionSeconds)} onPreviewSelection={() => onPreviewSelection(selection)} previewingSelection={previewingSelection} onToggleLoopSelection={() => onToggleLoopSelection(selection)} loopingSelection={loopingSelection} compositionTracks={compositionEditor.composition} selectedClipRef={selectedClipRef} selectedTrackRef={selectedTrackRef} onSelectTrack={(trackRef) => { setSelectedTrackRef(trackRef); setSelectedClipRef(undefined); setEditOperation(null) }} onSelectClip={(clipRef, trackRef) => { setSelectedClipRef(clipRef); setSelectedTrackRef(trackRef) }} onEditClip={(operation, clipRef, trackRef) => { setSelectedClipRef(clipRef); setSelectedTrackRef(trackRef); setEditOperation(operation) }} onMoveClip={moveClip} onDeleteClip={deleteClip} onDuplicateClip={duplicateClip} onEditTrackMix={editTrackMix} onPreviewClip={previewCompositionClip} previewingClip={previewingClip} isClipPreviewable={isClipPreviewable} insertSources={insertSources} onInsertClip={insertClip} dropSources={dropSources} onDropSource={(sourceRef, trackRef, startMs) => insertAudioSourceAtPosition(sourceRef, trackRef, startMs)} resolveClipLabel={resolveClipLabel} />
-      <StudioAssetDock sources={creativeSources} sourceStatus={creativeSourceStatus} onRetrySources={onRetryCreativeSources} hasMoreSources={hasMoreCreativeSources} sourcePageLoading={creativeSourcePageLoading} sourcePageError={creativeSourcePageError} onLoadMoreSources={onLoadMoreCreativeSources} selectedTrackName={selectedTrack?.name} selectedRangeLabel={selection.label} selectedRangeTime={`${formatStudioTimelineTime(selection.startMs)}–${formatStudioTimelineTime(selection.endMs)}`} disabled={changeActive || compositionBusy || compositionEditor.saveState === "saving"} previewingSourceRef={previewingSourceRef} onPreview={onPreviewSource} onInsert={insertAudioSource} onRecordingComplete={onRecordingComplete} onRetryRecording={onRetryRecording} onCancelRecordingUpload={onCancelRecordingUpload} recordingUploadCancelPending={recordingUploadCancelPending} recordingUploadStatus={recordingUploadStatus} recordingUploadMessage={recordingUploadMessage} />
-      {selectedClipRef !== undefined && selectedTrackRef !== undefined && editOperation !== null ? <CompositionEditPanel clipRef={selectedClipRef} trackRef={selectedTrackRef} trackOptions={compositionEditor.composition.map((track) => ({ trackRef: track.trackRef, name: track.name }))} disabled={changeActive || compositionBusy || compositionEditor.saveState === "saving"} operation={editOperation} onApply={(edit) => { compositionEditor.editAndQueue(edit); setEditOperation(null) }} /> : null}
+      <div className={styles.arrangementWorkspace}>
+        <div className={styles.arrangementMainColumn}>
+          <StudioTimeline candidate={candidate} sections={timelineSections} selection={selection} positionSeconds={positionSeconds} playing={playing} disabled={changeActive || compositionEditor.saveState === "saving"} compositionDisabled={compositionBusy} onSeek={onSeekTimeline} onSelect={selectTimelineRange} onBackToStart={onBackToStart} onPreviewFromPlayhead={() => onPreviewFromPlayhead(positionSeconds)} onPreviewSelection={() => onPreviewSelection(selection)} previewingSelection={previewingSelection} onToggleLoopSelection={() => onToggleLoopSelection(selection)} loopingSelection={loopingSelection} compositionTracks={compositionEditor.composition} selectedClipRef={selectedClipRef} selectedTrackRef={selectedTrackRef} onSelectTrack={(trackRef) => { setSelectedTrackRef(trackRef); setSelectedClipRef(undefined); setEditOperation(null) }} onSelectClip={(clipRef, trackRef) => { setSelectedClipRef(clipRef); setSelectedTrackRef(trackRef) }} onEditClip={(operation, clipRef, trackRef) => { setSelectedClipRef(clipRef); setSelectedTrackRef(trackRef); setEditOperation(operation) }} onMoveClip={moveClip} onDeleteClip={deleteClip} onDuplicateClip={duplicateClip} onEditTrackMix={editTrackMix} onPreviewClip={previewCompositionClip} previewingClip={previewingClip} isClipPreviewable={isClipPreviewable} insertSources={insertSources} onInsertClip={insertClip} dropSources={dropSources} onDropSource={(sourceRef, trackRef, startMs) => insertAudioSourceAtPosition(sourceRef, trackRef, startMs)} resolveClipLabel={resolveClipLabel} />
+          {selectedClipRef !== undefined && selectedTrackRef !== undefined && editOperation !== null ? <CompositionEditPanel clipRef={selectedClipRef} trackRef={selectedTrackRef} trackOptions={compositionEditor.composition.map((track) => ({ trackRef: track.trackRef, name: track.name }))} disabled={changeActive || compositionBusy || compositionEditor.saveState === "saving"} operation={editOperation} onApply={(edit) => { compositionEditor.editAndQueue(edit); setEditOperation(null) }} /> : null}
+        </div>
+        <aside className={styles.arrangementLibraryColumn} aria-label="Studio library panel" hidden={!assetDockOpen}>
+          <StudioAssetDock id="mori-studio-asset-dock" sources={creativeSources} sourceStatus={creativeSourceStatus} onRetrySources={onRetryCreativeSources} hasMoreSources={hasMoreCreativeSources} sourcePageLoading={creativeSourcePageLoading} sourcePageError={creativeSourcePageError} onLoadMoreSources={onLoadMoreCreativeSources} selectedTrackName={selectedTrack?.name} selectedRangeLabel={selection.label} selectedRangeTime={`${formatStudioTimelineTime(selection.startMs)}–${formatStudioTimelineTime(selection.endMs)}`} disabled={changeActive || compositionBusy || compositionEditor.saveState === "saving"} previewingSourceRef={previewingSourceRef} onPreview={onPreviewSource} onInsert={insertAudioSource} onRecordingComplete={onRecordingComplete} onRetryRecording={onRetryRecording} onCancelRecordingUpload={onCancelRecordingUpload} recordingUploadCancelPending={recordingUploadCancelPending} recordingUploadStatus={recordingUploadStatus} recordingUploadMessage={recordingUploadMessage} />
+        </aside>
+      </div>
       <section className={styles.takeLanes} id="mori-take-lanes" aria-label="Take lanes" tabIndex={-1}>
         <div className={styles.takeLanesHeader}>
           <div><span>Compare before committing</span><h3>Take lanes</h3></div>
