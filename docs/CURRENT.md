@@ -21,7 +21,7 @@
 - Studio Arrangement / Lyrics / Stems / Finish 工作面，以及 Add part、Replace section、Extend、Transform（Restyle / Cover）的一层 AI 意图模型。
 - Arrangement 的未保存编辑不再因切换 Studio 工具或 Version 静默丢失：Arrangement editor 保持 mounted，切换 Lyrics / Voice & stems、打开另一 Version 或返回 Project 前会出现 Keep editing / Discard & continue / Save & continue；保存仍通过原 Composition revision 与幂等键，冲突提供 Refresh arrangement，浏览器刷新/关闭也会触发离开提醒，Global Player 不受保护层影响。
 - Arrangement 的状态文案现在与数据事实一致：加载中显示 Loading，空 owner projection 显示 Baseline only，不可用 projection 显示 Preview only，不再在未确认 owner 数据时显示 Saved。
-- 已知 Preview Project 的 Studio Arrangement 现在直接使用本地 preview controller 与候选 projection：首屏立即展示 version baseline，不等待不可用的 BFF composition 请求；注入的 owner API 仍优先用于真实 projection 与测试边界。
+- 已知 Preview Project 的 Studio Arrangement 现在直接使用本地 preview controller 与候选 projection：首屏立即展示 version baseline，不等待不可用的 BFF composition 请求；提交 Studio Change 后会通过同一条本地 generation / candidate projection 展示可试听的确定性 Preview Takes；注入的 owner API 仍优先用于真实 projection 与测试边界。
 - Studio Arrangement 已增加 Asset Dock v1：在当前时间线上下文内搜索并按 All / Audio / Voices / Inspiration 筛选 Creative Source；Library Audio 可复用同一个全局 Player 试听，也可以从 Audio 卡片直接拖到任意 Composition Track 的时间位置，按 100ms 对齐并在版本边界内裁剪；点击 Insert 仍作为选中 Track / Range 的键盘与低精度指针 fallback，插入动作明确绑定当前 Track、位置和 `source_ref` 并生成新的 Composition revision；Voice / Inspiration 显示为 Arrangement 中的 reference-only，避免把不可插入来源伪装成音频素材。
 - Studio Arrangement 的 Asset Dock 现在以宽屏右侧 Library dock 呈现，可从 Arrangement 工具栏显式隐藏/恢复；关闭只改变浏览器布局，不清空搜索、筛选、选区、Track 或 Composition revision。
 - Studio Arrangement 的 Asset Dock 现在提供 Record a reference：复用 `useAudioRecorder` 和既有 Creative Source Upload Session，录音完成先上传 / processing，ready 后作为新的 Audio Source 出现在当前 Dock；用户仍需明确点击 Insert 才放入选中的 Track / Range，不会自动改变 Composition。Preview Project 使用浏览器本地 Blob 音源，live Project 使用现有 upload contract，上传中可取消、失败可复用当前录音重试，并保留可解释状态；live Source projection 还会在 Dock 内按 opaque cursor Load more，不把 Library 搜索上下文打断。
@@ -147,7 +147,7 @@
 pnpm lint                         passed
 pnpm typecheck                    passed
 pnpm exec vitest run --maxWorkers=1 src/features/mori/studio-page.test.tsx
-                                  passed: 1 file / 112 tests
+                                  passed: 1 file / 113 tests
 pnpm exec vitest run --maxWorkers=1 src/features/mori/composition*.test.ts src/features/mori/components/composition-lane.test.tsx src/features/mori/components/studio-asset-dock.test.tsx src/features/mori/components/studio-timeline.test.tsx
                                   passed: 10 files / 50 tests
 pnpm exec vitest run --maxWorkers=1 src/features/mori/mori-workspace.test.tsx
@@ -156,7 +156,7 @@ pnpm exec vitest run --maxWorkers=1 src/features/mori/mori-responsive-layout.tes
                                   passed: 1 file / 5 tests
 pnpm exec vitest run --maxWorkers=1 src/features/mori/use-audio-recorder.test.tsx
                                   passed: 1 file / 2 tests
-pnpm test                         passed: 86 files / 704 tests
+pnpm test                         passed: 86 files / 706 tests
 pnpm build                        passed
 ```
 

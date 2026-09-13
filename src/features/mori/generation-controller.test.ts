@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { createGenerationController, previewMoriApi } from "./generation-controller"
 import { previewProject } from "./preview-data"
-import { createGenerationRequest, createMutationHeaders, type MoriExportInput } from "@/lib/mori-api"
+import { createGenerationRequest, createMutationHeaders, type MoriExportInput, type StudioChangeGenerationInput } from "@/lib/mori-api"
 
 describe("Mori generation contract seam", () => {
   it("serializes browser input with the public snake_case contract", () => {
@@ -78,6 +78,33 @@ describe("Mori generation contract seam", () => {
       project_ref: previewProject.projectRef,
       audio_asset_ref: "preview:first-light:a",
     })
+  })
+
+  it("completes a preview Studio change through its generation and candidate projections", async () => {
+    const input: StudioChangeGenerationInput = {
+      operation: "transform",
+      intent: "restyle",
+      scope: { type: "whole_version" },
+      instruction: "Open the chorus into a wider room.",
+      preserve: ["melody", "lyrics"],
+      reference_asset_refs: [],
+      output_count: 2,
+    }
+
+    const receipt = await previewMoriApi.createStudioChange("version_preview_first_light_a", input, "preview-studio-change-1")
+    const snapshot = await previewMoriApi.getGeneration(receipt.data.generation_ref)
+    const candidates = await previewMoriApi.listCandidates(previewProject.projectRef, { generation_ref: receipt.data.generation_ref })
+
+    expect(snapshot.data).toMatchObject({
+      generation_ref: receipt.data.generation_ref,
+      generation_kind: "studio_change",
+      source_version_ref: "version_preview_first_light_a",
+      status: "succeeded",
+      progress: 100,
+      candidate_refs: candidates.data.candidates.map((candidate) => candidate.candidate_ref),
+      ...input,
+    })
+    expect(candidates.data.candidates).toHaveLength(2)
   })
 
   it("binds generation commands to the project path context", async () => {

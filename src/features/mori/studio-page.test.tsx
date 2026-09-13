@@ -1771,6 +1771,21 @@ describe("Mori studio page", () => {
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 
+  it("renders preview Studio change Takes through the local controller", async () => {
+    renderStudio()
+
+    const aiChanges = screen.getByRole("region", { name: "Mori AI changes" })
+    fireEvent.change(within(aiChanges).getByRole("textbox", { name: "Tell Mori what to change" }), {
+      target: { value: "Open the chorus into a wider room." },
+    })
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Review change" }))
+    fireEvent.click(within(aiChanges).getByRole("button", { name: "Generate 2 takes" }))
+
+    const takeLanes = screen.getByRole("region", { name: "Take lanes" })
+    expect(await within(takeLanes).findByRole("article", { name: /Take 3: First Light · New layer 1/u })).toBeInTheDocument()
+    expect(within(takeLanes).getByRole("article", { name: /Take 4: First Light · New layer 2/u })).toBeInTheDocument()
+  })
+
   it("labels a preview baseline plainly when the owner composition is unavailable", async () => {
     const getCompositionRevision = vi.fn<MoriApi["getCompositionRevision"]>(async () => {
       throw new Error("composition owner unavailable")

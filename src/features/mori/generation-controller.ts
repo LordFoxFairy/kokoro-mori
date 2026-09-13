@@ -1,5 +1,5 @@
 import type { GenerationStatus } from "./domain"
-import { createGenerationRequest, type ArtworkGenerationInput, type CurrentSongPlanInput, type CurrentVersionInput, type GenerationCreateInput, type GenerationReceipt, type LyricsDraftInput, type LyricsRevisionInput, type MixRevisionInput, type MoriApi, type MoriCreativeSourceUploadInput, type MoriCreativeSourceUploadStatus, type MoriExportInput, type MoriGenerationDraft, type MoriProjectCreateInput, type MoriProjectWorkspaceOpenVersion, type MoriProjectWorkspaceProjection, type MoriReleaseDraft, type MoriShare, type ProjectWorkspaceOpenVersionInput, type ReleaseDraftInput, type SongPlanCreateInput, type StemSeparationInput, type StudioChangeGenerationInput } from "@/lib/mori-api"
+import { createGenerationRequest, type ArtworkGenerationInput, type CurrentSongPlanInput, type CurrentVersionInput, type GenerationCreateInput, type GenerationReceipt, type LyricsDraftInput, type LyricsRevisionInput, type MixRevisionInput, type MoriApi, type MoriCandidate, type MoriCreativeSourceUploadInput, type MoriCreativeSourceUploadStatus, type MoriExportInput, type MoriGenerationDraft, type MoriProjectCreateInput, type MoriProjectWorkspaceOpenVersion, type MoriProjectWorkspaceProjection, type MoriReleaseDraft, type MoriShare, type ProjectWorkspaceOpenVersionInput, type ReleaseDraftInput, type SongPlanCreateInput, type StemSeparationInput, type StudioChangeGenerationInput, type StudioChangeGenerationSnapshot } from "@/lib/mori-api"
 import type { MoriRef } from "./domain"
 import { previewCandidates, previewGeneration, previewProject } from "./preview-data"
 
@@ -56,6 +56,17 @@ const previewShares = new Map<MoriRef, MoriShare>()
 const previewCurrentSongPlans = new Map<MoriRef, MoriProjectWorkspaceProjection["current_song_plan"]>()
 const previewLyricsDrafts = new Map<MoriRef, MoriProjectWorkspaceProjection["latest_lyrics_draft"]>()
 const previewOpenVersions = new Map<MoriRef, MoriProjectWorkspaceOpenVersion>()
+type PreviewStudioChange = {
+  projectRef: MoriRef
+  sourceVersionRef: MoriRef
+  input: StudioChangeGenerationInput
+  status: Extract<GenerationStatus, "succeeded" | "cancelled">
+  progress: number
+  candidateRefs: MoriRef[]
+  createdAt: string
+}
+const previewStudioChanges = new Map<MoriRef, PreviewStudioChange>()
+const previewStudioCandidates = new Map<MoriRef, MoriCandidate[]>()
 
 export const previewMoriApi: MoriApi = {
   async listProjects() {
@@ -179,10 +190,23 @@ export const previewMoriApi: MoriApi = {
       },
     }
   },
-  async createStudioChange(_versionRef: MoriRef, _input: StudioChangeGenerationInput, idempotencyKey: string) {
+  async createStudioChange(versionRef: MoriRef, input: StudioChangeGenerationInput, idempotencyKey: string) {
+    const generationRef = `generation_preview_studio_change_${idempotencyKey}`
+    const createdAt = "2026-09-13T12:00:00.000Z"
+    const candidates = createPreviewStudioCandidates(generationRef, versionRef, input, createdAt)
+    previewStudioChanges.set(generationRef, {
+      projectRef: previewProject.projectRef,
+      sourceVersionRef: versionRef,
+      input,
+      status: "succeeded",
+      progress: 100,
+      candidateRefs: candidates.map((candidate) => candidate.candidate_ref),
+      createdAt,
+    })
+    previewStudioCandidates.set(generationRef, candidates)
     return {
       data: {
-        generation_ref: "generation_preview_first_light_change",
+        generation_ref: generationRef,
         status: "queued" as const,
       },
       meta: {
@@ -459,6 +483,15 @@ export const previewMoriApi: MoriApi = {
     }
   },
   async getGeneration(generationRef: MoriRef) {
+    const studioChange = previewStudioChanges.get(generationRef)
+    if (studioChange !== undefined) {
+      return {
+        data: previewStudioChangeSnapshot(generationRef, studioChange),
+        meta: {
+          request_id: "preview-studio-generation-status-request",
+        },
+      }
+    }
     return {
       data: {
         generation_ref: generationRef,
@@ -524,9 +557,14 @@ export const previewMoriApi: MoriApi = {
     return { data: { upload_ref: uploadRef, source_kind: "audio" as const, status: "cancelled" as const, bytes_received: 0, byte_size: 1, asset_ref: null, source_ref: null, error: null, created_at: "2026-09-05T12:00:00.000Z", updated_at: "2026-09-05T12:00:01.000Z", expires_at: "2026-09-06T12:00:00.000Z" }, meta: { request_id: `preview-upload-cancel-${uploadRef}` } }
   },
   async listCandidates(projectRef: MoriRef, options) {
-    const candidates = projectRef === previewProject.projectRef
-      && (options?.generation_ref === undefined || options.generation_ref === null || options.generation_ref === previewGeneration.generationRef)
-      ? previewCandidates.map((candidate) => ({
+    const studioCandidates = options?.generation_ref === undefined || options.generation_ref === null
+      ? undefined
+      : previewStudioCandidates.get(options.generation_ref)
+    const candidates = projectRef === previewProject.projectRef && studioCandidates !== undefined
+      ? studioCandidates
+      : projectRef === previewProject.projectRef
+        && (options?.generation_ref === undefined || options.generation_ref === null || options.generation_ref === previewGeneration.generationRef)
+        ? previewCandidates.map((candidate) => ({
           candidate_ref: candidate.candidateRef,
           generation_ref: candidate.generationRef,
           version_ref: candidate.versionRef,
@@ -537,8 +575,8 @@ export const previewMoriApi: MoriApi = {
           waveform_asset_ref: `waveform_${candidate.candidateRef}`,
           style_tags: candidate.subtitle.split(" · "),
           created_at: "2026-09-02T12:00:00.000Z",
-        }))
-      : []
+          }))
+        : []
     return {
       data: {
         candidates,
@@ -550,6 +588,8 @@ export const previewMoriApi: MoriApi = {
     }
   },
   async cancelGeneration(generationRef: MoriRef) {
+    const studioChange = previewStudioChanges.get(generationRef)
+    if (studioChange !== undefined) studioChange.status = "cancelled"
     return {
       data: {
         generation_ref: generationRef,
@@ -604,6 +644,51 @@ export const previewMoriApi: MoriApi = {
       meta: { request_id: `preview-composition-load-request-${versionRef}` },
     }
   },
+}
+
+function previewStudioChangeSnapshot(generationRef: MoriRef, change: PreviewStudioChange): StudioChangeGenerationSnapshot {
+  return {
+    generation_ref: generationRef,
+    generation_kind: "studio_change",
+    project_ref: change.projectRef,
+    song_plan_ref: null,
+    mode: null,
+    source_version_ref: change.sourceVersionRef,
+    status: change.status,
+    progress: change.progress,
+    candidate_refs: [...change.candidateRefs],
+    created_at: change.createdAt,
+    ...change.input,
+  } as StudioChangeGenerationSnapshot
+}
+
+function createPreviewStudioCandidates(
+  generationRef: MoriRef,
+  sourceVersionRef: MoriRef,
+  input: StudioChangeGenerationInput,
+  createdAt: string,
+): MoriCandidate[] {
+  const source = previewCandidates.find((candidate) => candidate.versionRef === sourceVersionRef) ?? previewCandidates[0]
+  const label = previewStudioChangeLabel(input)
+  return Array.from({ length: input.output_count }, (_, index) => ({
+    candidate_ref: `${generationRef}:candidate:${index + 1}`,
+    generation_ref: generationRef,
+    version_ref: `${generationRef}:version:${index + 1}`,
+    project_ref: previewProject.projectRef,
+    title: `${source?.title ?? "Preview song"} · ${label} ${index + 1}`,
+    duration_seconds: source?.durationSeconds ?? 182,
+    audio_asset_ref: source?.audioAssetRef ?? "",
+    waveform_asset_ref: `waveform_${generationRef}:${index + 1}`,
+    style_tags: ["Preview", label],
+    created_at: createdAt,
+  }))
+}
+
+function previewStudioChangeLabel(input: StudioChangeGenerationInput): string {
+  if (input.operation !== "transform") return input.operation === "add_part" ? "New layer" : input.operation === "replace_section" ? "Reworked section" : "Extended take"
+  if (input.intent === "cover") return input.cover_mode === "instrumental" ? "Instrumental cover" : "Vocal cover"
+  if (input.intent === "remaster") return "Remaster"
+  return "Restyle"
 }
 
 function previewProjectWorkspace(projectRef: MoriRef): MoriProjectWorkspaceProjection {
