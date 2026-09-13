@@ -289,6 +289,66 @@ describe("Mori project overview", () => {
     expect(within(review).getByRole("button", { name: "Timing feels off" })).toHaveAttribute("aria-pressed", "true")
   })
 
+  it("keeps a finished generation in sync state when its directions arrive later", async () => {
+    let attempt = 0
+    const listCandidates = vi.fn<MoriApi["listCandidates"]>(async (requestedProjectRef, options) => {
+      expect(requestedProjectRef).toBe("project_generation_sync")
+      expect(options).toEqual({ generation_ref: "generation_sync" })
+      attempt += 1
+      return {
+        data: {
+          candidates: attempt === 1 ? [] : [{
+            candidate_ref: "candidate_generation_sync",
+            generation_ref: "generation_sync",
+            version_ref: "version_generation_sync",
+            project_ref: "project_generation_sync",
+            title: "Window Seat · Synced",
+            duration_seconds: 142,
+            audio_asset_ref: "asset_generation_sync",
+            waveform_asset_ref: "waveform_generation_sync",
+            style_tags: ["soft motion"],
+            created_at: "2026-09-02T12:00:00.000Z",
+          }],
+          next_cursor: null,
+        },
+        meta: { request_id: `request_generation_sync_${attempt}` },
+      }
+    })
+    const api = {
+      getProject: async () => ({
+        data: {
+          project_ref: "project_generation_sync",
+          title: "Window Seat",
+          description: "A direction that is still arriving.",
+          current_version_ref: null,
+          candidate_count: 1,
+          last_activity_at: "2026-09-02T12:00:00.000Z",
+        },
+        meta: { request_id: "request_generation_sync_project" },
+      }),
+      listCandidates,
+    }
+
+    render(
+      <MoriAppProvider>
+        <MoriCatalogShell activeKey="projects" ariaLabel="Project overview">
+          <ProjectOverviewPageContent projectRef="project_generation_sync" generationRef="generation_sync" api={api} />
+        </MoriCatalogShell>
+      </MoriAppProvider>,
+    )
+
+    expect(await screen.findByText("Directions are still syncing")).toBeInTheDocument()
+    expect(screen.getByText("This generation finished, but its playable directions are still arriving.")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Retry this generation" })).toBeInTheDocument()
+    expect(screen.queryByRole("link", { name: "Try another direction" })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry this generation" }))
+
+    expect(await screen.findByRole("button", { name: "Play Window Seat · Synced" })).toBeInTheDocument()
+    expect(listCandidates).toHaveBeenCalledTimes(2)
+    expect(listCandidates).toHaveBeenLastCalledWith("project_generation_sync", { generation_ref: "generation_sync" })
+  })
+
   it("recognizes the playing Version across Candidate projections without restarting it", async () => {
     const media = createMediaHarness()
     const api: Pick<MoriApi, "getProject" | "listCandidates"> = {

@@ -49,6 +49,7 @@ export function ProjectOverviewDirections({
   const [reviewByKey, setReviewByKey] = useState<Record<string, StudioTakeReviewState>>({})
   const showCurrentVersionCommitNotice = currentVersionCommitRun.status === "failed" || currentVersionCommitRun.status === "succeeded"
   const isGenerationScoped = generationRef !== null
+  const showGenerationSyncState = isGenerationScoped && candidateStatus === "ready" && candidates.length === 0
 
   function updateCandidateReview(candidate: Candidate, review: StudioTakeReviewState) {
     setReviewByKey((current) => ({ ...current, [candidateReviewKey(projectRef, generationRef, candidate)]: review }))
@@ -64,7 +65,9 @@ export function ProjectOverviewDirections({
           : candidateStatus === "loading"
             ? "Loading"
             : candidateStatus === "unavailable"
-              ? isGenerationScoped ? "Retry available" : `${candidateCount} saved`
+            ? isGenerationScoped ? "Retry available" : `${candidateCount} saved`
+              : showGenerationSyncState
+                ? "Syncing"
               : `${candidates.length} ${candidates.length === 1 ? "candidate" : "candidates"}`}</span>
     </div>
     {showCurrentVersionCommitNotice ? <div className={`${styles.overviewCandidateCommitNotice} ${currentVersionCommitRun.status === "failed" ? styles.overviewCandidateCommitNoticeError : styles.overviewCandidateCommitNoticeSuccess}`} role={currentVersionCommitRun.status === "failed" ? "alert" : "status"}>
@@ -82,6 +85,10 @@ export function ProjectOverviewDirections({
       <span className={styles.overviewProjectionStateIcon} aria-hidden="true"><AudioWaveform size={17} /></span>
       <div><strong>Directions temporarily unavailable</strong><p>Your saved directions are still part of this Project. Retry to compare them here.</p></div>
       <button type="button" onClick={onRetryCandidates} aria-label="Retry directions"><RotateCcw size={13} /> Retry</button>
+    </div> : showGenerationSyncState ? <div className={styles.overviewProjectionState} role="status">
+      <span className={styles.overviewProjectionStateIcon} aria-hidden="true"><LoaderCircle size={17} /></span>
+      <div><strong>Directions are still syncing</strong><p>This generation finished, but its playable directions are still arriving.</p></div>
+      <button type="button" onClick={onRetryCandidates} aria-label="Retry this generation"><RotateCcw size={13} /> Retry this generation</button>
     </div> : candidates.length > 0 ? <div className={styles.overviewCandidateList}>
         {candidates.map((candidate, index) => {
           const isCurrent = candidate.versionRef === currentVersionRef
