@@ -2694,7 +2694,7 @@ describe("Mori workspace", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Cancel generation" })).toBeInTheDocument())
     fireEvent.click(screen.getByRole("button", { name: "Cancel generation" }))
 
-    await waitFor(() => expect(screen.getByText("No playable directions yet")).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText("Directions are still syncing")).toBeInTheDocument())
     expect(screen.getByRole("button", { name: "Hide generation queue", hidden: true })).toHaveAttribute("data-generation-feedback", "ready")
   })
 
@@ -2829,7 +2829,7 @@ describe("Mori workspace", () => {
     fireEvent.click(screen.getByRole("tab", { name: /custom/i }))
     fireEvent.submit(screen.getByRole("textbox", { name: "Song idea" }).closest("form") as HTMLFormElement)
 
-    await waitFor(() => expect(screen.getByText("No playable directions yet")).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText("Directions are still syncing")).toBeInTheDocument())
     expect(screen.getByText("0 directions")).toBeInTheDocument()
   })
 })

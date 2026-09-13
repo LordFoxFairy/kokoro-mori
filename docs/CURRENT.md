@@ -13,7 +13,7 @@
 - Create → Generation Queue → Candidate → Project / Version → Studio → Take Lanes → Current Version 的本地闭环。
 - Create 的 Custom controls 现在提供少量 Suno-like Style starters：点击只把策展方向写入可编辑 Style 字段，仍由用户决定最终文本，不增加第二套 provider 或模型契约。
 - Create 的 Smart 首次提交现在要求先填写 Song idea：空提交停留在当前表单、聚焦输入框并显示就地校验，不再生成一个“开放式新方向”的假计划；Custom 仍保留仅凭 Style / Output controls 直接进入队列的 Suno-like 高级路径。
-- Generation Queue 的成功结果现在提供明确的 `Review directions in Project` 去向；Project Overview 接受 `generation_ref` 深链，只加载该次运行的方向并复用同一试听、Set as current 与 Open Studio 决策链，避免生成完成后把用户留在孤立队列里。
+- Generation Queue 的成功结果现在提供明确的 `Review directions in Project` 去向；即使候选 projection 暂时为空，也显示 `Directions are still syncing` 而不是诱导创建第二次生成，并把用户送到带 `generation_ref` 的 Project Review；Project Overview 只加载该次运行的方向并复用同一试听、Set as current 与 Open Studio 决策链，避免生成完成后把用户留在孤立队列里。
 - Generation-scoped Project Review 在候选 projection 暂时返回空数组时显示 `Directions are still syncing` 与 `Retry this generation`，不再把一致性延迟误报成“本次运行没有结果”并诱导重复生成；重试仍绑定原 `generation_ref`。
 - Project Review 现在在候选方向原位提供 `Works / Needs work` 反馈；负面反馈可标记 Sound quality、Timing feels off 或 Too many layers，按 Project / Generation / Candidate 保持在当前浏览器会话内，不改 Current、不写入 Taste，也不阻断试听、Set as current 或 Open Studio。
 - Studio Arrangement / Lyrics / Stems / Finish 工作面，以及 Add part、Replace section、Extend、Transform（Restyle / Cover）的一层 AI 意图模型。

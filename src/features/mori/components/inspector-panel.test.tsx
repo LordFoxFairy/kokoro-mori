@@ -151,7 +151,7 @@ describe("Mori generation queue", () => {
     expect(onCancel).toHaveBeenCalledOnce()
   })
 
-  it("explains a completed run with no playable directions", () => {
+  it("keeps a completed empty run in sync state and points back to Project review", () => {
     const onRetry = vi.fn()
 
     render(
@@ -170,9 +170,15 @@ describe("Mori generation queue", () => {
       />,
     )
 
-    expect(screen.getByText("No playable directions yet")).toBeInTheDocument()
-    fireEvent.click(screen.getByRole("button", { name: "Try again" }))
-    expect(onRetry).toHaveBeenCalledOnce()
+    expect(screen.getAllByText("Directions are still syncing").length).toBeGreaterThan(0)
+    expect(screen.getByText("This generation finished, but its playable directions are still arriving.")).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "Review directions in Project" })).toHaveAttribute(
+      "href",
+      "/projects/project_preview_first_light?generation_ref=generation_preview_first_light",
+    )
+    expect(screen.queryByText("No playable directions yet")).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument()
+    expect(onRetry).not.toHaveBeenCalled()
   })
 
   it("keeps keyboard focus inside the queue and restores the opener", async () => {

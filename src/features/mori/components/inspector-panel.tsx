@@ -35,9 +35,9 @@ type InspectorPanelProps = {
 export function InspectorPanel({ presentation = "drawer", projectRef, generation, queueItems = [], activeGenerationRef = null, candidates, songPlan, selectedCandidateRef, playerVersionRef, playing, currentVersionCommitRun = idleCurrentVersionCommitRun, onSelect, onPromote, onRetryCurrentVersion, onDismissCurrentVersion, onPlay, onCancel, cancelPending = false, onRetry, onClose, onSelectGeneration }: InspectorPanelProps) {
   const generationActive = generation !== null && ["queued", "preparing", "generating", "post_processing"].includes(generation.status)
   const generationFailed = generation !== null && (generation.status === "failed" || generation.status === "expired")
-  const generationEmpty = generation?.status === "succeeded" && candidates.length === 0
+  const generationSyncing = generation?.status === "succeeded" && candidates.length === 0
   const generationQueueSyncFailed = generation?.label === "Queue sync needs attention"
-  const generationReviewHref = generation?.status === "succeeded" && projectRef !== null && candidates.length > 0
+  const generationReviewHref = generation?.status === "succeeded" && projectRef !== null
     ? `/projects/${encodeURIComponent(projectRef)}?generation_ref=${encodeURIComponent(generation.generationRef)}`
     : null
   const modal = presentation === "drawer"
@@ -139,10 +139,10 @@ export function InspectorPanel({ presentation = "drawer", projectRef, generation
           <div className={styles.progressTrack} aria-label={`${generation.progress}% complete`} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={generation.progress}>
             <div className={styles.progressValue} style={{ width: `${generation.progress}%` }} />
           </div>
-          <p className={styles.queueText}>{generationActive ? "Mori is shaping the next direction. You can keep working while it runs." : generationQueueSyncFailed ? "The generation was accepted, but this browser could not save its queue receipt. Retry to reconnect without creating another task." : generationFailed ? "Your idea is still here. Nothing was added to the library." : generationEmpty ? "Mori finished this run without a playable direction. Try again or adjust the idea." : "Ready to compare. Pick a direction and make it yours."}</p>
+          <p className={styles.queueText}>{generationActive ? "Mori is shaping the next direction. You can keep working while it runs." : generationQueueSyncFailed ? "The generation was accepted, but this browser could not save its queue receipt. Retry to reconnect without creating another task." : generationFailed ? "Your idea is still here. Nothing was added to the library." : generationSyncing ? "This generation finished, but its playable directions are still arriving." : "Ready to compare. Pick a direction and make it yours."}</p>
           {generationReviewHref ? <Link className={styles.reviewProjectLink} href={generationReviewHref}><span>Review directions in Project</span><ArrowUpRight size={13} aria-hidden="true" /></Link> : null}
           {onCancel && generationActive ? <div className={styles.queueActions}><span>Need to change the idea?</span><button className={styles.cancelButton} type="button" disabled={cancelPending} onClick={onCancel}>{cancelPending ? "Stopping…" : "Cancel generation"}</button></div> : null}
-          {onRetry && (generationFailed || generationEmpty) ? <div className={styles.queueActions}><span>Keep the same idea?</span><button className={styles.retryButton} type="button" onClick={onRetry}>Try again</button></div> : null}
+          {onRetry && generationFailed ? <div className={styles.queueActions}><span>Keep the same idea?</span><button className={styles.retryButton} type="button" onClick={onRetry}>Try again</button></div> : null}
           </section>
 
           <section className={styles.candidateList} aria-labelledby="candidate-heading">
@@ -165,8 +165,8 @@ export function InspectorPanel({ presentation = "drawer", projectRef, generation
           </div> : null}
           {candidates.length === 0 ? <div className={styles.candidateEmpty} role="status">
             <div className={styles.candidateEmptyIcon}><Sparkles size={16} /></div>
-            <strong>No playable directions yet</strong>
-            <span>When a take is ready, it will appear here for comparison.</span>
+            <strong>{generationSyncing ? "Directions are still syncing" : "No playable directions yet"}</strong>
+            <span>{generationSyncing ? "When the projection arrives, this run will be ready for comparison." : "When a take is ready, it will appear here for comparison."}</span>
           </div> : candidates.map((candidate, index) => {
             const isCurrent = candidate.isCurrent
             const isSelected = selectedCandidateRef === candidate.candidateRef
