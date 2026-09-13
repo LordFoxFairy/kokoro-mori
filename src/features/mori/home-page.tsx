@@ -10,6 +10,7 @@ import { listAllMoriCandidates } from "./candidate-pagination"
 import { useMoriApp } from "./components/mori-app-provider"
 import { previewCandidates, previewProject } from "./preview-data"
 import { Waveform } from "./components/waveform"
+import { formatMusicTime } from "./format-music-time"
 import styles from "./mori-workspace.module.css"
 
 type HomePageContentProps = {
@@ -188,7 +189,7 @@ function HomeDirections({ project, candidates, status, playerVersionRef, playing
         <button className={`${styles.homeTrackArtwork} ${index === 1 ? styles.homeTrackArtworkAlt : ""}`} type="button" onClick={() => onPlay(candidate)} aria-label={`${isPlaying ? "Pause" : "Play"} ${candidate.title}`}><Play size={14} fill={isPlaying ? "currentColor" : "none"} /></button>
         <div className={styles.homeTrackCopy}><strong>{candidate.title}</strong><span>{candidate.subtitle}</span></div>
         <div className={styles.homeTrackWave}><Waveform seed={candidate.waveformSeed} compact progress={index === 0 ? 0.62 : 0.28} /></div>
-        <span className={styles.homeTrackDuration}>{Math.floor(candidate.durationSeconds / 60)}:{String(candidate.durationSeconds % 60).padStart(2, "0")}</span>
+        <span className={styles.homeTrackDuration}>{formatMusicTime(candidate.durationSeconds)}</span>
         <Link className={styles.homeTrackOpen} href={`/projects/${encodeURIComponent(projectRef)}/studio/${encodeURIComponent(candidate.versionRef)}`} aria-label={`Open Studio for ${candidate.title}`}><ArrowRight size={14} /></Link>
       </article>
     })}

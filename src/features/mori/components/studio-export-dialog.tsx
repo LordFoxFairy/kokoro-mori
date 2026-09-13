@@ -4,6 +4,7 @@ import { AudioWaveform, Check, Download, FileAudio, Layers3, LoaderCircle, Music
 import { useEffect, useId, useRef, useState, type FormEvent } from "react"
 import { createPortal } from "react-dom"
 import { createExportRequest, type MoriExportFormat, type MoriExportInput, type MoriExportSnapshot, type MoriExportStatus, type MoriMixRevision } from "@/lib/mori-api"
+import { formatMusicTime } from "../format-music-time"
 import { useMoriModalLayer } from "./mori-modal-isolation"
 import styles from "./studio-export-dialog.module.css"
 
@@ -188,7 +189,7 @@ export function StudioExportDialog({
                   <span className={styles.choiceIcon}><Music2 size={16} /></span>
                   <span className={styles.choiceCopy}>
                     <strong>Open version</strong>
-                    <small>{versionTitle} · {formatDuration(durationSeconds)}</small>
+                    <small>{versionTitle} · {formatMusicTime(durationSeconds)}</small>
                     <span className={styles.choiceMeta}>Base audio before saved mixer changes</span>
                   </span>
                   <span className={styles.choiceCheck} aria-hidden="true"><Check size={13} /></span>
@@ -235,7 +236,7 @@ export function StudioExportDialog({
                     <span className={styles.choiceIcon}><Music2 size={16} /></span>
                     <span className={styles.choiceCopy}>
                       <strong>Full song</strong>
-                      <small>{versionTitle} · {formatDuration(durationSeconds)}</small>
+                      <small>{versionTitle} · {formatMusicTime(durationSeconds)}</small>
                       <span className={styles.choiceMeta}>Render the complete timeline.</span>
                     </span>
                     <span className={styles.choiceCheck} aria-hidden="true"><Check size={13} /></span>
@@ -321,15 +322,8 @@ function exportSourceLabel(source: MoriExportInput["source"]): string {
   return source.type === "version" ? "Open version" : "Saved Mix Revision"
 }
 
-function formatDuration(durationSeconds: number): string {
-  const safeDuration = Math.max(0, Math.round(durationSeconds))
-  const minutes = Math.floor(safeDuration / 60)
-  const seconds = safeDuration % 60
-  return `${minutes}:${seconds.toString().padStart(2, "0")}`
-}
-
 function formatRangeTime(milliseconds: number): string {
-  return formatDuration(milliseconds / 1_000)
+  return formatMusicTime(milliseconds / 1_000)
 }
 
 function getFocusableElements(container: HTMLElement): HTMLElement[] {

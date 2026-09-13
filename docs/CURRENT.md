@@ -1,10 +1,11 @@
 # Mori 当前状态
 
-> 更新：2026-09-12
+> 更新：2026-09-13
 > 范围：本地 preview 产品壳、Create、Library、Project、Studio 与 Finish 工作面。
 
 ## 已实现
 
+- 全部歌曲、候选、素材、Take、版本历史与播放器时长统一经过 `format-music-time.ts`；实时播放位置向下取整，静态媒体时长四舍五入，录音计时保持 `00:00`，不会把浮点 `timeupdate` 值泄漏到界面。
 - 浅色、整高 Rail + 内容面 + 全局 Player 三层壳体；桌面展开 Rail 不使用悬浮窗口。
 - 移动端 Rail 默认收起；展开后为带遮罩的导航抽屉，锁定背景滚动、焦点进入并循环在 Rail 内，内容面与 Player 使用 `inert` 隔离，关闭后恢复触发入口。
 - 全局 Player 的 `Up next` 在桌面作为上下文面板，在移动端作为 modal sheet；支持 Escape、焦点恢复和移动端焦点循环。

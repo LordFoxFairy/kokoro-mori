@@ -16,6 +16,7 @@ src/features/mori/domain.ts      Candidate、Project、Version、生成状态等
 src/features/mori/               Mori 页面、组件、交互状态与 fixture projection
   components/                    全局 Rail、Player、Queue、Studio 工作面
   creative-assets.ts              本地 preview Creative source projection 与 UI 映射类型
+  format-music-time.ts            所有页面共用的安全音乐时长/录音计时格式化
   studio-change.ts                Studio Change 领域计划与 scope 计算
   studio-recovery.ts              从服务端 Generation snapshot 恢复 Studio Change 工作上下文
   generation-recovery.ts          Generation snapshot 恢复请求的网络错误归一边界

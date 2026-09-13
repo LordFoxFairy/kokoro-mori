@@ -4,6 +4,7 @@ import { ListMusic, Pause, Play, X } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import type { Candidate } from "../domain"
 import { useMoriModalLayer } from "./mori-modal-isolation"
+import { formatMusicTime } from "../format-music-time"
 import styles from "../mori-workspace.module.css"
 
 type PlaybackQueueProps = {
@@ -12,11 +13,6 @@ type PlaybackQueueProps = {
   playing: boolean
   onChoose: (candidate: Candidate) => void
   onClose: () => void
-}
-
-function formatDuration(seconds: number): string {
-  const minutes = Math.floor(seconds / 60)
-  return `${minutes}:${String(seconds % 60).padStart(2, "0")}`
 }
 
 export function PlaybackQueue({ candidates, currentVersionRef, playing, onChoose, onClose }: PlaybackQueueProps) {
@@ -99,7 +95,7 @@ export function PlaybackQueue({ candidates, currentVersionRef, playing, onChoose
       </span>
       <span className={styles.playbackQueueState}>
         {isCurrent ? <b>{playing ? "Playing" : "Current"}</b> : null}
-        <small>{formatDuration(candidate.durationSeconds)}</small>
+        <small>{formatMusicTime(candidate.durationSeconds)}</small>
       </span>
     </button>
   )

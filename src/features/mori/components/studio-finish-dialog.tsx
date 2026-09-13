@@ -6,6 +6,7 @@ import { createPortal } from "react-dom"
 import type { MoriMixRevision, MoriStudioRemasterSource, StudioRemasterStrength } from "@/lib/mori-api"
 import { buildStudioRemasterPlan, isStudioRemasterPlan, type StudioRemasterPlan } from "../studio-remaster"
 import { isActiveStudioChangeStatus } from "../studio-change"
+import { formatMusicTime } from "../format-music-time"
 import type { StudioFinishView } from "../studio-release"
 import type { StudioAiRunState } from "./studio-ai-composer"
 import { StudioReleasePanel, type StudioReleasePanelProps } from "./studio-release-panel"
@@ -256,7 +257,7 @@ export function StudioFinishDialog({
                     inputRef={sourceType === "version" ? sourceRef : undefined}
                     active={sourceType === "version"}
                     label="Open version"
-                    description={`${versionTitle} · ${formatDuration(durationSeconds)}`}
+                    description={`${versionTitle} · ${formatMusicTime(durationSeconds)}`}
                     detail="Base audio before saved mixer changes"
                     icon={<Music2 size={16} />}
                     onSelect={() => { sourceSelectionTouchedRef.current = true; setSourceType("version") }}
@@ -356,13 +357,6 @@ function SourceChoice({ inputRef, active, label, description, detail, icon, onSe
       <span className={styles.choiceCheck} aria-hidden="true"><Check size={13} /></span>
     </label>
   )
-}
-
-function formatDuration(durationSeconds: number): string {
-  const safeDuration = Math.max(0, Math.round(durationSeconds))
-  const minutes = Math.floor(safeDuration / 60)
-  const seconds = safeDuration % 60
-  return `${minutes}:${seconds.toString().padStart(2, "0")}`
 }
 
 type RemasterPlanProps = {

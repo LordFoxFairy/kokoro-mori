@@ -3,6 +3,7 @@ import Link from "next/link"
 import type { Candidate } from "./domain"
 import type { CurrentVersionCommitRun } from "./current-version"
 import { Waveform } from "./components/waveform"
+import { formatMusicTime } from "./format-music-time"
 import styles from "./mori-workspace.module.css"
 
 export type CandidateProjectionStatus = "loading" | "ready" | "unavailable"
@@ -83,7 +84,7 @@ export function ProjectOverviewDirections({
             <span>{candidate.subtitle}</span>
           </div>
           <div className={styles.overviewCandidateWave}><Waveform seed={candidate.waveformSeed} compact progress={index === 0 ? 0.8 : 0.48} /></div>
-          <span className={styles.candidateDuration}>{Math.floor(candidate.durationSeconds / 60)}:{String(candidate.durationSeconds % 60).padStart(2, "0")}</span>
+          <span className={styles.candidateDuration}>{formatMusicTime(candidate.durationSeconds)}</span>
           <div className={styles.overviewCandidateActions}>
             {isCurrent ? null : <button className={styles.overviewPromoteButton} type="button" disabled={isCommitting} aria-label={isCommitTarget ? `Setting ${candidate.title} as current` : `Set ${candidate.title} as current`} onClick={() => { onCommitCurrentVersion(candidate) }}>
               {isCommitTarget ? <><LoaderCircle aria-hidden="true" size={12} /> Saving…</> : "Set as current"}

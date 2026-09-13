@@ -55,6 +55,7 @@ import { StudioWorkspaceSaveStatus } from "./components/studio-workspace-save-st
 import { useMoriApp, type PlayerAuditionScope } from "./components/mori-app-provider"
 import { Waveform } from "./components/waveform"
 import { previewCandidates, previewProject, previewSongPlan } from "./preview-data"
+import { formatMusicTime } from "./format-music-time"
 import type { StudioEntryIntent, StudioEntrySurface } from "./studio-entry"
 import { createCompositionPlacementRef, type Composition, type CompositionClip, type CompositionTrack } from "./composition"
 import type { CompositionSaveState } from "./composition-save-state"
@@ -3218,7 +3219,7 @@ function ArrangementEditor({ compositionSave, compositionLoad, compositionRevisi
                   <span className={styles.takeLaneCopy}><strong>{take.title}</strong><span>{take.subtitle}</span></span>
                 </button>
                 <div className={styles.takeLaneWave}><Waveform seed={take.waveformSeed} compact progress={isSelected ? 0.62 : 0.34} /></div>
-                <span className={styles.takeLaneDuration}>{Math.floor(take.durationSeconds / 60)}:{String(take.durationSeconds % 60).padStart(2, "0")}</span>
+                <span className={styles.takeLaneDuration}>{formatMusicTime(take.durationSeconds)}</span>
                 <div className={styles.takeLaneActions}>
                   <button className={styles.takeLanePreview} type="button" onClick={() => onPreviewTake(take)} aria-label={`${isPlaying ? "Pause" : "Preview"} ${take.title}`}><Play size={12} fill={isPlaying ? "currentColor" : "none"} /> {isPlaying ? "Pause" : "Preview"}</button>
                   {isCurrent ? <span className={styles.takeLaneCurrentLabel}>Current version</span> : currentVersionStatus === "unknown" ? <span className={styles.takeLaneCurrentUnavailable}>Current unavailable</span> : <button className={styles.takeLanePromote} type="button" disabled={isCommitting} onClick={() => onPromoteTake(take)} aria-label={`${isCommitTarget ? "Using" : "Use"} ${take.title} as current`}>{isCommitTarget ? <><LoaderCircle aria-hidden="true" size={12} /> Using take…</> : "Use take"}</button>}

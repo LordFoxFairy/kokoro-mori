@@ -4,6 +4,7 @@ import { AudioLines, FileAudio, Filter, LoaderCircle, Mic2, Pause, Play, Refresh
 import { useMemo, useState } from "react"
 import type { MoriCreativeSourceUploadStatus } from "@/lib/mori-api"
 import { resolveCreativeSourceCatalog, type MoriCreativeLibrarySource, type MoriCreativeSourceStatus } from "../creative-assets"
+import { formatMusicTime, formatRecordingTime } from "../format-music-time"
 import { useAudioRecorder, type AudioRecording } from "../use-audio-recorder"
 import { compositionSourceDragMimeType } from "./composition-lane"
 import styles from "./studio-asset-dock.module.css"
@@ -181,7 +182,7 @@ function SourceCard({ source, disabled, canInsert, previewing, onPreview, onInse
     <div className={styles.sourceCopy}>
       <div className={styles.sourceTitleRow}>
         <h4>{source.name}</h4>
-        <span>{audioSource === null ? "Reference" : formatDuration(audioSource.durationSeconds)}</span>
+        <span>{audioSource === null ? "Reference" : formatMusicTime(audioSource.durationSeconds)}</span>
       </div>
       <p>{source.description}</p>
       <div className={styles.sourceActions}>
@@ -205,12 +206,6 @@ function sourceIcon(kind: MoriCreativeLibrarySource["sourceKind"]) {
   }
 }
 
-function formatDuration(durationSeconds: number): string {
-  const totalSeconds = Math.max(0, Math.round(durationSeconds))
-  return `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, "0")}`
-}
-
 function formatRecordingDuration(seconds: number): string {
-  const totalSeconds = Math.max(0, Math.floor(seconds))
-  return `${Math.floor(totalSeconds / 60).toString().padStart(2, "0")}:${String(totalSeconds % 60).padStart(2, "0")}`
+  return formatRecordingTime(seconds)
 }

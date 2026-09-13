@@ -6,6 +6,7 @@ import { useEffect, useId, useRef, type MouseEvent as ReactMouseEvent } from "re
 import { createPortal } from "react-dom"
 import type { Candidate } from "../domain"
 import { useMoriModalLayer } from "./mori-modal-isolation"
+import { formatMusicTime } from "../format-music-time"
 import styles from "./studio-version-history.module.css"
 
 export type StudioCurrentVersionStatus = "unknown" | "none" | "known"
@@ -116,7 +117,7 @@ function VersionHistoryList({ candidates, projectRef, openVersionRef, currentVer
         const isOpen = candidate.versionRef === openVersionRef
         const isCurrent = currentVersionStatus === "known" && candidate.versionRef === currentVersionRef
         const status = isCurrent ? "Current" : currentVersionStatus === "unknown" ? "Current unavailable" : currentVersionStatus === "none" ? "No Current" : "Draft"
-        const duration = formatDuration(candidate.durationSeconds)
+        const duration = formatMusicTime(candidate.durationSeconds)
         const stateLine = [status, isOpen ? "Open" : null, duration].filter((value): value is string => value !== null).join(" · ")
         const accessibleState = [candidate.title, status, isOpen ? "Open" : null, duration].filter((value): value is string => value !== null).join(", ")
 
@@ -158,10 +159,6 @@ function keepsNativeVersionLinkBehavior(event: ReactMouseEvent<HTMLAnchorElement
     || event.altKey
     || event.ctrlKey
     || event.shiftKey
-}
-
-function formatDuration(durationSeconds: number): string {
-  return `${Math.floor(durationSeconds / 60)}:${String(durationSeconds % 60).padStart(2, "0")}`
 }
 
 function getFocusableElements(container: HTMLElement): HTMLElement[] {

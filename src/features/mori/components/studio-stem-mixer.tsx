@@ -10,6 +10,7 @@ import {
   type StemPlaybackController,
   type StemPlaybackFactory,
 } from "../stem-playback"
+import { formatMusicTime } from "../format-music-time"
 import { Waveform } from "./waveform"
 import styles from "./studio-stem-mixer.module.css"
 
@@ -173,7 +174,7 @@ export function StudioStemMixer({ stems, sourceStemSeparationRef, externalPlayba
           <strong>{starting ? "Opening audio…" : playing ? "Auditioning mix" : "Mix preview"}</strong>
           <span>{stems.length} tracks · synchronized from this Version</span>
         </div>
-        <span className={styles.transportTime}>{formatDuration(positionSeconds)} <i>/</i> {formatDuration(durationSeconds)}</span>
+        <span className={styles.transportTime}>{formatMusicTime(positionSeconds, "floor")} <i>/</i> {formatMusicTime(durationSeconds, "floor")}</span>
       </div>
 
       <label className={styles.masterSeek}>
@@ -206,7 +207,7 @@ export function StudioStemMixer({ stems, sourceStemSeparationRef, externalPlayba
                 <div><strong>{stem.label}</strong><small>{stemDetail(stem)}</small></div>
               </div>
               <div className={styles.waveform}><Waveform seed={stemSeed(stem, index)} compact progress={stem.duration_seconds > 0 ? Math.min(positionSeconds / stem.duration_seconds, 1) : 0} /></div>
-              <span className={styles.duration}>{formatDuration(stem.duration_seconds)}</span>
+              <span className={styles.duration}>{formatMusicTime(stem.duration_seconds, "floor")}</span>
               <label className={styles.level}>
                 <span>Level</span>
                 <input type="range" min={0} max={100} step={1} value={Math.round(gain * 100)} aria-label={`Volume ${stem.label}`} onChange={(event) => setGain(stem.stem_ref, Number(event.target.value))} />
@@ -299,11 +300,6 @@ function stemDetail(stem: MoriStem): string {
 
 function stemSeed(stem: MoriStem, index: number): number {
   return stem.stem_ref.length * 7 + index * 13
-}
-
-function formatDuration(durationSeconds: number): string {
-  const safeDuration = Math.max(0, Math.floor(durationSeconds))
-  return `${Math.floor(safeDuration / 60)}:${String(safeDuration % 60).padStart(2, "0")}`
 }
 
 function formatPan(pan: number): string {

@@ -11,6 +11,7 @@ import { CreativeSourceLibrary, type CreativeSourceFilter } from "./components/c
 import paginationStyles from "./components/creative-source-library.module.css"
 import { useMoriApp } from "./components/mori-app-provider"
 import { previewCandidates, previewLibrary, previewProject } from "./preview-data"
+import { formatMusicTime } from "./format-music-time"
 import styles from "./mori-workspace.module.css"
 
 const filters = ["All", "Versions", "Sources"] as const
@@ -301,7 +302,7 @@ export function LibraryPageContent({ api }: LibraryPageContentProps = {}) {
                         <span>{item.subtitle}</span>
                         {item.releaseStatus === "published" ? <small>Published</small> : item.releaseStatus === "unpublished" ? <small>Unpublished</small> : item.releaseStatus === "publishing" ? <small>Publishing…</small> : null}
                       </div>
-                      <span className={styles.libraryDuration}><Headphones size={13} /> {Math.floor(item.durationSeconds / 60)}:{String(item.durationSeconds % 60).padStart(2, "0")}</span>
+                      <span className={styles.libraryDuration}><Headphones size={13} /> {formatMusicTime(item.durationSeconds)}</span>
                       <div className={styles.libraryActions}>
                         <button className={styles.iconButton} type="button" onClick={() => playVersion(item.ref)} aria-label={`${active && playing ? "Pause" : "Play"} ${item.title}`}>{active && playing ? <Pause size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" />}</button>
                         <Link className={styles.iconButton} href={versionPath} aria-label={`Open ${item.title} studio`}><ArrowUpRight size={14} /></Link>

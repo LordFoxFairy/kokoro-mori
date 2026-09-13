@@ -10,6 +10,7 @@ import {
   type MoriInspirationPreset,
 } from "../creative-assets"
 import type { MoriCreativeSourceUploadStatus } from "@/lib/mori-api"
+import { formatRecordingTime } from "../format-music-time"
 import type { AudioRecordingStatus } from "../use-audio-recorder"
 import styles from "./creative-source-dock.module.css"
 
@@ -243,7 +244,5 @@ export function CreativeSourceDock({
 }
 
 function formatRecordingDuration(seconds: number): string {
-  const minutes = Math.floor(seconds / 60).toString().padStart(2, "0")
-  const remainder = Math.max(0, seconds % 60).toString().padStart(2, "0")
-  return `${minutes}:${remainder}`
+  return formatRecordingTime(seconds)
 }

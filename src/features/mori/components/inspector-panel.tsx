@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react"
 import type { Candidate, Generation, SongPlan } from "../domain"
 import { idleCurrentVersionCommitRun, type CurrentVersionCommitRun } from "../current-version"
 import { generationQueueClientPhaseForStatus, type GenerationQueueItem } from "../generation-queue"
+import { formatMusicTime } from "../format-music-time"
 import { Waveform } from "./waveform"
 import styles from "../mori-workspace.module.css"
 
@@ -29,12 +30,6 @@ type InspectorPanelProps = {
   onRetry?: () => void
   onClose?: () => void
   onSelectGeneration?: (generationRef: string) => void
-}
-
-function formatDuration(seconds: number): string {
-  const minutes = Math.floor(seconds / 60)
-  const remaining = String(seconds % 60).padStart(2, "0")
-  return `${minutes}:${remaining}`
 }
 
 export function InspectorPanel({ presentation = "drawer", projectRef, generation, queueItems = [], activeGenerationRef = null, candidates, songPlan, selectedCandidateRef, playerVersionRef, playing, currentVersionCommitRun = idleCurrentVersionCommitRun, onSelect, onPromote, onRetryCurrentVersion, onDismissCurrentVersion, onPlay, onCancel, cancelPending = false, onRetry, onClose, onSelectGeneration }: InspectorPanelProps) {
@@ -182,7 +177,7 @@ export function InspectorPanel({ presentation = "drawer", projectRef, generation
                     <span className={styles.candidateTitle}>{candidate.title}</span>
                     <span className={styles.candidateSubtitle}>{candidate.subtitle}</span>
                   </span>
-                  <span className={styles.candidateDuration}>{formatDuration(candidate.durationSeconds)}</span>
+                  <span className={styles.candidateDuration}>{formatMusicTime(candidate.durationSeconds)}</span>
                 </button>
                 <Waveform seed={candidate.waveformSeed} progress={isSelected ? 0.62 : 0.32} />
                 <div className={styles.candidateActions}>
