@@ -9,16 +9,18 @@ type MoriCatalogShellProps = {
   ariaLabel: string
   projectRef?: string | null
   projectTitle?: string | null
+  projectMeta?: string | null
   children: ReactNode
 }
 
-export function MoriCatalogShell({ activeKey, ariaLabel, projectRef, projectTitle, children }: MoriCatalogShellProps) {
+export function MoriCatalogShell({ activeKey, ariaLabel, projectRef, projectTitle, projectMeta, children }: MoriCatalogShellProps) {
   return (
     <MoriAppShell
       activeKey={activeKey}
       ariaLabel={ariaLabel}
       projectRef={projectRef}
       projectTitle={projectTitle}
+      projectMeta={projectMeta}
     >
       {children}
     </MoriAppShell>

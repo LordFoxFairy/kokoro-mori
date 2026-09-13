@@ -49,7 +49,7 @@ describe("Mori application navigation", () => {
   it("keeps the active Project visible in the expanded rail", () => {
     render(
       <MoriAppProvider>
-        <MoriCatalogShell activeKey="projects" ariaLabel="Project overview" projectRef="project_live_1" projectTitle="Window Seat">
+        <MoriCatalogShell activeKey="projects" ariaLabel="Project overview" projectRef="project_live_1" projectTitle="Window Seat" projectMeta="2 directions">
           <div>Project overview</div>
         </MoriCatalogShell>
       </MoriAppProvider>,
@@ -60,6 +60,7 @@ describe("Mori application navigation", () => {
     expect(projectLink).toHaveTextContent("Current project")
     expect(projectLink).toHaveTextContent("Window Seat")
     expect(projectLink).toHaveTextContent("Active")
+    expect(projectLink).toHaveTextContent("2 directions")
   })
 
   it("keeps the empty global player quiet until a Version is chosen", () => {

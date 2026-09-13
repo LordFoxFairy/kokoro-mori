@@ -10,7 +10,7 @@ export default async function ProjectOverviewPage({ params }: ProjectOverviewPag
 
   return (
     <main className={styles.catalogApp}>
-      <MoriCatalogShell activeKey="projects" ariaLabel="Project overview" projectRef={projectRef} projectTitle={projectRef === previewProject.projectRef ? previewProject.title : undefined}><ProjectOverviewPageContent projectRef={projectRef} /></MoriCatalogShell>
+      <MoriCatalogShell activeKey="projects" ariaLabel="Project overview" projectRef={projectRef} projectTitle={projectRef === previewProject.projectRef ? previewProject.title : undefined} projectMeta={projectRef === previewProject.projectRef ? `${previewProject.candidateCount} directions` : undefined}><ProjectOverviewPageContent projectRef={projectRef} /></MoriCatalogShell>
     </main>
   )
 }

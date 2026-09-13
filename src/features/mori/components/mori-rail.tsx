@@ -11,6 +11,7 @@ type MoriRailProps = {
   collapsed?: boolean
   projectRef?: string | null
   projectTitle?: string | null
+  projectMeta?: string | null
   onNavigate?: () => void
   onOpenSettings?: (returnTo: string) => void
   onToggle?: () => void
@@ -25,12 +26,13 @@ const navigation = [
   { key: "library" as const, label: "Library", href: "/library", icon: Library },
 ]
 
-export function MoriRail({ activeKey = "create", collapsed = false, projectRef, projectTitle, onNavigate, onOpenSettings, onToggle, railRef, toggleRef }: MoriRailProps) {
+export function MoriRail({ activeKey = "create", collapsed = false, projectRef, projectTitle, projectMeta, onNavigate, onOpenSettings, onToggle, railRef, toggleRef }: MoriRailProps) {
   const [settingsHref, setSettingsHref] = useState("/settings?return_to=%2F")
   const [createHref, setCreateHref] = useState("/create")
   const newCreationLabel = createHref === "/create" ? "New project" : "New direction"
   const activeProjectRef = projectRef?.trim() || null
   const activeProjectTitle = projectTitle?.trim() || "Project"
+  const activeProjectMeta = projectMeta?.trim() || "Open project overview"
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -81,7 +83,7 @@ export function MoriRail({ activeKey = "create", collapsed = false, projectRef, 
         <span className={styles.currentProjectHeader}><span>Current project</span><strong>Active</strong></span>
         <span className={styles.currentProjectBody}>
           <span className={styles.currentProjectArtwork} aria-hidden="true"><AudioLines size={18} /></span>
-          <span className={styles.currentProjectCopy}><strong>{activeProjectTitle}</strong><span>Keep making this project</span></span>
+          <span className={styles.currentProjectCopy}><strong>{activeProjectTitle}</strong><span>{activeProjectMeta}</span></span>
         </span>
       </Link> : null}
 

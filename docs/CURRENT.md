@@ -112,7 +112,7 @@
   窗口跨断点切换不会改写用户的桌面折叠偏好。
 - 桌面侧边栏折叠后仍保留 Mori brand mark，展开控制与品牌标识垂直分组；移动端折叠态恢复水平顶栏，避免窄栏只剩孤立的控制图标。
 - 桌面侧边栏支持 `⌘/Ctrl+B` 快捷切换，输入框、可编辑区域和 Settings 浮层中不会抢占用户的文字或弹窗交互。
-- 有活动 Project 上下文时，展开 Rail 在 Workspace 导航下显示可点击的 Current project 卡片；标题从当前 Project projection 更新，缺失时只显示中性的 Project，不暴露内部 ref，收起 Rail 和无项目的全局入口不增加噪声。
+- 有活动 Project 上下文时，展开 Rail 在 Workspace 导航下显示可点击的 Current project 卡片；标题和方向/版本摘要从当前工作面更新，缺失时只显示中性的 Project，不暴露内部 ref，收起 Rail 和无项目的全局入口不增加噪声。
 
 ## 验证证据
 

@@ -1180,6 +1180,7 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, generationRef: 
         ariaLabel="Create workspace"
         projectRef={workspaceProjectRef}
         projectTitle={workspaceProjectRef === null ? null : workspaceProjectTitle}
+        projectMeta={workspaceProjectRef === null ? null : candidates.length > 0 ? `${candidates.length} directions` : hasGeneration && isActiveQueueStatus(generationStatus) ? "Generation in progress" : "Open project overview"}
       >
         <div className={`${styles.workspaceLayout} ${queueOpen && queuePresentation === "pane" ? styles.workspaceLayoutWithQueue : ""}`}>
           <section className={styles.createSurface} aria-label="Create canvas">
