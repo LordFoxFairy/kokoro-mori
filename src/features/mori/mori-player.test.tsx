@@ -72,6 +72,8 @@ describe("Mori global player media integration", () => {
 
     harness.callbacks.onTimeUpdate(47.25)
     await waitFor(() => expect(screen.getByRole("slider", { name: "Seek through current version" })).toHaveValue("47.25"))
+    expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("0:47")
+    expect(screen.getByRole("region", { name: "Global player" })).not.toHaveTextContent("0:47.25")
 
     fireEvent.change(screen.getByRole("slider", { name: "Seek through current version" }), { target: { value: "91" } })
     expect(harness.controller.seek).toHaveBeenCalledWith(91)

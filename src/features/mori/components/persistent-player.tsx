@@ -28,8 +28,9 @@ type PersistentPlayerProps = {
 }
 
 function formatDuration(seconds: number): string {
-  const minutes = Math.floor(seconds / 60)
-  const remaining = String(seconds % 60).padStart(2, "0")
+  const totalSeconds = Math.max(0, Math.floor(Number.isFinite(seconds) ? seconds : 0))
+  const minutes = Math.floor(totalSeconds / 60)
+  const remaining = String(totalSeconds % 60).padStart(2, "0")
   return `${minutes}:${remaining}`
 }
 
