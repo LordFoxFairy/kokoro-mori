@@ -86,6 +86,14 @@ describe("CompositionLane", () => {
     expect(onEditTrackMix).toHaveBeenCalledWith("track_1", { gain: 0.7, pan: 0, muted: false })
   })
 
+  it("does not present a preview baseline as a saved track mix", () => {
+    render(<CompositionLane compositionPersisted={false} onEditTrackMix={vi.fn()} selectedTrackRef="track_1" tracks={[{ trackRef: "track_1", kind: "other", name: "Main", clips: [] }]} durationMs={10_000} />)
+
+    fireEvent.click(screen.getByText("Track controls"))
+
+    expect(screen.getByText("Preview only")).toBeInTheDocument()
+  })
+
   it("moves a clip when it is dropped onto its track timeline", () => {
     const onMove = vi.fn()
     const { container } = render(<CompositionLane durationMs={10_000} onMoveClip={onMove} tracks={[{ trackRef: "track_1", kind: "other", name: "Main", clips: [{ clipRef: "clip_1", sourceRef: "asset_1", startMs: 0, durationMs: 4_000, offsetMs: 0 }] }]} />)

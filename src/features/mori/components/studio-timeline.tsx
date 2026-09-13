@@ -13,6 +13,7 @@ import {
 import { Waveform } from "./waveform"
 import { CompositionLane, type CompositionInsertSource } from "./composition-lane"
 import type { CompositionClip, CompositionTrack, CompositionTrackMix } from "../composition"
+import type { CompositionSaveState } from "../composition-save-state"
 import { Maximize2, Pause, Play, Repeat, SkipBack, ZoomIn, ZoomOut } from "lucide-react"
 import styles from "./studio-timeline.module.css"
 
@@ -26,6 +27,8 @@ type StudioTimelineProps = {
   playing: boolean
   disabled: boolean
   compositionDisabled?: boolean
+  compositionPersisted?: boolean
+  compositionSaveState?: CompositionSaveState
   onSeek: (positionSeconds: number) => void
   onSelect: (selection: StudioTimelineSection) => void
   onBackToStart?: () => void
@@ -54,7 +57,7 @@ type StudioTimelineProps = {
   resolveClipLabel?: (clip: CompositionClip, track: CompositionTrack) => string
 }
 
-export function StudioTimeline({ candidate, sections, selection, positionSeconds, playing, disabled, compositionDisabled = false, onSeek, onSelect, onBackToStart, onPreviewFromPlayhead, onPreviewSelection, previewingSelection = false, onToggleLoopSelection, loopingSelection = false, compositionTracks = [], selectedClipRef, selectedTrackRef, onSelectTrack, onSelectClip, onEditClip, onMoveClip, onDeleteClip, onDuplicateClip, onEditTrackMix, onPreviewClip, previewingClip = false, isClipPreviewable, insertSources, onInsertClip, dropSources, onDropSource, resolveClipLabel }: StudioTimelineProps) {
+export function StudioTimeline({ candidate, sections, selection, positionSeconds, playing, disabled, compositionDisabled = false, compositionPersisted, compositionSaveState, onSeek, onSelect, onBackToStart, onPreviewFromPlayhead, onPreviewSelection, previewingSelection = false, onToggleLoopSelection, loopingSelection = false, compositionTracks = [], selectedClipRef, selectedTrackRef, onSelectTrack, onSelectClip, onEditClip, onMoveClip, onDeleteClip, onDuplicateClip, onEditTrackMix, onPreviewClip, previewingClip = false, isClipPreviewable, insertSources, onInsertClip, dropSources, onDropSource, resolveClipLabel }: StudioTimelineProps) {
   const sectionHintId = useId()
   const [timelineZoom, setTimelineZoom] = useState<(typeof timelineZoomLevels)[number]>(1)
   const durationMs = Math.max(minimumStudioTimelineSelectionMs, Math.round(candidate.durationSeconds * 1_000))
@@ -143,7 +146,7 @@ export function StudioTimeline({ candidate, sections, selection, positionSeconds
             />
           </div>
 
-          {compositionTracks.length > 0 ? <CompositionLane tracks={compositionTracks} durationMs={durationMs} disabled={disabled || compositionDisabled} selectedClipRef={selectedClipRef} selectedTrackRef={selectedTrackRef} onSelectTrack={onSelectTrack} onSelectClip={onSelectClip} onEditClip={onEditClip} onMoveClip={onMoveClip} onDeleteClip={onDeleteClip} onDuplicateClip={onDuplicateClip} onEditTrackMix={onEditTrackMix} onPreviewClip={onPreviewClip} previewingClip={previewingClip} isClipPreviewable={isClipPreviewable} insertSources={insertSources} onInsertClip={onInsertClip} dropSources={dropSources} onDropSource={onDropSource} resolveClipLabel={resolveClipLabel} /> : null}
+          {compositionTracks.length > 0 ? <CompositionLane tracks={compositionTracks} durationMs={durationMs} disabled={disabled || compositionDisabled} compositionPersisted={compositionPersisted} compositionSaveState={compositionSaveState} selectedClipRef={selectedClipRef} selectedTrackRef={selectedTrackRef} onSelectTrack={onSelectTrack} onSelectClip={onSelectClip} onEditClip={onEditClip} onMoveClip={onMoveClip} onDeleteClip={onDeleteClip} onDuplicateClip={onDuplicateClip} onEditTrackMix={onEditTrackMix} onPreviewClip={onPreviewClip} previewingClip={previewingClip} isClipPreviewable={isClipPreviewable} insertSources={insertSources} onInsertClip={onInsertClip} dropSources={dropSources} onDropSource={onDropSource} resolveClipLabel={resolveClipLabel} /> : null}
 
           <div className={styles.segmentRail}>
             <div

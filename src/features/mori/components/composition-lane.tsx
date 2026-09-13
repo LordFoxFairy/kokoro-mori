@@ -3,6 +3,7 @@
 import { Pause, Play, Plus } from "lucide-react"
 import { useState } from "react"
 import type { CompositionClip, CompositionTrack, CompositionTrackMix } from "../composition"
+import type { CompositionSaveState } from "../composition-save-state"
 import { CompositionTrackMixPanel } from "./composition-track-mix-panel"
 import styles from "./composition-lane.module.css"
 
@@ -12,6 +13,8 @@ type CompositionLaneProps = {
   tracks: CompositionTrack[]
   durationMs: number
   disabled?: boolean
+  compositionPersisted?: boolean
+  compositionSaveState?: CompositionSaveState
   selectedClipRef?: string
   selectedTrackRef?: string
   onSelectTrack?: (trackRef: string) => void
@@ -31,7 +34,7 @@ type CompositionLaneProps = {
   resolveClipLabel?: (clip: CompositionClip, track: CompositionTrack) => string
 }
 
-export function CompositionLane({ tracks, durationMs, disabled = false, selectedClipRef, selectedTrackRef, onSelectTrack, onSelectClip, onEditClip, onMoveClip, onDeleteClip, onDuplicateClip, onEditTrackMix, onPreviewClip, previewingClip = false, isClipPreviewable, onInsertClip, insertSources = [], dropSources = [], onDropSource, resolveClipLabel }: CompositionLaneProps) {
+export function CompositionLane({ tracks, durationMs, disabled = false, compositionPersisted, compositionSaveState, selectedClipRef, selectedTrackRef, onSelectTrack, onSelectClip, onEditClip, onMoveClip, onDeleteClip, onDuplicateClip, onEditTrackMix, onPreviewClip, previewingClip = false, isClipPreviewable, onInsertClip, insertSources = [], dropSources = [], onDropSource, resolveClipLabel }: CompositionLaneProps) {
   const [insertOpen, setInsertOpen] = useState(false)
   const [dropTrackRef, setDropTrackRef] = useState<string | null>(null)
   const [dropKind, setDropKind] = useState<"clip" | "source" | null>(null)
@@ -150,7 +153,7 @@ export function CompositionLane({ tracks, durationMs, disabled = false, selected
         </div>
       </div>)}
     </div>
-    {selectedTrack !== undefined && onEditTrackMix !== undefined ? <CompositionTrackMixPanel key={`${selectedTrack.trackRef}:${selectedTrack.gain ?? "default"}:${selectedTrack.pan ?? "default"}:${selectedTrack.muted ?? "default"}`} track={selectedTrack} disabled={disabled} onApply={(mix) => onEditTrackMix(selectedTrack.trackRef, mix)} /> : null}
+    {selectedTrack !== undefined && onEditTrackMix !== undefined ? <CompositionTrackMixPanel key={`${selectedTrack.trackRef}:${selectedTrack.gain ?? "default"}:${selectedTrack.pan ?? "default"}:${selectedTrack.muted ?? "default"}`} track={selectedTrack} disabled={disabled} compositionPersisted={compositionPersisted} compositionSaveState={compositionSaveState} onApply={(mix) => onEditTrackMix(selectedTrack.trackRef, mix)} /> : null}
   </section>
 }
 

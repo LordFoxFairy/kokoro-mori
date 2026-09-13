@@ -111,6 +111,7 @@ Workspace nav    内容随项目上下文变化                     跨页面保
   紧凑布局用同色状态图标表达相同信息；点击原入口即可回到进度、下载或重试。
 - Studio 固定使用工具 / 画布两栏；Arrangement 在宽屏画布内把 Library 作为可开关的右侧 dock 放在时间线旁，窄屏
   回到主内容下方；Version history 由标题栏动作打开上下文抽屉，不让主画布在宽度临界点发生突变，也不把项目历史提升为全局 Rail。
+- Arrangement 的首屏层级是时间线优先：当前 Version、轨道、播放头和选区先于 AI 表单出现；Mori AI Command Bar 紧跟在时间线后方并绑定同一选区，高级控制渐进展开，不用大 Hero 抢走音乐工作区的首屏。
 - Player 使用独立的全宽 transport dock：左侧当前作品，中部 transport + progress，右侧
   音量和 `Up next` 播放队列；Create 的 `Generations` 入口只承载生成任务，两者不混淆。
 - Settings 使用浮在当前工作区之上的窗口：左侧固定偏好导航，右侧独立滚动设置内容；关闭后

@@ -94,10 +94,11 @@ Studio。这样“生成结果属于哪个 Project、来自哪次运行、下一
 
 ### 4.0 Arrangement 的连续 AI 入口
 
-Suno Studio 的自然语言入口应当贴近时间线，而不是让用户滚动到素材和 Take 区域之后才发现 AI 能力。Mori 当前在
-Arrangement 顶部使用 compact **Mori AI Command Bar**：四个一级意图、当前 Scope、输出数量、Take lanes 去向和
-Review change 首屏可见；Reference、Restyle/Cover、Voice 与保护项放在 More controls。它只改变信息层级，不新增
-第二套请求或任务状态机：Review 仍生成既有 Change Plan，Generate 仍走既有 Generation / Take Lanes 契约。
+Suno Studio 的自然语言入口应当贴近时间线，而不是让用户滚动到素材和 Take 区域之后才发现 AI 能力。Mori 的
+Arrangement 首屏先展示当前 Version、时间线、轨道和选区，再在其后使用 compact **Mori AI Command Bar**：四个
+一级意图、当前 Scope、输出数量、Take lanes 去向和 Review change 仍然可达；Reference、Restyle/Cover、Voice 与保护项
+放在 More controls。它只改变信息层级，不新增第二套请求或任务状态机：Review 仍生成既有 Change Plan，Generate 仍走
+既有 Generation / Take Lanes 契约。
 
 打开 Studio Version 时，Global Player 预置该 Version 的暂停状态，但不自动播放、不写入 Up next，也不覆盖已有的明确
 试听选择。这样“当前正在制作的 Version”和“底部可以试听的 Version”保持同一上下文，同时不把浏览页面误认为播放动作。

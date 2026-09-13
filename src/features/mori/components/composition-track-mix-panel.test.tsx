@@ -26,4 +26,20 @@ describe("CompositionTrackMixPanel", () => {
     expect(screen.getByRole("slider", { name: "Pan Keys" })).toHaveValue("20")
     expect(screen.getByRole("button", { name: "Unmute Keys" })).toHaveAttribute("aria-pressed", "true")
   })
+
+  it("labels a non-persisted arrangement baseline as preview only", () => {
+    render(<CompositionTrackMixPanel compositionPersisted={false} track={{ trackRef: "track_1", kind: "other", name: "Main", clips: [] }} onApply={vi.fn()} />)
+
+    fireEvent.click(screen.getByText("Track controls"))
+
+    expect(screen.getByText("Preview only")).toBeInTheDocument()
+  })
+
+  it("reflects the parent arrangement save state", () => {
+    render(<CompositionTrackMixPanel compositionSaveState="saving" track={{ trackRef: "track_1", kind: "other", name: "Main", clips: [] }} onApply={vi.fn()} />)
+
+    fireEvent.click(screen.getByText("Track controls"))
+
+    expect(screen.getByText("Saving…")).toBeInTheDocument()
+  })
 })

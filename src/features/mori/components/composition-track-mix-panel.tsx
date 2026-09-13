@@ -3,27 +3,31 @@
 import { Volume2, VolumeX } from "lucide-react"
 import { useState } from "react"
 import { compositionTrackMix, type CompositionTrack, type CompositionTrackMix } from "../composition"
+import { compositionSaveLabel, type CompositionSaveState } from "../composition-save-state"
 import styles from "./composition-track-mix-panel.module.css"
 
 type CompositionTrackMixPanelProps = {
   track: CompositionTrack
   disabled?: boolean
+  compositionPersisted?: boolean
+  compositionSaveState?: CompositionSaveState
   onApply: (mix: CompositionTrackMix) => void
 }
 
-export function CompositionTrackMixPanel({ track, disabled = false, onApply }: CompositionTrackMixPanelProps) {
+export function CompositionTrackMixPanel({ track, disabled = false, compositionPersisted = true, compositionSaveState = "saved", onApply }: CompositionTrackMixPanelProps) {
   const initialMix = compositionTrackMix(track)
   const [gain, setGain] = useState(initialMix.gain)
   const [pan, setPan] = useState(initialMix.pan)
   const [muted, setMuted] = useState(initialMix.muted)
 
   const dirty = gain !== initialMix.gain || pan !== initialMix.pan || muted !== initialMix.muted
+  const statusLabel = compositionPersisted ? (dirty ? "Unsaved changes" : compositionSaveLabel(compositionSaveState)) : "Preview only"
 
   return <details className={styles.panel}>
     <summary className={styles.summary}>
       <span>Track controls</span>
       <strong>{track.name}</strong>
-      <small>{dirty ? "Unsaved" : "Saved"}</small>
+      <small>{statusLabel}</small>
     </summary>
     <div className={styles.controls}>
       <label className={styles.control}>

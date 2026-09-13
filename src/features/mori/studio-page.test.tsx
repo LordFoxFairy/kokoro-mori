@@ -671,6 +671,17 @@ describe("Mori studio page", () => {
     expect(within(reopenedDock).getByRole("searchbox", { name: "Search creative sources" })).toHaveValue("city")
   })
 
+  it("makes the arrangement timeline the primary Studio work surface", () => {
+    renderStudio()
+
+    const arrangement = screen.getByRole("region", { name: "Arrangement editor" })
+    const timeline = within(arrangement).getByRole("region", { name: "Version timeline" })
+    const aiChanges = within(arrangement).getByRole("region", { name: "Mori AI changes" })
+
+    expect(arrangement).toHaveAttribute("data-arrangement-priority", "timeline")
+    expect(timeline.compareDocumentPosition(aiChanges) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
   it("opens the Studio workspace selected by a project continuation", () => {
     render(
       <MoriAppProvider>
@@ -1758,7 +1769,7 @@ describe("Mori studio page", () => {
     renderStudio({ getCompositionRevision })
 
     expect(await screen.findByText("Preview arrangement · using version baseline")).toBeInTheDocument()
-    expect(within(screen.getByRole("region", { name: "Arrangement editor" })).getByText("Preview only")).toBeInTheDocument()
+    expect(within(screen.getByRole("region", { name: "Arrangement editor" })).getAllByText("Preview only")).toHaveLength(2)
   })
 
   it("creates a typed Vocal Cover as two new Takes without replacing Current", async () => {

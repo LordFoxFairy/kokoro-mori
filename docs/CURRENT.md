@@ -26,7 +26,8 @@
 - Studio Arrangement 时间线现在提供 `Back to start`：它把当前试听从选区或 Clip 上下文收敛回整曲起点；如果此前已经在播放则保留播放意图，否则只重置位置，不创建第二个 transport。
 - Studio Arrangement 时间线现在提供轻量 Zoom：100% / 150% / 200% / 300% 在同一横向画布上切换，Fit 随时回到全曲视图；缩放只改变浏览器视图，不改变 playhead、AI edit range、Composition revision 或全局 Player。
 - Studio 的 Current Version 现在显式区分 `known`、`none` 与 `unknown`：只有 Project 的 `current_version_ref` 能标记 Current，Project 查询失败或缺失时不再按 Candidate 顺序猜测；unknown 状态保留试听与打开 Version，但暂不允许 `Use take`，明确返回 `null` 则提示用户选择一条 Take。
-- Arrangement 的 Mori AI 入口现在紧贴 Studio 标题与时间线：首屏直接看到 Add part / Replace section / Extend / Transform、当前 Scope、输出数量、Take lanes 去向和自然语言 Review change；Reference、Restyle/Cover、保护项等高级控制收进 More controls，避免用户先滚到页面底部寻找下一步。选区或 Clip 变化仍即时同步到同一上下文栏，Review 只生成可核对的 Change Plan。
+- Arrangement 首屏现在以时间线为主：用户先看到当前 Version、播放头、轨道、选区与固定 Player，再在时间线后方看到紧贴选区的 Mori AI Command Bar；Add part / Replace section / Extend / Transform、当前 Scope、输出数量、Take lanes 去向和自然语言 Review change 仍保持可达，Reference、Restyle/Cover、保护项等高级控制收进 More controls。选区或 Clip 变化仍即时同步到同一上下文栏，Review 只生成可核对的 Change Plan。
+- Arrangement 的 Track controls 会区分真实 owner 保存状态与浏览器 baseline：未确认 owner projection 时显示 Preview only，保存中显示 Saving…，只有 owner-confirmed composition 才显示 Saved，避免把本地或预览 mix 误报成已持久化事实。
 - 打开 Studio Version 时，全局 Player 会在不自动播放、不写入 Up next、也不覆盖既有试听的前提下预置当前 Version；用户看到的是可直接点击 Play 的暂停 transport，而不是与当前工作面割裂的 Choose a version 空状态。已有其他 Version 的试听选择会保持不变。
 - 当 Studio 打开的 Version 与 Global Player 正在试听的 Version 不同，画布标题旁会显示明确的播放上下文和 `Play this version` 动作；它不会自动抢占用户当前试听，用户确认后才把同一 transport 切换到 Studio Version。
 - Composition 中选中的 Clip 现在可以直接通过同一个全局 Player 试听：Player 按 Clip 的 source 与 offset / duration 建立 Clip audition scope；无可解析音频来源的 Clip 会保持禁用，不伪装成可播放。试听沿用全局播放、暂停、seek、loop 与媒体错误状态，不改变 Current Version、Arrangement 保存状态或 AI edit range；播放中切换 Range / Clip scope 会先换源、定位，再恢复播放意图，避免按钮显示 Playing 但实际无声。
@@ -142,7 +143,7 @@ pnpm exec vitest run --maxWorkers=1 src/features/mori/mori-workspace.test.tsx
                                   passed: 1 file / 73 tests
 pnpm exec vitest run --maxWorkers=1 src/features/mori/use-audio-recorder.test.tsx
                                   passed: 1 file / 2 tests
-pnpm test                         passed: 85 files / 683 tests
+pnpm test                         passed: 85 files / 687 tests
 pnpm build                        passed
 ```
 
