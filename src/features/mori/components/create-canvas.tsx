@@ -31,6 +31,12 @@ const PROMPT_STARTERS = [
   "A nocturnal R&B groove with soft drums, warm bass, and honest lyrics.",
   "An airy dream-pop song that feels like sunlight through a train window.",
 ] as const
+const STYLE_STARTERS = [
+  { label: "Warm acoustic", value: "warm acoustic · intimate · organic" },
+  { label: "Cinematic strings", value: "cinematic strings · slow build · spacious" },
+  { label: "Bright indie pop", value: "bright indie pop · catchy · live drums" },
+  { label: "Late-night R&B", value: "late-night R&B · soft drums · warm bass" },
+] as const
 
 export type CreationDraft = {
   prompt: string
@@ -659,6 +665,14 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
                 <div className={styles.field}>
                   <label htmlFor="mori-style">Style</label>
                   <input className={styles.textInput} id="mori-style" value={style} onChange={(event) => { setStyle(event.target.value); setInspirationRef(null); clearPlanPreview() }} />
+                  <div className={styles.styleStarterGroup} role="group" aria-label="Style starters">
+                    <span className={styles.styleStarterLabel}>Try a direction</span>
+                    <div className={styles.styleStarters}>
+                      {STYLE_STARTERS.map((starter) => <button className={styles.styleStarter} type="button" key={starter.label} aria-label={`Add style: ${starter.label.toLowerCase()}`} onClick={() => { setStyle(starter.value); setInspirationRef(null); clearPlanPreview() }}>
+                        {starter.label}
+                      </button>)}
+                    </div>
+                  </div>
                 </div>
                 <div className={styles.field}>
                   <label htmlFor="mori-duration">Duration</label>

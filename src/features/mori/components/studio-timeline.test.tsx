@@ -93,6 +93,32 @@ describe("Studio timeline", () => {
     expect(onPreviewFromPlayhead).toHaveBeenCalledTimes(1)
   })
 
+  it("returns the canonical transport to the full-song start", () => {
+    const candidate = previewCandidates[0]
+    const sections = buildStudioTimelineSections(["Intro", "Verse", "Lift", "Chorus", "Outro"], candidate.durationSeconds)
+    const selection = sections[3]
+    const onBackToStart = vi.fn()
+
+    if (selection === undefined) throw new Error("Expected a chorus timeline section")
+
+    render(
+      <StudioTimeline
+        candidate={candidate}
+        sections={sections}
+        selection={selection}
+        positionSeconds={36}
+        playing={false}
+        disabled={false}
+        onSeek={vi.fn()}
+        onSelect={vi.fn()}
+        onBackToStart={onBackToStart}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Back to start" }))
+    expect(onBackToStart).toHaveBeenCalledTimes(1)
+  })
+
   it("keeps range looping beside the one-shot preview control", () => {
     const candidate = previewCandidates[0]
     const sections = buildStudioTimelineSections(["Intro", "Verse", "Lift", "Chorus", "Outro"], candidate.durationSeconds)

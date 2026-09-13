@@ -711,6 +711,57 @@
   background: #fff;
 }
 
+.styleStarterGroup {
+  display: grid;
+  gap: 7px;
+}
+
+.styleStarterLabel {
+  color: var(--mori-faint);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.styleStarters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.styleStarter {
+  min-height: 29px;
+  padding: 0 9px;
+  border: 1px solid rgba(109, 92, 231, 0.16);
+  border-radius: 999px;
+  color: var(--mori-primary-deep);
+  font-size: 10px;
+  font-weight: 700;
+  background: linear-gradient(120deg, rgba(247, 245, 255, 0.94), rgba(255, 244, 235, 0.75));
+  transition: border-color var(--mori-motion-fast) ease, background var(--mori-motion-fast) ease, transform var(--mori-motion-fast) ease;
+}
+
+.styleStarter:hover {
+  border-color: rgba(109, 92, 231, 0.36);
+  background: linear-gradient(120deg, rgba(237, 233, 254, 0.98), rgba(255, 235, 225, 0.86));
+  transform: translateY(-1px);
+}
+
+.styleStarter:active {
+  transform: translateY(0);
+}
+
+.styleStarter:focus-visible {
+  outline: 3px solid rgba(109, 92, 231, 0.22);
+  outline-offset: 2px;
+}
+
+.styleStarter:disabled {
+  cursor: wait;
+  opacity: 0.52;
+}
+
 .lyricsInput {
   width: 100%;
   min-height: 82px;

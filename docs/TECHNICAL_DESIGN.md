@@ -62,6 +62,8 @@ Composition 当前以 `Composition { tracks[] }` 作为浏览器侧 revision fou
   且只在 transport 尚无显式用户选择时发生，不能覆盖正在试听的 Version。
 - Studio 时间线的播放入口只能调用全局 transport：`Play from playhead` 传递当前 Version 与位置，切换回整曲时清除
   Range / Clip audition scope；Mori 不在 Studio 内创建第二个 `<audio>` 或独立播放状态。
+- 时间线的 `Back to start` 同样只能调用全局 transport：回到整曲 `0` 秒并清除 Range / Clip audition scope；若用户
+  正在播放则保留播放意图，否则保持暂停，避免一个看似重置位置的按钮偷偷启动媒体。
 
 ## 6. 目标演进顺序
 

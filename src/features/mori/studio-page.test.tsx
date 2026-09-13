@@ -1033,6 +1033,28 @@ describe("Mori studio page", () => {
     expect(within(screen.getByRole("region", { name: "Global player" })).getByRole("slider", { name: "Seek through current version" })).toHaveValue("72")
   })
 
+  it("returns a scoped Studio audition to the full-song start", async () => {
+    const mediaFactory: PlayerMediaFactory = () => ({
+      setSource: vi.fn(),
+      play: vi.fn(async () => undefined),
+      pause: vi.fn(),
+      seek: vi.fn(),
+      setMuted: vi.fn(),
+      dispose: vi.fn(),
+    })
+    renderStudio(undefined, previewCandidates[0], mediaFactory)
+    await waitForCompositionToLoad()
+
+    const timeline = within(screen.getByRole("region", { name: "Arrangement editor" })).getByRole("region", { name: "Version timeline" })
+    fireEvent.click(within(timeline).getByRole("button", { name: "Loop selection" }))
+    await waitFor(() => expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("Looping ·"))
+
+    fireEvent.click(within(timeline).getByRole("button", { name: "Back to start" }))
+
+    await waitFor(() => expect(within(screen.getByRole("region", { name: "Global player" })).getByRole("slider", { name: "Seek through current version" })).toHaveValue("0"))
+    expect(within(screen.getByRole("region", { name: "Global player" })).queryByText(/Range audition/u)).not.toBeInTheDocument()
+  })
+
   it("keeps range looping in the Studio timeline and the global player", async () => {
     const mediaFactory: PlayerMediaFactory = () => ({
       setSource: vi.fn(),

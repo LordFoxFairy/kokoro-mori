@@ -1202,13 +1202,24 @@ describe("Mori workspace", () => {
     const outputType = screen.getByRole("group", { name: "Output type" })
     expect(within(outputType).getByRole("button", { name: "Song with lyrics" })).toHaveAttribute("aria-pressed", "true")
     fireEvent.click(screen.getByRole("tab", { name: /custom/i }))
-    expect(screen.getByLabelText(/style/i)).toBeInTheDocument()
+    expect(screen.getByLabelText("Style")).toBeInTheDocument()
     expect(screen.getByLabelText(/duration/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/^lyrics$/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/vocal direction/i)).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Add audio reference" })).toBeInTheDocument()
     expect(screen.getByText(/Your controls go straight to the generation queue/u)).toBeInTheDocument()
     expect(screen.queryByText(/Song Plan will map the mood/u)).not.toBeInTheDocument()
+  })
+
+  it("offers Suno-like style starters without hiding the editable style field", () => {
+    renderWorkspace()
+    fireEvent.click(screen.getByRole("tab", { name: /custom/i }))
+
+    const style = screen.getByLabelText("Style")
+    expect(screen.getByRole("group", { name: "Style starters" })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: "Add style: warm acoustic" }))
+
+    expect(style).toHaveValue("warm acoustic · intimate · organic")
   })
 
   it("prevents duplicate Custom submissions while queueing", async () => {

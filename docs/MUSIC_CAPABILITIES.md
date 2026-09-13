@@ -108,6 +108,8 @@ Audio Source 同时返回 `source_ref` 与已就绪的 `asset_ref`：前者用�
 [Studio Library](https://help.suno.com/en/articles/13670849)、[Voices](https://help.suno.com/en/articles/11362369)
 和 [Audio Uploads](https://help.suno.com/en/articles/6141569)。
 
+Custom 的 Style 字段现在补充少量可一键加入的 starter（Warm acoustic、Cinematic strings、Bright indie pop、Late-night R&B）。它们只是可编辑的 provider-neutral 文本快捷输入，用户点击后仍能继续修改，不能被误读成已选中的模型、Persona 或远端 Style 资产。
+
 ## 3. Studio 的 AI 操作模型
 
 Studio 只暴露四个稳定的一层意图，复杂参数进入下一层：
@@ -146,6 +148,10 @@ sound、Restyle/Cover、Voice 与 Keep stable 等会改变请求的控制放入 
 `Review change` 仍只创建可编辑 Change Plan，用户确认后才 Generate。选中 Clip 时额外显示 Clip context，并明确
 它不会悄悄改变 AI scope。这样用户的连续决策是“当前 Version → 改哪里 → 怎么改 → 先看计划 → 比较 Takes”，而不是
 滚动页面寻找一组彼此割裂的工具。
+
+时间线 transport 也保持连续：`Back to start`、`Play from playhead`、选区试听和选区循环都只调用全局 Player；从
+选区或 Clip 回到整曲时会清除 audition scope，不在 Studio 内创建第二个 `<audio>`，从而让底部固定播放器、playhead
+和实际媒体始终表达同一个播放上下文。
 
 Take Lanes 中的 **Open Version、Playing、Selected Take、Current Version** 是四个独立状态。`Use take` 不再是
 前端本地切换：它通过 Project-scoped、带幂等键和期望旧 Current 的 compare-and-set 命令提交。等待期间旧 Current

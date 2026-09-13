@@ -11,6 +11,7 @@
 - 全局 Player 的 `Up next` 在桌面作为上下文面板，在移动端作为 modal sheet；支持 Escape、焦点恢复和移动端焦点循环。
 - Studio 固定为工具 / 画布两栏；Project Version history 统一由 Studio 顶部 Versions 动作打开上下文抽屉，所有桌面宽度与移动端保持同一入口，不在宽度临界点切换第三栏，也不挤压画布或替代 Global Player。
 - Create → Generation Queue → Candidate → Project / Version → Studio → Take Lanes → Current Version 的本地闭环。
+- Create 的 Custom controls 现在提供少量 Suno-like Style starters：点击只把策展方向写入可编辑 Style 字段，仍由用户决定最终文本，不增加第二套 provider 或模型契约。
 - Generation Queue 的成功结果现在提供明确的 `Review directions in Project` 去向；Project Overview 接受 `generation_ref` 深链，只加载该次运行的方向并复用同一试听、Set as current 与 Open Studio 决策链，避免生成完成后把用户留在孤立队列里。
 - Studio Arrangement / Lyrics / Stems / Finish 工作面，以及 Add part、Replace section、Extend、Transform（Restyle / Cover）的一层 AI 意图模型。
 - Arrangement 的未保存编辑不再因切换 Studio 工具或 Version 静默丢失：Arrangement editor 保持 mounted，切换 Lyrics / Voice & stems、打开另一 Version 或返回 Project 前会出现 Keep editing / Discard & continue / Save & continue；保存仍通过原 Composition revision 与幂等键，冲突提供 Refresh arrangement，浏览器刷新/关闭也会触发离开提醒，Global Player 不受保护层影响。
@@ -20,6 +21,7 @@
 - Studio Export 已支持 Full song 或当前 Arrangement 选区：默认仍导出整曲，用户在同一窗口选择 `Selected range` 后，选区的 `start_ms` / `end_ms` 会随 Version 或 Mix Revision 一起进入异步 render request 与 snapshot；多轨 / MIDI 仍未暴露。
 - Studio Arrangement 的当前 AI edit range 现在可以直接通过全局 Player 试听：Preview selection 复用同一个媒体通道，从选区起点开始并在终点自动暂停、回到起点；Loop selection 仍复用同一 transport，在 timeupdate / ended 时回到选区起点并保持播放；修改选区、切换 Version、离开 Arrangement 或媒体失败都会清除 loop 状态。Player 显示 Range audition / Looping 上下文，普通整曲试听、Take 切换和 AI Scope 仍保持独立，不创建第二个播放器。
 - Studio Arrangement 时间线现在提供 `Play from playhead`：它只驱动全局 Player 的同一 transport，从当前可见 playhead 开始试听；如果当前正在试听选区或 Clip，会先回到整曲上下文再播放，避免时间线按钮、底部 Player 与实际音频状态割裂。
+- Studio Arrangement 时间线现在提供 `Back to start`：它把当前试听从选区或 Clip 上下文收敛回整曲起点；如果此前已经在播放则保留播放意图，否则只重置位置，不创建第二个 transport。
 - Studio 的 Current Version 现在显式区分 `known`、`none` 与 `unknown`：只有 Project 的 `current_version_ref` 能标记 Current，Project 查询失败或缺失时不再按 Candidate 顺序猜测；unknown 状态保留试听与打开 Version，但暂不允许 `Use take`，明确返回 `null` 则提示用户选择一条 Take。
 - Arrangement 的 Mori AI 入口现在紧贴 Studio 标题与时间线：首屏直接看到 Add part / Replace section / Extend / Transform、当前 Scope、输出数量、Take lanes 去向和自然语言 Review change；Reference、Restyle/Cover、保护项等高级控制收进 More controls，避免用户先滚到页面底部寻找下一步。选区或 Clip 变化仍即时同步到同一上下文栏，Review 只生成可核对的 Change Plan。
 - 打开 Studio Version 时，全局 Player 会在不自动播放、不写入 Up next、也不覆盖既有试听的前提下预置当前 Version；用户看到的是可直接点击 Play 的暂停 transport，而不是与当前工作面割裂的 Choose a version 空状态。已有其他 Version 的试听选择会保持不变。
@@ -134,7 +136,7 @@ pnpm exec vitest run --maxWorkers=1 src/features/mori/mori-workspace.test.tsx
                                   passed: 1 file / 73 tests
 pnpm exec vitest run --maxWorkers=1 src/features/mori/use-audio-recorder.test.tsx
                                   passed: 1 file / 2 tests
-pnpm test                         passed: 85 files / 675 tests
+pnpm test                         passed: 85 files / 678 tests
 pnpm build                        passed
 ```
 
