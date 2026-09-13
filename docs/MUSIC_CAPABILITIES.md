@@ -608,6 +608,8 @@ BFF 必须按受信会话校验该 asset 与用户可见 Mori 资源的关联，
 - Take Lanes 现在提供最小的试听后反馈：每个 Take 可标记 `Works` / `Needs work`，负面反馈可归因于 Sound quality、
   Timing feels off 或 Too many layers；结果按 Project / Generation / Candidate 保持在当前 Studio 会话内，明确不写入
   Taste、不改变 Current，也不让评价替代 `Use take`。`Too many layers` 可直接打开 Voice & stems，保持“试听 → 归因 → 修层”的连续路径。
+- Project Review 复用同一套反馈控件，把 `Works` / `Needs work` 前移到 generation-scoped 候选列表；它按
+  Project / Generation / Candidate 隔离会话状态，不写入 Project 事实、不改变 Current，也不要求用户先进入 Studio 才能完成首次筛选。
 - 多 Take 对比入口固定在 Studio 顶栏：`Takes · N` 只在确有多个候选时出现，点击后滚动并聚焦 Take Lanes，用户不必猜测或
   先穿过时间线；`scroll-margin` 同时避开全局 Player 的固定底部区域，移动端仍保留可读的 Takes 标签和数量。
 - Version history 已完成响应式连续性：所有桌面宽度与移动端都通过 Studio header 抽屉访问；固定工具 / 画布两栏，
@@ -620,7 +622,7 @@ Composition 的第一组 provider-neutral 纯函数已落地到 `composition.ts`
 
 - 已完成可拖选时间范围、动态时间标尺、全局播放头与段落联动；Custom range 直接复用既有
   provider-neutral `time_range` 契约，调整范围后会使旧的 Review Plan 失效，避免错用过期选区。
-- 当前选区提供 `Preview selection` 与 `Loop selection`：仍只使用全局 Player 的单一 transport；前者从选区起点试听并在终点暂停、回到起点，后者在 timeupdate / ended 时回到起点并保持播放。时间线另有 `Play from playhead`，从当前时间位置进入整曲试听；如果当前是 Range / Clip audition，会先清除局部 scope，再由同一 transport 开始播放。Player 回显 Range audition / Looping 上下文，修改选区、切换整曲/Take、离开 Arrangement 或媒体失败会清除 loop，试听不会改写 Current Version、Open Version 或 AI Scope；播放中的试听切换 scope 会自动重新加载并继续播放。
+- 当前选区提供 `Preview selection` 与 `Loop selection`：仍只使用全局 Player 的单一 transport；前者从选区起点试听并在终点暂停、回到起点，后者在 timeupdate / ended 时回到起点并保持播放。时间线另有 `Play from playhead` 与 `Back to start`，前者从当前时间位置进入整曲试听，后者从 Range / Clip audition 回到整曲 0 秒；如果当前是 Range / Clip audition，都会先清除局部 scope，再由同一 transport 开始播放。Player 回显 Range audition / Looping 上下文，修改选区、切换整曲/Take、离开 Arrangement 或媒体失败会清除 loop，试听不会改写 Current Version、Open Version 或 AI Scope；播放中的试听切换 scope 会自动重新加载并继续播放。时间线的 Zoom / Fit 只改变横向画布视图，不改变这些 transport 事实。
 - 选中 Composition Clip 后可用 `Preview clip`：复用全局 Player，以 Clip 的 `source_ref`、`offset_ms` 与 `duration_ms` 解析可播放来源和 Clip audition scope；来源不存在或时间范围无效时按钮禁用。Clip audition 同样支持全局 Loop 控制。该行为只改变当前试听上下文，不写入 Composition、不替换 Current Version，也不新增第二个播放器。
 - Lyrics 已完成按 Verse / Chorus / Whole lyrics 组织的 Rewrite、Continue、Find rhyme、Restructure
   界面闭环，并支持 Review、可编辑 Suggestion、Apply 与 Undo；Lyrics Revision contract、client、response parser、

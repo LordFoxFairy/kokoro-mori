@@ -1,8 +1,10 @@
 import { AlertCircle, ArrowUpRight, AudioWaveform, Check, LoaderCircle, Play, RotateCcw, Sparkles, X } from "lucide-react"
 import Link from "next/link"
+import { useState } from "react"
 import type { Candidate } from "./domain"
 import type { CurrentVersionCommitRun } from "./current-version"
 import { Waveform } from "./components/waveform"
+import { emptyStudioTakeReview, StudioTakeReview, type StudioTakeReviewState } from "./components/studio-take-review"
 import { formatMusicTime } from "./format-music-time"
 import styles from "./mori-workspace.module.css"
 
@@ -41,8 +43,13 @@ export function ProjectOverviewDirections({
   onDismissCurrentVersion,
   onRetryCandidates,
 }: ProjectOverviewDirectionsProps) {
+  const [reviewByKey, setReviewByKey] = useState<Record<string, StudioTakeReviewState>>({})
   const showCurrentVersionCommitNotice = currentVersionCommitRun.status === "failed" || currentVersionCommitRun.status === "succeeded"
   const isGenerationScoped = generationRef !== null
+
+  function updateCandidateReview(candidate: Candidate, review: StudioTakeReviewState) {
+    setReviewByKey((current) => ({ ...current, [candidateReviewKey(projectRef, generationRef, candidate)]: review }))
+  }
 
   return <section className={`${styles.overviewSection} ${styles.overviewDirections}`} aria-labelledby="directions-heading">
     <div className={styles.overviewSectionHeader}>
@@ -73,6 +80,7 @@ export function ProjectOverviewDirections({
           const isCurrent = candidate.versionRef === currentVersionRef
           const isCommitting = currentVersionCommitRun.status === "saving"
           const isCommitTarget = isCommitting && currentVersionCommitRun.targetVersionRef === candidate.versionRef
+          const reviewKey = candidateReviewKey(projectRef, generationRef, candidate)
           return <article
             aria-current={isCurrent ? "true" : undefined}
             aria-label={`${candidate.title}${isCurrent ? ", current version" : ""}`}
@@ -94,6 +102,11 @@ export function ProjectOverviewDirections({
             </button>}
             <Link className={styles.overviewOpenLink} href={`/projects/${encodeURIComponent(projectRef)}/studio/${encodeURIComponent(candidate.versionRef)}`} aria-label={`Open Studio for ${candidate.title}`}><ArrowUpRight size={15} /></Link>
           </div>
+          <StudioTakeReview
+            takeTitle={candidate.title}
+            review={reviewByKey[reviewKey] ?? emptyStudioTakeReview}
+            onChange={(review) => updateCandidateReview(candidate, review)}
+          />
         </article>
         })}
     </div> : <div className={styles.libraryEmpty}>
@@ -103,4 +116,8 @@ export function ProjectOverviewDirections({
       <Link className={styles.ghostButton} href={`/create?project_ref=${encodeURIComponent(projectRef)}`}>{isGenerationScoped ? "Try another direction" : "Create a direction"}</Link>
     </div>}
   </section>
+}
+
+function candidateReviewKey(projectRef: string, generationRef: string | null, candidate: Candidate): string {
+  return `${projectRef}:${generationRef ?? candidate.generationRef}:${candidate.candidateRef}`
 }

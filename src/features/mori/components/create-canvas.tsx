@@ -21,7 +21,6 @@ import { useMoriApp } from "./mori-app-provider"
 import { useAudioRecorder } from "../use-audio-recorder"
 import styles from "../mori-workspace.module.css"
 
-const DEFAULT_PROMPT = "A warm, late-night track for the drive home, slowly opening into sunrise."
 const creativeUploadRecoveryKey = "mori-creative-upload-recovery-v1"
 const PROMPT_STARTERS = [
   "A bright indie-pop chorus for a friend who is starting over.",
@@ -115,7 +114,7 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
   const referenceUploadAbortRef = useRef<AbortController | null>(null)
   const referenceUploadNameRef = useRef<string | null>(initialReferenceAudio?.name ?? null)
   const generationSubmitFingerprintsRef = useRef(new Set<string>())
-  const [prompt, setPrompt] = useState(() => initialPrompt?.trim() || DEFAULT_PROMPT)
+  const [prompt, setPrompt] = useState(() => initialPrompt?.trim() || "")
   const [lyrics, setLyrics] = useState("")
   const [lyricsModeOverride, setLyricsModeOverride] = useState<LyricsMode | null>(initialVoiceProfile === null ? null : "lyrics")
   const [style, setStyle] = useState(initialInspiration?.style ?? "Dream pop · intimate · organic")

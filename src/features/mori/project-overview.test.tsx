@@ -214,6 +214,15 @@ describe("Mori project overview", () => {
     expect(screen.getByRole("button", { name: "Play Window Seat · Review" })).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Play Should stay hidden" })).not.toBeInTheDocument()
     expect(screen.getByText("1 candidate")).toBeInTheDocument()
+
+    const review = screen.getByLabelText("Review Window Seat · Review")
+    fireEvent.click(within(review).getByRole("button", { name: "Like Window Seat · Review" }))
+    expect(within(review).getByRole("button", { name: "Like Window Seat · Review" })).toHaveAttribute("aria-pressed", "true")
+    expect(within(review).getByText("Saved for this session · does not change Current")).toBeInTheDocument()
+
+    fireEvent.click(within(review).getByRole("button", { name: "Dislike Window Seat · Review" }))
+    fireEvent.click(within(review).getByRole("button", { name: "Timing feels off" }))
+    expect(within(review).getByRole("button", { name: "Timing feels off" })).toHaveAttribute("aria-pressed", "true")
   })
 
   it("recognizes the playing Version across Candidate projections without restarting it", async () => {

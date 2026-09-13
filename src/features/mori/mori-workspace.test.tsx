@@ -177,6 +177,14 @@ describe("Mori workspace", () => {
     expect(screen.getByRole("tab", { name: /smart/i })).toHaveAttribute("aria-selected", "true")
   })
 
+  it("starts a new creation with an empty idea and a guiding placeholder", () => {
+    renderWorkspace()
+
+    const idea = screen.getByRole("textbox", { name: "Song idea" })
+    expect(idea).toHaveValue("")
+    expect(idea).toHaveAttribute("placeholder", expect.stringContaining("warm"))
+  })
+
   it("restores the active generation reference after a refresh without restoring prompt contents", async () => {
     localStorage.setItem("mori-generation-queue-v1", JSON.stringify({
       version: 1,
