@@ -582,6 +582,23 @@ describe("Mori studio page", () => {
     expect(takeLanes).toHaveFocus()
   })
 
+  it("keeps Take feedback attached to its candidate while the open Version changes", async () => {
+    renderStudio()
+
+    const takeLanes = screen.getByRole("region", { name: "Take lanes" })
+    const afterglow = within(takeLanes).getByRole("article", { name: "Take 2: First Light · Afterglow" })
+    fireEvent.click(within(afterglow).getByRole("button", { name: "Dislike First Light · Afterglow" }))
+    fireEvent.click(within(afterglow).getByRole("button", { name: "Too many layers" }))
+    expect(within(afterglow).getByRole("button", { name: "Open Voice & stems" })).toBeInTheDocument()
+
+    fireEvent.click(within(takeLanes).getByRole("button", { name: "Select First Light take" }))
+    await waitFor(() => expect(screen.getByRole("article", { name: "Take 1: First Light" }).className).toContain("takeLaneSelected"))
+
+    const reopenedAfterglow = within(screen.getByRole("region", { name: "Take lanes" })).getByRole("article", { name: "Take 2: First Light · Afterglow" })
+    expect(within(reopenedAfterglow).getByRole("button", { name: "Dislike First Light · Afterglow" })).toHaveAttribute("aria-pressed", "true")
+    expect(within(reopenedAfterglow).getByRole("button", { name: "Too many layers" })).toHaveAttribute("aria-pressed", "true")
+  })
+
   it("switches between arrangement, lyrics, and stems as one keyboard-accessible workspace", () => {
     renderStudio()
 

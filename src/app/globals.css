@@ -3,6 +3,8 @@
   --mori-surface: #ffffff;
   --mori-surface-soft: #f8f6fb;
   --mori-foreground: #25252a;
+  --mori-text: var(--mori-foreground);
+  --mori-ink: var(--mori-foreground);
   --mori-muted: #77747b;
   --mori-faint: #a4a0a7;
   --mori-border: #eae7e3;
@@ -23,6 +25,8 @@
   --mori-radius-lg: 24px;
   --mori-motion-fast: 140ms;
   --mori-motion-base: 220ms;
+  --mori-motion-medium: var(--mori-motion-base);
+  --mori-motion-normal: var(--mori-motion-base);
   --mori-font-sans: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --mori-font-display: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
   --mori-font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;

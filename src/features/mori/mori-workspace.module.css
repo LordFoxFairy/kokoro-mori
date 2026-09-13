@@ -119,6 +119,10 @@
   to { transform: rotate(360deg); }
 }
 
+.spinner {
+  animation: linkCopySpin 780ms linear infinite;
+}
+
 .iconButton svg {
   width: 16px;
   height: 16px;
@@ -128,6 +132,11 @@
   width: min(820px, 100%);
   margin: 0 auto;
   padding: 58px 30px 34px;
+}
+
+.createSurface,
+.homeContent {
+  min-height: 100%;
 }
 
 .eyebrow {

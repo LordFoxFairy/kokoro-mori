@@ -1,0 +1,135 @@
+.review {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(105, 95, 127, 0.1);
+}
+
+.reviewRow,
+.reviewActions,
+.reasonOptions {
+  display: flex;
+  align-items: center;
+}
+
+.reviewRow {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.reviewPrompt,
+.sessionNote {
+  color: var(--mori-muted);
+  font-size: 9px;
+}
+
+.reviewPrompt {
+  font-weight: 700;
+}
+
+.reviewActions,
+.reasonOptions {
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.reviewButton,
+.reasonButton,
+.openStemsButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--mori-border);
+  border-radius: 8px;
+  color: var(--mori-muted);
+  font-size: 9px;
+  font-weight: 750;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.reviewButton:hover,
+.reviewButton:focus-visible,
+.reasonButton:hover,
+.reasonButton:focus-visible,
+.openStemsButton:hover,
+.openStemsButton:focus-visible {
+  border-color: rgba(109, 92, 231, 0.25);
+  color: var(--mori-primary-deep);
+  background: var(--mori-primary-soft);
+}
+
+.reviewButtonPositive,
+.reasonButtonSelected {
+  border-color: rgba(61, 155, 114, 0.22);
+  color: var(--mori-success);
+  background: rgba(240, 251, 246, 0.94);
+}
+
+.reviewButtonNegative {
+  border-color: rgba(196, 121, 90, 0.24);
+  color: #925e4e;
+  background: rgba(255, 244, 236, 0.94);
+}
+
+.reasonGroup {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 9px 10px;
+  border: 1px solid rgba(196, 121, 90, 0.14);
+  border-radius: 10px;
+  background: rgba(255, 250, 246, 0.72);
+}
+
+.reasonGroup legend {
+  padding: 0 4px;
+  color: var(--mori-faint);
+  font-size: 8px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.reasonButton {
+  min-height: 27px;
+}
+
+.openStemsButton {
+  justify-self: start;
+  border-color: rgba(109, 92, 231, 0.16);
+  color: var(--mori-primary-deep);
+}
+
+.sessionNote {
+  color: var(--mori-faint);
+  font-size: 8px;
+}
+
+.reviewButton:focus-visible,
+.reasonButton:focus-visible,
+.openStemsButton:focus-visible {
+  outline: 3px solid rgba(109, 92, 231, 0.18);
+  outline-offset: 2px;
+}
+
+@media (max-width: 700px) {
+  .reviewRow {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .reviewActions {
+    width: 100%;
+  }
+
+  .reviewButton,
+  .reasonButton,
+  .openStemsButton {
+    min-height: 44px;
+    padding-inline: 11px;
+  }
+}

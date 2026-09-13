@@ -599,6 +599,9 @@ BFF 必须按受信会话校验该 asset 与用户可见 Mori 资源的关联，
   Review，并通过精确 snapshot 匹配后进入 Take Lanes。
 - Take Lanes 的 `Use take` 已接入独立 Current Version command：非乐观提交、CAS 冲突、精确响应核对、失败保留
   旧 Current、可重试故障复用幂等键；Version history 从 Project 确认的 Current 派生，不再按列表顺序猜测。
+- Take Lanes 现在提供最小的试听后反馈：每个 Take 可标记 `Works` / `Needs work`，负面反馈可归因于 Sound quality、
+  Timing feels off 或 Too many layers；结果按 Project / Generation / Candidate 保持在当前 Studio 会话内，明确不写入
+  Taste、不改变 Current，也不让评价替代 `Use take`。`Too many layers` 可直接打开 Voice & stems，保持“试听 → 归因 → 修层”的连续路径。
 - 多 Take 对比入口固定在 Studio 顶栏：`Takes · N` 只在确有多个候选时出现，点击后滚动并聚焦 Take Lanes，用户不必猜测或
   先穿过时间线；`scroll-margin` 同时避开全局 Player 的固定底部区域，移动端仍保留可读的 Takes 标签和数量。
 - Version history 已完成响应式连续性：宽屏保留项目第三栏，1280px 与移动端通过 Studio header 抽屉访问；
