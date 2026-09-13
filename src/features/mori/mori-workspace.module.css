@@ -343,18 +343,44 @@
   border-top: 1px solid #f1efec;
 }
 
+.promptHintGroup {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+}
+
 .promptHint {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
   color: var(--mori-muted);
   font-size: 11px;
+}
+
+.promptHint span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .promptHint svg {
   width: 15px;
   height: 15px;
   color: var(--mori-primary);
+}
+
+.composerValidationNotice {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--mori-error);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.composerValidationNotice svg {
+  flex: 0 0 auto;
 }
 
 .generateButton {

@@ -1222,7 +1222,7 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, generationRef: 
               <div className={styles.breadcrumb}>
                 <span>Workspace</span><span>/</span>
                 {workspaceProjectRef === null
-                  ? <strong>New project</strong>
+                  ? <strong>New song</strong>
                   : <><Link className={styles.breadcrumbLink} href={`/projects/${encodeURIComponent(workspaceProjectRef)}`}>{workspaceProjectTitle}</Link><span>/</span><strong>New direction</strong></>}
               </div>
               <div className={styles.headerActions}>

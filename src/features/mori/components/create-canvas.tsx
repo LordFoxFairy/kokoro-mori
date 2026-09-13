@@ -523,6 +523,11 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (planBusy || recordingStatus !== "idle" || isReferenceUploadActive(referenceUploadStatus)) return
+    if (mode === "smart" && prompt.trim() === "") {
+      setPlanValidationError("Add a song idea before creating.")
+      promptRef.current?.focus()
+      return
+    }
     if (mode === "smart" && planPreview === null) {
       setPlanSubmitAttempted(false)
       setPlanDirtySinceSave(false)
@@ -654,6 +659,8 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
             onChange={(event) => { setPrompt(event.target.value); clearPlanPreview() }}
             placeholder={t("promptPlaceholder")}
             aria-label="Song idea"
+            aria-describedby={planPreview === null && planValidationError !== null ? "mori-create-validation" : undefined}
+            aria-invalid={planPreview === null && planValidationError !== null ? true : undefined}
             maxLength={1000}
           />
           <span className={styles.srOnly} role="status" aria-live="polite">{promptAnnouncement}</span>
@@ -727,7 +734,10 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
           />
 
           <div className={styles.composerBottom}>
-            <div className={styles.promptHint}><AudioLines /> <span>{mode === "smart" ? "Review an editable plan before creating." : "Your controls go straight to the generation queue."} · Creates 2 alternatives.</span></div>
+            <div className={styles.promptHintGroup}>
+              <div className={styles.promptHint}><AudioLines /> <span>{mode === "smart" ? "Review an editable plan before creating." : "Your controls go straight to the generation queue."} · Creates 2 alternatives.</span></div>
+              {planValidationError !== null ? <div className={styles.composerValidationNotice} id="mori-create-validation" role="alert"><AlertCircle size={14} aria-hidden="true" /><span>{planValidationError}</span></div> : null}
+            </div>
             <button className={styles.generateButton} type="submit" disabled={recordingStatus !== "idle" || isReferenceUploadActive(referenceUploadStatus) || generationSubmissionPendingForCurrentDraft}>
               {generationSubmissionPendingForCurrentDraft ? <><LoaderCircle /> Queueing…</> : <><Sparkles /> {mode === "smart" ? "Review plan" : t("generateLabel")}</>}
             </button>

@@ -156,7 +156,7 @@ describe("Mori workspace", () => {
     expect(screen.getByRole("navigation", { name: "Mori" })).toBeInTheDocument()
     expect(screen.getByRole("heading", { name: /make something you can feel/i })).toBeInTheDocument()
     expect(screen.getByRole("tab", { name: /smart/i })).toHaveAttribute("aria-selected", "true")
-    expect(screen.getByText("New project", { selector: "strong" })).toBeInTheDocument()
+    expect(screen.getByText("New song", { selector: "strong" })).toBeInTheDocument()
     expect(screen.queryByRole("link", { name: "First Light" })).not.toBeInTheDocument()
     expect(screen.queryByRole("dialog", { name: /generation queue/i })).not.toBeInTheDocument()
     expect(screen.getByRole("region", { name: /global player/i })).toBeInTheDocument()
@@ -183,6 +183,16 @@ describe("Mori workspace", () => {
     const idea = screen.getByRole("textbox", { name: "Song idea" })
     expect(idea).toHaveValue("")
     expect(idea).toHaveAttribute("placeholder", expect.stringContaining("warm"))
+  })
+
+  it("keeps an empty creation in place and explains that a song idea is required", () => {
+    renderWorkspace()
+
+    fireEvent.click(screen.getByRole("button", { name: "Review plan" }))
+
+    expect(screen.queryByRole("region", { name: "Song plan preview" })).not.toBeInTheDocument()
+    expect(screen.getByRole("alert")).toHaveTextContent("Add a song idea before creating.")
+    expect(screen.getByRole("textbox", { name: "Song idea" })).toHaveFocus()
   })
 
   it("restores the active generation reference after a refresh without restoring prompt contents", async () => {
@@ -1519,6 +1529,7 @@ describe("Mori workspace", () => {
     }
 
     render(<MoriAppProvider><MoriWorkspace projectRef="project_live_plan_retry" api={api} /></MoriAppProvider>)
+    fireEvent.change(screen.getByRole("textbox", { name: "Song idea" }), { target: { value: "A patient song for finding the way home." } })
     fireEvent.submit(screen.getByRole("textbox", { name: "Song idea" }).closest("form") as HTMLFormElement)
     fireEvent.click(screen.getByRole("button", { name: "Create from this plan" }))
 
@@ -1570,6 +1581,7 @@ describe("Mori workspace", () => {
     }
 
     render(<MoriAppProvider><MoriWorkspace projectRef="project_live_plan_conflict" api={api} /></MoriAppProvider>)
+    fireEvent.change(screen.getByRole("textbox", { name: "Song idea" }), { target: { value: "A patient song for finding the way home." } })
     fireEvent.submit(screen.getByRole("textbox", { name: "Song idea" }).closest("form") as HTMLFormElement)
     fireEvent.click(screen.getByRole("button", { name: "Create from this plan" }))
 
@@ -1618,6 +1630,7 @@ describe("Mori workspace", () => {
     }
 
     render(<MoriAppProvider><MoriWorkspace projectRef="project_live_generation_retry" api={api} /></MoriAppProvider>)
+    fireEvent.change(screen.getByRole("textbox", { name: "Song idea" }), { target: { value: "A patient song for finding the way home." } })
     fireEvent.submit(screen.getByRole("textbox", { name: "Song idea" }).closest("form") as HTMLFormElement)
     fireEvent.click(screen.getByRole("button", { name: "Create from this plan" }))
 
@@ -1682,6 +1695,7 @@ describe("Mori workspace", () => {
     const api = createWorkspaceApi({ createSongPlan, createGeneration })
 
     render(<MoriAppProvider><MoriWorkspace projectRef="project_live_without_workspace" api={api} /></MoriAppProvider>)
+    fireEvent.change(screen.getByRole("textbox", { name: "Song idea" }), { target: { value: "A patient song for finding the way home." } })
     fireEvent.submit(screen.getByRole("textbox", { name: "Song idea" }).closest("form") as HTMLFormElement)
     fireEvent.click(screen.getByRole("button", { name: "Create from this plan" }))
 
@@ -1694,6 +1708,7 @@ describe("Mori workspace", () => {
   it("validates a reviewed Song Plan before sending a creation command", () => {
     const onGenerate = vi.fn<(draft: CreationDraft) => void>()
     render(<MoriAppProvider><CreateCanvas projectRef="project_preview_first_light" mode="smart" onModeChange={() => undefined} onGenerate={onGenerate} /></MoriAppProvider>)
+    fireEvent.change(screen.getByRole("textbox", { name: "Song idea" }), { target: { value: "A patient song for finding the way home." } })
     fireEvent.submit(screen.getByRole("textbox", { name: "Song idea" }).closest("form") as HTMLFormElement)
     fireEvent.click(screen.getByRole("button", { name: "Edit plan" }))
     fireEvent.change(screen.getByRole("textbox", { name: "Plan mood" }), { target: { value: "" } })
@@ -1803,6 +1818,7 @@ describe("Mori workspace", () => {
     )
 
     fireEvent.click(screen.getByRole("button", { name: "Instrumental" }))
+    fireEvent.change(screen.getByRole("textbox", { name: "Song idea" }), { target: { value: "A patient instrumental for finding the way home." } })
     fireEvent.submit(screen.getByRole("textbox", { name: "Song idea" }).closest("form") as HTMLFormElement)
     fireEvent.click(screen.getByRole("button", { name: "Edit plan" }))
 
@@ -2618,6 +2634,7 @@ describe("Mori workspace", () => {
       </MoriAppProvider>,
     )
 
+    fireEvent.change(screen.getByRole("textbox", { name: "Song idea" }), { target: { value: "A patient song for finding the way home." } })
     fireEvent.submit(screen.getByRole("textbox", { name: "Song idea" }).closest("form") as HTMLFormElement)
     fireEvent.click(screen.getByRole("button", { name: "Create from this plan" }))
     await waitFor(() => expect(screen.getByRole("button", { name: "Cancel generation" })).toBeInTheDocument())
