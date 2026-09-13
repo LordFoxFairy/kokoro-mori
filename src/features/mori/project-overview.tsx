@@ -8,7 +8,7 @@ import { createMoriApiClient } from "@/lib/mori-api-client"
 import type { Candidate, Project } from "./domain"
 import { listAllMoriCandidates } from "./candidate-pagination"
 import { useMoriApp } from "./components/mori-app-provider"
-import { previewCandidates, previewProject } from "./preview-data"
+import { previewCandidates, previewGeneration, previewProject } from "./preview-data"
 import { useProjectCurrentVersionCommit } from "./project-current-version"
 import { ProjectOverviewDirections, type CandidateProjectionStatus } from "./project-overview-directions"
 import { ProjectOverviewSongPlan } from "./project-overview-song-plan"
@@ -18,26 +18,31 @@ import styles from "./mori-workspace.module.css"
 
 type ProjectOverviewPageContentProps = {
   projectRef?: string
+  generationRef?: string
   api?: Pick<MoriApi, "getProject" | "listCandidates"> & Partial<Pick<MoriApi, "getProjectWorkspace" | "putCurrentVersion">>
 }
 
-export function ProjectOverviewPageContent({ projectRef = previewProject.projectRef, api }: ProjectOverviewPageContentProps = {}) {
+export function ProjectOverviewPageContent({ projectRef = previewProject.projectRef, generationRef, api }: ProjectOverviewPageContentProps = {}) {
   const { playerCandidate, playing, selectPlayerCandidate, setPlaying, setProjectContext, clearProjectContext } = useMoriApp()
   const defaultApi = useMemo(() => createMoriApiClient(), [])
   const overviewApi = api ?? defaultApi
   const initialProjectRef = projectRef.trim() || previewProject.projectRef
+  const initialGenerationRef = generationRef?.trim() || null
+  const usesPreviewCandidates = initialProjectRef === previewProject.projectRef
+    && (initialGenerationRef === null || initialGenerationRef === previewGeneration.generationRef)
   const [projectState, setProjectState] = useState(() => ({
     projectRef: initialProjectRef,
     value: initialProjectRef === previewProject.projectRef ? previewProject : createUnavailableProject(initialProjectRef),
   }))
   const [candidateState, setCandidateState] = useState(() => ({
     projectRef: initialProjectRef,
-    value: initialProjectRef === previewProject.projectRef ? previewCandidates : [],
-    status: (initialProjectRef === previewProject.projectRef ? "ready" : "loading") as CandidateProjectionStatus,
+    generationRef: initialGenerationRef,
+    value: usesPreviewCandidates ? previewCandidates : [],
+    status: (usesPreviewCandidates ? "ready" : initialProjectRef === previewProject.projectRef ? "unavailable" : "loading") as CandidateProjectionStatus,
   }))
   const [candidateRequestVersion, setCandidateRequestVersion] = useState(0)
   const requestedProject = projectState.projectRef === initialProjectRef ? projectState.value : createUnavailableProject(initialProjectRef)
-  const currentCandidateState = candidateState.projectRef === initialProjectRef
+  const currentCandidateState = candidateState.projectRef === initialProjectRef && candidateState.generationRef === initialGenerationRef
     ? candidateState
     : { projectRef: initialProjectRef, value: [], status: "loading" as const }
   const candidates = currentCandidateState.value
@@ -80,7 +85,7 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
       setProjectState((current) => current.projectRef === initialProjectRef
         ? { ...current, value: { ...current.value, currentVersionRef: candidate.versionRef } }
         : current)
-      setCandidateState((current) => current.projectRef === initialProjectRef
+      setCandidateState((current) => current.projectRef === initialProjectRef && current.generationRef === initialGenerationRef
         ? { ...current, value: current.value.map((item) => ({ ...item, isCurrent: item.versionRef === candidate.versionRef })) }
         : current)
     },
@@ -90,6 +95,12 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
     const requestedProjectRef = projectRef.trim() || previewProject.projectRef
     const currentVersionConfirmationEpoch = currentVersionConfirmationEpochsRef.current.get(requestedProjectRef) ?? 0
     let disposed = false
+
+    if (usesPreviewCandidates) {
+      return () => {
+        disposed = true
+      }
+    }
 
     void overviewApi.getProject(requestedProjectRef).then((projectResponse) => {
       if (disposed) return
@@ -107,13 +118,16 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
       // Keep the deterministic preview or neutral project shell visible while the BFF is unavailable.
     })
 
-    void listAllMoriCandidates(overviewApi, requestedProjectRef).then((candidates) => {
+    void listAllMoriCandidates(overviewApi, requestedProjectRef, initialGenerationRef ?? undefined).then((candidates) => {
       if (disposed) return
-      const nextCandidates = candidates.map(toDomainCandidate)
-      setCandidateState({ projectRef: requestedProjectRef, value: nextCandidates, status: "ready" })
+      const scopedCandidates = initialGenerationRef === null
+        ? candidates
+        : candidates.filter((candidate) => candidate.generation_ref === initialGenerationRef)
+      const nextCandidates = scopedCandidates.map(toDomainCandidate)
+      setCandidateState({ projectRef: requestedProjectRef, generationRef: initialGenerationRef, value: nextCandidates, status: "ready" })
     }).catch(() => {
-      if (!disposed && requestedProjectRef !== previewProject.projectRef) {
-        setCandidateState({ projectRef: requestedProjectRef, value: [], status: "unavailable" })
+      if (!disposed) {
+        setCandidateState({ projectRef: requestedProjectRef, generationRef: initialGenerationRef, value: [], status: "unavailable" })
       }
       // Never attach preview candidates to a live project when its projection is unavailable.
     })
@@ -121,7 +135,7 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
     return () => {
       disposed = true
     }
-  }, [candidateRequestVersion, currentVersionConfirmationEpochsRef, overviewApi, projectRef])
+  }, [candidateRequestVersion, currentVersionConfirmationEpochsRef, initialGenerationRef, overviewApi, projectRef, usesPreviewCandidates])
 
   function playCandidate(candidate: (typeof previewCandidates)[number]) {
     if (playerCandidate?.versionRef === candidate.versionRef) {
@@ -158,6 +172,7 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
           projectRef={requestedProject.projectRef}
           candidateCount={requestedProject.candidateCount}
           candidates={candidates}
+          generationRef={initialGenerationRef}
           candidateStatus={candidateStatus}
           currentVersionRef={requestedProject.currentVersionRef}
           currentVersionCommitRun={currentVersionCommitRun}
@@ -168,7 +183,7 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
           onRetryCurrentVersion={retryCurrentVersionCommit}
           onDismissCurrentVersion={dismissCurrentVersionCommit}
           onRetryCandidates={() => {
-            setCandidateState({ projectRef: initialProjectRef, value: [], status: "loading" })
+            setCandidateState({ projectRef: initialProjectRef, generationRef: initialGenerationRef, value: [], status: "loading" })
             setCandidateRequestVersion((version) => version + 1)
           }}
         />

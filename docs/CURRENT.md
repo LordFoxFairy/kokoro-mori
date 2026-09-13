@@ -11,6 +11,7 @@
 - 全局 Player 的 `Up next` 在桌面作为上下文面板，在移动端作为 modal sheet；支持 Escape、焦点恢复和移动端焦点循环。
 - Studio 固定为工具 / 画布两栏；Project Version history 统一由 Studio 顶部 Versions 动作打开上下文抽屉，所有桌面宽度与移动端保持同一入口，不在宽度临界点切换第三栏，也不挤压画布或替代 Global Player。
 - Create → Generation Queue → Candidate → Project / Version → Studio → Take Lanes → Current Version 的本地闭环。
+- Generation Queue 的成功结果现在提供明确的 `Review directions in Project` 去向；Project Overview 接受 `generation_ref` 深链，只加载该次运行的方向并复用同一试听、Set as current 与 Open Studio 决策链，避免生成完成后把用户留在孤立队列里。
 - Studio Arrangement / Lyrics / Stems / Finish 工作面，以及 Add part、Replace section、Extend、Transform（Restyle / Cover）的一层 AI 意图模型。
 - Arrangement 的未保存编辑不再因切换 Studio 工具或 Version 静默丢失：Arrangement editor 保持 mounted，切换 Lyrics / Voice & stems、打开另一 Version 或返回 Project 前会出现 Keep editing / Discard & continue / Save & continue；保存仍通过原 Composition revision 与幂等键，冲突提供 Refresh arrangement，浏览器刷新/关闭也会触发离开提醒，Global Player 不受保护层影响。
 - Arrangement 的状态文案现在与数据事实一致：加载中显示 Loading，空 owner projection 显示 Baseline only，不可用 projection 显示 Preview only，不再在未确认 owner 数据时显示 Saved。
@@ -132,7 +133,7 @@ pnpm exec vitest run --maxWorkers=1 src/features/mori/mori-workspace.test.tsx
                                   passed: 1 file / 73 tests
 pnpm exec vitest run --maxWorkers=1 src/features/mori/use-audio-recorder.test.tsx
                                   passed: 1 file / 2 tests
-pnpm test                         passed: 83 files / 660 tests
+pnpm test                         passed: 85 files / 673 tests
 pnpm build                        passed
 ```
 

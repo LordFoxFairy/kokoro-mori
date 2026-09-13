@@ -53,16 +53,21 @@ Prompt / Upload
   -> export / share / publish
 ```
 
+Mori 的浏览器主干现在把 `Generation Queue -> Project Review` 作为显式交接：生成成功后，Queue 提供带
+`generation_ref` 的 Project 入口；Project 只读取该次运行的候选，用户可以试听、`Set as current`，再进入对应
+Studio。这样“生成结果属于哪个 Project、来自哪次运行、下一步如何继续”不依赖全局 active 指针，也不把全部历史
+候选混在一次结果里。
+
 ## 3. 当前能力矩阵
 
 | Suno 用户任务 | Mori 当前状态 | 当前证据 | 对齐决策 |
 |---|---|---|---|
 | Simple / Custom 生成歌词歌或纯音乐 | 浏览器已对齐 | `create-canvas.tsx`、`mori-workspace.tsx`；Smart 额外提供可编辑 Song Plan，Song idea 提供 `Surprise me` 起点 | 保留 Mori 的 Approach / Output 分离，不复制 Suno 表单层级；随机起点只辅助输入，不改变生成契约 |
-| 每次生成多个候选并持续跟踪 | 浏览器已对齐 | Generation Queue、snapshot、SSE、cancel、retry、Candidate projection | Runtime 以真实 provider integration smoke 为完成门槛 |
+| 每次生成多个候选并持续跟踪 | 浏览器已对齐 | Generation Queue、snapshot、SSE、cancel、retry、Candidate projection；成功后可通过 `generation_ref` 深链进入 Project Review | Runtime 以真实 provider integration smoke 为完成门槛 |
 | 上传 / 录制音频并跨项目复用 | 部分对齐 | Create 与 Studio Arrangement 都支持浏览器麦克风录音；录音复用 Creative Source Upload Session，上传中可取消，失败可复用当前录音重试，持续 processing 轮询，ready 后作为 Audio Source 进入 Dock，并由用户明确 Insert 到选中 Track / Range；Create 保留刷新恢复 upload metadata，preview Studio 使用本地 Blob，live Studio 使用现有 upload contract | **P0：正式 Creative Source Ingest** |
 | Cover / Extend / Replace / Remaster | 浏览器已对齐 | Arrangement Change Plan、typed snapshot、Take Lanes、Finish Remaster | 补真实执行验收；Mori 的 Balanced / Bold 是自有语言，不冒充 Suno 原词 |
 | Add vocals / Add instrumental / Lyrics revision | 浏览器 foundation 已对齐 | Voice & stems、Lyrics Revision、Studio 的 owner-confirmed Lyrics Draft seam | Lyrics runtime 由 Workspace owner 接通并做 recovery smoke；浏览器不再以 localStorage 冒充保存 |
-| Take audition / Review / Commit / Current Version | 浏览器已对齐 | Open、Playing、Selected、Current 分离；Preview A/B 有本地可播放 fixture；Take 评价按 project + generation + candidate 保持在 Studio 会话内；Project-scoped CAS；Project Current 投影区分 known / none / unknown，不在查询失败时按候选顺序猜测 | **P0：Durable Project Memory 的 Version / Revision 一致性** |
+| Take audition / Review / Commit / Current Version | 浏览器已对齐 | Open、Playing、Selected、Current 分离；Queue 成功结果可回到 generation-scoped Project Review；Preview A/B 有本地可播放 fixture；Take 评价按 project + generation + candidate 保持在 Studio 会话内；Project-scoped CAS；Project Current 投影区分 known / none / unknown，不在查询失败时按候选顺序猜测 | **P0：Durable Project Memory 的 Version / Revision 一致性** |
 | 保存版本、刷新或跨设备继续 | 浏览器 foundation 已对齐 | Current/Mix/Release 有契约；Workspace projection、Open Version、Studio Lyrics Draft、Lyrics Revision、Stem Separation、Finish Artwork / Export 与 Create Smart Song Plan 的 owner-confirmed 保存/任务恢复状态机已落地浏览器 | **P0 继续：真实 BFF runtime recovery 与 Song Plan 历史** |
 | Library / Workspace 搜索与素材复用 | 浏览器 foundation 已对齐 | Projects、Versions、Audio/Voice/Inspiration Sources、cursor/search/filter；Create 与 Studio AI / Add vocals 共用 availability gate，Studio Asset Dock v1 支持当前 Track / Range 内搜索、Audio 试听、点击插入与直接拖到任意 Track / 时间位置（100ms 对齐并按版本边界裁剪），Voice / Inspiration 明确 reference-only；live source loading / unavailable 时不展示 preview fixture，Voice / Inspiration picker 显示状态并提供 Retry，ready 后可在当前 Dock Load more | 接入真实 Source 生命周期、媒体投影与拖放后的 owner Placement |
 | Song Editor 的 Split / Crop / Fade / Move / Remove | 浏览器 foundation 已对齐 | `Composition { tracks[] }`、轨道上下文选择、空轨道选择、可读的 Take / Source Clip 标签、Clip 时间范围摘要、Clip 与 AI Scope 的显式分离、Clip 编辑面板与 Move / Trim / Split / Crop / Fade / Insert / Remove 原语、同轨与跨轨直接拖动、目标轨 drop 状态、Undo / Redo 已存在；选中 Clip 可点击 Remove，也可用 Delete / Backspace 快捷键；候选 Take 可以插入已选时间范围；新建 placement 使用唯一 opaque `clip_ref`；选中 Clip 可复用全局 Player 按 source offset / duration 试听；命令均有源 `track_ref`、可选 `target_track_ref`、revision 与 owner seam，Studio 已能加载非空多轨 projection；owner projection 加载期间编辑被锁定并显式标记 busy；无 owner projection 时保留 Main track fallback；未保存 Composition 在切换工具、Version 或离开 Project 前会进入显式保护层，Arrangement editor 保持 mounted，不静默丢失 pending commands | P1 接入真实 Composition owner persistence，并扩展 Track / Placement projection |

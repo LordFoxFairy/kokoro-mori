@@ -56,6 +56,10 @@ describe("Mori generation queue", () => {
       "href",
       "/projects/project_queue_1/studio/version_preview_first_light_b",
     )
+    expect(screen.getByRole("link", { name: "Review directions in Project" })).toHaveAttribute(
+      "href",
+      "/projects/project_queue_1?generation_ref=generation_preview_first_light",
+    )
   })
 
   it("routes Studio changes back to Studio instead of switching Create context", () => {

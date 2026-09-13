@@ -961,6 +961,35 @@
   line-height: 1.45;
 }
 
+.reviewProjectLink {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 36px;
+  margin-top: 12px;
+  padding: 0 10px;
+  border: 1px solid rgba(109, 92, 231, 0.18);
+  border-radius: 10px;
+  color: var(--mori-primary);
+  font-size: 10px;
+  font-weight: 750;
+  text-decoration: none;
+  background: rgba(255, 255, 255, 0.72);
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.reviewProjectLink:hover {
+  border-color: rgba(109, 92, 231, 0.34);
+  background: #fff;
+  transform: translateY(-1px);
+}
+
+.reviewProjectLink:focus-visible {
+  outline: 3px solid rgba(109, 92, 231, 0.2);
+  outline-offset: 2px;
+}
+
 .queueActions {
   display: flex;
   align-items: center;

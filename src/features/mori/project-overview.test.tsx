@@ -149,6 +149,73 @@ describe("Mori project overview", () => {
     expect(within(songPlan).queryByText("102 BPM")).not.toBeInTheDocument()
   })
 
+  it("opens a generation-scoped review without leaking directions from another run", async () => {
+    const listCandidates = vi.fn<MoriApi["listCandidates"]>(async (requestedProjectRef, options) => {
+      expect(requestedProjectRef).toBe("project_generation_review")
+      expect(options).toEqual({ generation_ref: "generation_review_1" })
+      return {
+        data: {
+        candidates: [
+          {
+            candidate_ref: "candidate_generation_review",
+            generation_ref: "generation_review_1",
+            version_ref: "version_generation_review",
+            project_ref: "project_generation_review",
+            title: "Window Seat · Review",
+            duration_seconds: 140,
+            audio_asset_ref: "asset_generation_review",
+            waveform_asset_ref: "waveform_generation_review",
+            style_tags: ["soft motion"],
+            created_at: "2026-09-02T12:00:00.000Z",
+          },
+          {
+            candidate_ref: "candidate_other_generation",
+            generation_ref: "generation_other",
+            version_ref: "version_other_generation",
+            project_ref: "project_generation_review",
+            title: "Should stay hidden",
+            duration_seconds: 140,
+            audio_asset_ref: "asset_other_generation",
+            waveform_asset_ref: "waveform_other_generation",
+            style_tags: ["other"],
+            created_at: "2026-09-02T12:00:00.000Z",
+          },
+        ],
+        next_cursor: null,
+        },
+        meta: { request_id: "request_generation_review_candidates" },
+      }
+    })
+    const api = {
+      getProject: async () => ({
+        data: {
+          project_ref: "project_generation_review",
+          title: "Window Seat",
+          description: "A quiet, forward-moving sketch.",
+          current_version_ref: null,
+          candidate_count: 2,
+          last_activity_at: "2026-09-02T12:00:00.000Z",
+        },
+        meta: { request_id: "request_generation_review_project" },
+      }),
+      listCandidates,
+    }
+
+    render(
+      <MoriAppProvider>
+        <MoriCatalogShell activeKey="projects" ariaLabel="Project overview">
+          <ProjectOverviewPageContent projectRef="project_generation_review" generationRef="generation_review_1" api={api} />
+        </MoriCatalogShell>
+      </MoriAppProvider>,
+    )
+
+    expect(await screen.findByRole("heading", { name: "Review this generation" })).toBeInTheDocument()
+    expect(listCandidates).toHaveBeenCalledWith("project_generation_review", { generation_ref: "generation_review_1" })
+    expect(screen.getByRole("button", { name: "Play Window Seat · Review" })).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Play Should stay hidden" })).not.toBeInTheDocument()
+    expect(screen.getByText("1 candidate")).toBeInTheDocument()
+  })
+
   it("recognizes the playing Version across Candidate projections without restarting it", async () => {
     const media = createMediaHarness()
     const api: Pick<MoriApi, "getProject" | "listCandidates"> = {

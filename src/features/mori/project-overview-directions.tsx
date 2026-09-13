@@ -12,6 +12,7 @@ type ProjectOverviewDirectionsProps = {
   projectRef: string
   candidateCount: number
   candidates: Candidate[]
+  generationRef?: string | null
   candidateStatus: CandidateProjectionStatus
   currentVersionRef: string | null
   currentVersionCommitRun: CurrentVersionCommitRun
@@ -28,6 +29,7 @@ export function ProjectOverviewDirections({
   projectRef,
   candidateCount,
   candidates,
+  generationRef = null,
   candidateStatus,
   currentVersionRef,
   currentVersionCommitRun,
@@ -40,14 +42,15 @@ export function ProjectOverviewDirections({
   onRetryCandidates,
 }: ProjectOverviewDirectionsProps) {
   const showCurrentVersionCommitNotice = currentVersionCommitRun.status === "failed" || currentVersionCommitRun.status === "succeeded"
+  const isGenerationScoped = generationRef !== null
 
   return <section className={`${styles.overviewSection} ${styles.overviewDirections}`} aria-labelledby="directions-heading">
     <div className={styles.overviewSectionHeader}>
-      <div><h2 id="directions-heading">Latest directions</h2><p>Listen and compare before choosing what to change next.</p></div>
+      <div><h2 id="directions-heading">{isGenerationScoped ? "Review this generation" : "Latest directions"}</h2><p>{isGenerationScoped ? "Compare this run before choosing what to change next." : "Listen and compare before choosing what to change next."}</p></div>
       <span>{candidateStatus === "loading"
         ? "Loading"
         : candidateStatus === "unavailable"
-          ? `${candidateCount} saved`
+          ? isGenerationScoped ? "Retry available" : `${candidateCount} saved`
           : `${candidates.length} ${candidates.length === 1 ? "candidate" : "candidates"}`}</span>
     </div>
     {showCurrentVersionCommitNotice ? <div className={`${styles.overviewCandidateCommitNotice} ${currentVersionCommitRun.status === "failed" ? styles.overviewCandidateCommitNoticeError : styles.overviewCandidateCommitNoticeSuccess}`} role={currentVersionCommitRun.status === "failed" ? "alert" : "status"}>
@@ -95,9 +98,9 @@ export function ProjectOverviewDirections({
         })}
     </div> : <div className={styles.libraryEmpty}>
       <div className={styles.libraryEmptyIcon}><Sparkles size={18} /></div>
-      <strong>No directions yet</strong>
-      <p>Shape the first direction for this project, then compare versions here.</p>
-      <Link className={styles.ghostButton} href={`/create?project_ref=${encodeURIComponent(projectRef)}`}>Create a direction</Link>
+      <strong>{isGenerationScoped ? "No directions from this run" : "No directions yet"}</strong>
+      <p>{isGenerationScoped ? "This run has no playable direction yet. Return to Create and try another idea." : "Shape the first direction for this project, then compare versions here."}</p>
+      <Link className={styles.ghostButton} href={`/create?project_ref=${encodeURIComponent(projectRef)}`}>{isGenerationScoped ? "Try another direction" : "Create a direction"}</Link>
     </div>}
   </section>
 }
