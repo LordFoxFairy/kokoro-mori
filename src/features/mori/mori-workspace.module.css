@@ -4396,6 +4396,10 @@
   transform: translateY(-1px);
 }
 
+.currentProjectCompact {
+  display: none;
+}
+
 .currentProjectHeader,
 .currentProjectBody {
   display: flex;
@@ -4568,6 +4572,31 @@
 
 .railCollapsed .currentProjectCard {
   display: none;
+}
+
+.railCollapsed .currentProjectCompact {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  margin: 16px auto 0;
+  place-items: center;
+  border: 1px solid rgba(109, 92, 231, 0.16);
+  border-radius: 11px;
+  color: #40388c;
+  text-decoration: none;
+  background: linear-gradient(145deg, rgba(246, 243, 255, 0.9), rgba(255, 248, 244, 0.88));
+  box-shadow: 0 7px 15px rgba(109, 92, 231, 0.09);
+}
+
+.railCollapsed .currentProjectCompact:hover,
+.railCollapsed .currentProjectCompact:focus-visible {
+  border-color: rgba(109, 92, 231, 0.34);
+  background: linear-gradient(145deg, rgba(241, 237, 255, 0.98), rgba(255, 244, 237, 0.94));
+}
+
+.railCollapsed .currentProjectCompact:focus-visible {
+  outline: 3px solid rgba(109, 92, 231, 0.2);
+  outline-offset: 2px;
 }
 
 .railCollapsed .railFooterLinkActive {

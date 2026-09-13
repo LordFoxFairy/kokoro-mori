@@ -63,6 +63,32 @@ describe("Mori application navigation", () => {
     expect(projectLink).toHaveTextContent("2 directions")
   })
 
+  it("keeps a compact active Project anchor when the rail is collapsed", async () => {
+    const originalWidth = window.innerWidth
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 1280 })
+    localStorage.removeItem("mori.rail.v1")
+
+    try {
+      render(
+        <MoriAppProvider>
+          <MoriCatalogShell activeKey="projects" ariaLabel="Project overview" projectRef="project_live_1" projectTitle="Window Seat" projectMeta="2 directions">
+            <div>Project overview</div>
+          </MoriCatalogShell>
+        </MoriAppProvider>,
+      )
+
+      await waitFor(() => expect(screen.getByRole("button", { name: "Collapse sidebar" })).toBeInTheDocument())
+      fireEvent.click(screen.getByRole("button", { name: "Collapse sidebar" }))
+
+      const projectLink = await screen.findByRole("link", { name: "Open current project Window Seat" })
+      expect(projectLink).toHaveAttribute("data-project-context", "compact")
+      expect(projectLink).toHaveAttribute("title", expect.stringContaining("2 directions"))
+    } finally {
+      localStorage.removeItem("mori.rail.v1")
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: originalWidth })
+    }
+  })
+
   it("keeps the empty global player quiet until a Version is chosen", () => {
     render(
       <MoriAppProvider>

@@ -64,6 +64,8 @@ Composition 当前以 `Composition { tracks[] }` 作为浏览器侧 revision fou
   Range / Clip audition scope；Mori 不在 Studio 内创建第二个 `<audio>` 或独立播放状态。
 - 时间线的 `Back to start` 同样只能调用全局 transport：回到整曲 `0` 秒并清除 Range / Clip audition scope；若用户
   正在播放则保留播放意图，否则保持暂停，避免一个看似重置位置的按钮偷偷启动媒体。
+- 时间线的 Zoom / Fit 是 Arrangement 的 browser-private view state：只调整时间线画布的横向可视宽度，不能改写
+  playhead、AI edit range、Composition revision、Take、Open Version 或全局 Player；100% 视图是默认值，离开 Studio 后不作为作品事实保存。
 
 ## 6. 目标演进顺序
 

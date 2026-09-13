@@ -1,6 +1,6 @@
 "use client"
 
-import { useId } from "react"
+import { useId, useState } from "react"
 import type { Candidate } from "../domain"
 import {
   buildStudioTimelineTicks,
@@ -13,8 +13,10 @@ import {
 import { Waveform } from "./waveform"
 import { CompositionLane, type CompositionInsertSource } from "./composition-lane"
 import type { CompositionClip, CompositionTrack, CompositionTrackMix } from "../composition"
-import { Pause, Play, Repeat, SkipBack } from "lucide-react"
+import { Maximize2, Pause, Play, Repeat, SkipBack, ZoomIn, ZoomOut } from "lucide-react"
 import styles from "./studio-timeline.module.css"
+
+const timelineZoomLevels = [1, 1.5, 2, 3] as const
 
 type StudioTimelineProps = {
   candidate: Candidate
@@ -54,6 +56,7 @@ type StudioTimelineProps = {
 
 export function StudioTimeline({ candidate, sections, selection, positionSeconds, playing, disabled, compositionDisabled = false, onSeek, onSelect, onBackToStart, onPreviewFromPlayhead, onPreviewSelection, previewingSelection = false, onToggleLoopSelection, loopingSelection = false, compositionTracks = [], selectedClipRef, selectedTrackRef, onSelectTrack, onSelectClip, onEditClip, onMoveClip, onDeleteClip, onDuplicateClip, onEditTrackMix, onPreviewClip, previewingClip = false, isClipPreviewable, insertSources, onInsertClip, dropSources, onDropSource, resolveClipLabel }: StudioTimelineProps) {
   const sectionHintId = useId()
+  const [timelineZoom, setTimelineZoom] = useState<(typeof timelineZoomLevels)[number]>(1)
   const durationMs = Math.max(minimumStudioTimelineSelectionMs, Math.round(candidate.durationSeconds * 1_000))
   const positionMs = Math.max(0, Math.min(durationMs, Math.round(positionSeconds * 1_000)))
   const activeSection = findStudioTimelineSection(sections, positionMs)
@@ -64,6 +67,7 @@ export function StudioTimeline({ candidate, sections, selection, positionSeconds
   const selectionStartSeconds = Math.round(selection.startMs / 1_000)
   const selectionEndSeconds = Math.round(selection.endMs / 1_000)
   const minimumSelectionSeconds = minimumStudioTimelineSelectionMs / 1_000
+  const timelineZoomIndex = timelineZoomLevels.indexOf(timelineZoom)
 
   const selectCustomRange = (startSeconds: number, endSeconds: number) => {
     onSelect(createStudioTimelineRange(startSeconds * 1_000, endSeconds * 1_000, durationMs))
@@ -76,88 +80,107 @@ export function StudioTimeline({ candidate, sections, selection, positionSeconds
           <span>Version timeline</span>
           <h3>Arrangement</h3>
         </div>
-        <div className={styles.playbackContext} aria-live="polite">
-          <strong>Playhead · {activeSection?.label ?? "Track"}</strong>
-          <span>{formatStudioTimelineTime(positionMs)} / {formatStudioTimelineTime(durationMs)}</span>
-          {onBackToStart || onPreviewFromPlayhead || onPreviewSelection || onToggleLoopSelection ? <div className={styles.playbackActions}>
-            {onBackToStart ? <button className={styles.previewSelection} type="button" onClick={onBackToStart} disabled={disabled} aria-label="Back to start">
-              <SkipBack size={12} fill="currentColor" /> Back to start
-            </button> : null}
-            {onPreviewFromPlayhead ? <button className={styles.previewSelection} type="button" onClick={onPreviewFromPlayhead} disabled={disabled} aria-pressed={playing} aria-label={playing ? "Pause playback" : "Play from playhead"}>
-              {playing ? <Pause size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" />} {playing ? "Pause" : "Play from playhead"}
-            </button> : null}
-            {onPreviewSelection ? <button className={styles.previewSelection} type="button" onClick={onPreviewSelection} disabled={disabled} aria-pressed={previewingSelection}>
-              {previewingSelection ? <Pause size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" />} {previewingSelection ? "Pause selection" : "Preview selection"}
-            </button> : null}
-            {onToggleLoopSelection ? <button className={`${styles.previewSelection} ${styles.loopSelection}`} type="button" onClick={onToggleLoopSelection} disabled={disabled} aria-pressed={loopingSelection} aria-label={loopingSelection ? "Stop looping selection" : "Loop selection"}>
-              <Repeat size={12} /> {loopingSelection ? "Looping selection" : "Loop selection"}
-            </button> : null}
-          </div> : null}
+        <div className={styles.headerSide}>
+          <div className={styles.timelineViewControls} role="group" aria-label="Timeline view">
+            <span>View</span>
+            <button className={styles.zoomButton} type="button" onClick={() => setTimelineZoom(timelineZoomLevels[Math.max(0, timelineZoomIndex - 1)] ?? 1)} disabled={timelineZoomIndex <= 0} aria-label="Zoom out timeline" title="Zoom out">
+              <ZoomOut size={12} />
+            </button>
+            <output className={styles.zoomValue} aria-label="Timeline zoom" role="status">{Math.round(timelineZoom * 100)}%</output>
+            <button className={styles.zoomButton} type="button" onClick={() => setTimelineZoom(timelineZoomLevels[Math.min(timelineZoomLevels.length - 1, timelineZoomIndex + 1)] ?? 3)} disabled={timelineZoomIndex >= timelineZoomLevels.length - 1} aria-label="Zoom in timeline" title="Zoom in">
+              <ZoomIn size={12} />
+            </button>
+            <button className={styles.fitButton} type="button" onClick={() => setTimelineZoom(1)} disabled={timelineZoom === 1} aria-label="Fit timeline" title="Fit timeline">
+              <Maximize2 size={12} /> Fit
+            </button>
+          </div>
+          <div className={styles.playbackContext} aria-live="polite">
+            <strong>Playhead · {activeSection?.label ?? "Track"}</strong>
+            <span>{formatStudioTimelineTime(positionMs)} / {formatStudioTimelineTime(durationMs)}</span>
+            {onBackToStart || onPreviewFromPlayhead || onPreviewSelection || onToggleLoopSelection ? <div className={styles.playbackActions}>
+              {onBackToStart ? <button className={styles.previewSelection} type="button" onClick={onBackToStart} disabled={disabled} aria-label="Back to start">
+                <SkipBack size={12} fill="currentColor" /> Back to start
+              </button> : null}
+              {onPreviewFromPlayhead ? <button className={styles.previewSelection} type="button" onClick={onPreviewFromPlayhead} disabled={disabled} aria-pressed={playing} aria-label={playing ? "Pause playback" : "Play from playhead"}>
+                {playing ? <Pause size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" />} {playing ? "Pause" : "Play from playhead"}
+              </button> : null}
+              {onPreviewSelection ? <button className={styles.previewSelection} type="button" onClick={onPreviewSelection} disabled={disabled} aria-pressed={previewingSelection}>
+                {previewingSelection ? <Pause size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" />} {previewingSelection ? "Pause selection" : "Preview selection"}
+              </button> : null}
+              {onToggleLoopSelection ? <button className={`${styles.previewSelection} ${styles.loopSelection}`} type="button" onClick={onToggleLoopSelection} disabled={disabled} aria-pressed={loopingSelection} aria-label={loopingSelection ? "Stop looping selection" : "Loop selection"}>
+                <Repeat size={12} /> {loopingSelection ? "Looping selection" : "Loop selection"}
+              </button> : null}
+            </div> : null}
+          </div>
         </div>
       </header>
 
-      <div className={styles.ruler} aria-hidden="true">
-        {ticks.map((tick) => <span key={tick}>{formatStudioTimelineTime(tick)}</span>)}
-      </div>
+      <div className={styles.timelineViewport}>
+        <div className={styles.timelineCanvas} style={{ minWidth: `${timelineZoom * 100}%` }}>
+          <div className={styles.ruler} aria-hidden="true">
+            {ticks.map((tick) => <span key={tick}>{formatStudioTimelineTime(tick)}</span>)}
+          </div>
 
-      <div className={styles.waveformStage}>
-        <div className={styles.waveform}><Waveform seed={candidate.waveformSeed} stretch progress={positionMs / durationMs} /></div>
-        <span
-          className={styles.selectionOverlay}
-          style={{ left: `${selectionLeft}%`, width: `${selectionWidth}%` }}
-          aria-hidden="true"
-        />
-        <span className={styles.playhead} style={{ left: `${playheadLeft}%` }} aria-hidden="true"><i /></span>
-        <input
-          className={styles.playheadInput}
-          type="range"
-          min={0}
-          max={candidate.durationSeconds}
-          step={1}
-          value={Math.round(positionMs / 1_000)}
-          aria-label="Timeline playhead"
-          aria-valuetext={`${formatStudioTimelineTime(positionMs)} in ${activeSection?.label ?? "track"}`}
-          disabled={disabled}
-          onChange={(event) => onSeek(Number(event.target.value))}
-        />
-      </div>
+          <div className={styles.waveformStage}>
+            <div className={styles.waveform}><Waveform seed={candidate.waveformSeed} stretch progress={positionMs / durationMs} /></div>
+            <span
+              className={styles.selectionOverlay}
+              style={{ left: `${selectionLeft}%`, width: `${selectionWidth}%` }}
+              aria-hidden="true"
+            />
+            <span className={styles.playhead} style={{ left: `${playheadLeft}%` }} aria-hidden="true"><i /></span>
+            <input
+              className={styles.playheadInput}
+              type="range"
+              min={0}
+              max={candidate.durationSeconds}
+              step={1}
+              value={Math.round(positionMs / 1_000)}
+              aria-label="Timeline playhead"
+              aria-valuetext={`${formatStudioTimelineTime(positionMs)} in ${activeSection?.label ?? "track"}`}
+              disabled={disabled}
+              onChange={(event) => onSeek(Number(event.target.value))}
+            />
+          </div>
 
-      {compositionTracks.length > 0 ? <CompositionLane tracks={compositionTracks} durationMs={durationMs} disabled={disabled || compositionDisabled} selectedClipRef={selectedClipRef} selectedTrackRef={selectedTrackRef} onSelectTrack={onSelectTrack} onSelectClip={onSelectClip} onEditClip={onEditClip} onMoveClip={onMoveClip} onDeleteClip={onDeleteClip} onDuplicateClip={onDuplicateClip} onEditTrackMix={onEditTrackMix} onPreviewClip={onPreviewClip} previewingClip={previewingClip} isClipPreviewable={isClipPreviewable} insertSources={insertSources} onInsertClip={onInsertClip} dropSources={dropSources} onDropSource={onDropSource} resolveClipLabel={resolveClipLabel} /> : null}
+          {compositionTracks.length > 0 ? <CompositionLane tracks={compositionTracks} durationMs={durationMs} disabled={disabled || compositionDisabled} selectedClipRef={selectedClipRef} selectedTrackRef={selectedTrackRef} onSelectTrack={onSelectTrack} onSelectClip={onSelectClip} onEditClip={onEditClip} onMoveClip={onMoveClip} onDeleteClip={onDeleteClip} onDuplicateClip={onDuplicateClip} onEditTrackMix={onEditTrackMix} onPreviewClip={onPreviewClip} previewingClip={previewingClip} isClipPreviewable={isClipPreviewable} insertSources={insertSources} onInsertClip={onInsertClip} dropSources={dropSources} onDropSource={onDropSource} resolveClipLabel={resolveClipLabel} /> : null}
 
-      <div className={styles.segmentRail}>
-        <div
-          className={styles.segmentScroller}
-          role="region"
-          aria-label="Arrangement sections"
-          aria-describedby={sectionHintId}
-          tabIndex={0}
-        >
-          <div className={styles.segments}>
-            {sections.map((section) => {
-              const selected = selection.id === section.id
-              const underPlayhead = activeSection?.id === section.id
-              return (
-                <button
-                  className={styles.segment}
-                  type="button"
-                  aria-pressed={selected}
-                  aria-label={`Select ${section.label} section`}
-                  data-playhead={underPlayhead ? "true" : "false"}
-                  disabled={disabled}
-                  key={section.id}
-                  onClick={() => onSelect(section)}
-                  style={{ flexGrow: section.weight }}
-                >
-                  <span>{section.label}</span>
-                </button>
-              )
-            })}
+          <div className={styles.segmentRail}>
+            <div
+              className={styles.segmentScroller}
+              role="region"
+              aria-label="Arrangement sections"
+              aria-describedby={sectionHintId}
+              tabIndex={0}
+            >
+              <div className={styles.segments}>
+                {sections.map((section) => {
+                  const selected = selection.id === section.id
+                  const underPlayhead = activeSection?.id === section.id
+                  return (
+                    <button
+                      className={styles.segment}
+                      type="button"
+                      aria-pressed={selected}
+                      aria-label={`Select ${section.label} section`}
+                      data-playhead={underPlayhead ? "true" : "false"}
+                      disabled={disabled}
+                      key={section.id}
+                      onClick={() => onSelect(section)}
+                      style={{ flexGrow: section.weight }}
+                    >
+                      <span>{section.label}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+            <p className={styles.segmentScrollHint} id={sectionHintId}>
+              <span className={styles.segmentScrollHintIcon} aria-hidden="true">↔</span>
+              <span>Swipe horizontally to see all sections</span>
+            </p>
           </div>
         </div>
-        <p className={styles.segmentScrollHint} id={sectionHintId}>
-          <span className={styles.segmentScrollHintIcon} aria-hidden="true">↔</span>
-          <span>Swipe horizontally to see all sections</span>
-        </p>
       </div>
 
       <footer className={styles.rangeEditor}>

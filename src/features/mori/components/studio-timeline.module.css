@@ -37,6 +37,86 @@
   letter-spacing: -0.025em;
 }
 
+.headerSide {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 14px;
+  min-width: 0;
+}
+
+.timelineViewControls {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 28px;
+  padding: 3px;
+  border: 1px solid rgba(109, 92, 231, 0.12);
+  border-radius: 9px;
+  color: var(--mori-faint);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.timelineViewControls > span {
+  padding: 0 5px 0 4px;
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.zoomButton,
+.fitButton {
+  display: inline-flex;
+  min-width: 24px;
+  min-height: 24px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 6px;
+  color: var(--mori-muted);
+  background: transparent;
+  font: inherit;
+  font-size: 9px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.fitButton {
+  gap: 4px;
+  padding-inline: 7px;
+  border-left: 1px solid rgba(109, 92, 231, 0.1);
+  color: var(--mori-primary-deep);
+}
+
+.zoomButton:hover:not(:disabled),
+.zoomButton:focus-visible,
+.fitButton:hover:not(:disabled),
+.fitButton:focus-visible {
+  color: var(--mori-primary-deep);
+  background: rgba(238, 234, 255, 0.86);
+}
+
+.zoomButton:focus-visible,
+.fitButton:focus-visible {
+  outline: 3px solid rgba(109, 92, 231, 0.16);
+  outline-offset: 1px;
+}
+
+.zoomButton:disabled,
+.fitButton:disabled {
+  cursor: default;
+  opacity: 0.38;
+}
+
+.zoomValue {
+  min-width: 34px;
+  color: var(--mori-foreground);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
 .playbackContext {
   display: grid;
   justify-items: end;
@@ -112,6 +192,20 @@
   color: var(--mori-faint);
   font-size: 10px;
   font-variant-numeric: tabular-nums;
+}
+
+.timelineViewport {
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-inline: contain;
+  scrollbar-color: rgba(109, 92, 231, 0.3) transparent;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+.timelineCanvas {
+  width: 100%;
 }
 
 .waveformStage {
@@ -328,6 +422,13 @@
     align-items: flex-start;
   }
 
+  .headerSide {
+    width: 100%;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
   .playbackContext {
     min-width: 0;
   }
@@ -346,12 +447,7 @@
   }
 
   .segmentScroller {
-    overflow-x: auto;
-    overflow-y: hidden;
-    overscroll-behavior-inline: contain;
-    scrollbar-color: rgba(109, 92, 231, 0.3) transparent;
-    scrollbar-width: thin;
-    -webkit-overflow-scrolling: touch;
+    overflow: visible;
   }
 
   .segmentScroller:focus-visible {

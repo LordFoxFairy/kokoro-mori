@@ -74,7 +74,16 @@ export function MoriRail({ activeKey = "create", collapsed = false, projectRef, 
         ))}
       </div>
 
-      {activeProjectRef !== null ? <Link
+      {activeProjectRef !== null ? collapsed ? <Link
+        className={styles.currentProjectCompact}
+        href={`/projects/${encodeURIComponent(activeProjectRef)}`}
+        aria-label={`Open current project ${activeProjectTitle}`}
+        title={`${activeProjectTitle} · ${activeProjectMeta}`}
+        data-project-context="compact"
+        onClick={onNavigate}
+      >
+        <span className={styles.currentProjectCompactArtwork} aria-hidden="true"><AudioLines size={17} /></span>
+      </Link> : <Link
         className={styles.currentProjectCard}
         href={`/projects/${encodeURIComponent(activeProjectRef)}`}
         aria-label={`Open current project ${activeProjectTitle}`}

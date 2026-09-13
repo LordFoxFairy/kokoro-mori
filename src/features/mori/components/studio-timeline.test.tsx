@@ -119,6 +119,39 @@ describe("Studio timeline", () => {
     expect(onBackToStart).toHaveBeenCalledTimes(1)
   })
 
+  it("offers zoom controls without changing the selected arrangement range", () => {
+    const candidate = previewCandidates[0]
+    const sections = buildStudioTimelineSections(["Intro", "Verse", "Lift", "Chorus", "Outro"], candidate.durationSeconds)
+    const selection = sections[3]
+
+    if (selection === undefined) throw new Error("Expected a chorus timeline section")
+
+    render(
+      <StudioTimeline
+        candidate={candidate}
+        sections={sections}
+        selection={selection}
+        positionSeconds={36}
+        playing={false}
+        disabled={false}
+        onSeek={vi.fn()}
+        onSelect={vi.fn()}
+      />,
+    )
+
+    const timeline = screen.getByRole("region", { name: "Version timeline" })
+    const zoom = within(timeline).getByRole("group", { name: "Timeline view" })
+    expect(within(zoom).getByRole("status", { name: "Timeline zoom" })).toHaveTextContent("100%")
+    expect(within(timeline).getByRole("button", { name: "Zoom out timeline" })).toBeDisabled()
+
+    fireEvent.click(within(zoom).getByRole("button", { name: "Zoom in timeline" }))
+    expect(within(zoom).getByRole("status", { name: "Timeline zoom" })).toHaveTextContent("150%")
+    expect(within(timeline).getByRole("button", { name: "Select Chorus section" })).toHaveAttribute("aria-pressed", "true")
+
+    fireEvent.click(within(zoom).getByRole("button", { name: "Fit timeline" }))
+    expect(within(zoom).getByRole("status", { name: "Timeline zoom" })).toHaveTextContent("100%")
+  })
+
   it("keeps range looping beside the one-shot preview control", () => {
     const candidate = previewCandidates[0]
     const sections = buildStudioTimelineSections(["Intro", "Verse", "Lift", "Chorus", "Outro"], candidate.durationSeconds)
