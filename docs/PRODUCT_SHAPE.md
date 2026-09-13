@@ -108,7 +108,7 @@ Workspace nav    内容随项目上下文变化                     跨页面保
   音量和 `Up next` 播放队列；Create 的 `Generations` 入口只承载生成任务，两者不混淆。
 - Settings 使用浮在当前工作区之上的窗口：左侧固定偏好导航，右侧独立滚动设置内容；关闭后
   回到原来的 studio 语境，不把设置拆成另一套页面壳体。
-- 移动端保留 Rail 的 compact 入口和 Player 的核心播放操作，不把桌面三栏硬缩成一张卡。
+- 移动端保留 Rail 的 compact 入口和 Player 的核心播放操作，不把桌面工具 / 画布两栏硬缩成一张卡。
 
 ### 每个 AI 状态都要回答一个问题
 
@@ -132,7 +132,7 @@ Workspace nav    内容随项目上下文变化                     跨页面保
 - 已落地第一版：Studio Take Lanes 支持试听、选择和明确提交当前版本；Open Version、Playing、Selected Take 与
   Current Version 分开建模，`Use take` 通过 Project-scoped compare-and-set 契约提交，等待与失败期间保留旧
   Current，可重试故障复用同一幂等键，并发冲突要求刷新；Version history 只按确认的 Project Current 标记，
-  并在宽屏常驻右栏、中屏/移动端上下文抽屉中始终可达。历史行把正在查看的 Open 与项目确认的 Current 独立展示，
+  并在所有桌面宽度与移动端通过上下文抽屉始终可达。历史行把正在查看的 Open 与项目确认的 Current 独立展示，
   抽屉支持焦点约束、Escape / 遮罩关闭、导航关闭与焦点返回。
   Lyrics 支持本地草稿保存、分段 AI Revision、
   多 Suggestion 对比以及 Apply / Undo；Stems 支持基于当前 Version 的 Vocals or one part、Full stem split、Choose parts
