@@ -5,7 +5,57 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { GET, PUT } from "./route"
 
 describe("Mori same-origin proxy", () => {
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.unstubAllEnvs()
+  })
+
+  it("fails closed when a non-local BFF has no trust configuration", async () => {
+    const upstreamFetch = vi.fn()
+    vi.stubGlobal("fetch", upstreamFetch)
+    vi.stubEnv("KOKORO_BFF_URL", "https://bff.example.test")
+    vi.stubEnv("KOKORO_BFF_SHARED_SECRET", "")
+    vi.stubEnv("KOKORO_BFF_NAMESPACE", "")
+    const request = new NextRequest("http://localhost/api/v1/mori/projects/project_1", {
+      headers: { "x-request-id": "request-misconfigured-bff" },
+    })
+
+    const response = await GET(request, { params: Promise.resolve({ path: ["projects", "project_1"] }) })
+
+    expect(response.status).toBe(503)
+    expect(response.headers.get("x-request-id")).toBe("request-misconfigured-bff")
+    expect(await response.json()).toMatchObject({
+      error: { code: "mori_bff_misconfigured", retryable: false },
+      meta: { request_id: "request-misconfigured-bff" },
+    })
+    expect(upstreamFetch).not.toHaveBeenCalled()
+  })
+
+  it("forwards the session cookie and request identity without accepting a browser principal", async () => {
+    const upstreamFetch = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+      const headers = new Headers(init?.headers)
+      expect(headers.get("cookie")).toBe("kokoro_session=session-1")
+      expect(headers.get("x-kokoro-request-id")).toBe("request-from-browser")
+      expect(headers.get("x-kokoro-principal-id")).toBeNull()
+      expect(headers.get("x-request-id")).toBeNull()
+      return Response.json({ data: { ok: true }, meta: { request_id: "request-from-bff" } }, {
+        headers: { "x-request-id": "request-from-bff" },
+      })
+    })
+    vi.stubGlobal("fetch", upstreamFetch)
+    const request = new NextRequest("http://localhost/api/v1/mori/projects/project_1", {
+      headers: {
+        Cookie: "kokoro_session=session-1",
+        "x-kokoro-request-id": "request-from-browser",
+        "x-kokoro-principal-id": "browser-forged-principal",
+      },
+    })
+
+    const response = await GET(request, { params: Promise.resolve({ path: ["projects", "project_1"] }) })
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get("x-request-id")).toBe("request-from-bff")
+  })
 
   it("forwards media range validators and preserves a partial audio response", async () => {
     const upstreamFetch = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {

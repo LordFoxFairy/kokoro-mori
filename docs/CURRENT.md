@@ -14,6 +14,7 @@
 - Create 的 Custom controls 现在提供少量 Suno-like Style starters：点击只把策展方向写入可编辑 Style 字段，仍由用户决定最终文本，不增加第二套 provider 或模型契约。
 - Create 的 Smart 首次提交现在要求先填写 Song idea：空提交停留在当前表单、聚焦输入框并显示就地校验，不再生成一个“开放式新方向”的假计划；Custom 仍保留仅凭 Style / Output controls 直接进入队列的 Suno-like 高级路径。
 - Generation Queue 的成功结果现在提供明确的 `Review directions in Project` 去向；即使候选 projection 暂时为空，也显示 `Directions are still syncing` 而不是诱导创建第二次生成，并把用户送到带 `generation_ref` 的 Project Review；Project Overview 只加载该次运行的方向并复用同一试听、Set as current 与 Open Studio 决策链，避免生成完成后把用户留在孤立队列里。
+- Home 在 Project 已报告存在方向、但候选列表尚未到达时也显示 `Directions are still syncing`，并回到该 Project；不会把 owner 的延迟 projection 误报成 `No directions yet` 或引导用户创建重复方向。
 - Generation-scoped Project Review 在候选 projection 暂时返回空数组时显示 `Directions are still syncing` 与 `Retry this generation`，不再把一致性延迟误报成“本次运行没有结果”并诱导重复生成；重试仍绑定原 `generation_ref`。
 - Project Review 现在在候选方向原位提供 `Works / Needs work` 反馈；负面反馈可标记 Sound quality、Timing feels off 或 Too many layers，按 Project / Generation / Candidate 保持在当前浏览器会话内，不改 Current、不写入 Taste，也不阻断试听、Set as current 或 Open Studio。
 - Studio Arrangement / Lyrics / Stems / Finish 工作面，以及 Add part、Replace section、Extend、Transform（Restyle / Cover）的一层 AI 意图模型。
@@ -42,6 +43,7 @@
 - Studio 重新打开 live Project / Version 时，会从 Workspace 的 `latest_mix_revision` 摘要读取完整 Mix Revision，并严格校验 ref、Version、revision、名称和轨道数后再提供给 Finish / Export；加载中、缺失 reader 或校验失败会明确显示 unavailable，保留 Open Version 路径，不静默使用旧混音。
 - Studio Change 在 Review Plan 后才生成；请求 builder 统一 snake_case、范围、保护项、references 和输出数量，Add vocals / Add instrumental 与 Restyle 统一支持 `1 / 2 / 4` alternatives，并保持当前 Version 非破坏式。
 - Mori API 与公共 Web package 保持本仓边界；未修改 Root、BFF 或 sibling service。
+- 同源 adapter 现在透传 `kokoro_session` Cookie、固定 request ID，并拒绝浏览器自报 principal；非 loopback BFF 缺少服务端 trust 配置时 fail closed，避免 live 请求落到固定本地用户。
 - 全局 Player 继续保持 viewport-fixed 的底部 transport；shell 通过同一组 `--mori-player-height` /
   `--mori-player-safe-space` token 预留可滚动安全区，短桌面视口将 dock 收敛到 72px，避免 Studio 的
   AI Changes / Take Lanes 被底部控件过度遮挡，移动端继续保留安全区与底部 sheet 行为。
@@ -145,10 +147,10 @@ pnpm exec vitest run --maxWorkers=1 src/features/mori/studio-page.test.tsx
 pnpm exec vitest run --maxWorkers=1 src/features/mori/composition*.test.ts src/features/mori/components/composition-lane.test.tsx src/features/mori/components/studio-asset-dock.test.tsx src/features/mori/components/studio-timeline.test.tsx
                                   passed: 10 files / 50 tests
 pnpm exec vitest run --maxWorkers=1 src/features/mori/mori-workspace.test.tsx
-                                  passed: 1 file / 73 tests
+                                  passed: 1 file / 78 tests
 pnpm exec vitest run --maxWorkers=1 src/features/mori/use-audio-recorder.test.tsx
                                   passed: 1 file / 2 tests
-pnpm test                         passed: 85 files / 692 tests
+pnpm test                         passed: 85 files / 696 tests
 pnpm build                        passed
 ```
 

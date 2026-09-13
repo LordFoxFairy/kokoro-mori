@@ -2832,6 +2832,60 @@ describe("Mori workspace", () => {
     await waitFor(() => expect(screen.getByText("Directions are still syncing")).toBeInTheDocument())
     expect(screen.getByText("0 directions")).toBeInTheDocument()
   })
+
+  it("keeps the owner generation ref in the queue Project review link", async () => {
+    const generationRef = "generation_actual_queue_review"
+    const api = createWorkspaceApi({
+      getGeneration: async () => ({
+        data: {
+          generation_ref: generationRef,
+          generation_kind: "new_song",
+          project_ref: "project_actual_queue_review",
+          song_plan_ref: null,
+          mode: "custom",
+          source_version_ref: null,
+          operation: null,
+          output_count: 2 as const,
+          status: "succeeded",
+          progress: 100,
+          candidate_refs: ["candidate_actual_queue_review"],
+          created_at: "2026-09-04T12:00:00.000Z",
+        },
+        meta: { request_id: "request_actual_queue_review_generation" },
+      }),
+      listCandidates: async () => ({
+        data: {
+          candidates: [{
+            candidate_ref: "candidate_actual_queue_review",
+            generation_ref: generationRef,
+            version_ref: "version_actual_queue_review",
+            project_ref: "project_actual_queue_review",
+            title: "Window Seat · Queue review",
+            duration_seconds: 146,
+            audio_asset_ref: "asset_actual_queue_review",
+            waveform_asset_ref: "waveform_actual_queue_review",
+            style_tags: ["patient", "wide"],
+            created_at: "2026-09-04T12:00:00.000Z",
+          }],
+          next_cursor: null,
+        },
+        meta: { request_id: "request_actual_queue_review_candidates" },
+      }),
+    })
+
+    render(<MoriAppProvider><MoriWorkspace
+      projectRef="project_actual_queue_review"
+      generationRef={generationRef}
+      api={api}
+    /></MoriAppProvider>)
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Open generation queue" })).toHaveAttribute("data-generation-feedback", "ready"))
+    fireEvent.click(screen.getByRole("button", { name: "Open generation queue" }))
+    expect(screen.getByRole("link", { name: "Review directions in Project" })).toHaveAttribute(
+      "href",
+      `/projects/project_actual_queue_review?generation_ref=${generationRef}`,
+    )
+  })
 })
 
 function workspaceProjectionForPlan(

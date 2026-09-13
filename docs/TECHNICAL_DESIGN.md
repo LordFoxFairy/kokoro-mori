@@ -14,6 +14,10 @@ Browser -> Mori same-origin adapter -> BFF/owner contract
 
 跨仓只消费版本化契约；不 import 别仓业务 DTO、ORM 类型或 provider SDK。
 
+同源 adapter 透传 `kokoro_session` Cookie，并为 BFF 固定 `x-kokoro-request-id`；不接受浏览器自报的 principal、tenant 或
+service identity。内部 secret / namespace 仅从服务端环境读取，非 loopback BFF 缺少配置时 fail closed；response 继续返回
+`x-request-id` 供追踪。loopback 默认值只服务本地 fixture，不代表生产身份。
+
 ## 2. 产品工作流
 
 ```text

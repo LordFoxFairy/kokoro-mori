@@ -175,6 +175,10 @@ function HomeDirections({ project, candidates, status, playerVersionRef, playing
     return <div className={styles.homeDirectionsState} role="status"><span className={styles.homeDirectionsStateIcon} aria-hidden="true"><Music2 size={16} /></span><div><strong>Directions are temporarily unavailable</strong><span>The Project is safe. Open it to continue from its confirmed state.</span></div><Link href={`/projects/${encodeURIComponent(project.projectRef)}`} aria-label={`Open ${project.title}`}>Open project <ArrowRight size={13} /></Link></div>
   }
 
+  if (project !== null && project.candidateCount > 0 && candidates.length === 0) {
+    return <div className={styles.homeDirectionsState} role="status"><span className={styles.homeDirectionsStateIcon} aria-hidden="true"><Sparkles size={16} /></span><div><strong>Directions are still syncing</strong><span>The Project has saved directions, and they are still arriving here.</span></div><Link href={`/projects/${encodeURIComponent(project.projectRef)}`} aria-label="Open project">Open project <ArrowRight size={13} /></Link></div>
+  }
+
   if (project === null || candidates.length === 0) {
     const href = project === null ? "/create" : `/create?project_ref=${encodeURIComponent(project.projectRef)}`
     return <div className={styles.homeDirectionsState}><span className={styles.homeDirectionsStateIcon} aria-hidden="true"><Sparkles size={16} /></span><div><strong>No directions yet</strong><span>Make a first Version, then compare and continue it here.</span></div><Link href={href}>Create a direction <ArrowRight size={13} /></Link></div>

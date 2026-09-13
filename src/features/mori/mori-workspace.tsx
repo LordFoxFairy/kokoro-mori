@@ -381,15 +381,22 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, generationRef: 
     if (creativeSourceStatus === "preview") return
     setCreativeSourceLoadAttempt((attempt) => attempt + 1)
   }, [creativeSourceStatus, setCreativeSourceLoadAttempt])
+  const activeGenerationQueueItem = generationRef === null
+    ? undefined
+    : generationQueue.items.find((item) => item.generation_ref === generationRef)
   const generation = useMemo(() => hasGeneration ? {
     ...previewGeneration,
     projectRef: workspaceProjectRef ?? "project_pending",
     songPlanRef: songPlan?.songPlanRef ?? "song_plan_pending",
+    generationRef: generationRef ?? previewGeneration.generationRef,
     status: generationStatus,
     label: generationLabel,
     progress,
-    candidateRefs: candidates.map((candidate) => candidate.candidateRef),
-  } : null, [candidates, generationLabel, generationStatus, hasGeneration, progress, songPlan?.songPlanRef, workspaceProjectRef])
+    createdAt: activeGenerationQueueItem?.created_at ?? previewGeneration.createdAt,
+    candidateRefs: activeGenerationQueueItem?.candidate_refs === undefined
+      ? candidates.map((candidate) => candidate.candidateRef)
+      : [...activeGenerationQueueItem.candidate_refs],
+  } : null, [activeGenerationQueueItem, candidates, generationLabel, generationRef, generationStatus, hasGeneration, progress, songPlan?.songPlanRef, workspaceProjectRef])
   const backgroundQueueSignature = generationQueue.items
     .filter((item) => item.generation_ref !== generationRef && isActiveQueueStatus(item.status))
     .map((item) => item.generation_ref)

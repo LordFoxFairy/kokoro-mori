@@ -261,4 +261,44 @@ describe("Mori home page", () => {
       "/projects/project_live_partial_home",
     )
   })
+
+  it("does not turn a delayed Home projection into a false empty state", async () => {
+    const api: Pick<MoriApi, "listProjects" | "listCandidates"> = {
+      listProjects: async () => ({
+        data: {
+          projects: [{
+            project_ref: "project_home_delayed_directions",
+            title: "Blue Hour",
+            description: "A direction still arriving from the workspace.",
+            current_version_ref: null,
+            candidate_count: 1,
+            last_activity_at: "2026-09-04T12:00:00.000Z",
+          }],
+          next_cursor: null,
+        },
+        meta: { request_id: "request_home_delayed_project" },
+      }),
+      listCandidates: async () => ({
+        data: { candidates: [], next_cursor: null },
+        meta: { request_id: "request_home_delayed_candidates" },
+      }),
+    }
+
+    render(
+      <MoriAppProvider>
+        <MoriCatalogShell activeKey="home" ariaLabel="Home">
+          <HomePageContent api={api} />
+        </MoriCatalogShell>
+      </MoriAppProvider>,
+    )
+
+    const directions = await screen.findByRole("region", { name: "Your latest directions" })
+    expect(within(directions).getByText("Directions are still syncing")).toBeInTheDocument()
+    expect(within(directions).getByText("The Project has saved directions, and they are still arriving here.")).toBeInTheDocument()
+    expect(within(directions).getByRole("link", { name: "Open project" })).toHaveAttribute(
+      "href",
+      "/projects/project_home_delayed_directions",
+    )
+    expect(within(directions).queryByText("No directions yet")).not.toBeInTheDocument()
+  })
 })

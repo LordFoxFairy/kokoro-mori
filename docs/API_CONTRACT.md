@@ -30,6 +30,15 @@ contract -> contract test -> browser type/client -> component seam -> integratio
 - tenant、actor、subject 与 provider 身份来自受信上下文，不从 body 自报。
 - 浏览器只接触 opaque ref；不暴露 bucket、object key、签名 URL 或 provider payload。
 
+## 同源 Adapter 信任边界
+
+- `/api/v1/mori/*` 只把浏览器请求转发到配置的 BFF；认证使用同源请求携带的 `kokoro_session` Cookie，浏览器提交的
+  principal / tenant / service header 不会被采信。
+- Adapter 为每次请求透传或生成 `x-kokoro-request-id`，并在响应中返回 `x-request-id`；该 ID 只用于链路追踪，不承载身份。
+- `KOKORO_BFF_SHARED_SECRET` 与 `KOKORO_BFF_NAMESPACE` 是服务端配置。未配置时仅允许 loopback 本地 fixture 使用本地默认值；
+  非本地 BFF 缺少信任配置会 fail closed，并返回 `mori_bff_misconfigured`。
+- `KOKORO_BFF_PRINCIPAL_ID` 只有服务端显式配置时才会成为内部 header，默认不合成固定 principal。
+
 ## 版本与验收
 
 当前为 clean-slate 浏览器契约。稳定对外契约发生 breaking change 时重新评审版本与消费者切换；不建立长期 alias/fallback 双轨。契约变更必须验证 schema、错误、幂等、权限、序列化与适用的恢复路径。
