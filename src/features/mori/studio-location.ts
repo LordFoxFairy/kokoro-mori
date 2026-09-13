@@ -1,6 +1,15 @@
-export function canonicalStudioHref(currentHref: string, projectRef: string, versionRef: string): string {
+export type CanonicalStudioHrefOptions = {
+  generationRef?: string | null
+}
+
+export function canonicalStudioHref(currentHref: string, projectRef: string, versionRef: string, options?: CanonicalStudioHrefOptions): string {
   const url = new URL(currentHref)
   url.pathname = `/projects/${encodeURIComponent(projectRef)}/studio/${encodeURIComponent(versionRef)}`
+  if (options !== undefined && "generationRef" in options) {
+    const generationRef = options.generationRef
+    if (generationRef === undefined || generationRef === null || generationRef.trim() === "") url.searchParams.delete("generation_ref")
+    else url.searchParams.set("generation_ref", generationRef)
+  }
   return url.href
 }
 

@@ -1648,7 +1648,13 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
   const completeTakeSelection = useCallback((take: Candidate) => {
     if (take.versionRef !== activeVersionRefRef.current) setVersionHistoryOpen(false)
     setActiveCandidate(take)
-    const nextHref = canonicalStudioHref(window.location.href, activeProjectRefRef.current, take.versionRef)
+    const currentUrl = new URL(window.location.href)
+    const nextHref = canonicalStudioHref(
+      currentUrl.href,
+      activeProjectRefRef.current,
+      take.versionRef,
+      currentUrl.searchParams.has("generation_ref") ? { generationRef: take.generationRef } : undefined,
+    )
     if (nextHref !== window.location.href) window.history.pushState(null, "", nextHref)
   }, [])
 

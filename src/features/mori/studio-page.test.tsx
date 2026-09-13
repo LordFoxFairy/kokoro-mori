@@ -802,7 +802,7 @@ describe("Mori studio page", () => {
 
   it("keeps the previous Current until the Use take command is confirmed", async () => {
     const originalUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`
-    window.history.replaceState({}, "", "/projects/project_preview_first_light/studio/version_preview_first_light_a?surface=arrangement")
+    window.history.replaceState({}, "", "/projects/project_preview_first_light/studio/version_preview_first_light_a?surface=arrangement&generation_ref=generation_stale")
     let releaseSelection: () => void = () => undefined
     const selectionGate = new Promise<void>((resolve) => { releaseSelection = resolve })
     const putCurrentVersion = vi.fn<MoriApi["putCurrentVersion"]>(async () => {
@@ -845,7 +845,7 @@ describe("Mori studio page", () => {
 
     await waitFor(() => expect(within(screen.getByRole("article", { name: "Take 2: First Light · Afterglow" })).getByText("Current version")).toBeInTheDocument())
     expect(window.location.pathname).toBe("/projects/project_preview_first_light/studio/version_preview_first_light_b")
-    expect(window.location.search).toBe("?surface=arrangement")
+    expect(window.location.search).toBe("?surface=arrangement&generation_ref=generation_preview_first_light")
     expect(within(screen.getByRole("article", { name: "Take 1: First Light" })).getByRole("button", { name: "Use First Light as current" })).toBeInTheDocument()
     fireEvent.click(screen.getByRole("button", { name: "Open version history" }))
     const drawer = screen.getByRole("dialog", { name: "Version history" })
