@@ -3081,6 +3081,23 @@ describe("Mori studio page", () => {
     expect(within(layerComposer).queryByRole("region", { name: "Studio layer plan" })).not.toBeInTheDocument()
   })
 
+  it("does not leak preview voices into Add vocals when the live source catalog is unavailable", async () => {
+    const listCreativeSources = vi.fn<MoriApi["listCreativeSources"]>(async () => {
+      throw new Error("source catalog unavailable")
+    })
+
+    renderStudio({ listCreativeSources })
+    await waitFor(() => expect(listCreativeSources).toHaveBeenCalledWith({ limit: 20 }))
+    fireEvent.click(screen.getByRole("tab", { name: "Voice & stems" }))
+    const stemsEditor = screen.getByRole("region", { name: "Stems editor" })
+    fireEvent.click(within(stemsEditor).getByRole("button", { name: "Add vocals" }))
+
+    const layerComposer = within(stemsEditor).getByRole("region", { name: "Add vocals workflow" })
+    const voice = within(layerComposer).getByRole("combobox", { name: "Voice profile" })
+    expect(within(voice).queryByText(/Mira/u)).not.toBeInTheDocument()
+    expect(voice).toHaveValue("")
+  })
+
   it("preserves an unsubmitted layer draft while comparing Stems workflows", () => {
     renderStudio()
 
@@ -3480,7 +3497,7 @@ describe("Mori studio page", () => {
 
     const finishDialog = await screen.findByRole("dialog", { name: "Finish First Light" })
     await waitFor(() => expect(getMixRevision).toHaveBeenCalledWith(mixRevisionRef))
-    expect(await within(finishDialog).findByRole("radio", { name: /Mix revision 4/u })).toBeChecked()
+    await waitFor(() => expect(within(finishDialog).getByRole("radio", { name: /Mix revision 4/u })).toBeChecked())
 
     fireEvent.click(within(finishDialog).getByRole("button", { name: "Close Finish" }))
     fireEvent.click(screen.getByRole("button", { name: "Export" }))

@@ -5,6 +5,7 @@ import { useState } from "react"
 import type { MixRevisionInput, MoriMixRevision, MoriStem, StemSeparationStatus, StemTargetKind } from "@/lib/mori-api"
 import { isActiveStudioChangeStatus, type StudioChangePlan } from "../studio-change"
 import { isStudioLayerPlan } from "../studio-layers"
+import type { MoriCreativeLibrarySource, MoriCreativeSourceStatus } from "../creative-assets"
 import type { StemPlaybackFactory } from "../stem-playback"
 import {
   buildStudioStemSeparationPlan,
@@ -39,6 +40,8 @@ type StudioStemsEditorProps = {
   durationSeconds: number
   run: StudioStemSeparationRunState
   layerRun: StudioAiRunState
+  creativeSources?: readonly MoriCreativeLibrarySource[]
+  creativeSourceStatus?: MoriCreativeSourceStatus
   onSeparate: (plan: StudioStemSeparationPlan) => void
   onCancel: () => void
   onReset: () => void
@@ -63,7 +66,7 @@ const workflows = [
   { id: "instrumental", label: "Add instrumental", Icon: Music2 },
 ] satisfies readonly { id: StemsWorkflow; label: string; Icon: typeof Scissors }[]
 
-export function StudioStemsEditor({ durationSeconds, run, layerRun, onSeparate, onCancel, onReset, onSaveMix, onGenerateLayer, onCancelLayer, onResetLayer, onReviewTakes, playbackFactory }: StudioStemsEditorProps) {
+export function StudioStemsEditor({ durationSeconds, run, layerRun, creativeSources, creativeSourceStatus = "preview", onSeparate, onCancel, onReset, onSaveMix, onGenerateLayer, onCancelLayer, onResetLayer, onReviewTakes, playbackFactory }: StudioStemsEditorProps) {
   const { playing: globalPlaybackActive, setPlaying: setGlobalPlaying } = useMoriApp()
   const [workflow, setWorkflow] = useState<StemsWorkflow>(() => isStudioLayerPlan(layerRun.plan) ? layerRun.plan.layerKind : "separate")
   const [mode, setMode] = useState<StudioStemSeparationMode>(() => run.plan?.mode ?? "isolate_part")
@@ -196,6 +199,8 @@ export function StudioStemsEditor({ durationSeconds, run, layerRun, onSeparate, 
           mode="vocals"
           durationSeconds={durationSeconds}
           run={layerRun}
+          creativeSources={creativeSources}
+          creativeSourceStatus={creativeSourceStatus}
           onGenerate={onGenerateLayer}
           onCancel={onCancelLayer}
           onReset={onResetLayer}
@@ -207,6 +212,8 @@ export function StudioStemsEditor({ durationSeconds, run, layerRun, onSeparate, 
           mode="instrumental"
           durationSeconds={durationSeconds}
           run={layerRun}
+          creativeSources={creativeSources}
+          creativeSourceStatus={creativeSourceStatus}
           onGenerate={onGenerateLayer}
           onCancel={onCancelLayer}
           onReset={onResetLayer}

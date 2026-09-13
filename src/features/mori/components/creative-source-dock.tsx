@@ -3,9 +3,10 @@
 import { ChevronDown, FileAudio, Mic2, Plus, Sparkles, Square, X } from "lucide-react"
 import { useState } from "react"
 import {
-  previewCreativeSources,
+  resolveCreativeSourceCatalog,
   type MoriAudioReferenceSelection,
   type MoriCreativeLibrarySource,
+  type MoriCreativeSourceStatus,
   type MoriInspirationPreset,
 } from "../creative-assets"
 import type { MoriCreativeSourceUploadStatus } from "@/lib/mori-api"
@@ -24,6 +25,8 @@ type CreativeSourceDockProps = {
   onVoiceChange: (voiceRef: string | null) => void
   onInspirationChange: (preset: MoriInspirationPreset | null) => void
   creativeSources?: readonly MoriCreativeLibrarySource[]
+  creativeSourceStatus?: MoriCreativeSourceStatus
+  onRetryCreativeSources?: () => void
   referenceUploadStatus?: MoriCreativeSourceUploadStatus | null
   referenceUploadName?: string | null
   referenceUploadNeedsFile?: boolean
@@ -54,9 +57,12 @@ export function CreativeSourceDock({
   onRetryReference,
   onStartRecording,
   onStopRecording,
+  creativeSourceStatus = "preview",
+  onRetryCreativeSources,
 }: CreativeSourceDockProps) {
   const [openPicker, setOpenPicker] = useState<OpenPicker>(null)
-  const sourceCatalog: readonly MoriCreativeLibrarySource[] = creativeSources ?? previewCreativeSources
+  const sourceCatalog = resolveCreativeSourceCatalog(creativeSources, creativeSourceStatus)
+  const sourcePickerDisabled = creativeSourceStatus === "loading" || creativeSourceStatus === "unavailable"
   const voiceProfiles = sourceCatalog.filter((source) => source.sourceKind === "voice").map((source) => ({
     ref: source.ref,
     name: source.name,
@@ -87,7 +93,13 @@ export function CreativeSourceDock({
     <section className={styles.dock} aria-label="Creative sources">
       <header className={styles.dockHeader}>
         <h2 className={styles.dockTitle}>Creative sources</h2>
-        <span className={styles.optionalLabel}>Optional</span>
+        <div className={styles.dockHeaderMeta}>
+          {creativeSourceStatus !== "ready" ? <span className={styles.availability} role="status">
+            {creativeSourceStatus === "preview" ? "Preview sources" : creativeSourceStatus === "loading" ? "Loading sources…" : "Sources unavailable"}
+            {creativeSourceStatus === "unavailable" && onRetryCreativeSources !== undefined ? <button type="button" onClick={onRetryCreativeSources}>Retry</button> : null}
+          </span> : null}
+          <span className={styles.optionalLabel}>Optional</span>
+        </div>
       </header>
 
       <div className={`${styles.sourceGrid} ${voiceEnabled ? "" : styles.sourceGridTwo}`}>
@@ -136,9 +148,10 @@ export function CreativeSourceDock({
           <button
             className={`${styles.sourceButton} ${selectedVoice === null ? "" : styles.sourceButtonSelected}`}
             type="button"
+            disabled={sourcePickerDisabled}
             onClick={() => togglePicker("voice")}
             aria-expanded={openPicker === "voice"}
-            aria-label={selectedVoice === null ? "Choose voice profile" : `Change voice profile ${selectedVoice.name}`}
+            aria-label={sourcePickerDisabled ? creativeSourceStatus === "loading" ? "Voice profiles loading" : "Voice profiles unavailable" : selectedVoice === null ? "Choose voice profile" : `Change voice profile ${selectedVoice.name}`}
           >
             <span className={styles.sourceIcon}><Mic2 /></span>
             <span className={styles.sourceCopy}>
@@ -153,9 +166,10 @@ export function CreativeSourceDock({
           <button
             className={`${styles.sourceButton} ${selectedInspiration === null ? "" : styles.sourceButtonSelected}`}
             type="button"
+            disabled={sourcePickerDisabled}
             onClick={() => togglePicker("inspiration")}
             aria-expanded={openPicker === "inspiration"}
-            aria-label={selectedInspiration === null ? "Choose inspiration" : `Change inspiration ${selectedInspiration.name}`}
+            aria-label={sourcePickerDisabled ? creativeSourceStatus === "loading" ? "Inspirations loading" : "Inspirations unavailable" : selectedInspiration === null ? "Choose inspiration" : `Change inspiration ${selectedInspiration.name}`}
           >
             <span className={styles.sourceIcon}><Sparkles /></span>
             <span className={styles.sourceCopy}>
@@ -169,7 +183,7 @@ export function CreativeSourceDock({
 
       {referenceError !== null ? <p className={styles.sourceError} role="alert">{referenceError}{referenceUploadStatus === "failed" && onRetryReference !== undefined ? <button type="button" onClick={onRetryReference}>Try again</button> : null}</p> : null}
 
-      {voiceEnabled && openPicker === "voice" ? (
+      {voiceEnabled && !sourcePickerDisabled && openPicker === "voice" ? (
         <section className={styles.pickerPanel} aria-label="Voice profiles">
           <header className={styles.pickerHeader}>
             <span className={styles.pickerHeaderCopy}>
@@ -197,7 +211,7 @@ export function CreativeSourceDock({
         </section>
       ) : null}
 
-      {openPicker === "inspiration" ? (
+      {!sourcePickerDisabled && openPicker === "inspiration" ? (
         <section className={styles.pickerPanel} aria-label="Inspiration presets">
           <header className={styles.pickerHeader}>
             <span className={styles.pickerHeaderCopy}>

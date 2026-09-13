@@ -16,7 +16,7 @@ import {
   type StudioTimelineSection,
   type StudioTransformScope,
 } from "../studio-change"
-import { previewCreativeSources, type MoriCreativeLibrarySource } from "../creative-assets"
+import { resolveCreativeSourceCatalog, type MoriCreativeLibrarySource, type MoriCreativeSourceStatus } from "../creative-assets"
 import {
   studioInstrumentalCoverProtectedAnchors,
   studioVocalCoverProtectedAnchors,
@@ -56,6 +56,7 @@ type StudioAiComposerProps = {
   run: StudioAiRunState
   selectedClipContext?: StudioAiClipContext
   creativeSources?: readonly MoriCreativeLibrarySource[]
+  creativeSourceStatus?: MoriCreativeSourceStatus
   compact?: boolean
   initialOperation?: StudioChangeOperation | undefined
   initialTransformScope?: StudioTransformScope | undefined
@@ -161,7 +162,7 @@ const coverPromptStarters: Readonly<Record<StudioCoverMode, readonly string[]>> 
   ],
 }
 
-export function StudioAiComposer({ selectedSection, run, creativeSources, selectedClipContext, compact = false, initialOperation, initialTransformScope, initialTransformIntent, onGenerate, onCancel, onReset }: StudioAiComposerProps) {
+export function StudioAiComposer({ selectedSection, run, creativeSources, creativeSourceStatus = "preview", selectedClipContext, compact = false, initialOperation, initialTransformScope, initialTransformIntent, onGenerate, onCancel, onReset }: StudioAiComposerProps) {
   const promptId = useId()
   const promptRef = useRef<HTMLTextAreaElement>(null)
   const [operation, setOperation] = useState<StudioChangeOperation>(() => run.plan?.operation ?? initialOperation ?? "add_part")
@@ -178,7 +179,7 @@ export function StudioAiComposer({ selectedSection, run, creativeSources, select
   const [coverVoiceRef, setCoverVoiceRef] = useState<string>(() => coverVoiceFromPlan(run.plan))
   const [referenceAssetRefs, setReferenceAssetRefs] = useState<string[]>(() => referenceAssetsFromPlan(run.plan))
   const [plan, setPlan] = useState<StudioChangePlan | null>(null)
-  const sourceCatalog = creativeSources ?? previewCreativeSources
+  const sourceCatalog = resolveCreativeSourceCatalog(creativeSources, creativeSourceStatus)
   const referenceAudios = sourceCatalog.filter((source) => source.sourceKind === "audio")
   const voiceProfiles = sourceCatalog.filter((source) => source.sourceKind === "voice")
   const activeOperation = getOperation(operation)

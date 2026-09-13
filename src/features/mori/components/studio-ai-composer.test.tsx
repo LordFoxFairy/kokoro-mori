@@ -196,6 +196,29 @@ describe("Studio AI composer", () => {
     expect(within(plan).getByText("Aria · Clear mezzo · close phrasing")).toBeInTheDocument()
   })
 
+  it("keeps unavailable live sources out of Transform and Cover", () => {
+    render(
+      <StudioAiComposer
+        selectedSection={verse}
+        run={idleRun}
+        creativeSources={[]}
+        creativeSourceStatus="unavailable"
+        onGenerate={vi.fn()}
+        onCancel={vi.fn()}
+        onReset={vi.fn()}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Transform" }))
+    expect(screen.getByText("No audio references available yet.")).toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: "Cover" }))
+
+    const voice = screen.getByRole("combobox", { name: "Voice profile" })
+    expect(voice).toBeInTheDocument()
+    expect(within(voice).queryByText(/Mira/u)).not.toBeInTheDocument()
+    expect(voice).toHaveValue("")
+  })
+
   it("reviews a Vocal Cover from the open Version and sends a protected two-Take plan", () => {
     const onGenerate = renderComposer()
     fireEvent.click(screen.getByRole("button", { name: "Transform" }))

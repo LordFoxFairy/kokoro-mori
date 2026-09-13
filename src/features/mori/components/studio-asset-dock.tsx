@@ -3,16 +3,13 @@
 import { AudioLines, FileAudio, Filter, LoaderCircle, Mic2, Pause, Play, RefreshCcw, Search, Sparkles, Square } from "lucide-react"
 import { useMemo, useState } from "react"
 import type { MoriCreativeSourceUploadStatus } from "@/lib/mori-api"
-import type { MoriCreativeLibrarySource } from "../creative-assets"
-import { previewCreativeSources } from "../creative-assets"
+import { resolveCreativeSourceCatalog, type MoriCreativeLibrarySource, type MoriCreativeSourceStatus } from "../creative-assets"
 import { useAudioRecorder, type AudioRecording } from "../use-audio-recorder"
 import { compositionSourceDragMimeType } from "./composition-lane"
 import styles from "./studio-asset-dock.module.css"
 
 type AudioCreativeSource = Extract<MoriCreativeLibrarySource, { sourceKind: "audio" }>
 type StudioAssetDockFilter = "all" | MoriCreativeLibrarySource["sourceKind"]
-type StudioAssetSourceStatus = "preview" | "loading" | "ready" | "unavailable"
-
 type StudioAssetDockProps = {
   sources?: readonly MoriCreativeLibrarySource[]
   selectedTrackName?: string
@@ -26,7 +23,7 @@ type StudioAssetDockProps = {
   onRetryRecording?: () => void
   onCancelRecordingUpload?: () => void | Promise<void>
   recordingUploadCancelPending?: boolean
-  sourceStatus?: StudioAssetSourceStatus
+  sourceStatus?: MoriCreativeSourceStatus
   onRetrySources?: () => void
   hasMoreSources?: boolean
   sourcePageLoading?: boolean
@@ -48,7 +45,7 @@ export function StudioAssetDock({ sources, selectedTrackName, selectedRangeLabel
   const [query, setQuery] = useState("")
   const [recordingError, setRecordingError] = useState<string | null>(null)
   const [recordingStarting, setRecordingStarting] = useState(false)
-  const sourceCatalog = sources ?? previewCreativeSources
+  const sourceCatalog = resolveCreativeSourceCatalog(sources, sourceStatus)
   const { elapsedSeconds, start: startRecording, status: recordingStatus, stop: stopRecording } = useAudioRecorder({
     onComplete: (recording) => {
       setRecordingStarting(false)

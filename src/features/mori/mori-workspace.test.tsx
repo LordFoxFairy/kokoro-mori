@@ -1940,6 +1940,24 @@ describe("Mori workspace", () => {
     expect(screen.getByLabelText("Style")).toHaveValue("Future garage · nocturnal · glassy motion")
   })
 
+  it("does not show preview source identities when a live source catalog is unavailable", async () => {
+    const listCreativeSources = vi.fn<MoriApi["listCreativeSources"]>(async () => {
+      throw new Error("source catalog unavailable")
+    })
+    const api = { ...createWorkspaceApi(), listCreativeSources }
+
+    render(<MoriAppProvider><MoriWorkspace projectRef="project_live_sources_unavailable" api={api} /></MoriAppProvider>)
+
+    await waitFor(() => expect(listCreativeSources).toHaveBeenCalledWith({ limit: 20 }))
+    const sources = screen.getByRole("region", { name: "Creative sources" })
+    await waitFor(() => expect(within(sources).getByRole("status")).toHaveTextContent("Sources unavailable"))
+
+    expect(within(sources).queryByText("Mira")).not.toBeInTheDocument()
+    expect(within(sources).getByRole("button", { name: "Voice profiles unavailable" })).toBeDisabled()
+    expect(within(sources).getByRole("button", { name: "Inspirations unavailable" })).toBeDisabled()
+    expect(within(sources).getByRole("button", { name: "Retry" })).toBeInTheDocument()
+  })
+
   it("carries selected creative asset refs into the generation command", async () => {
     let request: GenerationCreateInput | null = null
     const api: Pick<MoriApi, "createSongPlan" | "createGeneration" | "getGeneration" | "getGenerationEvents" | "listCandidates" | "cancelGeneration"> = {

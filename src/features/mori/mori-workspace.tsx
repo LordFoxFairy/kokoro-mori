@@ -17,7 +17,7 @@ import {
 } from "@/lib/mori-api"
 import { createMoriApiClient, moriNetworkRequestError, MoriApiRequestError } from "@/lib/mori-api-client"
 import type { Candidate, CreationMode, GenerationStatus, SongPlan } from "./domain"
-import type { MoriCreativeLibrarySource, MoriCreativeSourceSelection } from "./creative-assets"
+import { resolvePreviewCreativeSource, type MoriCreativeLibrarySource, type MoriCreativeSourceSelection, type MoriCreativeSourceStatus } from "./creative-assets"
 import { listAllMoriCandidates } from "./candidate-pagination"
 import {
   emptyGenerationQueueState,
@@ -137,6 +137,10 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, generationRef: 
   const initialProjectRef = requestedProjectRef?.trim() || null
   const initialGenerationRef = requestedGenerationRef?.trim() || null
   const initialCandidates = initialProjectRef === previewProject.projectRef ? previewCandidates : []
+  const initialHasSourceProjection = injectedApi?.getCreativeSource !== undefined || injectedApi?.listCreativeSources !== undefined
+  const initialSourceIsPreview = initialCreativeSource === undefined || resolvePreviewCreativeSource(initialCreativeSource.kind, initialCreativeSource.ref) !== undefined
+  const initialUsesPreviewSources = (initialProjectRef === previewProject.projectRef && (injectedApi === undefined || !initialHasSourceProjection))
+    || (initialProjectRef === null && injectedApi === undefined && initialSourceIsPreview)
   const { playing, playerCandidate, setPlaying, togglePlaying, selectPlayerCandidate, preferences } = useMoriApp()
   const [workspaceProjectRef, setWorkspaceProjectRef] = useState<string | null>(initialProjectRef)
   const [modeOverride, setModeOverride] = useState<CreationMode | null>(null)
@@ -151,6 +155,8 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, generationRef: 
   const [generationLabel, setGenerationLabel] = useState(previewGeneration.label)
   const [progress, setProgress] = useState(previewGeneration.progress)
   const [creativeSources, setCreativeSources] = useState<readonly MoriCreativeLibrarySource[] | undefined>(undefined)
+  const [creativeSourceStatus, setCreativeSourceStatus] = useState<MoriCreativeSourceStatus>(() => initialUsesPreviewSources ? "preview" : "loading")
+  const [creativeSourceLoadAttempt, setCreativeSourceLoadAttempt] = useState(0)
   const [generationRef, setGenerationRef] = useState<string | null>(null)
   const [generationQueue, setGenerationQueue] = useState<GenerationQueueState>(() => emptyGenerationQueueState())
   const generationQueueRouteKey = JSON.stringify([initialProjectRef, initialGenerationRef])
@@ -325,28 +331,56 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, generationRef: 
   useEffect(() => {
     const getCreativeSource = api.getCreativeSource
     const listCreativeSources = api.listCreativeSources
+    const hasSourceProjection = getCreativeSource !== undefined || listCreativeSources !== undefined
+    const sourceIsPreview = initialCreativeSource === undefined || resolvePreviewCreativeSource(initialCreativeSource.kind, initialCreativeSource.ref) !== undefined
+    const canUsePreviewFixture = (workspaceProjectRef === previewProject.projectRef && (injectedApi === undefined || !hasSourceProjection))
+      || (workspaceProjectRef === null && injectedApi === undefined && sourceIsPreview)
     let disposed = false
 
     const applySources = (sources: readonly MoriCreativeSource[]) => {
-      if (!disposed) setCreativeSources(sources.map(toDomainCreativeSource))
+      if (!disposed) {
+        setCreativeSources(sources.map(toDomainCreativeSource))
+        setCreativeSourceStatus("ready")
+      }
     }
+
+    if (canUsePreviewFixture) {
+      queueMicrotask(() => {
+        if (disposed) return
+        setCreativeSources(undefined)
+        setCreativeSourceStatus("preview")
+      })
+      return () => { disposed = true }
+    }
+
+    queueMicrotask(() => {
+      if (disposed) return
+      setCreativeSources(undefined)
+      setCreativeSourceStatus("loading")
+    })
 
     const request = initialCreativeSource !== undefined && getCreativeSource !== undefined
       ? getCreativeSource(initialCreativeSource.kind, initialCreativeSource.ref).then((response) => applySources([response.data]))
       : listCreativeSources === undefined
-        ? Promise.resolve()
-        : listCreativeSources({ limit: 20 }).then((response) => applySources(response.data.sources)).catch(() => {
-            if (!disposed) setCreativeSources(undefined)
-          })
+        ? Promise.reject(new Error("creative_source_list_unavailable"))
+        : listCreativeSources({ limit: 20 }).then((response) => applySources(response.data.sources))
 
     void request.catch(() => {
-      if (!disposed) setCreativeSources(undefined)
+      if (!disposed) {
+        setCreativeSources(undefined)
+        setCreativeSourceStatus("unavailable")
+      }
     })
 
     return () => {
       disposed = true
     }
-  }, [api, initialCreativeSource])
+  }, [api, creativeSourceLoadAttempt, initialCreativeSource, injectedApi, workspaceProjectRef])
+
+  const retryCreativeSources = useCallback(() => {
+    if (creativeSourceStatus === "preview") return
+    setCreativeSourceLoadAttempt((attempt) => attempt + 1)
+  }, [creativeSourceStatus, setCreativeSourceLoadAttempt])
   const generation = useMemo(() => hasGeneration ? {
     ...previewGeneration,
     projectRef: workspaceProjectRef ?? "project_pending",
@@ -1207,6 +1241,8 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, generationRef: 
                 initialPrompt={initialPrompt}
                 initialCreativeSource={initialCreativeSource}
                 creativeSources={creativeSources}
+                creativeSourceStatus={creativeSourceStatus}
+                onRetryCreativeSources={retryCreativeSources}
                 planPersistence={planPersistence}
                 planSaveRun={planPersistence === "preview" ? idleProjectWorkspaceSaveRun : currentSongPlanSaveRun}
                 planSaveLoading={planPersistence !== "preview" && songPlanSaveLoading}

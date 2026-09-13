@@ -6,12 +6,14 @@ import type { CreationMode, LyricsMode, SongPlan } from "../domain"
 import type { MoriApi, MoriCreativeSourceUpload, MoriCreativeSourceUploadStatus } from "@/lib/mori-api"
 import { t } from "../copy"
 import {
-  previewCreativeSources,
+  resolveCreativeSourceCatalog,
   type MoriAudioReferenceSelection,
   type MoriCreativeLibrarySource,
+  type MoriCreativeSourceStatus,
   type MoriCreativeSourceSelection,
   type MoriInspirationPreset,
 } from "../creative-assets"
+import { previewProject } from "../preview-data"
 import { buildSongPlan } from "../song-plan"
 import { idleProjectWorkspaceSaveRun, type ProjectWorkspaceSaveRun } from "../project-workspace-memory"
 import { CreativeSourceDock } from "./creative-source-dock"
@@ -48,6 +50,8 @@ type CreateCanvasProps = {
   initialPrompt?: string
   initialCreativeSource?: MoriCreativeSourceSelection
   creativeSources?: readonly MoriCreativeLibrarySource[]
+  creativeSourceStatus?: MoriCreativeSourceStatus
+  onRetryCreativeSources?: () => void
   planPersistence?: "workspace" | "preview" | "unavailable"
   planSaveRun?: ProjectWorkspaceSaveRun
   planSaveLoading?: boolean
@@ -82,9 +86,10 @@ function creativeUploadStorageKey(projectRef: string): string {
   return `${creativeUploadRecoveryKey}:${encodeURIComponent(projectRef)}`
 }
 
-export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeSource, creativeSources, planPersistence = "preview", planSaveRun = idleProjectWorkspaceSaveRun, planSaveLoading = false, workspacePlanRefresh, onModeChange, onGenerate, onRetryPlanSave, onRefreshPlanWorkspace, api }: CreateCanvasProps) {
+export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeSource, creativeSources, creativeSourceStatus, onRetryCreativeSources, planPersistence = "preview", planSaveRun = idleProjectWorkspaceSaveRun, planSaveLoading = false, workspacePlanRefresh, onModeChange, onGenerate, onRetryPlanSave, onRefreshPlanWorkspace, api }: CreateCanvasProps) {
   const { preferences } = useMoriApp()
-  const sourceCatalog: readonly MoriCreativeLibrarySource[] = creativeSources ?? previewCreativeSources
+  const effectiveCreativeSourceStatus = creativeSourceStatus ?? (projectRef === previewProject.projectRef ? "preview" : creativeSources !== undefined ? "ready" : "unavailable")
+  const sourceCatalog = resolveCreativeSourceCatalog(creativeSources, effectiveCreativeSourceStatus)
   const initialVoiceProfile = initialCreativeSource?.kind === "voice"
     ? sourceCatalog.find((source) => source.sourceKind === "voice" && source.ref === initialCreativeSource.ref) ?? null
     : null
@@ -704,6 +709,8 @@ export function CreateCanvas({ projectRef, mode, initialPrompt, initialCreativeS
             onVoiceChange={(nextVoiceRef) => { setVoiceProfileRef(nextVoiceRef); clearPlanPreview() }}
             onInspirationChange={chooseInspiration}
             creativeSources={sourceCatalog}
+            creativeSourceStatus={effectiveCreativeSourceStatus}
+            onRetryCreativeSources={onRetryCreativeSources}
           />
 
           <div className={styles.composerBottom}>

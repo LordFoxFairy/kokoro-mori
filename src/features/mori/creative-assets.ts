@@ -28,6 +28,8 @@ export type MoriInspirationPreset = {
 
 export type MoriCreativeSourceKind = "audio" | "voice" | "inspiration"
 
+export type MoriCreativeSourceStatus = "preview" | "loading" | "ready" | "unavailable"
+
 export type MoriCreativeSourceSelection = {
   kind: MoriCreativeSourceKind
   ref: string
@@ -44,6 +46,14 @@ export type MoriCreativeLibrarySource =
   | (MoriCreativeLibrarySourceCommon & { sourceKind: "audio"; assetRef: string; durationSeconds: number })
   | (MoriCreativeLibrarySourceCommon & { sourceKind: "voice" })
   | (MoriCreativeLibrarySourceCommon & { sourceKind: "inspiration"; style: string })
+
+export function resolveCreativeSourceCatalog(
+  sources: readonly MoriCreativeLibrarySource[] | undefined,
+  status: MoriCreativeSourceStatus,
+): readonly MoriCreativeLibrarySource[] {
+  if (status === "preview") return sources ?? previewCreativeSources
+  return sources ?? []
+}
 
 export const previewReferenceAudios = [
   {

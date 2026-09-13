@@ -2,7 +2,7 @@
 
 import { ArrowRight, Check, Mic2, Music2, Pencil, RotateCcw, Sparkles, Square } from "lucide-react"
 import { useId, useState, type FormEvent } from "react"
-import { previewVoiceProfiles } from "../creative-assets"
+import { resolveCreativeSourceCatalog, type MoriCreativeLibrarySource, type MoriCreativeSourceStatus } from "../creative-assets"
 import { isActiveStudioChangeStatus, studioChangeOutputCounts, type StudioChangeOutputCount } from "../studio-change"
 import { buildStudioLayerPlan, isStudioLayerPlan, type StudioLayerMode, type StudioLayerPlan } from "../studio-layers"
 import type { StudioAiRunState } from "./studio-ai-composer"
@@ -12,13 +12,15 @@ type StudioLayerComposerProps = {
   mode: StudioLayerMode
   durationSeconds: number
   run: StudioAiRunState
+  creativeSources?: readonly MoriCreativeLibrarySource[]
+  creativeSourceStatus?: MoriCreativeSourceStatus
   onGenerate: (plan: StudioLayerPlan) => void
   onCancel: () => void
   onReset: () => void
   onReviewTakes: () => void
 }
 
-export function StudioLayerComposer({ mode, durationSeconds, run, onGenerate, onCancel, onReset, onReviewTakes }: StudioLayerComposerProps) {
+export function StudioLayerComposer({ mode, durationSeconds, run, creativeSources, creativeSourceStatus = "preview", onGenerate, onCancel, onReset, onReviewTakes }: StudioLayerComposerProps) {
   const lyricsId = useId()
   const directionId = useId()
   const voiceId = useId()
@@ -28,6 +30,8 @@ export function StudioLayerComposer({ mode, durationSeconds, run, onGenerate, on
   const [voiceRef, setVoiceRef] = useState(() => runPlan?.draft.voiceRef ?? "")
   const [outputCount, setOutputCount] = useState<StudioChangeOutputCount>(() => runPlan?.outputCount ?? 2)
   const [reviewedPlan, setReviewedPlan] = useState<StudioLayerPlan | null>(null)
+  const sourceCatalog = resolveCreativeSourceCatalog(creativeSources, creativeSourceStatus)
+  const voiceProfiles = sourceCatalog.filter((source) => source.sourceKind === "voice")
   const busy = isActiveStudioChangeStatus(run.status)
   const visiblePlan = run.status === "idle" ? reviewedPlan : runPlan
   const canReview = instruction.trim() !== "" && (mode === "instrumental" || lyrics.trim() !== "") && !busy
@@ -115,7 +119,7 @@ export function StudioLayerComposer({ mode, durationSeconds, run, onGenerate, on
               <span>Voice profile <small>Optional</small></span>
               <select id={voiceId} aria-label="Voice profile" value={voiceRef} disabled={busy} onChange={(event) => updateDraft(() => setVoiceRef(event.target.value))}>
                 <option value="">Mori voice</option>
-                {previewVoiceProfiles.map((profile) => <option value={profile.ref} key={profile.ref}>{profile.name} · {profile.description}</option>)}
+                {voiceProfiles.map((profile) => <option value={profile.ref} key={profile.ref}>{profile.name} · {profile.description}</option>)}
               </select>
               <small className={styles.fieldHint}>Voice identity stays separate from this take&apos;s direction.</small>
             </label>
@@ -159,7 +163,7 @@ export function StudioLayerComposer({ mode, durationSeconds, run, onGenerate, on
           {visiblePlan.layerKind === "vocals" ? (
             <div className={styles.vocalFacts}>
               <span><strong>Lyrics</strong>{lineCountLabel(visiblePlan.draft.lyrics ?? "")}</span>
-              <span><strong>Voice</strong>{voiceLabel(visiblePlan.draft.voiceRef)}</span>
+              <span><strong>Voice</strong>{voiceLabel(visiblePlan.draft.voiceRef, voiceProfiles)}</span>
             </div>
           ) : null}
           {busy ? (
@@ -210,9 +214,9 @@ function lineCountLabel(lyrics: string): string {
   return `${count} ${count === 1 ? "line" : "lines"}`
 }
 
-function voiceLabel(voiceRef: string | undefined): string {
+function voiceLabel(voiceRef: string | undefined, voiceProfiles: readonly Extract<MoriCreativeLibrarySource, { sourceKind: "voice" }>[]): string {
   if (voiceRef === undefined || voiceRef === "") return "Mori voice"
-  return previewVoiceProfiles.find((profile) => profile.ref === voiceRef)?.name ?? "Selected voice"
+  return voiceProfiles.find((profile) => profile.ref === voiceRef)?.name ?? "Selected voice"
 }
 
 function takeCountLabel(count: StudioChangeOutputCount): string {

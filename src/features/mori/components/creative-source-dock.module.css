@@ -13,6 +13,37 @@
   gap: 12px;
 }
 
+.dockHeaderMeta {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.availability {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  color: var(--mori-muted);
+  font-size: 9px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.availability button {
+  padding: 0;
+  border: 0;
+  color: var(--mori-primary);
+  font: inherit;
+  background: transparent;
+}
+
+.availability button:hover {
+  text-decoration: underline;
+}
+
 .dockTitle {
   margin: 0;
   color: var(--mori-foreground);

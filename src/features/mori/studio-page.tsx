@@ -30,7 +30,7 @@ import {
 } from "@/lib/mori-api"
 import { createMoriApiClient, MoriApiRequestError } from "@/lib/mori-api-client"
 import type { Candidate } from "./domain"
-import { previewCreativeSources, type MoriCreativeLibrarySource } from "./creative-assets"
+import { previewCreativeSources, type MoriCreativeLibrarySource, type MoriCreativeSourceStatus } from "./creative-assets"
 import { listAllMoriCandidates } from "./candidate-pagination"
 import { reconcileGenerationQueueItemFromSnapshot, updateGenerationQueueItem, upsertGenerationQueueItem, type GenerationQueueItem } from "./generation-queue"
 import { readGenerationQueueState, updateStoredGenerationQueueState } from "./generation-queue-storage"
@@ -91,7 +91,6 @@ type StudioCurrentVersionProjection = {
   status: StudioCurrentVersionStatus
   versionRef: string | null
 }
-type StudioCreativeSourceStatus = "preview" | "loading" | "ready" | "unavailable"
 type StudioRecordingUploadState = {
   status: MoriCreativeSourceUploadStatus | null
   uploadRef: string | null
@@ -264,7 +263,7 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
   const sourceListApi = api === undefined ? defaultApi.listCreativeSources : api.listCreativeSources
   const usePreviewCreativeSources = isPreviewProject && (api === undefined || sourceListApi === undefined)
   const [resolvedCreativeSources, setResolvedCreativeSources] = useState<readonly MoriCreativeLibrarySource[] | undefined>(() => creativeSources ?? (usePreviewCreativeSources ? previewCreativeSources : undefined))
-  const [creativeSourceStatus, setCreativeSourceStatus] = useState<StudioCreativeSourceStatus>(() => creativeSources !== undefined ? "ready" : usePreviewCreativeSources ? "preview" : "loading")
+  const [creativeSourceStatus, setCreativeSourceStatus] = useState<MoriCreativeSourceStatus>(() => creativeSources !== undefined ? "ready" : usePreviewCreativeSources ? "preview" : "loading")
   const [creativeSourceLoadAttempt, setCreativeSourceLoadAttempt] = useState(0)
   const [creativeSourceCursor, setCreativeSourceCursor] = useState<string | null>(null)
   const [creativeSourcePageLoading, setCreativeSourcePageLoading] = useState(false)
@@ -281,7 +280,7 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
     const currentSources = resolvedCreativeSources ?? []
     return [studioRecordingSource, ...currentSources.filter((source) => source.ref !== studioRecordingSource.ref)]
   }, [resolvedCreativeSources, studioRecordingSource])
-  const studioCreativeSourceStatus: StudioCreativeSourceStatus = studioRecordingSource !== null ? "ready" : creativeSourceStatus
+  const studioCreativeSourceStatus: MoriCreativeSourceStatus = studioRecordingSource !== null ? "ready" : creativeSourceStatus
 
   useEffect(() => () => {
     studioRecordingUploadEpochRef.current += 1
@@ -2380,7 +2379,7 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
             {activeTool === "lyrics" ? <StudioLyricsEditor key={studioLyricsKey} versionRef={activeCandidate.versionRef} initialLyrics={initialStudioLyrics} baselineLyrics={durableStudioLyrics} draftRevision={workspaceLyricsRevision} draftSource={lyricsDraftSource} draftSaveRun={projectWorkspaceMemory.saveRun} canSaveDraft={projectWorkspaceMemory.canSaveLyrics} run={lyricsRevisionRun} onGenerate={(plan) => { void generateLyricsRevision(plan) }} onCancel={() => { void cancelLyricsRevision() }} onReset={resetLyricsRevision} onSaveDraft={projectWorkspaceMemory.saveLyrics} onRefreshDraft={projectWorkspaceMemory.refresh} onDraftStateChange={rememberPendingLyricsDraft} /> : null}
           </div>
           <div id="mori-studio-panel-stems" role="tabpanel" aria-labelledby="mori-studio-tool-stems" hidden={activeTool !== "stems"}>
-            {activeTool === "stems" ? <StudioStemsEditor key={activeVersionRef ?? "no-version"} durationSeconds={activeCandidate.durationSeconds} run={stemSeparationRun} layerRun={studioChangeRun} onSeparate={(plan) => { void generateStemSeparation(plan) }} onCancel={() => { void cancelStemSeparation() }} onReset={resetStemSeparation} onSaveMix={saveMixRevision} onGenerateLayer={(plan) => { void generateStudioChange(plan) }} onCancelLayer={() => { void cancelStudioChange() }} onResetLayer={resetStudioChange} onReviewTakes={() => openStudioTool("arrangement")} playbackFactory={stemPlaybackFactory} /> : null}
+            {activeTool === "stems" ? <StudioStemsEditor key={activeVersionRef ?? "no-version"} durationSeconds={activeCandidate.durationSeconds} run={stemSeparationRun} layerRun={studioChangeRun} creativeSources={studioCreativeSources} creativeSourceStatus={studioCreativeSourceStatus} onSeparate={(plan) => { void generateStemSeparation(plan) }} onCancel={() => { void cancelStemSeparation() }} onReset={resetStemSeparation} onSaveMix={saveMixRevision} onGenerateLayer={(plan) => { void generateStudioChange(plan) }} onCancelLayer={() => { void cancelStudioChange() }} onResetLayer={resetStudioChange} onReviewTakes={() => openStudioTool("arrangement")} playbackFactory={stemPlaybackFactory} /> : null}
           </div>
         </section>
       </div>}
@@ -2883,7 +2882,7 @@ type ArrangementEditorProps = {
   onDismissCurrentVersion: () => void
   onOpenLyrics: () => void
   onOpenStems: () => void
-  creativeSourceStatus: StudioCreativeSourceStatus
+  creativeSourceStatus: MoriCreativeSourceStatus
   onRetryCreativeSources: () => void
   hasMoreCreativeSources: boolean
   creativeSourcePageLoading: boolean
@@ -3174,6 +3173,7 @@ function ArrangementEditor({ compositionSave, compositionLoad, compositionRevisi
         selectedSection={selection}
         run={studioChangeRun}
         creativeSources={creativeSources}
+        creativeSourceStatus={creativeSourceStatus}
         selectedClipContext={selectedClipContext}
         compact
         initialOperation={initialIntent === "transform" || initialIntent === "cover" ? "transform" : undefined}
