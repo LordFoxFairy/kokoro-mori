@@ -1343,6 +1343,34 @@ describe("Mori studio page", () => {
     expect(within(aiChanges).getByRole("option", { name: "Aria · Clear mezzo · close phrasing" })).toBeInTheDocument()
   })
 
+  it("loads another page of live Creative Sources inside the Studio dock", async () => {
+    const listCreativeSources = vi.fn<MoriApi["listCreativeSources"]>(async (options = {}) => options.cursor === "sources_cursor_2"
+      ? {
+          data: {
+            sources: [{ source_kind: "audio", source_ref: "source_live_synth", asset_ref: "asset_live_synth", name: "Live synth guide", description: "32 sec · glassy motion", duration_seconds: 32, created_at: "2026-09-12T12:00:02.000Z" }],
+            next_cursor: null,
+          },
+          meta: { request_id: "request_studio_sources_page_2" },
+        }
+      : {
+          data: {
+            sources: [{ source_kind: "audio", source_ref: "source_live_room", asset_ref: "asset_live_room", name: "Live room guide", description: "18 sec · brushed pulse", duration_seconds: 18, created_at: "2026-09-12T12:00:00.000Z" }],
+            next_cursor: "sources_cursor_2",
+          },
+          meta: { request_id: "request_studio_sources_page_1" },
+        })
+    renderStudio({ listCreativeSources })
+
+    const dock = await screen.findByRole("region", { name: "Studio asset dock" })
+    await waitFor(() => expect(listCreativeSources).toHaveBeenCalledWith({ limit: 20 }))
+    expect(within(dock).getByText("Live room guide")).toBeInTheDocument()
+    fireEvent.click(within(dock).getByRole("button", { name: "Load more sources" }))
+
+    await waitFor(() => expect(listCreativeSources).toHaveBeenNthCalledWith(2, { limit: 20, cursor: "sources_cursor_2" }))
+    expect(within(dock).getByText("Live synth guide")).toBeInTheDocument()
+    expect(within(dock).queryByRole("button", { name: "Load more sources" })).not.toBeInTheDocument()
+  })
+
   it("inserts a selected take into the chosen arrangement range", async () => {
     const createCompositionRevision = vi.fn<MoriApi["createCompositionRevision"]>(async (_versionRef, input) => ({
       data: { version_ref: "version_preview_first_light_a", revision: input.expected_revision + 1, tracks: [] },

@@ -175,6 +175,17 @@ describe("StudioAssetDock", () => {
     expect(onRetrySources).toHaveBeenCalledOnce()
   })
 
+  it("loads another source page without leaving the arrangement context", async () => {
+    const onLoadMoreSources = vi.fn(async () => undefined)
+    renderDock({ sourceStatus: "ready", hasMoreSources: true, onLoadMoreSources })
+
+    const dock = screen.getByRole("region", { name: "Studio asset dock" })
+    fireEvent.click(within(dock).getByRole("button", { name: "Load more sources" }))
+
+    await waitFor(() => expect(onLoadMoreSources).toHaveBeenCalledOnce())
+    expect(within(dock).getByText("Load more sources")).toBeInTheDocument()
+  })
+
   it("disables preview, insert, and drag actions while recording", async () => {
     const onPreview = vi.fn()
     const onInsert = vi.fn()

@@ -25,6 +25,10 @@ type StudioAssetDockProps = {
   onRecordingComplete?: (recording: AudioRecording) => void | Promise<void>
   sourceStatus?: StudioAssetSourceStatus
   onRetrySources?: () => void
+  hasMoreSources?: boolean
+  sourcePageLoading?: boolean
+  sourcePageError?: boolean
+  onLoadMoreSources?: () => void | Promise<void>
   recordingUploadStatus?: MoriCreativeSourceUploadStatus | null
   recordingUploadMessage?: string | null
 }
@@ -36,7 +40,7 @@ const filters: readonly { id: StudioAssetDockFilter; label: string }[] = [
   { id: "inspiration", label: "Inspiration" },
 ]
 
-export function StudioAssetDock({ sources, selectedTrackName, selectedRangeLabel, selectedRangeTime, disabled = false, previewingSourceRef = null, onPreview, onInsert, onRecordingComplete, sourceStatus = "preview", onRetrySources, recordingUploadStatus = null, recordingUploadMessage = null }: StudioAssetDockProps) {
+export function StudioAssetDock({ sources, selectedTrackName, selectedRangeLabel, selectedRangeTime, disabled = false, previewingSourceRef = null, onPreview, onInsert, onRecordingComplete, sourceStatus = "preview", onRetrySources, hasMoreSources = false, sourcePageLoading = false, sourcePageError = false, onLoadMoreSources, recordingUploadStatus = null, recordingUploadMessage = null }: StudioAssetDockProps) {
   const [filter, setFilter] = useState<StudioAssetDockFilter>("audio")
   const [query, setQuery] = useState("")
   const [recordingError, setRecordingError] = useState<string | null>(null)
@@ -135,6 +139,13 @@ export function StudioAssetDock({ sources, selectedTrackName, selectedRangeLabel
         <strong>No sources match</strong>
         <small>Try another search or switch the source filter.</small>
       </div>}
+      {sourceStatus === "ready" && hasMoreSources && onLoadMoreSources ? <div className={styles.sourcePagination}>
+        {sourcePageError ? <p className={styles.sourcePaginationMessage} role="status">More sources could not be loaded.</p> : null}
+        <button className={styles.sourceLoadMore} type="button" disabled={sourcePageLoading || disabled} onClick={() => { void onLoadMoreSources() }}>
+          {sourcePageLoading ? <LoaderCircle aria-hidden="true" size={13} /> : sourcePageError ? <RefreshCcw aria-hidden="true" size={13} /> : null}
+          {sourcePageLoading ? "Loading more…" : sourcePageError ? "Try again" : "Load more sources"}
+        </button>
+      </div> : null}
     </section>
   )
 }

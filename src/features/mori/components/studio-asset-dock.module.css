@@ -492,6 +492,43 @@ svg.sourceStateIcon {
   background: rgba(237, 233, 254, 0.98);
 }
 
+.sourcePagination {
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+  padding-top: 1px;
+}
+
+.sourcePaginationMessage {
+  margin: 0;
+  color: var(--mori-muted);
+  font-size: 9px;
+}
+
+.sourceLoadMore {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  border: 1px solid rgba(109, 92, 231, 0.18);
+  border-radius: 9px;
+  color: var(--mori-primary-deep);
+  font-size: 9px;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.sourceLoadMore:hover:not(:disabled) {
+  border-color: rgba(109, 92, 231, 0.32);
+  background: rgba(237, 233, 254, 0.76);
+}
+
+.sourceLoadMore:disabled {
+  cursor: default;
+  opacity: 0.56;
+}
+
 .srOnly {
   position: absolute;
   width: 1px;
@@ -508,7 +545,8 @@ svg.sourceStateIcon {
 .previewButton:focus-visible,
 .insertButton:focus-visible,
 .recordingButton:focus-visible,
-.sourceRetry:focus-visible {
+.sourceRetry:focus-visible,
+.sourceLoadMore:focus-visible {
   outline: 3px solid rgba(109, 92, 231, 0.2);
   outline-offset: 2px;
 }

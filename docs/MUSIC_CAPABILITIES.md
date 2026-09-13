@@ -632,7 +632,7 @@ Composition 的第一组 provider-neutral 纯函数已落地到 `composition.ts`
 - Studio Asset Dock v1 已把 Library 素材带回 Arrangement 上下文：搜索与类型筛选不离开 Studio，Audio 使用同一个全局
   Player 试听，既可点击插入当前 `track_ref` / 选区，也可直接拖到任意 Track / 时间位置（100ms 对齐并按版本边界裁剪），
   两条路径都携带 `source_ref`；Voice / Inspiration 以 reference-only 呈现；Preview Project 使用显式 preview catalog，live
-  source projection 加载中/失败时显示 Loading / unavailable + Retry 并禁用插入，避免把 fixture 写入真实 Composition；真实媒体投影、批量素材与 owner persistence
+  source projection 加载中/失败时显示 Loading / unavailable + Retry 并禁用插入，ready 后可在当前 Dock 按 opaque cursor Load more，避免把 fixture 写入真实 Composition；真实媒体投影、批量素材与 owner persistence
   留在后续 P1。
 
 ### P3 · 完成与发布
