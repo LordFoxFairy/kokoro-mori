@@ -64,6 +64,22 @@ describe("Mori generation contract seam", () => {
     expect(response.meta.request_id).toBe("preview-request-idempotency-2")
   })
 
+  it("keeps the known preview versions visible through the candidate projection", async () => {
+    const response = await previewMoriApi.listCandidates(previewProject.projectRef)
+
+    expect(response.data.candidates).toHaveLength(2)
+    expect(response.data.candidates.map((candidate) => candidate.version_ref)).toEqual([
+      "version_preview_first_light_a",
+      "version_preview_first_light_b",
+    ])
+    expect(response.data.candidates[0]).toMatchObject({
+      candidate_ref: "candidate_preview_first_light_a",
+      generation_ref: "generation_preview_first_light",
+      project_ref: previewProject.projectRef,
+      audio_asset_ref: "preview:first-light:a",
+    })
+  })
+
   it("binds generation commands to the project path context", async () => {
     let capturedProjectRef: string | null = null
     const api = {

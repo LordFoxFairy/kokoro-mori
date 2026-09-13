@@ -35,6 +35,7 @@ import { listAllMoriCandidates } from "./candidate-pagination"
 import { reconcileGenerationQueueItemFromSnapshot, updateGenerationQueueItem, upsertGenerationQueueItem, type GenerationQueueItem } from "./generation-queue"
 import { readGenerationQueueState, updateStoredGenerationQueueState } from "./generation-queue-storage"
 import { getGenerationForRecovery } from "./generation-recovery"
+import { previewMoriApi } from "./generation-controller"
 import { MoriStudioShell } from "./components/mori-studio-shell"
 import { StudioAiComposer, type StudioAiRunState } from "./components/studio-ai-composer"
 import { StudioExportDialog, type StudioExportRange } from "./components/studio-export-dialog"
@@ -189,6 +190,11 @@ const idleStemSeparationRun: StudioStemSeparationRunState = {
 const versionHistoryDrawerId = "studio-version-history-drawer"
 const wholeSongStructure = ["Whole song"] as const
 
+const previewCompositionRevision: MoriApi["getCompositionRevision"] = async (versionRef) => ({
+  data: { version_ref: versionRef, revision: 0, tracks: [] },
+  meta: { request_id: `preview-composition-load-request-${versionRef}` },
+})
+
 function studioLinkCopyLabel(status: StudioLinkCopyStatus) {
   switch (status) {
     case "copying": return "Copying…"
@@ -257,10 +263,10 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
   const clearAuditionLoop = useCallback(() => setAuditionLoop(false), [setAuditionLoop])
   const exportStatusDescriptionId = useId()
   const finishStatusDescriptionId = useId()
-  const defaultApi = useMemo(() => createMoriApiClient(), [])
-  const studioApi = useMemo(() => ({ ...defaultApi, ...(api ?? {}) }), [api, defaultApi])
   const activeProjectRef = projectRef?.trim() || previewProject.projectRef
   const isPreviewProject = activeProjectRef === previewProject.projectRef
+  const defaultApi = useMemo(() => createMoriApiClient(), [])
+  const studioApi = useMemo(() => ({ ...(isPreviewProject ? previewMoriApi : defaultApi), ...(api ?? {}) }), [api, defaultApi, isPreviewProject])
   const sourceListApi = api === undefined ? defaultApi.listCreativeSources : api.listCreativeSources
   const usePreviewCreativeSources = isPreviewProject && (api === undefined || sourceListApi === undefined)
   const [resolvedCreativeSources, setResolvedCreativeSources] = useState<readonly MoriCreativeLibrarySource[] | undefined>(() => creativeSources ?? (usePreviewCreativeSources ? previewCreativeSources : undefined))
@@ -2416,7 +2422,7 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
             </div> : null}
           </div>
           <div id="mori-studio-panel-arrangement" role="tabpanel" aria-labelledby="mori-studio-tool-arrangement" hidden={activeTool !== "arrangement"}>
-            <ArrangementEditor key={activeCandidate.versionRef} compositionSave={(api !== undefined && "createCompositionRevision" in api ? api.createCompositionRevision : studioApi.createCompositionRevision) as MoriApi["createCompositionRevision"]} compositionLoad={(api !== undefined && "getCompositionRevision" in api ? api.getCompositionRevision : studioApi.getCompositionRevision) as MoriApi["getCompositionRevision"]} compositionRevision={0} onRefreshWorkspace={projectWorkspaceMemory.refresh} projectRef={activeProjectRef} candidate={activeCandidate} creativeSources={studioCreativeSources} creativeSourceStatus={studioCreativeSourceStatus} onRetryCreativeSources={retryCreativeSources} hasMoreCreativeSources={creativeSourceCursor !== null} creativeSourcePageLoading={creativeSourcePageLoading} creativeSourcePageError={creativeSourcePageError} onLoadMoreCreativeSources={loadMoreCreativeSources} takes={studioCandidates} takeReviewByKey={takeReviews} onTakeReviewChange={rememberTakeReview} structure={hasPreviewProjectContent ? previewSongPlan.structure : wholeSongStructure} previewBaseline={hasPreviewProjectContent} lyricsPreview={initialStudioLyrics} currentVersionRef={currentVersionRef} currentVersionStatus={currentVersionProjection.status} onRecordingComplete={uploadStudioRecording} onRetryRecording={retryStudioRecordingUpload} onCancelRecordingUpload={cancelStudioRecordingUpload} recordingUploadCancelPending={studioRecordingUploadCancelPending} recordingUploadStatus={studioRecordingUpload.status} recordingUploadMessage={studioRecordingUpload.error} playerVersionRef={playerCandidate?.versionRef ?? ""} playerAuditionScope={playerAuditionScope} playerAuditionLooping={playerAuditionLooping} positionSeconds={playerCandidate?.versionRef === activeCandidate.versionRef ? positionSeconds : 0} playing={playerCandidate?.versionRef === activeCandidate.versionRef && playing} globalPlaying={playing} initialIntent={initialIntent} studioChangeRun={studioChangeRun} currentVersionCommitRun={currentVersionCommitRun} onSeekTimeline={(nextPositionSeconds) => seekTimeline(activeCandidate, nextPositionSeconds)} onBackToStart={() => backToStart(activeCandidate)} onPreviewFromPlayhead={(nextPositionSeconds) => previewFromPlayhead(activeCandidate, nextPositionSeconds)} onPreviewSelection={(selection) => previewSelection(activeCandidate, selection)} onToggleLoopSelection={(selection) => toggleLoopSelection(activeCandidate, selection)} onClearAuditionLoop={clearAuditionLoop} onPreviewClip={previewClip} onCompositionSessionChange={rememberCompositionSession} onGenerateStudioChange={(plan) => { void generateStudioChange(plan) }} onCancelStudioChange={() => { void cancelStudioChange() }} onResetStudioChange={resetStudioChange} onSelectTake={selectTake} onPreviewTake={previewTake} onPromoteTake={(take) => { void commitCurrentVersion(take) }} onRetryCurrentVersion={retryCurrentVersionCommit} onDismissCurrentVersion={dismissCurrentVersionCommit} onOpenStems={() => {
+            <ArrangementEditor key={activeCandidate.versionRef} compositionSave={(api?.createCompositionRevision ?? studioApi.createCompositionRevision) as MoriApi["createCompositionRevision"]} compositionLoad={(api?.getCompositionRevision ?? (isPreviewProject ? previewCompositionRevision : studioApi.getCompositionRevision)) as MoriApi["getCompositionRevision"]} compositionRevision={0} onRefreshWorkspace={projectWorkspaceMemory.refresh} projectRef={activeProjectRef} candidate={activeCandidate} creativeSources={studioCreativeSources} creativeSourceStatus={studioCreativeSourceStatus} onRetryCreativeSources={retryCreativeSources} hasMoreCreativeSources={creativeSourceCursor !== null} creativeSourcePageLoading={creativeSourcePageLoading} creativeSourcePageError={creativeSourcePageError} onLoadMoreCreativeSources={loadMoreCreativeSources} takes={studioCandidates} takeReviewByKey={takeReviews} onTakeReviewChange={rememberTakeReview} structure={hasPreviewProjectContent ? previewSongPlan.structure : wholeSongStructure} previewBaseline={hasPreviewProjectContent} lyricsPreview={initialStudioLyrics} currentVersionRef={currentVersionRef} currentVersionStatus={currentVersionProjection.status} onRecordingComplete={uploadStudioRecording} onRetryRecording={retryStudioRecordingUpload} onCancelRecordingUpload={cancelStudioRecordingUpload} recordingUploadCancelPending={studioRecordingUploadCancelPending} recordingUploadStatus={studioRecordingUpload.status} recordingUploadMessage={studioRecordingUpload.error} playerVersionRef={playerCandidate?.versionRef ?? ""} playerAuditionScope={playerAuditionScope} playerAuditionLooping={playerAuditionLooping} positionSeconds={playerCandidate?.versionRef === activeCandidate.versionRef ? positionSeconds : 0} playing={playerCandidate?.versionRef === activeCandidate.versionRef && playing} globalPlaying={playing} initialIntent={initialIntent} studioChangeRun={studioChangeRun} currentVersionCommitRun={currentVersionCommitRun} onSeekTimeline={(nextPositionSeconds) => seekTimeline(activeCandidate, nextPositionSeconds)} onBackToStart={() => backToStart(activeCandidate)} onPreviewFromPlayhead={(nextPositionSeconds) => previewFromPlayhead(activeCandidate, nextPositionSeconds)} onPreviewSelection={(selection) => previewSelection(activeCandidate, selection)} onToggleLoopSelection={(selection) => toggleLoopSelection(activeCandidate, selection)} onClearAuditionLoop={clearAuditionLoop} onPreviewClip={previewClip} onCompositionSessionChange={rememberCompositionSession} onGenerateStudioChange={(plan) => { void generateStudioChange(plan) }} onCancelStudioChange={() => { void cancelStudioChange() }} onResetStudioChange={resetStudioChange} onSelectTake={selectTake} onPreviewTake={previewTake} onPromoteTake={(take) => { void commitCurrentVersion(take) }} onRetryCurrentVersion={retryCurrentVersionCommit} onDismissCurrentVersion={dismissCurrentVersionCommit} onOpenStems={() => {
               openStudioTool("stems")
               window.requestAnimationFrame(() => document.getElementById("mori-studio-tool-stems")?.focus())
             }} onOpenLyrics={() => {
@@ -3007,7 +3013,8 @@ function ArrangementEditor({ compositionSave, compositionLoad, compositionRevisi
   const [selectedClipRef, setSelectedClipRef] = useState<string | undefined>(undefined)
   const [selectedTrackRef, setSelectedTrackRef] = useState<string | undefined>(compositionTracks[0]?.trackRef)
   const [editOperation, setEditOperation] = useState<"move" | "trim" | "split" | "crop" | "fade" | null>(null)
-  const [compositionLoadState, setCompositionLoadState] = useState<CompositionLoadState>("loading")
+  const isLocalPreviewComposition = previewBaseline && compositionLoad === previewCompositionRevision
+  const [compositionLoadState, setCompositionLoadState] = useState<CompositionLoadState>(() => isLocalPreviewComposition ? "empty" : "loading")
   const [compositionLoadAttempt, setCompositionLoadAttempt] = useState(0)
   const [assetDockOpen, setAssetDockOpen] = useState(true)
   const replaceCompositionFromOwner = compositionEditor.replaceFromOwner

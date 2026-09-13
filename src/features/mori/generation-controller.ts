@@ -1,6 +1,7 @@
 import type { GenerationStatus } from "./domain"
 import { createGenerationRequest, type ArtworkGenerationInput, type CurrentSongPlanInput, type CurrentVersionInput, type GenerationCreateInput, type GenerationReceipt, type LyricsDraftInput, type LyricsRevisionInput, type MixRevisionInput, type MoriApi, type MoriCreativeSourceUploadInput, type MoriCreativeSourceUploadStatus, type MoriExportInput, type MoriGenerationDraft, type MoriProjectCreateInput, type MoriProjectWorkspaceOpenVersion, type MoriProjectWorkspaceProjection, type MoriReleaseDraft, type MoriShare, type ProjectWorkspaceOpenVersionInput, type ReleaseDraftInput, type SongPlanCreateInput, type StemSeparationInput, type StudioChangeGenerationInput } from "@/lib/mori-api"
 import type { MoriRef } from "./domain"
+import { previewCandidates, previewGeneration, previewProject } from "./preview-data"
 
 export type GenerationControllerState = {
   status: GenerationStatus
@@ -522,10 +523,25 @@ export const previewMoriApi: MoriApi = {
     void _idempotencyKey
     return { data: { upload_ref: uploadRef, source_kind: "audio" as const, status: "cancelled" as const, bytes_received: 0, byte_size: 1, asset_ref: null, source_ref: null, error: null, created_at: "2026-09-05T12:00:00.000Z", updated_at: "2026-09-05T12:00:01.000Z", expires_at: "2026-09-06T12:00:00.000Z" }, meta: { request_id: `preview-upload-cancel-${uploadRef}` } }
   },
-  async listCandidates() {
+  async listCandidates(projectRef: MoriRef, options) {
+    const candidates = projectRef === previewProject.projectRef
+      && (options?.generation_ref === undefined || options.generation_ref === null || options.generation_ref === previewGeneration.generationRef)
+      ? previewCandidates.map((candidate) => ({
+          candidate_ref: candidate.candidateRef,
+          generation_ref: candidate.generationRef,
+          version_ref: candidate.versionRef,
+          project_ref: projectRef,
+          title: candidate.title,
+          duration_seconds: candidate.durationSeconds,
+          audio_asset_ref: candidate.audioAssetRef ?? `preview:${candidate.candidateRef}`,
+          waveform_asset_ref: `waveform_${candidate.candidateRef}`,
+          style_tags: candidate.subtitle.split(" · "),
+          created_at: "2026-09-02T12:00:00.000Z",
+        }))
+      : []
     return {
       data: {
-        candidates: [],
+        candidates,
         next_cursor: null,
       },
       meta: {

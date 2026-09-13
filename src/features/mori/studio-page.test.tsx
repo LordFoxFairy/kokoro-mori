@@ -1761,6 +1761,16 @@ describe("Mori studio page", () => {
     expect(screen.getByRole("button", { name: "Save arrangement" })).toBeDisabled()
   })
 
+  it("opens the local preview arrangement without waiting for a BFF response", async () => {
+    const fetchSpy = vi.fn<typeof fetch>(() => new Promise<Response>(() => undefined))
+    vi.stubGlobal("fetch", fetchSpy)
+
+    renderStudio()
+
+    expect(await screen.findByText("No saved arrangement yet · using version baseline")).toBeInTheDocument()
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
   it("labels a preview baseline plainly when the owner composition is unavailable", async () => {
     const getCompositionRevision = vi.fn<MoriApi["getCompositionRevision"]>(async () => {
       throw new Error("composition owner unavailable")
