@@ -391,6 +391,38 @@ describe("Mori global player media integration", () => {
     expect(screen.getByRole("button", { name: "Next version" })).toBeDisabled()
   })
 
+  it("does not wrap the global queue after its final Version", async () => {
+    const harness = createMediaHarness()
+
+    function CandidateHarness() {
+      const { selectPlayerCandidate, setPlaying, updatePreferences } = useMoriApp()
+      return <button type="button" onClick={() => {
+        selectPlayerCandidate(firstCandidate)
+        selectPlayerCandidate(secondCandidate)
+        setPlaying(true)
+        updatePreferences({ endBehavior: "next" })
+      }}>Prepare final Version</button>
+    }
+
+    render(
+      <MoriAppProvider mediaFactory={harness.factory}>
+        <CandidateHarness />
+        <MoriCatalogShell activeKey="library" ariaLabel="Library">
+          <div>Library content</div>
+        </MoriCatalogShell>
+      </MoriAppProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Prepare final Version" }))
+    await waitFor(() => expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("Live second"))
+    expect(screen.getByRole("button", { name: "Next version" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Previous version" })).not.toBeDisabled()
+
+    harness.callbacks.onEnded()
+    await waitFor(() => expect(screen.getByRole("button", { name: "Play" })).toBeInTheDocument())
+    expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("Live second")
+  })
+
   it("ignores an ended event from the previous source while a new Version is being selected", async () => {
     const harness = createMediaHarness()
 
@@ -438,6 +470,7 @@ describe("Mori global player media integration", () => {
       return (
         <>
           <button type="button" onClick={() => {
+            selectPlayerCandidate(firstCandidate)
             selectPlayerCandidate(unavailableCandidate)
             selectPlayerCandidate(firstCandidate)
             setPlaying(true)

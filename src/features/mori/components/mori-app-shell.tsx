@@ -142,6 +142,9 @@ export function MoriAppShell({ activeKey, ariaLabel, projectRef, projectTitle, p
   }, [handleRailToggle, mobileRailOpen])
 
   const compactPlayer = playerCandidate === null || playerMediaStatus === "unavailable"
+  const currentQueueIndex = playerCandidate === null ? -1 : playbackQueue.findIndex((candidate) => candidate.versionRef === playerCandidate.versionRef)
+  const canGoPrevious = currentQueueIndex > 0
+  const canGoNext = currentQueueIndex >= 0 && currentQueueIndex < playbackQueue.length - 1
   const shellStyle = {
     "--mori-rail-width": effectiveRailCollapsed ? "64px" : "256px",
     ...(compactPlayer ? { "--mori-player-height": "64px", "--mori-player-safe-space": "66px" } : {}),
@@ -178,8 +181,8 @@ export function MoriAppShell({ activeKey, ariaLabel, projectRef, projectTitle, p
           playerMediaStatus={playerMediaStatus}
           playerMediaMessage={playerMediaMessage}
           onRetryPlayback={retryPlayerPlayback}
-          onPrevious={playbackQueue.length > 1 ? previousPlayerCandidate : undefined}
-          onNext={playbackQueue.length > 1 ? nextPlayerCandidate : undefined}
+          onPrevious={canGoPrevious ? previousPlayerCandidate : undefined}
+          onNext={canGoNext ? nextPlayerCandidate : undefined}
           auditionScope={playerAuditionScope}
           auditionLooping={playerAuditionLooping}
           onToggleAuditionLoop={() => setAuditionLoop(!playerAuditionLooping)}

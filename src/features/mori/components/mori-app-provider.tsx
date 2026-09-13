@@ -232,6 +232,7 @@ export function MoriAppProvider({ children, mediaFactory = createHtmlPlayerMedia
   const previousPlayerCandidate = useCallback(() => {
     if (playerCandidate === null || playbackQueue.length < 2) return
     const nextCandidate = stepCandidate(playerCandidate, playbackQueue, -1)
+    if (nextCandidate === null) return
     selectionEpochRef.current += 1
     pendingSourcePositionRef.current = { selectionEpoch: selectionEpochRef.current, positionSeconds: 0 }
     playerSelectionRef.current = nextCandidate
@@ -245,6 +246,7 @@ export function MoriAppProvider({ children, mediaFactory = createHtmlPlayerMedia
   const nextPlayerCandidate = useCallback(() => {
     if (playerCandidate === null || playbackQueue.length < 2) return
     const nextCandidate = stepCandidate(playerCandidate, playbackQueue, 1)
+    if (nextCandidate === null) return
     selectionEpochRef.current += 1
     pendingSourcePositionRef.current = { selectionEpoch: selectionEpochRef.current, positionSeconds: 0 }
     playerSelectionRef.current = nextCandidate
@@ -305,6 +307,10 @@ export function MoriAppProvider({ children, mediaFactory = createHtmlPlayerMedia
         setPositionSeconds(0)
         if (current.endBehavior === "next" && current.queue.length > 1 && current.candidate !== null) {
           const nextCandidate = stepCandidate(current.candidate, current.queue, 1)
+          if (nextCandidate === null) {
+            setPlayingState(false)
+            return
+          }
           current.candidate = nextCandidate
           current.positionSeconds = 0
           selectionEpochRef.current += 1
@@ -425,13 +431,12 @@ export function MoriAppProvider({ children, mediaFactory = createHtmlPlayerMedia
   return <MoriAppContext.Provider value={value}>{children}</MoriAppContext.Provider>
 }
 
-function stepCandidate(candidate: Candidate, candidates: Candidate[], direction: -1 | 1): Candidate {
-  if (candidates.length === 0) return candidate
+function stepCandidate(candidate: Candidate, candidates: Candidate[], direction: -1 | 1): Candidate | null {
+  if (candidates.length === 0) return null
   const currentIndex = candidates.findIndex((item) => item.versionRef === candidate.versionRef)
-  const nextIndex = currentIndex < 0
-    ? 0
-    : (currentIndex + direction + candidates.length) % candidates.length
-  return candidates[nextIndex] ?? candidates[0] ?? candidate
+  if (currentIndex < 0) return null
+  const nextIndex = currentIndex + direction
+  return candidates[nextIndex] ?? null
 }
 
 function normalizeAuditionScope(scope: PlayerAuditionScope | null, durationSeconds: number): PlayerAuditionScope | null {

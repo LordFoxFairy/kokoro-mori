@@ -45,7 +45,8 @@
   同一 Version 经不同 Candidate projection 出现时仍共享同一个播放身份和进度。单项队列禁用上一首/下一首，
   音源切换使用 selection epoch 忽略旧音源迟到事件，并把 Studio 首次定位同步 seek 到真实媒体，避免 transport
   进度与真实音频脱节或覆盖用户的新选择；旧音源的迟到 `play()` 结果不会污染新音源状态，队列跳到无音频 Version
-  时也会收敛为 Paused。
+  时也会收敛为 Paused。Playback Queue 将当前项独立显示为 Now playing，Up next 只显示当前项之后的候选；到达队列末尾时
+  不隐式回绕，只有明确的下一项才启用 Next 或 endBehavior=next。
 - Library 已接入 provider-neutral 的 live projection seam：Version 使用 `GET /library`，Creative Source
   使用独立的 `GET /library/sources` 与按 kind/ref 的 deep-link GET；两者各自使用 opaque cursor/limit，
   Audio / Voice / Inspiration 使用 discriminated union。Source API 成功后不再把 preview Sources 混入 live 响应；

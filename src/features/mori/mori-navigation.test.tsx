@@ -188,6 +188,10 @@ describe("Mori application navigation", () => {
     await waitFor(() => expect(queue).toHaveFocus())
     expect(trigger).toHaveAttribute("aria-expanded", "true")
     expect(screen.getByRole("button", { name: "Play First Light from queue" })).toBeInTheDocument()
+    expect(screen.getByRole("heading", { name: "Now playing" })).toBeInTheDocument()
+    expect(screen.getByRole("heading", { name: "Up next", level: 3 })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Play First Light · Afterglow from queue" }).closest("section")).toHaveAccessibleName("Up next")
+    expect(screen.getByRole("button", { name: "Play First Light from queue" }).closest("section")).toHaveAccessibleName("Now playing")
 
     fireEvent.click(screen.getByRole("button", { name: "Play First Light · Afterglow from queue" }))
     expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("First Light · Afterglow")

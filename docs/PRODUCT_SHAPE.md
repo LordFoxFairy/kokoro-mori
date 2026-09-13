@@ -33,7 +33,8 @@ Mori 的落地：
   并在浏览器确认剪贴板写入后才显示成功；紧凑顶栏用加载、成功、失败图标保留同等可见反馈。真正的分享 / 发布
   属于具备持久化契约的 Release，而不是顶栏装饰。
 - Global Player 在页面切换时保持不变，不把试听变成一次性弹窗。
-- Global Player 的播放队列跨页面可用，并与 Create 中展示生成任务的 Generation Queue 明确分离。
+- Global Player 的播放队列跨页面可用，并与 Create 中展示生成任务的 Generation Queue 明确分离；Queue 将当前项单独标为
+  Now playing，Up next 不重复当前项，到达末尾不隐式循环。
 - Studio 只在 Project + Version 上下文内出现。
 - 当前先落地 Take Lanes：生成的方向可试听、对比，再明确提交为当前版本；Lyrics 草稿和 Stems
   分离也沿用这条闭环；成功 Stems 通过受信同源媒体投影进入同步 audition mixer，真实音频字节继续由

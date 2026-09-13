@@ -4969,10 +4969,41 @@
 
 .playbackQueueList {
   display: grid;
-  gap: 4px;
+  gap: 14px;
   min-height: 0;
-  padding: 8px;
+  padding: 10px 8px 12px;
   overflow: auto;
+}
+
+.playbackQueueSection {
+  display: grid;
+  gap: 6px;
+}
+
+.playbackQueueSection + .playbackQueueSection {
+  padding-top: 14px;
+  border-top: 1px solid var(--mori-border);
+}
+
+.playbackQueueSectionHeading {
+  margin: 0 8px;
+  color: var(--mori-faint);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.playbackQueueItems {
+  display: grid;
+  gap: 4px;
+}
+
+.playbackQueueEmpty {
+  margin: 2px 8px 4px;
+  color: var(--mori-muted);
+  font-size: 11px;
+  line-height: 1.45;
 }
 
 .playbackQueueItem {
