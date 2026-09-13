@@ -101,6 +101,8 @@ Review change 首屏可见；Reference、Restyle/Cover、Voice 与保护项放�
 
 打开 Studio Version 时，Global Player 预置该 Version 的暂停状态，但不自动播放、不写入 Up next，也不覆盖已有的明确
 试听选择。这样“当前正在制作的 Version”和“底部可以试听的 Version”保持同一上下文，同时不把浏览页面误认为播放动作。
+如果用户已有另一条 Version 正在试听，Mori 会在 Studio 标题旁明确显示 Player 当前对象，并提供 `Play this version`；
+只有用户确认后才切换同一个全局 transport，避免打开工作面时静默抢占听音意图。
 
 ### P0 · Suno 核心闭环
 

@@ -101,6 +101,8 @@ Workspace nav    内容随项目上下文变化                     跨页面保
 - Studio 的工具和版本历史属于项目，不提升到全局 Rail。
 - Studio 只保留全局 Player 这一套 Transport，不在画布标题旁复制 Preview；左侧用可读的 Current / Open take
   状态代替内部 Version ref，并将承载 Add Vocals 的工作区明确命名为 Voice & stems。
+- 如果用户在 Studio 打开另一条 Version，而 Global Player 仍在试听原 Version，画布标题旁显式提示当前播放对象，并提供
+  `Play this version`；切换必须由用户确认，不用自动换源破坏听音意图。
 - Finish 与 Export 的来源选择同样只显示歌曲名、时长、保存的混音名称与轨道数；opaque ref 留在契约核对中，
   不再泄露到用户需要理解的界面。
 - Export 是可恢复的后台任务而不是一次性弹窗：窗口关闭后，顶栏入口持续显示 Exporting、Ready 或 Needs attention，

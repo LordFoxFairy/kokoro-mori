@@ -28,6 +28,7 @@
 - Studio 的 Current Version 现在显式区分 `known`、`none` 与 `unknown`：只有 Project 的 `current_version_ref` 能标记 Current，Project 查询失败或缺失时不再按 Candidate 顺序猜测；unknown 状态保留试听与打开 Version，但暂不允许 `Use take`，明确返回 `null` 则提示用户选择一条 Take。
 - Arrangement 的 Mori AI 入口现在紧贴 Studio 标题与时间线：首屏直接看到 Add part / Replace section / Extend / Transform、当前 Scope、输出数量、Take lanes 去向和自然语言 Review change；Reference、Restyle/Cover、保护项等高级控制收进 More controls，避免用户先滚到页面底部寻找下一步。选区或 Clip 变化仍即时同步到同一上下文栏，Review 只生成可核对的 Change Plan。
 - 打开 Studio Version 时，全局 Player 会在不自动播放、不写入 Up next、也不覆盖既有试听的前提下预置当前 Version；用户看到的是可直接点击 Play 的暂停 transport，而不是与当前工作面割裂的 Choose a version 空状态。已有其他 Version 的试听选择会保持不变。
+- 当 Studio 打开的 Version 与 Global Player 正在试听的 Version 不同，画布标题旁会显示明确的播放上下文和 `Play this version` 动作；它不会自动抢占用户当前试听，用户确认后才把同一 transport 切换到 Studio Version。
 - Composition 中选中的 Clip 现在可以直接通过同一个全局 Player 试听：Player 按 Clip 的 source 与 offset / duration 建立 Clip audition scope；无可解析音频来源的 Clip 会保持禁用，不伪装成可播放。试听沿用全局播放、暂停、seek、loop 与媒体错误状态，不改变 Current Version、Arrangement 保存状态或 AI edit range；播放中切换 Range / Clip scope 会先换源、定位，再恢复播放意图，避免按钮显示 Playing 但实际无声。
 - 多 Take 对比现在是 Studio 的可达主路径：当 Version 有多个候选时，顶栏显示带数量的 `Takes` 入口，点击会滚动到 Take Lanes、把焦点交给对比区域，并为固定底部 Player 保留滚动安全区；单候选时不显示无意义入口。
 - Creative Source ingest 的浏览器 foundation 已收紧：live Project 不再把缺失的上传能力伪装成 preview asset；选择文件或完成麦克风录音后都复用同一 Upload Session，上传 command 在首个请求前生成稳定幂等键，同一文件失败重试会复用会话，并持续以退避轮询 processing 状态直到 owner 返回终态；录音中和上传进行中 Generate 都保持禁用。上传中刷新或页面卸载后，会按 project 记录 `upload_ref`、文件身份和幂等键，恢复时显示 Continue / 重新选择同一文件；真实文件字节不写入 localStorage，避免把浏览器临时文件伪装成持久化事实。

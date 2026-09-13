@@ -3695,6 +3695,70 @@
   letter-spacing: -0.06em;
 }
 
+.studioPlaybackNotice {
+  display: flex;
+  max-width: min(100%, 330px);
+  align-items: center;
+  gap: 9px;
+  padding: 6px 8px 6px 9px;
+  border: 1px solid rgba(109, 92, 231, 0.14);
+  border-radius: 11px;
+  color: var(--mori-muted);
+  background: rgba(247, 244, 255, 0.72);
+}
+
+.studioPlaybackNoticeCopy {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.studioPlaybackNoticeCopy strong {
+  overflow: hidden;
+  color: var(--mori-foreground);
+  text-overflow: ellipsis;
+}
+
+.studioPlaybackNoticeDot {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  border-radius: 50%;
+  background: var(--mori-primary);
+}
+
+.studioPlaybackNoticeAction {
+  display: inline-flex;
+  min-height: 26px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8px;
+  border: 1px solid rgba(109, 92, 231, 0.18);
+  border-radius: 8px;
+  color: var(--mori-primary-deep);
+  font: inherit;
+  font-size: 9px;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.76);
+  cursor: pointer;
+}
+
+.studioPlaybackNoticeAction:hover,
+.studioPlaybackNoticeAction:focus-visible {
+  border-color: rgba(109, 92, 231, 0.32);
+  background: #fff;
+}
+
+.studioPlaybackNoticeAction:focus-visible {
+  outline: 3px solid rgba(109, 92, 231, 0.16);
+  outline-offset: 1px;
+}
+
 .lyricsCard {
   border: 1px solid var(--mori-border);
   border-radius: 16px;
@@ -6027,7 +6091,13 @@
   .studioCanvasTop {
     align-items: flex-end;
     flex-direction: row;
+    flex-wrap: wrap;
     gap: 12px;
+  }
+
+  .studioPlaybackNotice {
+    width: 100%;
+    max-width: none;
   }
 
   .studioCanvasTop > div {

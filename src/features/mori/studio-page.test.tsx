@@ -3785,6 +3785,10 @@ describe("Mori studio page", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Listen to Afterglow" }))
     expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("First Light · Afterglow")
+    const playbackContext = screen.getByRole("status", { name: "Studio playback context" })
+    expect(playbackContext).toHaveTextContent("First Light · Afterglow")
+    fireEvent.click(within(playbackContext).getByRole("button", { name: "Play First Light in Studio" }))
+    expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("First Light")
   })
 
   it("keeps a missing preview audio explicit after priming the open Version", () => {

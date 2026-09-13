@@ -528,6 +528,11 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
   const [stemSeparationRun, setStemSeparationRun] = useState<StudioStemSeparationRunState>(idleStemSeparationRun)
   const [trackedStemSeparation, setTrackedStemSeparation] = useState<TrackedStemSeparation | null>(null)
   const activeVersionRef = activeCandidate?.versionRef ?? null
+  const mismatchedPlayerCandidate = activeCandidate !== null
+    && playerCandidate !== null
+    && activeCandidate.versionRef !== playerCandidate.versionRef
+    ? playerCandidate
+    : null
 
   useEffect(() => {
     if (activeCandidate === null) return
@@ -2386,7 +2391,24 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
           </div>
         </aside>
         <section className={styles.studioCanvas} aria-label="Studio editor">
-          <div className={styles.studioCanvasTop}><div><span className={styles.eyebrow}><span className={styles.eyebrowDot} />Editing with intention</span><h2>Shape the feeling.</h2></div></div>
+          <div className={styles.studioCanvasTop}>
+            <div><span className={styles.eyebrow}><span className={styles.eyebrowDot} />Editing with intention</span><h2>Shape the feeling.</h2></div>
+            {mismatchedPlayerCandidate !== null && activeCandidate !== null ? <div className={styles.studioPlaybackNotice} role="status" aria-label="Studio playback context">
+              <span className={styles.studioPlaybackNoticeCopy}>
+                <span className={styles.studioPlaybackNoticeDot} aria-hidden="true" />
+                {playing ? "Listening to" : "Player is on"} <strong>{mismatchedPlayerCandidate.title}</strong>
+              </span>
+              <button
+                className={styles.studioPlaybackNoticeAction}
+                type="button"
+                aria-label={`Play ${activeCandidate.title} in Studio`}
+                onClick={() => {
+                  selectPlayerCandidate(activeCandidate)
+                  setPlaying(true)
+                }}
+              >Play this version</button>
+            </div> : null}
+          </div>
           <div id="mori-studio-panel-arrangement" role="tabpanel" aria-labelledby="mori-studio-tool-arrangement" hidden={activeTool !== "arrangement"}>
             <ArrangementEditor key={activeCandidate.versionRef} compositionSave={(api !== undefined && "createCompositionRevision" in api ? api.createCompositionRevision : studioApi.createCompositionRevision) as MoriApi["createCompositionRevision"]} compositionLoad={(api !== undefined && "getCompositionRevision" in api ? api.getCompositionRevision : studioApi.getCompositionRevision) as MoriApi["getCompositionRevision"]} compositionRevision={0} onRefreshWorkspace={projectWorkspaceMemory.refresh} projectRef={activeProjectRef} candidate={activeCandidate} creativeSources={studioCreativeSources} creativeSourceStatus={studioCreativeSourceStatus} onRetryCreativeSources={retryCreativeSources} hasMoreCreativeSources={creativeSourceCursor !== null} creativeSourcePageLoading={creativeSourcePageLoading} creativeSourcePageError={creativeSourcePageError} onLoadMoreCreativeSources={loadMoreCreativeSources} takes={studioCandidates} takeReviewByKey={takeReviews} onTakeReviewChange={rememberTakeReview} structure={hasPreviewProjectContent ? previewSongPlan.structure : wholeSongStructure} previewBaseline={hasPreviewProjectContent} lyricsPreview={initialStudioLyrics} currentVersionRef={currentVersionRef} currentVersionStatus={currentVersionProjection.status} onRecordingComplete={uploadStudioRecording} onRetryRecording={retryStudioRecordingUpload} onCancelRecordingUpload={cancelStudioRecordingUpload} recordingUploadCancelPending={studioRecordingUploadCancelPending} recordingUploadStatus={studioRecordingUpload.status} recordingUploadMessage={studioRecordingUpload.error} playerVersionRef={playerCandidate?.versionRef ?? ""} playerAuditionScope={playerAuditionScope} playerAuditionLooping={playerAuditionLooping} positionSeconds={playerCandidate?.versionRef === activeCandidate.versionRef ? positionSeconds : 0} playing={playerCandidate?.versionRef === activeCandidate.versionRef && playing} globalPlaying={playing} initialIntent={initialIntent} studioChangeRun={studioChangeRun} currentVersionCommitRun={currentVersionCommitRun} onSeekTimeline={(nextPositionSeconds) => seekTimeline(activeCandidate, nextPositionSeconds)} onBackToStart={() => backToStart(activeCandidate)} onPreviewFromPlayhead={(nextPositionSeconds) => previewFromPlayhead(activeCandidate, nextPositionSeconds)} onPreviewSelection={(selection) => previewSelection(activeCandidate, selection)} onToggleLoopSelection={(selection) => toggleLoopSelection(activeCandidate, selection)} onClearAuditionLoop={clearAuditionLoop} onPreviewClip={previewClip} onCompositionSessionChange={rememberCompositionSession} onGenerateStudioChange={(plan) => { void generateStudioChange(plan) }} onCancelStudioChange={() => { void cancelStudioChange() }} onResetStudioChange={resetStudioChange} onSelectTake={selectTake} onPreviewTake={previewTake} onPromoteTake={(take) => { void commitCurrentVersion(take) }} onRetryCurrentVersion={retryCurrentVersionCommit} onDismissCurrentVersion={dismissCurrentVersionCommit} onOpenStems={() => {
               openStudioTool("stems")
