@@ -31,6 +31,8 @@ Create -> Generation Queue -> Candidate -> Project/Version -> Studio -> Take Lan
 - `mori-app-shell`：桌面固定 Rail、内容面、移动抽屉与 viewport-fixed Player。
 - `mori-workspace`：跨页面路由、Project/Create/Library/Settings 组合与投影恢复。
 - `studio-page`：Version 上下文、Studio Change、Lyrics、Stems、Export、Release 与 Composition 交互编排。
+- `StudioAiComposer`：Arrangement 上下文 AI command bar；compact 模式将一级意图、Scope、输入与 Review 放在时间线前，
+  高级 Reference / Cover / Preserve 控制仍复用同一状态与请求模型并收进可展开层。
 - `composition*.ts`：纯 Composition 规则、revision command、history 和 save state。
 - `generation*.ts`：队列摘要、SSE replay、取消、重试和刷新恢复。
 - `creative-assets.ts` 与 source 组件：Creative Source 类型、preview fallback 与选择器。
@@ -56,6 +58,8 @@ Composition 当前以 `Composition { tracks[] }` 作为浏览器侧 revision fou
 - 组件不解析 provider 私有字段，不拼接对象存储 URL，不自报 tenant/actor。
 - `contract/` 只维护 wire schema；生成/验证事实不复制到业务组件。
 - Preview data 只能作为明确标记的 unavailable fallback，不冒充用户数据。
+- Studio 打开已有 Version 时可以向全局 transport 预置暂停的当前 Version；该动作不自动播放、不写入 playback queue，
+  且只在 transport 尚无显式用户选择时发生，不能覆盖正在试听的 Version。
 
 ## 6. 目标演进顺序
 

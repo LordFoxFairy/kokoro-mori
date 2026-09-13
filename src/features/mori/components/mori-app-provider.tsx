@@ -44,6 +44,7 @@ type MoriAppContextValue = {
   setPlaying: (playing: boolean) => void
   setAuditionLoop: (looping: boolean) => void
   seekPlayer: (positionSeconds: number) => void
+  primePlayerCandidate: (candidate: Candidate) => void
   selectPlayerCandidate: (candidate: Candidate, positionSeconds?: number, auditionScope?: PlayerAuditionScope | null) => void
   previousPlayerCandidate: () => void
   nextPlayerCandidate: () => void
@@ -68,8 +69,9 @@ export function MoriAppProvider({ children, mediaFactory = createHtmlPlayerMedia
   const [railLoaded, setRailLoaded] = useState(false)
   const [preferences, setPreferences] = useState<MoriPreferences>(defaultPreferences)
   const [preferencesLoaded, setPreferencesLoaded] = useState(false)
-  // Browsing a surface does not mutate listening intent. The transport and
-  // queue remain empty until the user explicitly chooses a Version.
+  // Browsing a surface does not start playback or build a queue. A Studio
+  // surface may prime its open Version into the paused transport so the
+  // player has an obvious subject without stealing listening intent.
   const [playerCandidate, setPlayerCandidate] = useState<Candidate | null>(null)
   const [playbackQueue, setPlaybackQueue] = useState<Candidate[]>([])
   const [playerAuditionScope, setPlayerAuditionScope] = useState<PlayerAuditionScope | null>(null)
@@ -133,6 +135,17 @@ export function MoriAppProvider({ children, mediaFactory = createHtmlPlayerMedia
   }, [setPlayingForApp])
   const setAuditionLoop = useCallback((looping: boolean) => {
     setPlayerAuditionLooping(looping)
+  }, [])
+
+  const primePlayerCandidate = useCallback((candidate: Candidate) => {
+    if (playerSelectionRef.current !== null) return
+    selectionEpochRef.current += 1
+    pendingSourcePositionRef.current = { selectionEpoch: selectionEpochRef.current, positionSeconds: 0 }
+    playerSelectionRef.current = candidate
+    setPlayerAuditionLooping(false)
+    setPlayerAuditionScope(null)
+    setPlayerCandidate(candidate)
+    setPositionSeconds(0)
   }, [])
 
   useEffect(() => {
@@ -377,12 +390,13 @@ export function MoriAppProvider({ children, mediaFactory = createHtmlPlayerMedia
     setAuditionLoop,
     toggleMuted,
     seekPlayer,
+    primePlayerCandidate,
     selectPlayerCandidate,
     previousPlayerCandidate,
     nextPlayerCandidate,
     preferences,
     updatePreferences,
-  }), [muted, nextPlayerCandidate, playbackQueue, playerAuditionLooping, playerAuditionScope, playerCandidate, playerMediaMessage, playerMediaStatus, playing, positionSeconds, preferences, previousPlayerCandidate, railCollapsed, retryPlayerPlayback, seekPlayer, selectPlayerCandidate, setAuditionLoop, setPlayingForApp, setRailCollapsed, toggleMuted, togglePlaying, toggleRail, updatePreferences])
+  }), [muted, nextPlayerCandidate, playbackQueue, playerAuditionLooping, playerAuditionScope, playerCandidate, playerMediaMessage, playerMediaStatus, playing, positionSeconds, preferences, previousPlayerCandidate, primePlayerCandidate, railCollapsed, retryPlayerPlayback, seekPlayer, selectPlayerCandidate, setAuditionLoop, setPlayingForApp, setRailCollapsed, toggleMuted, togglePlaying, toggleRail, updatePreferences])
 
   return <MoriAppContext.Provider value={value}>{children}</MoriAppContext.Provider>
 }

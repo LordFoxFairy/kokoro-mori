@@ -140,6 +140,13 @@ starter 只填入可编辑指令，不创建任务，也不绕过 Change Plan。
 不再展示一组含义模糊的高级参数，而是先让用户选择 Restyle 或 Cover。生成后可看到进度、取消或重试；成功
 Candidate 直接追加到 Take Lanes，但不会替换 Current Version。它不挤入全局 Rail，也不伪装成聊天记录。
 
+Arrangement 的主入口采用 Suno Chat Bar 的连续工作流，但保持 Mori 的可解释边界：Mori AI Command Bar 紧贴 Studio
+标题与时间线，首屏固定展示四个一级意图、当前 Scope、输出数量、Take lanes 目的地和自然语言输入。Reference
+sound、Restyle/Cover、Voice 与 Keep stable 等会改变请求的控制放入 `More controls`，不把高级参数铺满首屏；
+`Review change` 仍只创建可编辑 Change Plan，用户确认后才 Generate。选中 Clip 时额外显示 Clip context，并明确
+它不会悄悄改变 AI scope。这样用户的连续决策是“当前 Version → 改哪里 → 怎么改 → 先看计划 → 比较 Takes”，而不是
+滚动页面寻找一组彼此割裂的工具。
+
 Take Lanes 中的 **Open Version、Playing、Selected Take、Current Version** 是四个独立状态。`Use take` 不再是
 前端本地切换：它通过 Project-scoped、带幂等键和期望旧 Current 的 compare-and-set 命令提交。等待期间旧 Current
 继续保持；成功响应必须精确确认 Project、Candidate、Version 与 previous Current，界面才更新 Project Current 并

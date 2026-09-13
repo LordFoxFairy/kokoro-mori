@@ -21,6 +21,180 @@
   box-shadow: 0 11px 25px rgba(76, 60, 103, 0.07);
 }
 
+/* The Arrangement surface keeps the next AI decision beside the timeline.
+   Advanced references and protection choices remain available, but do not
+   push the actual edit request below the fold. */
+.studioAiCompact {
+  margin-top: 0;
+  padding: 11px 12px;
+  border-radius: 14px;
+  box-shadow: 0 8px 20px rgba(76, 60, 103, 0.055);
+}
+
+.studioAiCompact .studioAiHeader {
+  gap: 10px;
+}
+
+.studioAiCompact .studioAiMark {
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+}
+
+.studioAiCompact .studioAiIdentity {
+  gap: 8px;
+}
+
+.studioAiCompact .studioAiIdentity h3 {
+  font-size: 12px;
+}
+
+.studioAiCompact .studioAiOperations {
+  margin-top: 9px;
+}
+
+.studioAiCompact .studioAiOperationSummary {
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 7px;
+  min-height: 30px;
+  margin-top: 7px;
+  padding: 5px 7px;
+}
+
+.studioAiCompact .studioAiOperationSummaryIcon {
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+}
+
+.studioAiCompact .studioAiOperationSummary strong {
+  font-size: 9px;
+}
+
+.studioAiCompact .studioAiOperationSummary span {
+  font-size: 8px;
+}
+
+.studioAiAdvanced {
+  margin-top: 7px;
+  border: 1px solid rgba(109, 92, 231, 0.1);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.studioAiAdvanced > summary {
+  display: flex;
+  min-height: 30px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 9px;
+  color: var(--mori-muted);
+  cursor: pointer;
+  font-size: 8px;
+  font-weight: 750;
+  list-style: none;
+}
+
+.studioAiAdvanced > summary::-webkit-details-marker {
+  display: none;
+}
+
+.studioAiAdvanced > summary > span {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+}
+
+.studioAiAdvanced > summary > span:last-child {
+  overflow: hidden;
+  color: var(--mori-faint);
+  font-size: 8px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studioAiAdvanced > summary::after {
+  width: 5px;
+  height: 5px;
+  flex: 0 0 auto;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  content: "";
+  transform: rotate(45deg) translateY(-1px);
+  transition: transform var(--mori-motion-fast) ease;
+}
+
+.studioAiAdvanced[open] {
+  border-color: rgba(109, 92, 231, 0.17);
+  background: linear-gradient(115deg, rgba(245, 242, 255, 0.76), rgba(255, 248, 244, 0.64)), #fff;
+}
+
+.studioAiAdvanced[open] > summary {
+  color: var(--mori-foreground);
+}
+
+.studioAiAdvanced[open] > summary::after {
+  transform: rotate(225deg) translate(-1px, -1px);
+}
+
+.studioAiAdvancedBody {
+  display: grid;
+  gap: 7px;
+  padding: 0 7px 7px;
+}
+
+.studioAiAdvancedBody > .studioAiControls {
+  margin-top: 0;
+}
+
+.studioAiCompact .studioAiContext {
+  gap: 5px 12px;
+  margin-top: 7px;
+  padding: 0 2px;
+}
+
+.studioAiCompact .studioAiContext > span {
+  gap: 4px;
+  font-size: 8px;
+}
+
+.studioAiCompact .studioAiContext strong {
+  font-size: 7px;
+}
+
+.studioAiCompact .studioAiForm {
+  margin-top: 7px;
+  padding: 7px;
+  gap: 7px;
+  border-radius: 10px;
+}
+
+.studioAiCompact .studioAiPromptStarters {
+  gap: 6px;
+  padding-bottom: 5px;
+}
+
+.studioAiCompact .studioAiPromptStarters button {
+  min-height: 23px;
+  padding-inline: 7px;
+}
+
+.studioAiCompact .studioAiPrompt {
+  min-height: 43px;
+  font-size: 11px;
+}
+
+.studioAiCompact .studioAiReview {
+  min-height: 34px;
+}
+
+.studioAiCompact .studioAiClipContext {
+  margin-top: 6px;
+}
+
 .studioAiHeader,
 .studioAiIdentity,
 .studioAiSafety,
@@ -986,6 +1160,7 @@
 .studioAiCoverMode button:focus-visible,
 .studioAiVoiceField select:focus-visible,
 .studioAiReview:focus-visible,
+.studioAiAdvanced > summary:focus-visible,
 .studioAiControls summary:focus-visible,
 .studioAiChoices button:focus-visible {
   outline: 2px solid rgba(109, 92, 231, 0.48);

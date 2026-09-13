@@ -216,7 +216,7 @@ function studioGenerationQueueLabel(plan: StudioChangePlan): string {
 }
 
 export function StudioPageContent({ candidate, creativeSources, projectRef, versionRef, initialSurface = "arrangement", initialIntent = null, initialGenerationRef = null, api, stemPlaybackFactory = createHtmlStemPlaybackController }: StudioPageContentProps) {
-  const { playerCandidate, playerAuditionScope, playerAuditionLooping, playing, positionSeconds, seekPlayer, selectPlayerCandidate, setAuditionLoop, setPlaying } = useMoriApp()
+  const { playerCandidate, playerAuditionScope, playerAuditionLooping, playing, positionSeconds, seekPlayer, primePlayerCandidate, selectPlayerCandidate, setAuditionLoop, setPlaying } = useMoriApp()
   const clearAuditionLoop = useCallback(() => setAuditionLoop(false), [setAuditionLoop])
   const exportStatusDescriptionId = useId()
   const finishStatusDescriptionId = useId()
@@ -276,6 +276,14 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
   const [stemSeparationRun, setStemSeparationRun] = useState<StudioStemSeparationRunState>(idleStemSeparationRun)
   const [trackedStemSeparation, setTrackedStemSeparation] = useState<TrackedStemSeparation | null>(null)
   const activeVersionRef = activeCandidate?.versionRef ?? null
+
+  useEffect(() => {
+    if (activeCandidate === null) return
+    // Opening a Version gives the paused transport a clear subject. It does
+    // not autoplay, add an item to Up next, or replace an existing audition.
+    primePlayerCandidate(activeCandidate)
+  }, [activeCandidate, primePlayerCandidate])
+
   const hasInjectedWorkspaceReader = api?.getProjectWorkspace !== undefined
   const shouldUseWorkspaceMemory = api === undefined
     ? activeProjectRef !== previewProject.projectRef
@@ -2870,14 +2878,12 @@ function ArrangementEditor({ compositionSave, compositionLoad, compositionRevisi
           {compositionEditor.saveState === "conflict" ? "Refresh to resolve" : compositionEditor.saveState === "failed" ? "Retry save" : "Save arrangement"}
         </button>
       </div>
-      <StudioTimeline candidate={candidate} sections={timelineSections} selection={selection} positionSeconds={positionSeconds} playing={playing} disabled={changeActive || compositionEditor.saveState === "saving"} compositionDisabled={compositionBusy} onSeek={onSeekTimeline} onSelect={selectTimelineRange} onPreviewSelection={() => onPreviewSelection(selection)} previewingSelection={previewingSelection} onToggleLoopSelection={() => onToggleLoopSelection(selection)} loopingSelection={loopingSelection} compositionTracks={compositionEditor.composition} selectedClipRef={selectedClipRef} selectedTrackRef={selectedTrackRef} onSelectTrack={(trackRef) => { setSelectedTrackRef(trackRef); setSelectedClipRef(undefined); setEditOperation(null) }} onSelectClip={(clipRef, trackRef) => { setSelectedClipRef(clipRef); setSelectedTrackRef(trackRef) }} onEditClip={(operation, clipRef, trackRef) => { setSelectedClipRef(clipRef); setSelectedTrackRef(trackRef); setEditOperation(operation) }} onMoveClip={moveClip} onDeleteClip={deleteClip} onDuplicateClip={duplicateClip} onPreviewClip={previewCompositionClip} previewingClip={previewingClip} isClipPreviewable={isClipPreviewable} insertSources={insertSources} onInsertClip={insertClip} dropSources={dropSources} onDropSource={(sourceRef, trackRef, startMs) => insertAudioSourceAtPosition(sourceRef, trackRef, startMs)} resolveClipLabel={resolveClipLabel} />
-      <StudioAssetDock sources={creativeSources} selectedTrackName={selectedTrack?.name} selectedRangeLabel={selection.label} selectedRangeTime={`${formatStudioTimelineTime(selection.startMs)}–${formatStudioTimelineTime(selection.endMs)}`} disabled={changeActive || compositionBusy || compositionEditor.saveState === "saving"} previewingSourceRef={previewingSourceRef} onPreview={onPreviewSource} onInsert={insertAudioSource} />
-      {selectedClipRef !== undefined && selectedTrackRef !== undefined && editOperation !== null ? <CompositionEditPanel clipRef={selectedClipRef} trackRef={selectedTrackRef} trackOptions={compositionEditor.composition.map((track) => ({ trackRef: track.trackRef, name: track.name }))} disabled={changeActive || compositionBusy || compositionEditor.saveState === "saving"} operation={editOperation} onApply={(edit) => { compositionEditor.editAndQueue(edit); setEditOperation(null) }} /> : null}
       <StudioAiComposer
         selectedSection={selection}
         run={studioChangeRun}
         creativeSources={creativeSources}
         selectedClipContext={selectedClipContext}
+        compact
         initialOperation={initialIntent === "transform" || initialIntent === "cover" ? "transform" : undefined}
         initialTransformScope={initialIntent === "transform" ? "whole_version" : undefined}
         initialTransformIntent={initialIntent === "cover" ? "cover" : initialIntent === "transform" ? "restyle" : undefined}
@@ -2885,6 +2891,9 @@ function ArrangementEditor({ compositionSave, compositionLoad, compositionRevisi
         onCancel={onCancelStudioChange}
         onReset={onResetStudioChange}
       />
+      <StudioTimeline candidate={candidate} sections={timelineSections} selection={selection} positionSeconds={positionSeconds} playing={playing} disabled={changeActive || compositionEditor.saveState === "saving"} compositionDisabled={compositionBusy} onSeek={onSeekTimeline} onSelect={selectTimelineRange} onPreviewSelection={() => onPreviewSelection(selection)} previewingSelection={previewingSelection} onToggleLoopSelection={() => onToggleLoopSelection(selection)} loopingSelection={loopingSelection} compositionTracks={compositionEditor.composition} selectedClipRef={selectedClipRef} selectedTrackRef={selectedTrackRef} onSelectTrack={(trackRef) => { setSelectedTrackRef(trackRef); setSelectedClipRef(undefined); setEditOperation(null) }} onSelectClip={(clipRef, trackRef) => { setSelectedClipRef(clipRef); setSelectedTrackRef(trackRef) }} onEditClip={(operation, clipRef, trackRef) => { setSelectedClipRef(clipRef); setSelectedTrackRef(trackRef); setEditOperation(operation) }} onMoveClip={moveClip} onDeleteClip={deleteClip} onDuplicateClip={duplicateClip} onPreviewClip={previewCompositionClip} previewingClip={previewingClip} isClipPreviewable={isClipPreviewable} insertSources={insertSources} onInsertClip={insertClip} dropSources={dropSources} onDropSource={(sourceRef, trackRef, startMs) => insertAudioSourceAtPosition(sourceRef, trackRef, startMs)} resolveClipLabel={resolveClipLabel} />
+      <StudioAssetDock sources={creativeSources} selectedTrackName={selectedTrack?.name} selectedRangeLabel={selection.label} selectedRangeTime={`${formatStudioTimelineTime(selection.startMs)}–${formatStudioTimelineTime(selection.endMs)}`} disabled={changeActive || compositionBusy || compositionEditor.saveState === "saving"} previewingSourceRef={previewingSourceRef} onPreview={onPreviewSource} onInsert={insertAudioSource} />
+      {selectedClipRef !== undefined && selectedTrackRef !== undefined && editOperation !== null ? <CompositionEditPanel clipRef={selectedClipRef} trackRef={selectedTrackRef} trackOptions={compositionEditor.composition.map((track) => ({ trackRef: track.trackRef, name: track.name }))} disabled={changeActive || compositionBusy || compositionEditor.saveState === "saving"} operation={editOperation} onApply={(edit) => { compositionEditor.editAndQueue(edit); setEditOperation(null) }} /> : null}
       <section className={styles.takeLanes} id="mori-take-lanes" aria-label="Take lanes" tabIndex={-1}>
         <div className={styles.takeLanesHeader}>
           <div><span>Compare before committing</span><h3>Take lanes</h3></div>

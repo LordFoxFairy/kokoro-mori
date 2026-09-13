@@ -62,6 +62,34 @@ describe("Studio AI composer", () => {
     expect(screen.getByRole("group", { name: "Change context" })).toHaveTextContent("Selected section · Verse")
   })
 
+  it("keeps the compact command bar focused while leaving advanced controls available", () => {
+    render(
+      <StudioAiComposer
+        selectedSection={verse}
+        run={idleRun}
+        compact
+        initialOperation="transform"
+        onGenerate={vi.fn()}
+        onCancel={vi.fn()}
+        onReset={vi.fn()}
+      />,
+    )
+
+    const composer = screen.getByRole("region", { name: "Mori AI changes" })
+    expect(composer).toHaveAttribute("data-ai-layout", "contextual")
+    expect(within(composer).getByRole("group", { name: "Change type" })).toBeInTheDocument()
+    expect(within(composer).getByRole("group", { name: "Change context" })).toHaveTextContent("Selected section · Verse")
+    expect(within(composer).getByRole("textbox", { name: "Tell Mori what to change" })).toBeInTheDocument()
+    const moreControls = within(composer).getByText("More controls").closest("summary")
+    expect(moreControls).toBeInTheDocument()
+    expect(moreControls?.parentElement).not.toHaveAttribute("open")
+
+    fireEvent.click(moreControls as HTMLElement)
+    expect(moreControls?.parentElement).toHaveAttribute("open")
+    expect(within(composer).getByRole("group", { name: "Transform intent" })).toBeInTheDocument()
+    expect(within(composer).getByRole("button", { name: "Restyle" })).toHaveAttribute("aria-pressed", "true")
+  })
+
   it("offers operation-aware prompt starters without skipping plan review", () => {
     const onGenerate = renderComposer()
 

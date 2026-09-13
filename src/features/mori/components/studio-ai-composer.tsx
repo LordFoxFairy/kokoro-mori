@@ -56,6 +56,7 @@ type StudioAiComposerProps = {
   run: StudioAiRunState
   selectedClipContext?: StudioAiClipContext
   creativeSources?: readonly MoriCreativeLibrarySource[]
+  compact?: boolean
   initialOperation?: StudioChangeOperation | undefined
   initialTransformScope?: StudioTransformScope | undefined
   initialTransformIntent?: StudioTransformIntent | undefined
@@ -160,7 +161,7 @@ const coverPromptStarters: Readonly<Record<StudioCoverMode, readonly string[]>> 
   ],
 }
 
-export function StudioAiComposer({ selectedSection, run, creativeSources, selectedClipContext, initialOperation, initialTransformScope, initialTransformIntent, onGenerate, onCancel, onReset }: StudioAiComposerProps) {
+export function StudioAiComposer({ selectedSection, run, creativeSources, selectedClipContext, compact = false, initialOperation, initialTransformScope, initialTransformIntent, onGenerate, onCancel, onReset }: StudioAiComposerProps) {
   const promptId = useId()
   const promptRef = useRef<HTMLTextAreaElement>(null)
   const [operation, setOperation] = useState<StudioChangeOperation>(() => run.plan?.operation ?? initialOperation ?? "add_part")
@@ -309,9 +310,134 @@ export function StudioAiComposer({ selectedSection, run, creativeSources, select
     ? visiblePlan.draft
     : null
   const status = runStatus(run)
+  const advancedSummary = operation === "transform"
+    ? isCover ? `${coverModeLabel(coverMode)} cover` : transformIntent === "cover" ? "Cover setup" : "Restyle setup"
+    : `${preserve.length} kept · ${takeCountLabel(outputCount)}`
+  const advancedControls = <>
+    {operation === "transform" && !isCover ? (
+      <section className={styles.studioAiSources} aria-label="Creative sources">
+        <header>
+          <div><span>Creative sources</span><strong>Reference sound</strong></div>
+          <small>Optional · guide the texture without replacing your Version</small>
+        </header>
+        <div className={styles.studioAiSourceChoices} role="group" aria-label="Reference audio">
+          {referenceAudios.length > 0 ? referenceAudios.map((reference) => (
+            <button
+              type="button"
+              aria-label={`Use ${reference.name} as reference`}
+              aria-pressed={referenceAssetRefs.includes(reference.assetRef)}
+              disabled={busy}
+              key={reference.ref}
+              onClick={() => toggleReference(reference.assetRef)}
+            >
+              <AudioLines size={13} />
+              <span><strong>{reference.name}</strong><small>{reference.description}</small></span>
+              {referenceAssetRefs.includes(reference.assetRef) ? <Check size={13} /> : null}
+            </button>
+          )) : <span className={styles.studioAiSourcesEmpty}>No audio references available yet.</span>}
+        </div>
+      </section>
+    ) : null}
+
+    {operation === "transform" ? (
+      <div className={styles.studioAiIntents} role="group" aria-label="Transform intent">
+        {transformIntents.map(({ id, label, description, Icon }) => (
+          <button
+            className={styles.studioAiIntent}
+            type="button"
+            aria-label={label}
+            aria-pressed={transformIntent === id}
+            disabled={busy}
+            key={id}
+            onClick={() => chooseTransformIntent(id)}
+          >
+            <span className={styles.studioAiIntentIcon} aria-hidden="true"><Icon size={15} /></span>
+            <span><strong>{label}</strong><small>{description}</small></span>
+          </button>
+        ))}
+      </div>
+    ) : null}
+
+    {isCover ? (
+      <section className={styles.studioAiCoverSetup} aria-label="Cover setup">
+        <header>
+          <div><AudioLines size={14} /><strong>Audio cover, not release artwork.</strong></div>
+          <span>Uses the open Version · no re-upload</span>
+        </header>
+        <div className={styles.studioAiCoverControls}>
+          <div className={styles.studioAiCoverMode} role="group" aria-label="Cover mode">
+            <button type="button" aria-label="Vocal cover" aria-pressed={coverMode === "vocal"} disabled={busy} onClick={() => chooseCoverMode("vocal")}><Mic2 size={13} /> Vocal</button>
+            <button type="button" aria-label="Instrumental cover" aria-pressed={coverMode === "instrumental"} disabled={busy} onClick={() => chooseCoverMode("instrumental")}><AudioLines size={13} /> Instrumental</button>
+          </div>
+          {coverMode === "vocal" ? (
+            <label className={styles.studioAiVoiceField}>
+              <span>Voice profile <small>Optional</small></span>
+              <select aria-label="Voice profile" value={coverVoiceRef} disabled={busy} onChange={(event) => chooseCoverVoice(event.target.value)}>
+                <option value="">Natural reinterpretation</option>
+                {voiceProfiles.map((voice) => <option value={voice.ref} key={voice.ref}>{voice.name} · {voice.description}</option>)}
+              </select>
+            </label>
+          ) : null}
+        </div>
+        <p><Check size={12} /> {preserveLabel(activePreserve)} stay fixed</p>
+      </section>
+    ) : null}
+
+    {!isCover ? <details className={styles.studioAiControls}>
+      <summary>
+        <span><SlidersHorizontal size={13} /> Keep &amp; compare</span>
+        <span>{referenceAssetRefs.length > 0 ? `${referenceAssetRefs.length} reference · ` : ""}{preserve.length} kept · {takeCountLabel(outputCount)}</span>
+      </summary>
+      <div className={styles.studioAiControlsBody}>
+        <div className={styles.studioAiControlGroup} role="group" aria-label="Keep stable">
+          <span className={styles.studioAiControlLabel}>Keep stable</span>
+          <div className={styles.studioAiChoices}>
+            {preserveOptions.map((item) => (
+              <button
+                type="button"
+                aria-label={`Keep ${item.label.toLowerCase()}`}
+                aria-pressed={preserve.includes(item.id)}
+                disabled={busy}
+                key={item.id}
+                onClick={() => togglePreserve(item.id)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className={styles.studioAiControlGroup} role="group" aria-label="Alternatives">
+          <span className={styles.studioAiControlLabel}>Alternatives</span>
+          <div className={styles.studioAiChoices}>
+            {studioChangeOutputCounts.map((count) => (
+              <button
+                type="button"
+                aria-pressed={outputCount === count}
+                disabled={busy}
+                key={count}
+                onClick={() => chooseOutputCount(count)}
+              >
+                {takeCountLabel(count)}
+              </button>
+            ))}
+          </div>
+        </div>
+        {operation === "transform" ? (
+          <div className={styles.studioAiControlGroup} role="group" aria-label="Transform scope">
+            <span className={styles.studioAiControlLabel}>Apply to</span>
+            <div className={styles.studioAiChoices}>
+              <button type="button" aria-pressed={transformScope === "selected_section"} disabled={busy} onClick={() => chooseTransformScope("selected_section")}>{selectedSection.id === "custom-range" ? "Selected range" : "Selected section"}</button>
+              <button type="button" aria-pressed={transformScope === "whole_version"} disabled={busy} onClick={() => chooseTransformScope("whole_version")}>Whole song</button>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </details> : null}
+
+  </>
 
   return (
-    <section className={styles.studioAi} aria-label="Mori AI changes">
+    <section className={`${styles.studioAi} ${compact ? styles.studioAiCompact : ""}`} aria-label="Mori AI changes" data-ai-layout={compact ? "contextual" : "full"}>
       <header className={styles.studioAiHeader}>
         <div className={styles.studioAiIdentity}>
           <span className={styles.studioAiMark} aria-hidden="true"><Sparkles size={15} /></span>
@@ -344,74 +470,20 @@ export function StudioAiComposer({ selectedSection, run, creativeSources, select
         </div>
       </div>
 
-      {operation === "transform" && !isCover ? (
-        <section className={styles.studioAiSources} aria-label="Creative sources">
-          <header>
-            <div><span>Creative sources</span><strong>Reference sound</strong></div>
-            <small>Optional · guide the texture without replacing your Version</small>
-          </header>
-          <div className={styles.studioAiSourceChoices} role="group" aria-label="Reference audio">
-            {referenceAudios.length > 0 ? referenceAudios.map((reference) => (
-              <button
-                type="button"
-                aria-label={`Use ${reference.name} as reference`}
-                aria-pressed={referenceAssetRefs.includes(reference.assetRef)}
-                disabled={busy}
-                key={reference.ref}
-                onClick={() => toggleReference(reference.assetRef)}
-              >
-                <AudioLines size={13} />
-                <span><strong>{reference.name}</strong><small>{reference.description}</small></span>
-                {referenceAssetRefs.includes(reference.assetRef) ? <Check size={13} /> : null}
-              </button>
-            )) : <span className={styles.studioAiSourcesEmpty}>No audio references available yet.</span>}
-          </div>
-        </section>
-      ) : null}
+      {compact ? <details className={styles.studioAiAdvanced}>
+        <summary><span><SlidersHorizontal size={13} /> More controls</span><span>{advancedSummary}</span></summary>
+        <div className={styles.studioAiAdvancedBody}>{advancedControls}</div>
+      </details> : advancedControls}
 
-      {operation === "transform" ? (
-        <div className={styles.studioAiIntents} role="group" aria-label="Transform intent">
-          {transformIntents.map(({ id, label, description, Icon }) => (
-            <button
-              className={styles.studioAiIntent}
-              type="button"
-              aria-label={label}
-              aria-pressed={transformIntent === id}
-              disabled={busy}
-              key={id}
-              onClick={() => chooseTransformIntent(id)}
-            >
-              <span className={styles.studioAiIntentIcon} aria-hidden="true"><Icon size={15} /></span>
-              <span><strong>{label}</strong><small>{description}</small></span>
-            </button>
-          ))}
-        </div>
-      ) : null}
-
-      {isCover ? (
-        <section className={styles.studioAiCoverSetup} aria-label="Cover setup">
-          <header>
-            <div><AudioLines size={14} /><strong>Audio cover, not release artwork.</strong></div>
-            <span>Uses the open Version · no re-upload</span>
-          </header>
-          <div className={styles.studioAiCoverControls}>
-            <div className={styles.studioAiCoverMode} role="group" aria-label="Cover mode">
-              <button type="button" aria-label="Vocal cover" aria-pressed={coverMode === "vocal"} disabled={busy} onClick={() => chooseCoverMode("vocal")}><Mic2 size={13} /> Vocal</button>
-              <button type="button" aria-label="Instrumental cover" aria-pressed={coverMode === "instrumental"} disabled={busy} onClick={() => chooseCoverMode("instrumental")}><AudioLines size={13} /> Instrumental</button>
-            </div>
-            {coverMode === "vocal" ? (
-              <label className={styles.studioAiVoiceField}>
-                <span>Voice profile <small>Optional</small></span>
-                <select aria-label="Voice profile" value={coverVoiceRef} disabled={busy} onChange={(event) => chooseCoverVoice(event.target.value)}>
-                  <option value="">Natural reinterpretation</option>
-                  {voiceProfiles.map((voice) => <option value={voice.ref} key={voice.ref}>{voice.name} · {voice.description}</option>)}
-                </select>
-              </label>
-            ) : null}
-          </div>
-          <p><Check size={12} /> {preserveLabel(activePreserve)} stay fixed</p>
-        </section>
-      ) : null}
+      <div className={styles.studioAiContext} role="group" aria-label="Change context">
+        <span><strong>Scope</strong>{activeScope}</span>
+        <span><strong>Output</strong>{alternativeCountLabel(activeOutputCount)}</span>
+        <span><strong>Destination</strong>Take lanes</span>
+      </div>
+      {selectedClipContext !== undefined ? <section className={styles.studioAiClipContext} aria-label="Clip edit context">
+        <span><Scissors size={12} aria-hidden="true" /><strong>Clip edit</strong>{selectedClipContext.trackName} · {selectedClipContext.label} · {formatClipRange(selectedClipContext.startMs, selectedClipContext.durationMs)}</span>
+        <small>Clip selection does not change AI scope</small>
+      </section> : null}
 
       <form className={styles.studioAiForm} onSubmit={reviewChange}>
         <div className={styles.studioAiPromptStarters} role="group" aria-label="Prompt starters">
@@ -437,67 +509,6 @@ export function StudioAiComposer({ selectedSection, run, creativeSources, select
           Review change <ArrowRight size={14} />
         </button>
       </form>
-
-      {!isCover ? <details className={styles.studioAiControls}>
-        <summary>
-          <span><SlidersHorizontal size={13} /> Keep &amp; compare</span>
-          <span>{referenceAssetRefs.length > 0 ? `${referenceAssetRefs.length} reference · ` : ""}{preserve.length} kept · {takeCountLabel(outputCount)}</span>
-        </summary>
-        <div className={styles.studioAiControlsBody}>
-          <div className={styles.studioAiControlGroup} role="group" aria-label="Keep stable">
-            <span className={styles.studioAiControlLabel}>Keep stable</span>
-            <div className={styles.studioAiChoices}>
-              {preserveOptions.map((item) => (
-                <button
-                  type="button"
-                  aria-label={`Keep ${item.label.toLowerCase()}`}
-                  aria-pressed={preserve.includes(item.id)}
-                  disabled={busy}
-                  key={item.id}
-                  onClick={() => togglePreserve(item.id)}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className={styles.studioAiControlGroup} role="group" aria-label="Alternatives">
-            <span className={styles.studioAiControlLabel}>Alternatives</span>
-            <div className={styles.studioAiChoices}>
-              {studioChangeOutputCounts.map((count) => (
-                <button
-                  type="button"
-                  aria-pressed={outputCount === count}
-                  disabled={busy}
-                  key={count}
-                  onClick={() => chooseOutputCount(count)}
-                >
-                  {takeCountLabel(count)}
-                </button>
-              ))}
-            </div>
-          </div>
-          {operation === "transform" ? (
-            <div className={styles.studioAiControlGroup} role="group" aria-label="Transform scope">
-              <span className={styles.studioAiControlLabel}>Apply to</span>
-              <div className={styles.studioAiChoices}>
-                <button type="button" aria-pressed={transformScope === "selected_section"} disabled={busy} onClick={() => chooseTransformScope("selected_section")}>{selectedSection.id === "custom-range" ? "Selected range" : "Selected section"}</button>
-                <button type="button" aria-pressed={transformScope === "whole_version"} disabled={busy} onClick={() => chooseTransformScope("whole_version")}>Whole song</button>
-              </div>
-            </div>
-          ) : null}
-        </div>
-      </details> : null}
-
-      <div className={styles.studioAiContext} role="group" aria-label="Change context">
-        <span><strong>Scope</strong>{activeScope}</span>
-        <span><strong>Output</strong>{alternativeCountLabel(activeOutputCount)}</span>
-        <span><strong>Destination</strong>Take lanes</span>
-      </div>
-      {selectedClipContext !== undefined ? <section className={styles.studioAiClipContext} aria-label="Clip edit context">
-        <span><Scissors size={12} aria-hidden="true" /><strong>Clip edit</strong>{selectedClipContext.trackName} · {selectedClipContext.label} · {formatClipRange(selectedClipContext.startMs, selectedClipContext.durationMs)}</span>
-        <small>Clip selection does not change AI scope</small>
-      </section> : null}
 
       {visiblePlan !== null && plannedOperation !== null ? (
         <section className={styles.studioAiPlan} aria-label="AI change plan" aria-live="polite" aria-busy={busy}>

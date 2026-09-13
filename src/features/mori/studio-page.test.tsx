@@ -3,7 +3,7 @@ import { StrictMode } from "react"
 import { describe, expect, it, vi } from "vitest"
 import type { ArtworkGenerationInput, MoriApi, MoriExportInput, MoriProjectWorkspaceProjection, ReleaseDraftInput, StudioChangeGenerationInput, StudioRestyleGenerationSnapshot } from "@/lib/mori-api"
 import { MoriApiRequestError } from "@/lib/mori-api-client"
-import { MoriAppProvider } from "./components/mori-app-provider"
+import { MoriAppProvider, useMoriApp } from "./components/mori-app-provider"
 import { previewCandidates } from "./preview-data"
 import { readGenerationQueueState } from "./generation-queue-storage"
 import { defaultStudioLyrics } from "./studio-lyrics"
@@ -3478,14 +3478,70 @@ describe("Mori studio page", () => {
     expect(within(stemsEditor).queryByText("Version vocals")).not.toBeInTheDocument()
   })
 
-  it("keeps the global player honest when preview audio is unavailable", () => {
+  it("shows the open Version in the paused global player", () => {
     renderStudio()
 
     const player = screen.getByRole("region", { name: "Global player" })
-    expect(player).toHaveAttribute("data-player-state", "empty")
+    expect(player).toHaveAttribute("data-player-state", "ready")
+    expect(player).toHaveTextContent("First Light")
+    expect(within(player).getByRole("button", { name: "Play" })).toBeInTheDocument()
+  })
+
+  it("primes the open Version in the paused player without adding it to Up next", () => {
+    const mediaFactory: PlayerMediaFactory = () => ({
+      setSource: vi.fn(),
+      play: vi.fn(async () => undefined),
+      pause: vi.fn(),
+      seek: vi.fn(),
+      setMuted: vi.fn(),
+      dispose: vi.fn(),
+    })
+    renderStudio(undefined, previewCandidates[0], mediaFactory)
+
+    const player = screen.getByRole("region", { name: "Global player" })
+    expect(player).toHaveAttribute("data-player-state", "ready")
+    expect(player).toHaveTextContent("First Light")
+    expect(within(player).getByRole("button", { name: "Play" })).toBeInTheDocument()
+    expect(within(player).queryByRole("button", { name: "Open playback queue" })).not.toBeInTheDocument()
+    expect(within(player).getByRole("button", { name: "Previous version" })).toBeDisabled()
+    expect(within(player).getByRole("button", { name: "Next version" })).toBeDisabled()
+  })
+
+  it("keeps an existing listening selection when Studio opens another Version", () => {
+    const mediaFactory: PlayerMediaFactory = () => ({
+      setSource: vi.fn(),
+      play: vi.fn(async () => undefined),
+      pause: vi.fn(),
+      seek: vi.fn(),
+      setMuted: vi.fn(),
+      dispose: vi.fn(),
+    })
+
+    function ExistingListenHarness() {
+      const { selectPlayerCandidate } = useMoriApp()
+      return <button type="button" onClick={() => selectPlayerCandidate(previewCandidates[1])}>Listen to Afterglow</button>
+    }
+
+    render(
+      <MoriAppProvider mediaFactory={mediaFactory}>
+        <ExistingListenHarness />
+        <StudioPageContent candidate={previewCandidates[0]} stemPlaybackFactory={createTestStemPlaybackController} />
+      </MoriAppProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Listen to Afterglow" }))
+    expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("First Light · Afterglow")
+  })
+
+  it("keeps a missing preview audio explicit after priming the open Version", () => {
+    const unavailableCandidate = { ...previewCandidates[0], audioAssetRef: null, title: "Unavailable First Light" }
+    renderStudio(undefined, unavailableCandidate)
+
+    const player = screen.getByRole("region", { name: "Global player" })
+    expect(player).toHaveAttribute("data-player-state", "unavailable")
     expect(within(player).queryByRole("button", { name: "Play" })).not.toBeInTheDocument()
-    expect(player).toHaveTextContent("Choose a version")
-    expect(player).toHaveTextContent("Ready when you are")
+    expect(player).toHaveTextContent("Unavailable First Light")
+    expect(player).toHaveTextContent("Preview audio is unavailable")
   })
 
   it("keeps the selected Open Version, canonical URL, copied link, and browser history aligned", async () => {
