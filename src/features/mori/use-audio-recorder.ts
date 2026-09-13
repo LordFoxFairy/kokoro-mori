@@ -9,6 +9,7 @@ export type AudioRecording = {
   contentType: string
   fileName: string
   byteSize: number
+  durationSeconds: number
 }
 
 type UseAudioRecorderOptions = {
@@ -20,6 +21,7 @@ type UseAudioRecorderOptions = {
 export function useAudioRecorder({ onComplete, onError, maxDurationSeconds = 300 }: UseAudioRecorderOptions) {
   const [status, setStatus] = useState<AudioRecordingStatus>("idle")
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
+  const elapsedSecondsRef = useRef(0)
   const statusRef = useRef<AudioRecordingStatus>("idle")
   const recorderRef = useRef<MediaRecorder | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -50,6 +52,7 @@ export function useAudioRecorder({ onComplete, onError, maxDurationSeconds = 300
     if (!preserveFailure) recorderFailedRef.current = false
     stopStream()
     updateStatus("idle")
+    elapsedSecondsRef.current = 0
     setElapsedSeconds(0)
   }, [stopStream, updateStatus])
 
@@ -130,6 +133,7 @@ export function useAudioRecorder({ onComplete, onError, maxDurationSeconds = 300
         contentType: blob.type || contentType,
         fileName: `mori-recording-${Date.now()}.${fileExtension}`,
         byteSize: blob.size,
+        durationSeconds: Math.max(1, elapsedSecondsRef.current),
       }
       const failed = recorderFailedRef.current
       reset()
@@ -154,6 +158,7 @@ export function useAudioRecorder({ onComplete, onError, maxDurationSeconds = 300
     const timer = window.setInterval(() => {
       setElapsedSeconds((current) => {
         const next = current + 1
+        elapsedSecondsRef.current = next
         if (next >= maxDurationSeconds) window.queueMicrotask(stop)
         return next
       })

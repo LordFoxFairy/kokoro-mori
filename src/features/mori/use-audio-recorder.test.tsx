@@ -54,7 +54,7 @@ describe("useAudioRecorder", () => {
     fireEvent.click(screen.getByRole("button", { name: "Stop" }))
 
     await waitFor(() => expect(onComplete).toHaveBeenCalledOnce())
-    expect(onComplete.mock.calls[0]?.[0]).toMatchObject({ contentType: expect.stringMatching(/^audio\/(webm|mp4)/u), fileName: expect.stringMatching(/^mori-recording-.*\.(webm|m4a)$/u), byteSize: expect.any(Number) })
+    expect(onComplete.mock.calls[0]?.[0]).toMatchObject({ contentType: expect.stringMatching(/^audio\/(webm|mp4)/u), fileName: expect.stringMatching(/^mori-recording-.*\.(webm|m4a)$/u), byteSize: expect.any(Number), durationSeconds: expect.any(Number) })
     expect(screen.getByRole("status", { name: "recording state" })).toHaveTextContent("idle")
     expect(stopTrack).toHaveBeenCalledOnce()
     expect(onError).not.toHaveBeenCalled()
