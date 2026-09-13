@@ -1179,6 +1179,7 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, generationRef: 
         activeKey="create"
         ariaLabel="Create workspace"
         projectRef={workspaceProjectRef}
+        projectTitle={workspaceProjectRef === null ? null : workspaceProjectTitle}
       >
         <div className={`${styles.workspaceLayout} ${queueOpen && queuePresentation === "pane" ? styles.workspaceLayoutWithQueue : ""}`}>
           <section className={styles.createSurface} aria-label="Create canvas">

@@ -46,6 +46,22 @@ describe("Mori application navigation", () => {
     await waitFor(() => expect(screen.getByRole("link", { name: "New direction" })).toHaveAttribute("href", "/create?project_ref=project_live_1"))
   })
 
+  it("keeps the active Project visible in the expanded rail", () => {
+    render(
+      <MoriAppProvider>
+        <MoriCatalogShell activeKey="projects" ariaLabel="Project overview" projectRef="project_live_1" projectTitle="Window Seat">
+          <div>Project overview</div>
+        </MoriCatalogShell>
+      </MoriAppProvider>,
+    )
+
+    const projectLink = screen.getByRole("link", { name: "Open current project Window Seat" })
+    expect(projectLink).toHaveAttribute("href", "/projects/project_live_1")
+    expect(projectLink).toHaveTextContent("Current project")
+    expect(projectLink).toHaveTextContent("Window Seat")
+    expect(projectLink).toHaveTextContent("Active")
+  })
+
   it("keeps the empty global player quiet until a Version is chosen", () => {
     render(
       <MoriAppProvider>

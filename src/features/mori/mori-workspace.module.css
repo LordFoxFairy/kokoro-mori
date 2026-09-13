@@ -4297,6 +4297,87 @@
   box-shadow: none;
 }
 
+.currentProjectCard {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0 0;
+  padding: 12px;
+  border: 1px solid rgba(109, 92, 231, 0.16);
+  border-radius: 14px;
+  color: var(--mori-foreground);
+  text-decoration: none;
+  background: linear-gradient(145deg, rgba(246, 243, 255, 0.88), rgba(255, 248, 244, 0.84));
+  transition: border-color var(--mori-motion-fast) ease, background var(--mori-motion-fast) ease, transform var(--mori-motion-fast) ease;
+}
+
+.currentProjectCard:hover {
+  border-color: rgba(109, 92, 231, 0.3);
+  background: linear-gradient(145deg, rgba(241, 237, 255, 0.96), rgba(255, 244, 237, 0.92));
+  transform: translateY(-1px);
+}
+
+.currentProjectHeader,
+.currentProjectBody {
+  display: flex;
+  align-items: center;
+}
+
+.currentProjectHeader {
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.currentProjectHeader > span {
+  color: var(--mori-foreground);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.currentProjectHeader > strong {
+  color: var(--mori-success);
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.currentProjectBody {
+  min-width: 0;
+  gap: 10px;
+}
+
+.currentProjectArtwork {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  place-items: center;
+  border-radius: 12px;
+  color: #40388c;
+  background: linear-gradient(145deg, #d5c9ff, #f5c1a9);
+  box-shadow: 0 7px 15px rgba(109, 92, 231, 0.12);
+}
+
+.currentProjectCopy {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.currentProjectCopy strong,
+.currentProjectCopy span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.currentProjectCopy strong {
+  font-size: 12px;
+}
+
+.currentProjectCopy span {
+  color: var(--mori-muted);
+  font-size: 10px;
+}
+
 .railBottom {
   display: grid;
   gap: 3px;
@@ -4403,6 +4484,10 @@
 .railCollapsed .navItemActive {
   box-shadow: none;
   background: rgba(237, 233, 254, 0.9);
+}
+
+.railCollapsed .currentProjectCard {
+  display: none;
 }
 
 .railCollapsed .railFooterLinkActive {

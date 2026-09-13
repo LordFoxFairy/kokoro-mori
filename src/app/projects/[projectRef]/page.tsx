@@ -1,5 +1,6 @@
 import { MoriCatalogShell } from "@/features/mori/components/mori-catalog-shell"
 import { ProjectOverviewPageContent } from "@/features/mori/project-overview"
+import { previewProject } from "@/features/mori/preview-data"
 import styles from "@/features/mori/mori-workspace.module.css"
 
 type ProjectOverviewPageProps = { params: Promise<{ projectRef: string }> }
@@ -9,7 +10,7 @@ export default async function ProjectOverviewPage({ params }: ProjectOverviewPag
 
   return (
     <main className={styles.catalogApp}>
-      <MoriCatalogShell activeKey="projects" ariaLabel="Project overview" projectRef={projectRef}><ProjectOverviewPageContent projectRef={projectRef} /></MoriCatalogShell>
+      <MoriCatalogShell activeKey="projects" ariaLabel="Project overview" projectRef={projectRef} projectTitle={projectRef === previewProject.projectRef ? previewProject.title : undefined}><ProjectOverviewPageContent projectRef={projectRef} /></MoriCatalogShell>
     </main>
   )
 }

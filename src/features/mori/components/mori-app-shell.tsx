@@ -19,10 +19,11 @@ type MoriAppShellProps = {
   activeKey: MoriNavigationKey
   ariaLabel: string
   projectRef?: string | null
+  projectTitle?: string | null
   children: ReactNode
 }
 
-export function MoriAppShell({ activeKey, ariaLabel, projectRef, children }: MoriAppShellProps) {
+export function MoriAppShell({ activeKey, ariaLabel, projectRef, projectTitle, children }: MoriAppShellProps) {
   const { railCollapsed, toggleRail, playerCandidate, playbackQueue, playerAuditionScope, playerAuditionLooping, playing, playerMediaStatus, playerMediaMessage, muted, positionSeconds, togglePlaying, retryPlayerPlayback, toggleMuted, setPlaying, setAuditionLoop, seekPlayer, selectPlayerCandidate, previousPlayerCandidate, nextPlayerCandidate, preferences } = useMoriApp()
   const [playbackQueueOpen, setPlaybackQueueOpen] = useState(false)
   const [settingsReturnTo, setSettingsReturnTo] = useState<string | null>(null)
@@ -150,6 +151,7 @@ export function MoriAppShell({ activeKey, ariaLabel, projectRef, children }: Mor
         activeKey={activeKey}
         collapsed={effectiveRailCollapsed}
         projectRef={projectRef}
+        projectTitle={projectTitle}
         onNavigate={handleRailNavigation}
         onOpenSettings={activeKey === "settings" ? undefined : openSettings}
         onToggle={handleRailToggle}

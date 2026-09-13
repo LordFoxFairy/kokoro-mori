@@ -10,6 +10,7 @@ type MoriRailProps = {
   activeKey?: MoriNavigationKey
   collapsed?: boolean
   projectRef?: string | null
+  projectTitle?: string | null
   onNavigate?: () => void
   onOpenSettings?: (returnTo: string) => void
   onToggle?: () => void
@@ -24,10 +25,12 @@ const navigation = [
   { key: "library" as const, label: "Library", href: "/library", icon: Library },
 ]
 
-export function MoriRail({ activeKey = "create", collapsed = false, projectRef, onNavigate, onOpenSettings, onToggle, railRef, toggleRef }: MoriRailProps) {
+export function MoriRail({ activeKey = "create", collapsed = false, projectRef, projectTitle, onNavigate, onOpenSettings, onToggle, railRef, toggleRef }: MoriRailProps) {
   const [settingsHref, setSettingsHref] = useState("/settings?return_to=%2F")
   const [createHref, setCreateHref] = useState("/create")
   const newCreationLabel = createHref === "/create" ? "New project" : "New direction"
+  const activeProjectRef = projectRef?.trim() || null
+  const activeProjectTitle = projectTitle?.trim() || "Project"
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -68,6 +71,19 @@ export function MoriRail({ activeKey = "create", collapsed = false, projectRef, 
           </Link>
         ))}
       </div>
+
+      {activeProjectRef !== null ? <Link
+        className={styles.currentProjectCard}
+        href={`/projects/${encodeURIComponent(activeProjectRef)}`}
+        aria-label={`Open current project ${activeProjectTitle}`}
+        onClick={onNavigate}
+      >
+        <span className={styles.currentProjectHeader}><span>Current project</span><strong>Active</strong></span>
+        <span className={styles.currentProjectBody}>
+          <span className={styles.currentProjectArtwork} aria-hidden="true"><AudioLines size={18} /></span>
+          <span className={styles.currentProjectCopy}><strong>{activeProjectTitle}</strong><span>Keep making this project</span></span>
+        </span>
+      </Link> : null}
 
       <div className={styles.railBottom}>
         <Link className={`${styles.railFooterLink} ${activeKey === "settings" ? styles.railFooterLinkActive : ""}`} href={settingsHref} aria-label="Settings" aria-current={activeKey === "settings" ? "page" : undefined} title={collapsed ? "Settings" : undefined} onClick={(event: ReactMouseEvent<HTMLAnchorElement>) => {

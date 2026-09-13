@@ -2273,7 +2273,7 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
   }
 
   return (
-    <MoriStudioShell projectRef={activeProjectRef}>
+    <MoriStudioShell projectRef={activeProjectRef} projectTitle={activeProjectTitle}>
       <header className={styles.studioHeader}>
           <div className={styles.studioHeaderLeft}><Link className={styles.studioBack} href={`/projects/${encodeURIComponent(activeProjectRef)}`} onClick={guardStudioProjectLink}><ArrowLeft size={15} /> {activeProjectTitle}</Link><span>/</span><strong>Studio</strong></div>
           <div className={styles.studioHeaderActions}>
