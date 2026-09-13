@@ -119,6 +119,7 @@
   仍保留可直接访问的 fallback。搜索、键盘 tab 切换、Escape、焦点循环和背景 `inert` 隔离均保持可逆；移动端改为全宽搜索与横向 section navigation，
   交互控件使用 44px touch target。Settings 与 New Project 共用可嵌套的 body lock / shell isolation，成功态会把焦点留在弹窗内。
 - Studio 时间线在窄屏提供横向滚动、键盘焦点和明确的 Swipe hint；短桌面视口的 Export dialog 会避开固定 Player safe area。
+- Studio 时间线在移动端将 View、Playhead 与试听动作分层排列，所有 transport action 都收在时间线卡片内，不再因标题与右侧工具同排而从窄屏右边溢出。
 - Mori 的移动断点已统一到 700px：App Shell、Studio AI、Timeline、Composition lane 与 Creative Source library 在同一临界宽度切换，底部 Playback Queue 与 drawer 也统一使用 `--mori-player-height`，避免紧凑播放器时出现遮挡或空隙。
 - Mori 的 701–900px 平板断点默认使用 64px compact Rail，不改写用户的桌面 Rail 偏好；Studio 在该宽度改为单列工作区，作品身份、工具 tabs 与 Version state 组成连续的顶部上下文带，AI 操作改为两列，避免工具栏、画布和表单被双侧栏压成窄缝。701–820px 的 Studio 顶部动作会独立换行，避免 Copy link、Takes、Finish、Export 被裁切。
 - Composition 选中 Clip 后的试听、Move、Trim、Split、Crop、Fade、Remove、Duplicate 操作在窄屏自动换行并扩大触控命中区；时间线仍保持横向滚动，不把编辑动作挤出可视区域。
@@ -151,10 +152,10 @@ pnpm exec vitest run --maxWorkers=1 src/features/mori/composition*.test.ts src/f
 pnpm exec vitest run --maxWorkers=1 src/features/mori/mori-workspace.test.tsx
                                   passed: 1 file / 78 tests
 pnpm exec vitest run --maxWorkers=1 src/features/mori/mori-responsive-layout.test.ts
-                                  passed: 1 file / 4 tests
+                                  passed: 1 file / 5 tests
 pnpm exec vitest run --maxWorkers=1 src/features/mori/use-audio-recorder.test.tsx
                                   passed: 1 file / 2 tests
-pnpm test                         passed: 86 files / 701 tests
+pnpm test                         passed: 86 files / 702 tests
 pnpm build                        passed
 ```
 

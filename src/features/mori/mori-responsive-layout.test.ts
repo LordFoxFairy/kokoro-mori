@@ -43,4 +43,15 @@ describe("Mori responsive layout contract", () => {
     expect(tablet).toMatch(/\.studioAiOperations\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\);/su)
     expect(tablet).toMatch(/\.studioAiOperation\s*\{[^}]*white-space:\s*normal;/su)
   })
+
+  it("stacks the mobile timeline header so transport actions stay inside the card", () => {
+    const css = readFileSync(resolve(process.cwd(), "src/features/mori/components/studio-timeline.module.css"), "utf8")
+    const mobile = mediaBlock(css, "@media (max-width: 700px)")
+
+    expect(mobile).toMatch(/\.header\s*\{[^}]*flex-direction:\s*column;/su)
+    expect(mobile).toMatch(/\.headerSide\s*\{[^}]*display:\s*grid;[^}]*width:\s*100%;/su)
+    expect(mobile).toMatch(/\.playbackContext\s*\{[^}]*min-width:\s*0;/su)
+    expect(mobile).toMatch(/\.playbackContext\s*\{[^}]*justify-items:\s*start;/su)
+    expect(mobile).toMatch(/\.playbackActions\s*\{[^}]*justify-content:\s*flex-start;/su)
+  })
 })

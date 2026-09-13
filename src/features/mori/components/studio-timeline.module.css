@@ -420,17 +420,36 @@
 @media (max-width: 700px) {
   .header {
     align-items: flex-start;
+    flex-direction: column;
   }
 
   .headerSide {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
     width: 100%;
     align-items: flex-start;
     justify-content: space-between;
     gap: 10px;
   }
 
+  .timelineViewControls {
+    width: max-content;
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .timelineViewControls::-webkit-scrollbar {
+    display: none;
+  }
+
   .playbackContext {
     min-width: 0;
+    justify-items: start;
+  }
+
+  .playbackActions {
+    justify-content: flex-start;
   }
 
   .previewSelection {
