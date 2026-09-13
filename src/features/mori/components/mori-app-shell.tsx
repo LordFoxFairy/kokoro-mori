@@ -28,9 +28,11 @@ export function MoriAppShell({ activeKey, ariaLabel, projectRef, projectTitle, p
   const { railCollapsed, toggleRail, playerCandidate, playbackQueue, playerAuditionScope, playerAuditionLooping, playing, playerMediaStatus, playerMediaMessage, muted, positionSeconds, togglePlaying, retryPlayerPlayback, toggleMuted, setPlaying, setAuditionLoop, seekPlayer, selectPlayerCandidate, previousPlayerCandidate, nextPlayerCandidate, preferences, projectContext, recentProjectContext } = useMoriApp()
   const [playbackQueueOpen, setPlaybackQueueOpen] = useState(false)
   const [settingsReturnTo, setSettingsReturnTo] = useState<string | null>(null)
-  const [{ isMobileViewport, mobileRailExpanded }, setViewportState] = useState({
+  const [{ isMobileViewport, isTabletViewport, mobileRailExpanded, tabletRailExpanded }, setViewportState] = useState({
     isMobileViewport: null as boolean | null,
+    isTabletViewport: null as boolean | null,
     mobileRailExpanded: false,
+    tabletRailExpanded: false,
   })
   const [appShellElement, setAppShellElement] = useState<HTMLDivElement | null>(null)
   const railRef = useRef<HTMLElement>(null)
@@ -39,11 +41,16 @@ export function MoriAppShell({ activeKey, ariaLabel, projectRef, projectTitle, p
   useEffect(() => {
     const updateViewport = () => {
       const nextIsMobileViewport = window.innerWidth <= 700
+      const nextIsTabletViewport = window.innerWidth > 700 && window.innerWidth <= 900
       setViewportState((current) => ({
         isMobileViewport: nextIsMobileViewport,
+        isTabletViewport: nextIsTabletViewport,
         mobileRailExpanded: nextIsMobileViewport && current.isMobileViewport !== true
           ? false
           : current.mobileRailExpanded,
+        tabletRailExpanded: nextIsTabletViewport && current.isTabletViewport !== true
+          ? false
+          : current.tabletRailExpanded,
       }))
     }
     updateViewport()
@@ -52,7 +59,11 @@ export function MoriAppShell({ activeKey, ariaLabel, projectRef, projectTitle, p
   }, [])
 
   const mobileRailOpen = mobileRailExpanded && isMobileViewport === true
-  const effectiveRailCollapsed = isMobileViewport === true ? !mobileRailExpanded : railCollapsed
+  const effectiveRailCollapsed = isMobileViewport === true
+    ? !mobileRailExpanded
+    : isTabletViewport === true
+      ? !tabletRailExpanded
+      : railCollapsed
   const normalizedProjectRef = projectRef?.trim() || null
   const matchingProjectContext = projectContext?.projectRef === normalizedProjectRef ? projectContext : null
   const railProjectContext = projectRef === undefined
@@ -66,10 +77,13 @@ export function MoriAppShell({ activeKey, ariaLabel, projectRef, projectTitle, p
         }
 
   const handleRailToggle = useCallback(() => {
-    const isMobile = window.innerWidth <= 700
+    const viewportWidth = window.innerWidth
+    const isMobile = viewportWidth <= 700
+    const isTablet = viewportWidth > 700 && viewportWidth <= 900
     if (isMobile) setViewportState((current) => ({ ...current, mobileRailExpanded: !current.mobileRailExpanded }))
+    else if (isTablet) setViewportState((current) => ({ ...current, tabletRailExpanded: !current.tabletRailExpanded }))
     else toggleRail()
-    if (isMobile) window.requestAnimationFrame(() => railToggleRef.current?.focus())
+    if (isMobile || isTablet) window.requestAnimationFrame(() => railToggleRef.current?.focus())
   }, [toggleRail])
 
   const handleRailNavigation = useCallback(() => {

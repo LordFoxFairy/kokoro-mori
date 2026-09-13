@@ -120,6 +120,7 @@
   交互控件使用 44px touch target。Settings 与 New Project 共用可嵌套的 body lock / shell isolation，成功态会把焦点留在弹窗内。
 - Studio 时间线在窄屏提供横向滚动、键盘焦点和明确的 Swipe hint；短桌面视口的 Export dialog 会避开固定 Player safe area。
 - Mori 的移动断点已统一到 700px：App Shell、Studio AI、Timeline、Composition lane 与 Creative Source library 在同一临界宽度切换，底部 Playback Queue 与 drawer 也统一使用 `--mori-player-height`，避免紧凑播放器时出现遮挡或空隙。
+- Mori 的 701–900px 平板断点默认使用 64px compact Rail，不改写用户的桌面 Rail 偏好；Studio 在该宽度改为单列工作区，作品身份、工具 tabs 与 Version state 组成连续的顶部上下文带，AI 操作改为两列，避免工具栏、画布和表单被双侧栏压成窄缝。701–820px 的 Studio 顶部动作会独立换行，避免 Copy link、Takes、Finish、Export 被裁切。
 - Composition 选中 Clip 后的试听、Move、Trim、Split、Crop、Fade、Remove、Duplicate 操作在窄屏自动换行并扩大触控命中区；时间线仍保持横向滚动，不把编辑动作挤出可视区域。
   Studio Header 提供项目级 Generation queue 入口，使用同一浏览器任务摘要展示后台运行、完成和需处理的任务，并可回到对应的 Create 或 Studio 上下文。
 - 移动端 Studio Header 已改为上下文与动作分层：项目路径单独占一行，动作区可换行而不挤压路径；Take Lanes 的 Preview / Use take
@@ -131,7 +132,7 @@
 - 移动端全局 Player 保留上一首、播放、下一首、静音、Up next 和 seek 进度，不再把核心听音控制隐藏在窄屏；dock 使用独立的两行安全区，
   Playback queue portal 与 Generation drawer 统一继承全局 Player 高度契约，不覆盖页面底部内容。移动端抽屉开合状态与桌面侧边栏偏好已分离，
   窗口跨断点切换不会改写用户的桌面折叠偏好。
-- 桌面侧边栏折叠后仍保留 Mori brand mark，展开控制固定在 Rail 边缘而不是与品牌标识堆叠；移动端折叠态恢复水平顶栏，避免窄栏只剩孤立的控制图标。
+- 桌面侧边栏折叠后仍保留 Mori brand mark，展开控制在 compact Rail 内独立占位而不覆盖品牌标识；701–900px 平板默认 compact、点击后可临时展开且不写入桌面偏好；移动端折叠态恢复水平顶栏，避免窄栏只剩孤立的控制图标。
 - 桌面侧边栏支持 `⌘/Ctrl+B` 快捷切换，输入框、可编辑区域和 Settings 浮层中不会抢占用户的文字或弹窗交互。
 - 有活动 Project 上下文时，展开 Rail 在 Workspace 导航下显示可点击的 Recent 项目入口；标题和方向/版本摘要从当前工作面更新，
   异步 Project projection 到达后也会同步到 Rail，不显示误导性的 Active 状态，不暴露内部 ref，收起 Rail 和无项目的全局入口不增加噪声。
@@ -149,9 +150,11 @@ pnpm exec vitest run --maxWorkers=1 src/features/mori/composition*.test.ts src/f
                                   passed: 10 files / 50 tests
 pnpm exec vitest run --maxWorkers=1 src/features/mori/mori-workspace.test.tsx
                                   passed: 1 file / 78 tests
+pnpm exec vitest run --maxWorkers=1 src/features/mori/mori-responsive-layout.test.ts
+                                  passed: 1 file / 4 tests
 pnpm exec vitest run --maxWorkers=1 src/features/mori/use-audio-recorder.test.tsx
                                   passed: 1 file / 2 tests
-pnpm test                         passed: 85 files / 696 tests
+pnpm test                         passed: 86 files / 701 tests
 pnpm build                        passed
 ```
 

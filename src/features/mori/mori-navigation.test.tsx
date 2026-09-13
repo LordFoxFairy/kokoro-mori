@@ -316,6 +316,37 @@ describe("Mori application navigation", () => {
     }
   })
 
+  it("starts with a compact rail on tablet viewports without changing the desktop preference", async () => {
+    const originalWidth = window.innerWidth
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 768 })
+    localStorage.setItem("mori.rail.v1", "collapsed")
+
+    try {
+      render(
+        <MoriAppProvider>
+          <MoriCatalogShell activeKey="library" ariaLabel="Library">
+            <div>Library content</div>
+          </MoriCatalogShell>
+        </MoriAppProvider>,
+      )
+
+      await waitFor(() => expect(screen.getByRole("button", { name: "Expand sidebar" })).toBeInTheDocument())
+      expect(screen.getByRole("navigation", { name: "Mori" })).toHaveAttribute("data-rail-state", "collapsed")
+
+      fireEvent.click(screen.getByRole("button", { name: "Expand sidebar" }))
+      await waitFor(() => expect(screen.getByRole("button", { name: "Collapse sidebar" })).toBeInTheDocument())
+      expect(screen.getByRole("navigation", { name: "Mori" })).toHaveAttribute("data-rail-state", "expanded")
+      expect(localStorage.getItem("mori.rail.v1")).toBe("collapsed")
+
+      fireEvent.click(screen.getByRole("button", { name: "Collapse sidebar" }))
+      await waitFor(() => expect(screen.getByRole("button", { name: "Expand sidebar" })).toBeInTheDocument())
+      expect(localStorage.getItem("mori.rail.v1")).toBe("collapsed")
+    } finally {
+      localStorage.removeItem("mori.rail.v1")
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: originalWidth })
+    }
+  })
+
   it("keeps the rail compact when a desktop window is resized to mobile", async () => {
     const originalWidth = window.innerWidth
     Object.defineProperty(window, "innerWidth", { configurable: true, value: 1280 })
