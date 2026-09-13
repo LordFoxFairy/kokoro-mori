@@ -25,7 +25,7 @@ type MoriAppShellProps = {
 }
 
 export function MoriAppShell({ activeKey, ariaLabel, projectRef, projectTitle, projectMeta, children }: MoriAppShellProps) {
-  const { railCollapsed, toggleRail, playerCandidate, playbackQueue, playerAuditionScope, playerAuditionLooping, playing, playerMediaStatus, playerMediaMessage, muted, positionSeconds, togglePlaying, retryPlayerPlayback, toggleMuted, setPlaying, setAuditionLoop, seekPlayer, selectPlayerCandidate, previousPlayerCandidate, nextPlayerCandidate, preferences } = useMoriApp()
+  const { railCollapsed, toggleRail, playerCandidate, playbackQueue, playerAuditionScope, playerAuditionLooping, playing, playerMediaStatus, playerMediaMessage, muted, positionSeconds, togglePlaying, retryPlayerPlayback, toggleMuted, setPlaying, setAuditionLoop, seekPlayer, selectPlayerCandidate, previousPlayerCandidate, nextPlayerCandidate, preferences, projectContext } = useMoriApp()
   const [playbackQueueOpen, setPlaybackQueueOpen] = useState(false)
   const [settingsReturnTo, setSettingsReturnTo] = useState<string | null>(null)
   const [{ isMobileViewport, mobileRailExpanded }, setViewportState] = useState({
@@ -53,6 +53,8 @@ export function MoriAppShell({ activeKey, ariaLabel, projectRef, projectTitle, p
 
   const mobileRailOpen = mobileRailExpanded && isMobileViewport === true
   const effectiveRailCollapsed = isMobileViewport === true ? !mobileRailExpanded : railCollapsed
+  const normalizedProjectRef = projectRef?.trim() || null
+  const matchingProjectContext = projectContext?.projectRef === normalizedProjectRef ? projectContext : null
 
   const handleRailToggle = useCallback(() => {
     const isMobile = window.innerWidth <= 700
@@ -152,8 +154,8 @@ export function MoriAppShell({ activeKey, ariaLabel, projectRef, projectTitle, p
         activeKey={activeKey}
         collapsed={effectiveRailCollapsed}
         projectRef={projectRef}
-        projectTitle={projectTitle}
-        projectMeta={projectMeta}
+        projectTitle={projectTitle ?? matchingProjectContext?.title}
+        projectMeta={projectMeta ?? matchingProjectContext?.meta}
         onNavigate={handleRailNavigation}
         onOpenSettings={activeKey === "settings" ? undefined : openSettings}
         onToggle={handleRailToggle}

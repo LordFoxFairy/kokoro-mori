@@ -13,6 +13,12 @@ export type MoriPreferences = {
   durationSeconds: number
 }
 
+export type MoriProjectContext = {
+  projectRef: string
+  title: string
+  meta?: string | null
+}
+
 const preferencesStorageKey = "mori.preferences.v1"
 const railStorageKey = "mori.rail.v1"
 
@@ -50,6 +56,9 @@ type MoriAppContextValue = {
   nextPlayerCandidate: () => void
   preferences: MoriPreferences
   updatePreferences: (patch: Partial<MoriPreferences>) => void
+  projectContext: MoriProjectContext | null
+  setProjectContext: (context: MoriProjectContext) => void
+  clearProjectContext: (projectRef: string) => void
 }
 
 export type PlayerMediaStatus = "ready" | "loading" | "unavailable" | "error"
@@ -69,6 +78,7 @@ export function MoriAppProvider({ children, mediaFactory = createHtmlPlayerMedia
   const [railLoaded, setRailLoaded] = useState(false)
   const [preferences, setPreferences] = useState<MoriPreferences>(defaultPreferences)
   const [preferencesLoaded, setPreferencesLoaded] = useState(false)
+  const [projectContext, setProjectContext] = useState<MoriProjectContext | null>(null)
   // Browsing a surface does not start playback or build a queue. A Studio
   // surface may prime its open Version into the paused transport so the
   // player has an obvious subject without stealing listening intent.
@@ -124,6 +134,17 @@ export function MoriAppProvider({ children, mediaFactory = createHtmlPlayerMedia
   }, [playerAuditionScope, playerCandidate])
   const updatePreferences = useCallback((patch: Partial<MoriPreferences>) => {
     setPreferences((current) => ({ ...current, ...patch }))
+  }, [])
+  const setProjectContextForApp = useCallback((context: MoriProjectContext) => {
+    setProjectContext({
+      ...context,
+      projectRef: context.projectRef.trim(),
+      title: context.title.trim() || "Project",
+    })
+  }, [])
+  const clearProjectContext = useCallback((projectRef: string) => {
+    const normalizedProjectRef = projectRef.trim()
+    setProjectContext((current) => current?.projectRef === normalizedProjectRef ? null : current)
   }, [])
   const retryPlayerPlayback = useCallback(() => {
     if (!isPlayableCandidate(playerSelectionRef.current)) {
@@ -396,7 +417,10 @@ export function MoriAppProvider({ children, mediaFactory = createHtmlPlayerMedia
     nextPlayerCandidate,
     preferences,
     updatePreferences,
-  }), [muted, nextPlayerCandidate, playbackQueue, playerAuditionLooping, playerAuditionScope, playerCandidate, playerMediaMessage, playerMediaStatus, playing, positionSeconds, preferences, previousPlayerCandidate, primePlayerCandidate, railCollapsed, retryPlayerPlayback, seekPlayer, selectPlayerCandidate, setAuditionLoop, setPlayingForApp, setRailCollapsed, toggleMuted, togglePlaying, toggleRail, updatePreferences])
+    projectContext,
+    setProjectContext: setProjectContextForApp,
+    clearProjectContext,
+  }), [clearProjectContext, muted, nextPlayerCandidate, playbackQueue, playerAuditionLooping, playerAuditionScope, playerCandidate, playerMediaMessage, playerMediaStatus, playing, positionSeconds, preferences, previousPlayerCandidate, primePlayerCandidate, projectContext, railCollapsed, retryPlayerPlayback, seekPlayer, selectPlayerCandidate, setAuditionLoop, setPlayingForApp, setProjectContextForApp, setRailCollapsed, toggleMuted, togglePlaying, toggleRail, updatePreferences])
 
   return <MoriAppContext.Provider value={value}>{children}</MoriAppContext.Provider>
 }

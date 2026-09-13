@@ -22,7 +22,7 @@ type ProjectOverviewPageContentProps = {
 }
 
 export function ProjectOverviewPageContent({ projectRef = previewProject.projectRef, api }: ProjectOverviewPageContentProps = {}) {
-  const { playerCandidate, playing, selectPlayerCandidate, setPlaying } = useMoriApp()
+  const { playerCandidate, playing, selectPlayerCandidate, setPlaying, setProjectContext, clearProjectContext } = useMoriApp()
   const defaultApi = useMemo(() => createMoriApiClient(), [])
   const overviewApi = api ?? defaultApi
   const initialProjectRef = projectRef.trim() || previewProject.projectRef
@@ -50,6 +50,15 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
     ?? (initialProjectRef === previewProject.projectRef ? previewCurrentSongPlanRevision : null)
   const songPlanStatus = initialProjectRef === previewProject.projectRef ? "ready" : workspaceProjection.status
   const activeTasks = workspaceProjection.projection?.active_tasks ?? []
+
+  useEffect(() => {
+    setProjectContext({
+      projectRef: initialProjectRef,
+      title: requestedProject.title,
+      meta: requestedProject.candidateCount > 0 ? `${requestedProject.candidateCount} directions` : null,
+    })
+    return () => clearProjectContext(initialProjectRef)
+  }, [clearProjectContext, initialProjectRef, requestedProject.candidateCount, requestedProject.title, setProjectContext])
   const currentCandidate = requestedProject.currentVersionRef === null
     ? undefined
     : candidates.find((candidate) => candidate.versionRef === requestedProject.currentVersionRef)

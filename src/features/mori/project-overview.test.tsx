@@ -132,7 +132,7 @@ describe("Mori project overview", () => {
 
     render(
       <MoriAppProvider>
-        <MoriCatalogShell activeKey="projects" ariaLabel="Project overview">
+        <MoriCatalogShell activeKey="projects" ariaLabel="Project overview" projectRef="project_live_1">
           <ProjectOverviewPageContent projectRef="project_live_1" api={api} />
         </MoriCatalogShell>
       </MoriAppProvider>,
@@ -140,6 +140,8 @@ describe("Mori project overview", () => {
 
     await waitFor(() => expect(screen.getByRole("heading", { name: "Window Seat" })).toBeInTheDocument())
     expect(screen.getByText("A quiet, forward-moving sketch.")).toBeInTheDocument()
+    const currentProjectLink = screen.getByRole("link", { name: "Open current project Window Seat" })
+    expect(currentProjectLink).toHaveTextContent("1 directions")
     expect(screen.getByRole("link", { name: "Open Studio" })).toHaveAttribute("href", "/projects/project_live_1/studio/version_live_1")
     expect(screen.queryByText("Warm · hopeful")).not.toBeInTheDocument()
     const songPlan = screen.getByRole("region", { name: "Song plan" })
