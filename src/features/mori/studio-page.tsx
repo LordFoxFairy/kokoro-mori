@@ -461,7 +461,7 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
     const getStatus = studioApi.getCreativeSourceUpload
     const uploadRef = studioRecordingUpload.uploadRef
     const status = studioRecordingUpload.status
-    if (getStatus === undefined || uploadRef === null || status === null || !isActiveStudioRecordingUploadStatus(status)) return
+    if (getStatus === undefined || uploadRef === null || status === null || !isActiveStudioRecordingUploadStatus(status) || studioRecordingUploadCancelPending) return
     let disposed = false
     let timer: number | undefined
     let delayMs = 500
@@ -486,7 +486,7 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
       disposed = true
       if (timer !== undefined) window.clearTimeout(timer)
     }
-  }, [applyStudioRecordingUpload, studioApi, studioRecordingUpload.durationSeconds, studioRecordingUpload.fileName, studioRecordingUpload.status, studioRecordingUpload.uploadRef])
+  }, [applyStudioRecordingUpload, studioApi, studioRecordingUpload.durationSeconds, studioRecordingUpload.fileName, studioRecordingUpload.status, studioRecordingUpload.uploadRef, studioRecordingUploadCancelPending])
   const initialCandidate = resolveInitialCandidate(candidate, projectRef, versionRef)
   const [activeCandidate, setActiveCandidate] = useState<Candidate | null>(() => initialCandidate)
   const [versionLoadState, setVersionLoadState] = useState<StudioVersionLoadState>(() => initialCandidate === null && projectRef?.trim() ? "loading" : "ready")
