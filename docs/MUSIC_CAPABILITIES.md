@@ -155,10 +155,10 @@ Create 的 Generation Queue 与 Project Overview 中的 `Set as current` 复用�
 `current_version_ref` 作为并发条件。Queue 与 Studio 因此只是同一作品提交能力的两个界面，不再出现 Queue 看似成功、
 刷新后却回到旧 Current 的前端假状态。
 
-Version history 继续属于 Project / Studio，而不是全局工具：大于 1360px 时作为第三栏持续可见；画布更窄时由
-Studio 顶部 Versions 动作打开右侧抽屉，移动端使用全宽工作表。常驻栏与抽屉共享同一 Version 列表和状态规则，
-`aria-current` 只表达当前打开的 Version，Current 标签只来自 Project 确认值；打开历史不会暂停 Global Player，
-抽屉则位于 Player 上方并完整管理焦点与背景滚动。
+Version history 继续属于 Project / Studio，而不是全局工具：所有桌面宽度都由 Studio 顶部 Versions 动作打开右侧
+抽屉，移动端使用全宽工作表，不在 1360px 临界点切换成第三栏。抽屉共享同一 Version 列表和状态规则，`aria-current`
+只表达当前打开的 Version，Current 标签只来自 Project 确认值；打开历史不会暂停 Global Player，抽屉则位于 Player
+上方并完整管理焦点与背景滚动。
 
 ### Transform / Restyle / Cover 的意图模型
 
@@ -604,8 +604,8 @@ BFF 必须按受信会话校验该 asset 与用户可见 Mori 资源的关联，
   Taste、不改变 Current，也不让评价替代 `Use take`。`Too many layers` 可直接打开 Voice & stems，保持“试听 → 归因 → 修层”的连续路径。
 - 多 Take 对比入口固定在 Studio 顶栏：`Takes · N` 只在确有多个候选时出现，点击后滚动并聚焦 Take Lanes，用户不必猜测或
   先穿过时间线；`scroll-margin` 同时避开全局 Player 的固定底部区域，移动端仍保留可读的 Takes 标签和数量。
-- Version history 已完成响应式连续性：宽屏保留项目第三栏，1280px 与移动端通过 Studio header 抽屉访问；
-  常驻栏和抽屉复用状态行，Open 与 Current 不合并，缩窄布局不会让历史入口消失。
+- Version history 已完成响应式连续性：所有桌面宽度与移动端都通过 Studio header 抽屉访问；固定工具 / 画布两栏，
+  不在 1360px 临界点突变，抽屉复用状态行，Open 与 Current 不合并，缩窄布局不会让历史入口消失。
 - 下一步只需由 BFF / music owner adapter 实现已固定契约；浏览器不引入 provider 字段。
 
 ### P2 · 深度编辑（进行中）

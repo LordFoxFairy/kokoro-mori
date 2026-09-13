@@ -40,8 +40,8 @@ Mori 的落地：
   BFF 与 Storage owner 承接。
 - Take Lanes 中打开、播放、选择与 Project Current 保持分离；`Use take` 是带幂等与并发条件的持久化命令，
   只有精确确认后才改变 Current，失败不会让用户看到一个假的成功状态。
-- Version history 在宽屏 Studio 中保持为项目右栏，在中等和移动宽度收进 Studio 顶部的 Versions 抽屉；
-  两种表面复用同一组 Version 状态，并分别标明 Open 与 Current，缩窄画布时也不会失去回看入口。
+- Version history 始终通过 Studio 顶部的 Versions 动作打开 Project 内抽屉，不再在 1360px 临界点突然变成第三栏；
+  抽屉复用同一组 Version 状态，并分别标明 Open 与 Current，任何桌面宽度都不挤压主画布。
 - Finish 仍绑定当前 Version：Remaster 的音频结果回到 Take Lanes，Release 的视觉与元数据只进入 draft，
   两条路径都不会绕过用户确认或偷偷发布。
 - Studio 的自然语言协作留在当前时间线选区；每种命名操作提供少量可编辑 prompt starter，降低空白输入成本，
@@ -102,8 +102,8 @@ Workspace nav    内容随项目上下文变化                     跨页面保
   不再泄露到用户需要理解的界面。
 - Export 是可恢复的后台任务而不是一次性弹窗：窗口关闭后，顶栏入口持续显示 Exporting、Ready 或 Needs attention，
   紧凑布局用同色状态图标表达相同信息；点击原入口即可回到进度、下载或重试。
-- Studio 在大于 1360px 时使用工具 / 画布 / Version history 三栏；在 1360px 及以下保留工具与画布，
-  Version history 由标题栏动作打开右侧抽屉，不把主画布继续挤窄。
+- Studio 固定使用工具 / 画布两栏；Version history 由标题栏动作打开右侧抽屉，不让主画布在 1360px
+  临界点发生突变，也不把项目历史提升为全局 Rail。
 - Player 使用独立的全宽 transport dock：左侧当前作品，中部 transport + progress，右侧
   音量和 `Up next` 播放队列；Create 的 `Generations` 入口只承载生成任务，两者不混淆。
 - Settings 使用浮在当前工作区之上的窗口：左侧固定偏好导航，右侧独立滚动设置内容；关闭后

@@ -3414,7 +3414,7 @@
 
 .studioLayout {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr) 260px;
+  grid-template-columns: 220px minmax(0, 1fr);
   min-height: calc(100vh - 83px);
   border: 1px solid var(--mori-border);
   border-radius: var(--mori-radius-lg);
@@ -5115,6 +5115,12 @@
   background: rgba(250, 249, 248, 0.52);
 }
 
+/* Keep the Studio canvas stable. Version history is an on-demand drawer at
+   every desktop width instead of appearing as a third column at a breakpoint. */
+.studioPage .versionHistorySlot {
+  display: none;
+}
+
 .homeWelcome {
   display: flex;
   align-items: flex-end;
@@ -5563,12 +5569,6 @@
 
   .studioCanvas {
     padding-inline: clamp(28px, 4vw, 56px);
-  }
-}
-
-@media (min-width: 1361px) {
-  .versionHistoryTrigger {
-    display: none;
   }
 }
 
