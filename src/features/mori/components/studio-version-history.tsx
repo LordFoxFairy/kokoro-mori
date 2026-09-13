@@ -16,22 +16,9 @@ type StudioVersionHistoryProps = {
   onSelectVersion?: (candidate: Candidate) => void
 }
 
-type StudioVersionHistoryRailProps = StudioVersionHistoryProps & {
-  className?: string
-}
-
 type StudioVersionHistoryDrawerProps = StudioVersionHistoryProps & {
   id: string
   onClose: () => void
-}
-
-export function StudioVersionHistoryRail({ className, ...history }: StudioVersionHistoryRailProps) {
-  return (
-    <aside className={joinClassNames(styles.rail, className)} aria-label="Version history">
-      <VersionHistoryHeader count={history.candidates.length} />
-      <VersionHistoryList {...history} />
-    </aside>
-  )
 }
 
 export function StudioVersionHistoryDrawer({ id, onClose, ...history }: StudioVersionHistoryDrawerProps) {
@@ -119,15 +106,6 @@ export function StudioVersionHistoryDrawer({ id, onClose, ...history }: StudioVe
   )
 }
 
-function VersionHistoryHeader({ count }: { count: number }) {
-  return (
-    <header className={styles.railHeader}>
-      <div><span>Project history</span><h2>Versions</h2></div>
-      <strong aria-label={`${count} versions`}>{count}</strong>
-    </header>
-  )
-}
-
 function VersionHistoryList({ candidates, projectRef, openVersionRef, currentVersionRef, onNavigate, onSelectVersion }: StudioVersionHistoryProps & { onNavigate?: () => void }) {
   return (
     <nav className={styles.list} aria-label="Project versions">
@@ -192,8 +170,4 @@ function getFocusableElements(container: HTMLElement): HTMLElement[] {
     "textarea:not([disabled])",
     "[tabindex]:not([tabindex='-1'])",
   ].join(","))).filter((element) => element.getAttribute("aria-hidden") !== "true")
-}
-
-function joinClassNames(...classNames: Array<string | undefined>): string {
-  return classNames.filter((className): className is string => className !== undefined && className !== "").join(" ")
 }

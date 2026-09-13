@@ -789,10 +789,6 @@ describe("Mori studio page", () => {
     expect(window.location.pathname).toBe("/projects/project_preview_first_light/studio/version_preview_first_light_b")
     expect(window.location.search).toBe("?surface=arrangement")
     expect(within(screen.getByRole("article", { name: "Take 1: First Light" })).getByRole("button", { name: "Use First Light as current" })).toBeInTheDocument()
-    const history = screen.getByRole("complementary", { name: "Version history" })
-    expect(within(history).getByRole("link", { name: /First Light · Afterglow, Current/u })).toHaveAttribute("aria-current", "page")
-    expect(within(history).getByRole("link", { name: /^First Light, Draft/u })).not.toHaveAttribute("aria-current")
-
     fireEvent.click(screen.getByRole("button", { name: "Open version history" }))
     const drawer = screen.getByRole("dialog", { name: "Version history" })
     expect(within(drawer).getByRole("link", { name: "First Light · Afterglow, Current, Open, 3:16" })).toHaveAttribute("aria-current", "page")
@@ -1499,7 +1495,9 @@ describe("Mori studio page", () => {
     fireEvent.click(within(timeline).getByRole("button", { name: "Add clip" }))
     fireEvent.click(within(timeline).getByRole("button", { name: "Insert First Light · Afterglow into selected range" }))
 
-    fireEvent.click(screen.getByRole("link", { name: /First Light · Afterglow, Draft/u }))
+    fireEvent.click(screen.getByRole("button", { name: "Open version history" }))
+    const versionHistory = screen.getByRole("dialog", { name: "Version history" })
+    fireEvent.click(within(versionHistory).getByRole("link", { name: /First Light · Afterglow, Draft/u }))
     const dialog = await screen.findByRole("dialog", { name: "Save changes before opening another Version?" })
     fireEvent.click(within(dialog).getByRole("button", { name: "Discard & continue" }))
 
@@ -4437,7 +4435,9 @@ describe("Mori studio page", () => {
       </MoriAppProvider>,
     )
 
-    const history = await screen.findByRole("complementary", { name: "Version history" })
+    const historyTrigger = await screen.findByRole("button", { name: "Open version history" })
+    fireEvent.click(historyTrigger)
+    const history = screen.getByRole("dialog", { name: "Version history" })
     await waitFor(() => expect(within(history).getByRole("link", { name: "Window Seat · Wide, Current, 2:26" })).not.toHaveAttribute("aria-current"))
     expect(within(history).getByRole("link", { name: "Window Seat, Draft, Open, 2:20" })).toHaveAttribute("aria-current", "page")
     expect(screen.getByText("Open take")).toBeInTheDocument()
@@ -4476,7 +4476,10 @@ describe("Mori studio page", () => {
 
     await waitFor(() => expect(screen.getByRole("heading", { name: "Window Seat" })).toBeInTheDocument())
     expect(screen.getByRole("link", { name: "Project" })).toHaveAttribute("href", "/projects/project_live_1")
-    expect(screen.getByRole("link", { name: /Window Seat/ })).toHaveAttribute("href", "/projects/project_live_1/studio/version_live_1")
+    fireEvent.click(screen.getByRole("button", { name: "Open version history" }))
+    const history = screen.getByRole("dialog", { name: "Version history" })
+    expect(within(history).getByRole("link", { name: "Window Seat, Current, Open, 2:20" })).toHaveAttribute("href", "/projects/project_live_1/studio/version_live_1")
+    fireEvent.click(within(history).getByRole("button", { name: "Close version history" }))
     expect(screen.getAllByText("soft motion · close vocal").length).toBeGreaterThan(0)
     expect(screen.getByRole("button", { name: "Select Whole song section" })).toHaveAttribute("aria-pressed", "true")
     expect(screen.queryByRole("button", { name: "Select Chorus section" })).not.toBeInTheDocument()

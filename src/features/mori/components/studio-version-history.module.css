@@ -1,22 +1,3 @@
-.rail {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  padding: 20px;
-  border-left: 1px solid var(--mori-border);
-  background: rgba(250, 249, 248, 0.74);
-}
-
-.railHeader {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 14px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--mori-border);
-}
-
-.railHeader > div > span,
 .drawerHeader > div > span,
 .drawerSummary > span {
   color: var(--mori-faint);
@@ -26,28 +7,11 @@
   text-transform: uppercase;
 }
 
-.railHeader h2,
 .drawerHeader h2 {
   margin: 5px 0 0;
   font-family: var(--mori-font-display);
   font-weight: 400;
   letter-spacing: -0.05em;
-}
-
-.railHeader h2 {
-  font-size: 25px;
-}
-
-.railHeader > strong {
-  display: grid;
-  min-width: 24px;
-  height: 24px;
-  place-items: center;
-  border: 1px solid rgba(109, 92, 231, 0.14);
-  border-radius: 999px;
-  color: var(--mori-primary);
-  font-size: 9px;
-  background: rgba(243, 239, 255, 0.82);
 }
 
 .list {
@@ -288,12 +252,6 @@
 
   .drawerBody {
     padding-inline: 11px;
-  }
-}
-
-@media (max-width: 1360px) {
-  .rail {
-    display: none;
   }
 }
 

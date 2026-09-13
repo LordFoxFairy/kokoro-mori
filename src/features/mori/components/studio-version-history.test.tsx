@@ -2,7 +2,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react"
 import { useState } from "react"
 import { describe, expect, it, vi } from "vitest"
 import type { Candidate } from "../domain"
-import { StudioVersionHistoryDrawer, StudioVersionHistoryRail } from "./studio-version-history"
+import { StudioVersionHistoryDrawer } from "./studio-version-history"
 
 const candidates: Candidate[] = [
   {
@@ -38,11 +38,12 @@ const sharedProps = {
 
 describe("Studio Version history", () => {
   it("labels Current and Open independently and encodes Version links", () => {
-    render(<StudioVersionHistoryRail {...sharedProps} />)
+    render(<DrawerHarness />)
+    fireEvent.click(screen.getByRole("button", { name: "Show versions" }))
 
-    const rail = screen.getByRole("complementary", { name: "Version history" })
-    const openDraft = within(rail).getByRole("link", { name: "First Light, Draft, Open, 3:02" })
-    const current = within(rail).getByRole("link", { name: "Afterglow, Current, 3:16" })
+    const drawer = screen.getByRole("dialog", { name: "Version history" })
+    const openDraft = within(drawer).getByRole("link", { name: "First Light, Draft, Open, 3:02" })
+    const current = within(drawer).getByRole("link", { name: "Afterglow, Current, 3:16" })
 
     expect(openDraft).toHaveAttribute("aria-current", "page")
     expect(openDraft).toHaveAttribute("href", "/projects/project%20%2Fone/studio/version%2Fa")
@@ -106,10 +107,11 @@ describe("Studio Version history", () => {
 
   it("keeps modifier-clicks native when Studio supplies an in-place Version selector", () => {
     const onSelectVersion = vi.fn()
-    render(<StudioVersionHistoryRail {...sharedProps} onSelectVersion={onSelectVersion} />)
+    render(<DrawerHarness onSelectVersion={onSelectVersion} />)
+    fireEvent.click(screen.getByRole("button", { name: "Show versions" }))
 
-    const rail = screen.getByRole("complementary", { name: "Version history" })
-    const versionLink = within(rail).getByRole("link", {
+    const drawer = screen.getByRole("dialog", { name: "Version history" })
+    const versionLink = within(drawer).getByRole("link", {
       name: "Afterglow, Current, 3:16",
     })
     const click = new MouseEvent("click", {
@@ -126,11 +128,11 @@ describe("Studio Version history", () => {
   })
 })
 
-function DrawerHarness() {
+function DrawerHarness({ onSelectVersion }: { onSelectVersion?: (candidate: Candidate) => void } = {}) {
   const [open, setOpen] = useState(false)
 
   return <>
     <button type="button" onClick={() => setOpen(true)}>Show versions</button>
-    {open ? <StudioVersionHistoryDrawer id="studio-version-history-drawer" {...sharedProps} onClose={() => setOpen(false)} /> : null}
+    {open ? <StudioVersionHistoryDrawer id="studio-version-history-drawer" {...sharedProps} onSelectVersion={onSelectVersion} onClose={() => setOpen(false)} /> : null}
   </>
 }

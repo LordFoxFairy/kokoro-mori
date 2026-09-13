@@ -3477,10 +3477,6 @@
   border-right: 1px solid var(--mori-border);
 }
 
-.versionHistorySlot {
-  min-width: 0;
-}
-
 .studioArtwork {
   display: flex;
   align-items: flex-end;
@@ -5110,15 +5106,8 @@
   background: transparent;
 }
 
-.studioPage .studioSidebar,
-.studioPage .versionHistorySlot {
+.studioPage .studioSidebar {
   background: rgba(250, 249, 248, 0.52);
-}
-
-/* Keep the Studio canvas stable. Version history is an on-demand drawer at
-   every desktop width instead of appearing as a third column at a breakpoint. */
-.studioPage .versionHistorySlot {
-  display: none;
 }
 
 .homeWelcome {
@@ -5558,15 +5547,6 @@
 }
 
 @media (min-width: 901px) and (max-width: 1360px) {
-  .studioLayout {
-    grid-template-columns: 220px minmax(0, 1fr);
-  }
-
-  /* The header button is the single history surface below the wide layout. */
-  .studioPage .versionHistorySlot {
-    display: none;
-  }
-
   .studioCanvas {
     padding-inline: clamp(28px, 4vw, 56px);
   }
@@ -5575,10 +5555,6 @@
 @media (min-width: 701px) and (max-width: 900px) {
   .studioLayout {
     grid-template-columns: 170px minmax(0, 1fr);
-  }
-
-  .studioPage .versionHistorySlot {
-    display: none;
   }
 
   .appShell:not([data-rail-collapsed="true"]) .rail {
@@ -5718,10 +5694,6 @@
     width: 100%;
     min-height: calc(100dvh - 58px);
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .studioPage .versionHistorySlot {
-    display: none;
   }
 
   .studioSidebar {

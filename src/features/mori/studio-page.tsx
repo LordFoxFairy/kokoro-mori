@@ -48,7 +48,7 @@ import { CompositionSaveIndicator } from "./components/composition-save-indicato
 import { CompositionEditPanel } from "./components/composition-edit-panel"
 import { StudioUnsavedCompositionDialog } from "./components/studio-unsaved-composition-dialog"
 import { StudioUnsavedLyricsDialog } from "./components/studio-unsaved-lyrics-dialog"
-import { StudioVersionHistoryDrawer, StudioVersionHistoryRail } from "./components/studio-version-history"
+import { StudioVersionHistoryDrawer } from "./components/studio-version-history"
 import { StudioWorkspaceSaveStatus } from "./components/studio-workspace-save-status"
 import { useMoriApp, type PlayerAuditionScope } from "./components/mori-app-provider"
 import { Waveform } from "./components/waveform"
@@ -2124,14 +2124,6 @@ export function StudioPageContent({ candidate, creativeSources, projectRef, vers
             {activeTool === "stems" ? <StudioStemsEditor key={activeVersionRef ?? "no-version"} durationSeconds={activeCandidate.durationSeconds} run={stemSeparationRun} layerRun={studioChangeRun} onSeparate={(plan) => { void generateStemSeparation(plan) }} onCancel={() => { void cancelStemSeparation() }} onReset={resetStemSeparation} onSaveMix={saveMixRevision} onGenerateLayer={(plan) => { void generateStudioChange(plan) }} onCancelLayer={() => { void cancelStudioChange() }} onResetLayer={resetStudioChange} onReviewTakes={() => openStudioTool("arrangement")} playbackFactory={stemPlaybackFactory} /> : null}
           </div>
         </section>
-        <StudioVersionHistoryRail
-          className={styles.versionHistorySlot}
-          candidates={studioCandidates}
-          projectRef={activeProjectRef}
-          openVersionRef={activeCandidate.versionRef}
-          currentVersionRef={currentVersionRef}
-          onSelectVersion={selectTake}
-        />
       </div>}
       {versionHistoryOpen && activeCandidate !== null ? <StudioVersionHistoryDrawer
         id={versionHistoryDrawerId}
