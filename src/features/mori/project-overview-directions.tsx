@@ -9,6 +9,7 @@ import { formatMusicTime } from "./format-music-time"
 import styles from "./mori-workspace.module.css"
 
 export type CandidateProjectionStatus = "loading" | "ready" | "unavailable"
+export type ProjectProjectionStatus = "loading" | "ready" | "unavailable"
 
 type ProjectOverviewDirectionsProps = {
   projectRef: string
@@ -16,6 +17,7 @@ type ProjectOverviewDirectionsProps = {
   candidates: Candidate[]
   generationRef?: string | null
   candidateStatus: CandidateProjectionStatus
+  projectStatus: ProjectProjectionStatus
   currentVersionRef: string | null
   currentVersionCommitRun: CurrentVersionCommitRun
   playerCandidate: Candidate | null
@@ -33,6 +35,7 @@ export function ProjectOverviewDirections({
   candidates,
   generationRef = null,
   candidateStatus,
+  projectStatus,
   currentVersionRef,
   currentVersionCommitRun,
   playerCandidate,
@@ -54,11 +57,15 @@ export function ProjectOverviewDirections({
   return <section className={`${styles.overviewSection} ${styles.overviewDirections}`} aria-labelledby="directions-heading">
     <div className={styles.overviewSectionHeader}>
       <div><h2 id="directions-heading">{isGenerationScoped ? "Review this generation" : "Latest directions"}</h2><p>{isGenerationScoped ? "Compare this run before choosing what to change next." : "Listen and compare before choosing what to change next."}</p></div>
-      <span>{candidateStatus === "loading"
-        ? "Loading"
-        : candidateStatus === "unavailable"
-          ? isGenerationScoped ? "Retry available" : `${candidateCount} saved`
-          : `${candidates.length} ${candidates.length === 1 ? "candidate" : "candidates"}`}</span>
+      <span>{projectStatus === "loading"
+        ? "Project loading"
+        : projectStatus === "unavailable"
+          ? "Project unavailable"
+          : candidateStatus === "loading"
+            ? "Loading"
+            : candidateStatus === "unavailable"
+              ? isGenerationScoped ? "Retry available" : `${candidateCount} saved`
+              : `${candidates.length} ${candidates.length === 1 ? "candidate" : "candidates"}`}</span>
     </div>
     {showCurrentVersionCommitNotice ? <div className={`${styles.overviewCandidateCommitNotice} ${currentVersionCommitRun.status === "failed" ? styles.overviewCandidateCommitNoticeError : styles.overviewCandidateCommitNoticeSuccess}`} role={currentVersionCommitRun.status === "failed" ? "alert" : "status"}>
       {currentVersionCommitRun.status === "failed" ? <AlertCircle aria-hidden="true" size={15} /> : <Check aria-hidden="true" size={15} />}
@@ -97,10 +104,10 @@ export function ProjectOverviewDirections({
           <div className={styles.overviewCandidateWave}><Waveform seed={candidate.waveformSeed} compact progress={index === 0 ? 0.8 : 0.48} /></div>
           <span className={styles.candidateDuration}>{formatMusicTime(candidate.durationSeconds)}</span>
           <div className={styles.overviewCandidateActions}>
-            {isCurrent ? null : <button className={styles.overviewPromoteButton} type="button" disabled={isCommitting} aria-label={isCommitTarget ? `Setting ${candidate.title} as current` : `Set ${candidate.title} as current`} onClick={() => { onCommitCurrentVersion(candidate) }}>
+            {isCurrent || projectStatus !== "ready" ? null : <button className={styles.overviewPromoteButton} type="button" disabled={isCommitting} aria-label={isCommitTarget ? `Setting ${candidate.title} as current` : `Set ${candidate.title} as current`} onClick={() => { onCommitCurrentVersion(candidate) }}>
               {isCommitTarget ? <><LoaderCircle aria-hidden="true" size={12} /> Saving…</> : "Set as current"}
             </button>}
-            <Link className={styles.overviewOpenLink} href={`/projects/${encodeURIComponent(projectRef)}/studio/${encodeURIComponent(candidate.versionRef)}`} aria-label={`Open Studio for ${candidate.title}`}><ArrowUpRight size={15} /></Link>
+            {projectStatus === "ready" ? <Link className={styles.overviewOpenLink} href={`/projects/${encodeURIComponent(projectRef)}/studio/${encodeURIComponent(candidate.versionRef)}`} aria-label={`Open Studio for ${candidate.title}`}><ArrowUpRight size={15} /></Link> : null}
           </div>
           <StudioTakeReview
             takeTitle={candidate.title}

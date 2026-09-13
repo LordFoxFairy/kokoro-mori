@@ -101,6 +101,9 @@ describe("Mori Project Current Version", () => {
     )
 
     const target = await screen.findByRole("article", { name: "Loose Ends · Wide" })
+    expect(within(target).queryByRole("button", { name: "Set Loose Ends · Wide as current" })).not.toBeInTheDocument()
+    await act(async () => { releaseProjectProjection() })
+    await waitFor(() => expect(within(target).getByRole("button", { name: "Set Loose Ends · Wide as current" })).toBeInTheDocument())
     fireEvent.click(screen.getByRole("button", { name: "Start active listen" }))
     fireEvent.click(within(target).getByRole("button", { name: "Set Loose Ends · Wide as current" }))
 

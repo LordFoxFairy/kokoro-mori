@@ -27,6 +27,8 @@ Mori 的落地：
   管理焦点的抽屉，让用户在生成运行时仍能继续调整创作表单。
 - Queue 中每个候选把“选择为当前播放器目标”“试听”“进入 Studio”“设为 Current Version”分成明确动作；
   选择控件可键盘聚焦并显示稳定高亮，不让整张卡片承担不可见的副作用。
+- Project projection 未确认时，候选仍可试听，但所有需要 Project 事实的写入和深链动作都保持暂停；失败态必须先给出明确的
+  reconnect / Retry，而不是用中性壳体伪装成 Active project。
 - Home 的一句话 Quick start 通过可分享的 GET seam 把想法带入 Create；Create 只预填草稿，仍先让用户检查
   可编辑 Song Plan。Project 建立后会从地址中移除原始想法，避免长期保留用户输入。
 - Create 不是已完成作品，不提供会复制当前表单 URL 的假 Share；Studio 只提供明确的 `Copy link` 深链动作，

@@ -10,7 +10,7 @@ import { listAllMoriCandidates } from "./candidate-pagination"
 import { useMoriApp } from "./components/mori-app-provider"
 import { previewCandidates, previewGeneration, previewProject } from "./preview-data"
 import { useProjectCurrentVersionCommit } from "./project-current-version"
-import { ProjectOverviewDirections, type CandidateProjectionStatus } from "./project-overview-directions"
+import { ProjectOverviewDirections, type CandidateProjectionStatus, type ProjectProjectionStatus } from "./project-overview-directions"
 import { ProjectOverviewSongPlan } from "./project-overview-song-plan"
 import { previewCurrentSongPlanRevision } from "./project-overview-song-plan-preview"
 import { useProjectWorkspaceProjection } from "./use-project-workspace-projection"
@@ -34,6 +34,8 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
     projectRef: initialProjectRef,
     value: initialProjectRef === previewProject.projectRef ? previewProject : createUnavailableProject(initialProjectRef),
   }))
+  const [projectStatus, setProjectStatus] = useState<ProjectProjectionStatus>(() => initialProjectRef === previewProject.projectRef ? "ready" : "loading")
+  const [projectRequestVersion, setProjectRequestVersion] = useState(0)
   const [candidateState, setCandidateState] = useState(() => ({
     projectRef: initialProjectRef,
     generationRef: initialGenerationRef,
@@ -57,13 +59,14 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
   const activeTasks = workspaceProjection.projection?.active_tasks ?? []
 
   useEffect(() => {
+    if (projectStatus !== "ready") return
     setProjectContext({
       projectRef: initialProjectRef,
       title: requestedProject.title,
       meta: requestedProject.candidateCount > 0 ? `${requestedProject.candidateCount} directions` : null,
     })
     return () => clearProjectContext(initialProjectRef)
-  }, [clearProjectContext, initialProjectRef, requestedProject.candidateCount, requestedProject.title, setProjectContext])
+  }, [clearProjectContext, initialProjectRef, projectStatus, requestedProject.candidateCount, requestedProject.title, setProjectContext])
   const currentCandidate = requestedProject.currentVersionRef === null
     ? undefined
     : candidates.find((candidate) => candidate.versionRef === requestedProject.currentVersionRef)
@@ -92,7 +95,7 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
   })
 
   useEffect(() => {
-    const requestedProjectRef = projectRef.trim() || previewProject.projectRef
+    const requestedProjectRef = initialProjectRef
     const currentVersionConfirmationEpoch = currentVersionConfirmationEpochsRef.current.get(requestedProjectRef) ?? 0
     let disposed = false
 
@@ -114,9 +117,25 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
             : { ...nextProject, currentVersionRef: current.value.currentVersionRef },
         }
       })
+      setProjectStatus("ready")
     }).catch(() => {
-      // Keep the deterministic preview or neutral project shell visible while the BFF is unavailable.
+      if (!disposed) setProjectStatus("unavailable")
     })
+
+    return () => {
+      disposed = true
+    }
+  }, [currentVersionConfirmationEpochsRef, initialProjectRef, overviewApi, projectRequestVersion, usesPreviewCandidates])
+
+  useEffect(() => {
+    const requestedProjectRef = initialProjectRef
+    let disposed = false
+
+    if (usesPreviewCandidates) {
+      return () => {
+        disposed = true
+      }
+    }
 
     void listAllMoriCandidates(overviewApi, requestedProjectRef, initialGenerationRef ?? undefined).then((candidates) => {
       if (disposed) return
@@ -135,7 +154,7 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
     return () => {
       disposed = true
     }
-  }, [candidateRequestVersion, currentVersionConfirmationEpochsRef, initialGenerationRef, overviewApi, projectRef, usesPreviewCandidates])
+  }, [candidateRequestVersion, initialGenerationRef, initialProjectRef, overviewApi, usesPreviewCandidates])
 
   function playCandidate(candidate: (typeof previewCandidates)[number]) {
     if (playerCandidate?.versionRef === candidate.versionRef) {
@@ -152,20 +171,32 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
       <div className={styles.projectOverviewHeader}>
         <div className={styles.projectOverviewArtwork}><span>01</span></div>
         <div className={styles.projectOverviewCopy}>
-          <div className={styles.eyebrow}><span className={styles.eyebrowDot} />Active project</div>
+          <div className={styles.eyebrow}><span className={styles.eyebrowDot} />{projectStatus === "loading" ? "Loading project" : projectStatus === "unavailable" ? "Project unavailable" : "Active project"}</div>
           <h1 className={styles.catalogTitle}>{requestedProject.title}</h1>
           <p>{requestedProject.description}</p>
-          <div className={styles.projectOverviewActions}>
-            {studioBaseHref ? <Link className={styles.generateButton} href={studioBaseHref}><Play size={14} fill="currentColor" /> Open Studio</Link> : null}
-            <Link className={styles.ghostButton} href={`/create?project_ref=${encodeURIComponent(requestedProject.projectRef)}`}><Sparkles size={14} /> New direction</Link>
-          </div>
+          {projectStatus === "ready" ? <div className={styles.projectOverviewActions}>
+              {studioBaseHref ? <Link className={styles.generateButton} href={studioBaseHref}><Play size={14} fill="currentColor" /> Open Studio</Link> : null}
+              <Link className={styles.ghostButton} href={`/create?project_ref=${encodeURIComponent(requestedProject.projectRef)}`}><Sparkles size={14} /> New direction</Link>
+            </div> : null}
           <div className={styles.overviewStats} aria-label="Project status">
-            <div><span>Current version</span><strong>{requestedProject.currentVersionRef ? (candidates.find((candidate) => candidate.versionRef === requestedProject.currentVersionRef)?.title ?? "Ready") : "Not started"}</strong></div>
-            <div><span>Directions</span><strong>{requestedProject.candidateCount}</strong></div>
-            <div><span>Last activity</span><strong>{requestedProject.lastActivity}</strong></div>
+            <div><span>Current version</span><strong>{projectStatus === "loading" ? "Loading…" : projectStatus === "unavailable" ? "Unavailable" : requestedProject.currentVersionRef ? (candidates.find((candidate) => candidate.versionRef === requestedProject.currentVersionRef)?.title ?? "Ready") : "Not started"}</strong></div>
+            <div><span>Directions</span><strong>{projectStatus === "loading" ? "Loading…" : projectStatus === "unavailable" ? "Unavailable" : requestedProject.candidateCount}</strong></div>
+            <div><span>Last activity</span><strong>{projectStatus === "loading" ? "Loading…" : projectStatus === "unavailable" ? "Unavailable" : requestedProject.lastActivity}</strong></div>
           </div>
         </div>
       </div>
+
+      {projectStatus === "loading" ? <div className={styles.overviewProjectionState} role="status" aria-label="Project projection">
+        <span className={styles.overviewProjectionStateIcon} aria-hidden="true"><AudioWaveform size={17} /></span>
+        <div><strong>Loading project details</strong><p>Connecting this workspace before enabling project actions.</p></div>
+      </div> : projectStatus === "unavailable" ? <div className={styles.overviewProjectionState} role="alert" aria-label="Project projection">
+        <span className={styles.overviewProjectionStateIcon} aria-hidden="true"><AudioWaveform size={17} /></span>
+        <div><strong>Project details unavailable</strong><p>Directions can still be auditioned, but project changes stay paused until the workspace reconnects.</p></div>
+        <button type="button" onClick={() => {
+          setProjectStatus("loading")
+          setProjectRequestVersion((version) => version + 1)
+        }} aria-label="Retry project"><span aria-hidden="true"><Sparkles size={13} /></span> Retry project</button>
+      </div> : null}
 
       <div className={styles.projectOverviewWorkspace} role="group" aria-label="Project workspace">
         <ProjectOverviewDirections
@@ -174,6 +205,7 @@ export function ProjectOverviewPageContent({ projectRef = previewProject.project
           candidates={candidates}
           generationRef={initialGenerationRef}
           candidateStatus={candidateStatus}
+          projectStatus={projectStatus}
           currentVersionRef={requestedProject.currentVersionRef}
           currentVersionCommitRun={currentVersionCommitRun}
           playerCandidate={playerCandidate}

@@ -149,6 +149,70 @@ describe("Mori project overview", () => {
     expect(within(songPlan).queryByText("102 BPM")).not.toBeInTheDocument()
   })
 
+  it("does not present an unavailable Project as active and reconnects on retry", async () => {
+    let projectAttempt = 0
+    const getProject = vi.fn<MoriApi["getProject"]>(async () => {
+      projectAttempt += 1
+      if (projectAttempt === 1) throw new Error("project projection unavailable")
+      return {
+        data: {
+          project_ref: "project_reconnect",
+          title: "Window Seat",
+          description: "A project that reconnects after a short outage.",
+          current_version_ref: "version_reconnect",
+          candidate_count: 1,
+          last_activity_at: "2026-09-02T12:00:00.000Z",
+        },
+        meta: { request_id: `request_project_reconnect_${projectAttempt}` },
+      }
+    })
+    const api = {
+      getProject,
+      listCandidates: async () => ({
+        data: {
+          candidates: [{
+            candidate_ref: "candidate_reconnect",
+            generation_ref: "generation_reconnect",
+            version_ref: "version_reconnect",
+            project_ref: "project_reconnect",
+            title: "Window Seat",
+            duration_seconds: 140,
+            audio_asset_ref: "asset_reconnect",
+            waveform_asset_ref: "waveform_reconnect",
+            style_tags: ["soft motion"],
+            created_at: "2026-09-02T12:00:00.000Z",
+          }],
+          next_cursor: null,
+        },
+        meta: { request_id: "request_candidates_reconnect" },
+      }),
+    }
+
+    render(
+      <MoriAppProvider>
+        <MoriCatalogShell activeKey="projects" ariaLabel="Project overview">
+          <ProjectOverviewPageContent projectRef="project_reconnect" api={api} />
+        </MoriCatalogShell>
+      </MoriAppProvider>,
+    )
+
+    expect(await screen.findByRole("alert", { name: "Project projection" })).toHaveTextContent("Project details unavailable")
+    expect(screen.queryByText("Active project")).not.toBeInTheDocument()
+    expect(screen.queryByRole("link", { name: "Open Studio" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Set Window Seat as current" })).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Play Window Seat" })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry project" }))
+
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Window Seat" })).toBeInTheDocument())
+    expect(screen.getByText("Active project")).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "Open Studio" })).toHaveAttribute(
+      "href",
+      "/projects/project_reconnect/studio/version_reconnect",
+    )
+    expect(getProject).toHaveBeenCalledTimes(2)
+  })
+
   it("opens a generation-scoped review without leaking directions from another run", async () => {
     const listCandidates = vi.fn<MoriApi["listCandidates"]>(async (requestedProjectRef, options) => {
       expect(requestedProjectRef).toBe("project_generation_review")

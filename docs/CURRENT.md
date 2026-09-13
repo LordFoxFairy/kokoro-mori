@@ -66,6 +66,8 @@
   不把本地 fixture 静默伪装成用户数据。Projects 与 Library Versions 均消费 opaque cursor，分页追加按资源引用去重。
 - Project Overview 将 Candidate projection 的 `loading`、`ready` 与 `unavailable` 分开建模；请求失败时保留 Project
   返回的已保存数量并提供 Retry，不再把服务暂时不可用误报成 `No directions yet`，也不会诱导用户重复创建方向。
+- Project Overview 现在也区分 Project projection 的 `loading`、`ready` 与 `unavailable`：连接未确认前不显示 Active、Current
+  或可写项目动作；连接失败时仍允许试听已返回的候选，但 Set as current、Open Studio 和 New direction 会暂停，并提供 Retry project。
 - Project Overview 的非 Current Candidate 提供明确 `Set as current`：它复用 Project-scoped、带幂等键与
   `expected_current_version_ref` 的 CAS command，等待 owner 精确确认后才更新 Current、`Open Studio` 与
   `Continue making`；瞬时失败允许重试，冲突引导刷新 Project，过程中不抢占 Global Player。
