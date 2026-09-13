@@ -25,6 +25,8 @@ type CreativeSourceDockProps = {
   onInspirationChange: (preset: MoriInspirationPreset | null) => void
   creativeSources?: readonly MoriCreativeLibrarySource[]
   referenceUploadStatus?: MoriCreativeSourceUploadStatus | null
+  referenceUploadName?: string | null
+  referenceUploadNeedsFile?: boolean
   recordingStatus?: AudioRecordingStatus
   recordingSeconds?: number
   onStartRecording?: () => void
@@ -45,6 +47,8 @@ export function CreativeSourceDock({
   onInspirationChange,
   creativeSources,
   referenceUploadStatus = null,
+  referenceUploadName = null,
+  referenceUploadNeedsFile = false,
   recordingStatus = "idle",
   recordingSeconds = 0,
   onRetryReference,
@@ -68,6 +72,12 @@ export function CreativeSourceDock({
   const selectedInspiration = inspirationPresets.find((preset) => preset.ref === inspirationRef) ?? null
   const recording = recordingStatus !== "idle"
   const referenceUploadPending = referenceUploadStatus !== null && !["ready", "failed", "cancelled", "expired"].includes(referenceUploadStatus)
+  const referenceNeedsFile = referenceSource === null && referenceUploadNeedsFile && referenceUploadName !== null
+  const referenceActionLabel = recording
+    ? "Recording reference audio"
+    : referenceSource === null
+      ? referenceNeedsFile ? `Continue reference audio ${referenceUploadName}` : "Add audio reference"
+      : `Replace reference audio ${referenceSource.name}`
 
   function togglePicker(picker: Exclude<OpenPicker, null>) {
     setOpenPicker((current) => current === picker ? null : picker)
@@ -86,14 +96,21 @@ export function CreativeSourceDock({
             <button
               className={`${styles.sourceButton} ${referenceSource === null ? "" : `${styles.sourceButtonSelected} ${styles.sourceButtonRemovable}`}`}
               type="button"
-              disabled={recording || referenceUploadPending}
+              disabled={recording}
               onClick={() => { setOpenPicker(null); onChooseReference() }}
-              aria-label={recording ? "Recording reference audio" : referenceSource === null ? "Add audio reference" : `Replace reference audio ${referenceSource.name}`}
+              aria-label={referenceActionLabel}
             >
               <span className={styles.sourceIcon}><FileAudio /></span>
               <span className={styles.sourceCopy}>
-                <strong>{recording ? "Recording reference" : referenceSource?.name ?? "Audio reference"}</strong>
-                <small>{recording ? `${formatRecordingDuration(recordingSeconds)} · tap Stop when you’re done` : referenceSource?.detail ?? (referenceUploadStatus === null ? "Guide rhythm, melody, or texture" : `${referenceUploadStatus} · preparing your reference`)}</small>
+                <strong>{recording ? "Recording reference" : referenceSource?.name ?? referenceUploadName ?? "Audio reference"}</strong>
+                <small>{recording
+                  ? `${formatRecordingDuration(recordingSeconds)} · tap Stop when you’re done`
+                  : referenceSource?.detail
+                    ?? (referenceUploadStatus === null
+                      ? "Guide rhythm, melody, or texture"
+                      : referenceUploadPending
+                        ? `${referenceUploadStatus} · ${referenceNeedsFile ? "choose the same file to continue" : "preparing your reference"}`
+                        : `${referenceUploadStatus} · preparing your reference`)}</small>
               </span>
               {referenceSource === null && !recording ? <Plus className={styles.sourceChevron} /> : null}
             </button>

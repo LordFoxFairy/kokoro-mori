@@ -2054,24 +2054,65 @@ describe("Mori workspace", () => {
     expect(uploadContent).toHaveBeenCalledTimes(2)
   })
 
+  it("restores an interrupted upload session and lets the user continue with the same file", async () => {
+    const projectRef = "project_recovered_upload"
+    const recoveryKey = `mori-creative-upload-recovery-v1:${encodeURIComponent(projectRef)}`
+    localStorage.setItem(recoveryKey, JSON.stringify({
+      projectRef,
+      fileName: "guide.wav",
+      contentType: "audio/wav",
+      byteSize: 4,
+      idempotencyKey: "mori-upload-recovered-key",
+      uploadRef: "upload_recovered_1",
+    }))
+    const createUpload = vi.fn<MoriApi["createCreativeSourceUpload"]>()
+    const getUpload = vi.fn<MoriApi["getCreativeSourceUpload"]>(async () => ({
+      data: { upload_ref: "upload_recovered_1", source_kind: "audio", status: "failed", bytes_received: 4, byte_size: 4, asset_ref: null, source_ref: null, error: { code: "upload_interrupted", message: "Upload interrupted", retryable: true, details: null }, created_at: "2026-09-05T00:00:00Z", updated_at: "2026-09-05T00:00:02Z", expires_at: "2026-09-06T00:00:00Z" },
+      meta: { request_id: "upload_recovered_status" },
+    }))
+    const uploadContent = vi.fn<MoriApi["uploadCreativeSourceContent"]>(async () => ({
+      data: { upload_ref: "upload_recovered_1", source_kind: "audio", status: "ready", bytes_received: 4, byte_size: 4, asset_ref: "asset_recovered_1", source_ref: "source_recovered_1", error: null, created_at: "2026-09-05T00:00:00Z", updated_at: "2026-09-05T00:00:03Z", expires_at: "2026-09-06T00:00:00Z" },
+      meta: { request_id: "upload_recovered_ready" },
+    }))
+    const api: Partial<MoriApi> = { createCreativeSourceUpload: createUpload, getCreativeSourceUpload: getUpload, uploadCreativeSourceContent: uploadContent }
+
+    render(<MoriAppProvider><CreateCanvas projectRef={projectRef} mode="custom" api={api} onModeChange={() => undefined} onGenerate={() => undefined} /></MoriAppProvider>)
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Upload interrupted")
+    expect(screen.getByRole("button", { name: "Continue reference audio guide.wav" })).toBeEnabled()
+    fireEvent.change(screen.getByLabelText("Reference audio file"), { target: { files: [new File(["test"], "guide.wav", { type: "audio/wav" })] } })
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Replace reference audio guide.wav" })).toBeInTheDocument())
+    expect(getUpload).toHaveBeenCalledOnce()
+    expect(createUpload).not.toHaveBeenCalled()
+    expect(uploadContent).toHaveBeenCalledOnce()
+    expect(uploadContent.mock.calls[0]?.[0]).toBe("upload_recovered_1")
+    expect(localStorage.getItem(recoveryKey)).toBeNull()
+  })
+
   it("shows processing and only exposes a ready uploaded reference", async () => {
+    let resolveUploadStatus: (value: Awaited<ReturnType<MoriApi["getCreativeSourceUpload"]>>) => void = () => undefined
     const uploadContent = vi.fn<MoriApi["uploadCreativeSourceContent"]>(async () => ({
       data: { upload_ref: "upload_live_1", source_kind: "audio", status: "processing", bytes_received: 4, byte_size: 4, asset_ref: null, source_ref: null, error: null, created_at: "2026-09-05T00:00:00Z", updated_at: "2026-09-05T00:00:01Z", expires_at: "2026-09-06T00:00:00Z" },
       meta: { request_id: "upload_content_live_1" },
     }))
+    const getUpload = vi.fn<MoriApi["getCreativeSourceUpload"]>(() => new Promise((resolve) => { resolveUploadStatus = resolve }))
     const api: Partial<MoriApi> = {
       createCreativeSourceUpload: async () => ({ data: { upload_ref: "upload_live_1", status: "creating", expires_at: "2026-09-06T00:00:00Z" }, meta: { request_id: "upload_create_live_1" } }),
       uploadCreativeSourceContent: uploadContent,
-      getCreativeSourceUpload: async () => ({
-        data: { upload_ref: "upload_live_1", source_kind: "audio", status: "ready", bytes_received: 4, byte_size: 4, asset_ref: "asset_live_1", source_ref: "source_live_1", error: null, created_at: "2026-09-05T00:00:00Z", updated_at: "2026-09-05T00:00:02Z", expires_at: "2026-09-06T00:00:00Z" },
-        meta: { request_id: "upload_status_live_1" },
-      }),
+      getCreativeSourceUpload: getUpload,
     }
 
     render(<MoriAppProvider><CreateCanvas projectRef="project_live_1" mode="custom" api={api} onModeChange={() => undefined} onGenerate={() => undefined} /></MoriAppProvider>)
     fireEvent.change(screen.getByLabelText("Reference audio file"), { target: { files: [new File(["test"], "guide.wav", { type: "audio/wav" })] } })
     expect(await screen.findByText("processing · preparing your reference")).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Generate" })).toBeDisabled()
+
+    await waitFor(() => expect(getUpload).toHaveBeenCalledOnce())
+    resolveUploadStatus({
+      data: { upload_ref: "upload_live_1", source_kind: "audio", status: "ready", bytes_received: 4, byte_size: 4, asset_ref: "asset_live_1", source_ref: "source_live_1", error: null, created_at: "2026-09-05T00:00:00Z", updated_at: "2026-09-05T00:00:02Z", expires_at: "2026-09-06T00:00:00Z" },
+      meta: { request_id: "upload_status_live_1" },
+    })
     await waitFor(() => expect(screen.getByRole("button", { name: "Replace reference audio guide.wav" })).toBeInTheDocument())
     expect(uploadContent).toHaveBeenCalledOnce()
   })

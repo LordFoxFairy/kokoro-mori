@@ -88,7 +88,7 @@ Create 不再把 Reference、Voice、Style 拆成互相重复的快捷按钮或�
 
 | 来源 | 用户意图 | 当前行为 | 契约事实 |
 |---|---|---|---|
-| Audio | “参考这段节奏、旋律或质感” | 选择、录制、校验、替换或移除音频参考 | `source_ref` 保留可复用来源身份；解析出的 `asset_ref` 进入 `reference_asset_refs[]` |
+| Audio | “参考这段节奏、旋律或质感” | 选择、录制、校验、替换或移除音频参考；页面中断后可按 project 继续或重新选择同一文件 | `source_ref` 保留可复用来源身份；解析出的 `asset_ref` 进入 `reference_asset_refs[]`；浏览器只恢复 upload metadata，不持久化文件字节 |
 | Voice | “沿用这个可复用的演唱身份” | 从渐进式 Voice profiles 中选择 | 稳定资产引用进入 `voice_ref` |
 | Inspiration | “从一个完整创作方向开始” | 选择少量策展预设并把结果写入可编辑 Style | 当前进入 provider-neutral `style` 文本 |
 

@@ -59,7 +59,7 @@ Prompt / Upload
 |---|---|---|---|
 | Simple / Custom 生成歌词歌或纯音乐 | 浏览器已对齐 | `create-canvas.tsx`、`mori-workspace.tsx`；Smart 额外提供可编辑 Song Plan，Song idea 提供 `Surprise me` 起点 | 保留 Mori 的 Approach / Output 分离，不复制 Suno 表单层级；随机起点只辅助输入，不改变生成契约 |
 | 每次生成多个候选并持续跟踪 | 浏览器已对齐 | Generation Queue、snapshot、SSE、cancel、retry、Candidate projection | Runtime 以真实 provider integration smoke 为完成门槛 |
-| 上传 / 录制音频并跨项目复用 | 部分对齐 | 文件类型与大小校验、浏览器麦克风录音、live Upload Session 状态、稳定幂等重试与持续 processing 轮询；preview fixture 仍使用固定 preview asset ref | **P0：正式 Creative Source Ingest** |
+| 上传 / 录制音频并跨项目复用 | 部分对齐 | 文件类型与大小校验、浏览器麦克风录音、live Upload Session 状态、稳定幂等重试与持续 processing 轮询；刷新/卸载后按 project 恢复 upload metadata，并提供 Continue / 重新选择同一文件；preview fixture 仍使用固定 preview asset ref | **P0：正式 Creative Source Ingest** |
 | Cover / Extend / Replace / Remaster | 浏览器已对齐 | Arrangement Change Plan、typed snapshot、Take Lanes、Finish Remaster | 补真实执行验收；Mori 的 Balanced / Bold 是自有语言，不冒充 Suno 原词 |
 | Add vocals / Add instrumental / Lyrics revision | 浏览器 foundation 已对齐 | Voice & stems、Lyrics Revision、Studio 的 owner-confirmed Lyrics Draft seam | Lyrics runtime 由 Workspace owner 接通并做 recovery smoke；浏览器不再以 localStorage 冒充保存 |
 | Take audition / Commit / Current Version | 浏览器已对齐 | Open、Playing、Selected、Current 分离；Preview A/B 有本地可播放 fixture；Project-scoped CAS | **P0：Durable Project Memory 的 Version / Revision 一致性** |
@@ -101,7 +101,7 @@ Review change 首屏可见；Reference、Restyle/Cover、Voice 与保护项放�
 
 #### P0.2 Creative Source Ingest
 
-- UI：沿用现有 Audio Source 卡，支持选择文件或 Record / Stop 麦克风参考，并增加 uploading / processing / ready / failed / cancelled 与 Retry。
+- UI：沿用现有 Audio Source 卡，支持选择文件或 Record / Stop 麦克风参考，并增加 uploading / processing / ready / failed / cancelled 与 Retry；页面中断后恢复同一 project 的 upload metadata，提供 Continue / 重新选择同一文件。真实文件字节仍由用户重新提供，不落 localStorage。
 - Contract：Upload Session 创建、状态、取消、完成；只向浏览器返回 opaque `asset_ref` / `source_ref`。
 - 完成指标：有效文件上传成功率不低于 98%；刷新后仍能在 Library 复用。
 - 暂不做：批量上传、波形裁剪、分片断点续传。
