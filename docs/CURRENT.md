@@ -11,6 +11,7 @@
 - Create → Generation Queue → Candidate → Project / Version → Studio → Take Lanes → Current Version 的本地闭环。
 - Studio Arrangement / Lyrics / Stems / Finish 工作面，以及 Add part、Replace section、Extend、Transform（Restyle / Cover）的一层 AI 意图模型。
 - Arrangement 的未保存编辑不再因切换 Studio 工具或 Version 静默丢失：Arrangement editor 保持 mounted，切换 Lyrics / Voice & stems、打开另一 Version 或返回 Project 前会出现 Keep editing / Discard & continue / Save & continue；保存仍通过原 Composition revision 与幂等键，冲突提供 Refresh arrangement，浏览器刷新/关闭也会触发离开提醒，Global Player 不受保护层影响。
+- Arrangement 的状态文案现在与数据事实一致：加载中显示 Loading，空 owner projection 显示 Baseline only，不可用 projection 显示 Preview only，不再在未确认 owner 数据时显示 Saved。
 - Studio Arrangement 已增加 Asset Dock v1：在当前时间线上下文内搜索并按 All / Audio / Voices / Inspiration 筛选 Creative Source；Library Audio 可复用同一个全局 Player 试听，也可以从 Audio 卡片直接拖到任意 Composition Track 的时间位置，按 100ms 对齐并在版本边界内裁剪；点击 Insert 仍作为选中 Track / Range 的键盘与低精度指针 fallback，插入动作明确绑定当前 Track、位置和 `source_ref` 并生成新的 Composition revision；Voice / Inspiration 显示为 Arrangement 中的 reference-only，避免把不可插入来源伪装成音频素材。
 - Studio Export 已支持 Full song 或当前 Arrangement 选区：默认仍导出整曲，用户在同一窗口选择 `Selected range` 后，选区的 `start_ms` / `end_ms` 会随 Version 或 Mix Revision 一起进入异步 render request 与 snapshot；多轨 / MIDI 仍未暴露。
 - Studio Arrangement 的当前 AI edit range 现在可以直接通过全局 Player 试听：Preview selection 复用同一个媒体通道，从选区起点开始并在终点自动暂停、回到起点；Loop selection 仍复用同一 transport，在 timeupdate / ended 时回到选区起点并保持播放；修改选区、切换 Version、离开 Arrangement 或媒体失败都会清除 loop 状态。Player 显示 Range audition / Looping 上下文，普通整曲试听、Take 切换和 AI Scope 仍保持独立，不创建第二个播放器。

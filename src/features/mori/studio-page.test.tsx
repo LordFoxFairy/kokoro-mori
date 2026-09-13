@@ -1520,6 +1520,7 @@ describe("Mori studio page", () => {
 
     await waitFor(() => expect(getCompositionRevision).toHaveBeenCalledWith("version_preview_first_light_a"))
     expect(await screen.findByText("No saved arrangement yet · using version baseline")).toBeInTheDocument()
+    expect(within(screen.getByRole("region", { name: "Arrangement editor" })).getByText("Baseline only")).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Save arrangement" })).toBeDisabled()
   })
 

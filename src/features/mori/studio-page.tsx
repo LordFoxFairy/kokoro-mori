@@ -2192,6 +2192,13 @@ function compositionNavigationLabel(target: CompositionNavigationTarget): string
   return target.tool === "stems" ? "Voice & stems" : target.tool === "lyrics" ? "Lyrics" : "Arrangement"
 }
 
+function compositionSaveIndicatorLabel(loadState: CompositionLoadState, saveState: CompositionSaveState): string | undefined {
+  if (loadState === "loading") return "Loading"
+  if (loadState === "empty") return saveState === "saved" ? "Baseline only" : "Baseline edits only"
+  if (loadState === "unavailable") return saveState === "saved" ? "Preview only" : "Preview edits only"
+  return undefined
+}
+
 function resolveInitialCandidate(candidate: Candidate, projectRef?: string, versionRef?: string): Candidate | null {
   const requestedProjectRef = projectRef?.trim()
   const requestedVersionRef = versionRef?.trim()
@@ -2840,6 +2847,7 @@ function ArrangementEditor({ compositionSave, compositionLoad, compositionRevisi
   }
 
   const compositionBusy = compositionLoadState === "loading"
+  const compositionStatusLabel = compositionSaveIndicatorLabel(compositionLoadState, compositionEditor.saveState)
 
   return (
     <section aria-label="Arrangement editor" aria-busy={compositionBusy ? "true" : "false"}>
@@ -2847,7 +2855,7 @@ function ArrangementEditor({ compositionSave, compositionLoad, compositionRevisi
         {compositionBusy ? <span className={styles.compositionLoadNotice} role="status">Loading arrangement…</span> : null}
         {compositionLoadState === "empty" ? <span className={styles.compositionLoadNotice} role="status">No saved arrangement yet · using version baseline</span> : null}
         {compositionLoadState === "unavailable" ? <span className={styles.compositionLoadNotice} role="status">Arrangement unavailable · using local baseline</span> : null}
-        <CompositionSaveIndicator state={compositionEditor.saveState} />
+        <CompositionSaveIndicator state={compositionEditor.saveState} label={compositionStatusLabel} />
         <div className={styles.arrangementHistoryActions} aria-label="Arrangement history">
           <button className={styles.arrangementHistoryButton} type="button" aria-label="Undo arrangement change" title="Undo (⌘/Ctrl+Z)" disabled={compositionBusy || !compositionEditor.canUndo || compositionEditor.saveState === "saving"} onClick={compositionEditor.undo}><Undo2 size={14} /></button>
           <button className={styles.arrangementHistoryButton} type="button" aria-label="Redo arrangement change" title="Redo (⌘/Ctrl+Y)" disabled={compositionBusy || !compositionEditor.canRedo || compositionEditor.saveState === "saving"} onClick={compositionEditor.redo}><Redo2 size={14} /></button>
