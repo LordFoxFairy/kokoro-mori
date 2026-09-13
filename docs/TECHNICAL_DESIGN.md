@@ -60,6 +60,8 @@ Composition 当前以 `Composition { tracks[] }` 作为浏览器侧 revision fou
 - Preview data 只能作为明确标记的 unavailable fallback，不冒充用户数据。
 - Studio 打开已有 Version 时可以向全局 transport 预置暂停的当前 Version；该动作不自动播放、不写入 playback queue，
   且只在 transport 尚无显式用户选择时发生，不能覆盖正在试听的 Version。
+- Studio 时间线的播放入口只能调用全局 transport：`Play from playhead` 传递当前 Version 与位置，切换回整曲时清除
+  Range / Clip audition scope；Mori 不在 Studio 内创建第二个 `<audio>` 或独立播放状态。
 
 ## 6. 目标演进顺序
 

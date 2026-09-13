@@ -1011,6 +1011,28 @@ describe("Mori studio page", () => {
     expect(within(timeline).getByRole("button", { name: "Select Lift section" })).toHaveAttribute("data-playhead", "true")
   })
 
+  it("starts the global player from the Studio playhead without creating another transport", async () => {
+    const mediaFactory: PlayerMediaFactory = () => ({
+      setSource: vi.fn(),
+      play: vi.fn(async () => undefined),
+      pause: vi.fn(),
+      seek: vi.fn(),
+      setMuted: vi.fn(),
+      dispose: vi.fn(),
+    })
+    renderStudio(undefined, { ...previewCandidates[0], audioAssetRef: "asset_studio_playhead_action" }, mediaFactory)
+
+    const timeline = within(screen.getByRole("region", { name: "Arrangement editor" })).getByRole("region", { name: "Version timeline" })
+    const playhead = within(timeline).getByRole("slider", { name: "Timeline playhead" })
+    fireEvent.change(playhead, { target: { value: "72" } })
+    fireEvent.click(within(timeline).getByRole("button", { name: "Play from playhead" }))
+
+    await waitFor(() => expect(within(timeline).getByRole("button", { name: "Pause playback" })).toBeInTheDocument())
+    expect(screen.getByRole("region", { name: "Global player" })).toHaveTextContent("First Light")
+    expect(within(screen.getByRole("region", { name: "Global player" })).getByRole("button", { name: "Pause" })).toBeInTheDocument()
+    expect(within(screen.getByRole("region", { name: "Global player" })).getByRole("slider", { name: "Seek through current version" })).toHaveValue("72")
+  })
+
   it("keeps range looping in the Studio timeline and the global player", async () => {
     const mediaFactory: PlayerMediaFactory = () => ({
       setSource: vi.fn(),

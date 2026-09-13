@@ -26,6 +26,7 @@ type StudioTimelineProps = {
   compositionDisabled?: boolean
   onSeek: (positionSeconds: number) => void
   onSelect: (selection: StudioTimelineSection) => void
+  onPreviewFromPlayhead?: () => void
   onPreviewSelection?: () => void
   previewingSelection?: boolean
   onToggleLoopSelection?: () => void
@@ -50,7 +51,7 @@ type StudioTimelineProps = {
   resolveClipLabel?: (clip: CompositionClip, track: CompositionTrack) => string
 }
 
-export function StudioTimeline({ candidate, sections, selection, positionSeconds, playing, disabled, compositionDisabled = false, onSeek, onSelect, onPreviewSelection, previewingSelection = false, onToggleLoopSelection, loopingSelection = false, compositionTracks = [], selectedClipRef, selectedTrackRef, onSelectTrack, onSelectClip, onEditClip, onMoveClip, onDeleteClip, onDuplicateClip, onEditTrackMix, onPreviewClip, previewingClip = false, isClipPreviewable, insertSources, onInsertClip, dropSources, onDropSource, resolveClipLabel }: StudioTimelineProps) {
+export function StudioTimeline({ candidate, sections, selection, positionSeconds, playing, disabled, compositionDisabled = false, onSeek, onSelect, onPreviewFromPlayhead, onPreviewSelection, previewingSelection = false, onToggleLoopSelection, loopingSelection = false, compositionTracks = [], selectedClipRef, selectedTrackRef, onSelectTrack, onSelectClip, onEditClip, onMoveClip, onDeleteClip, onDuplicateClip, onEditTrackMix, onPreviewClip, previewingClip = false, isClipPreviewable, insertSources, onInsertClip, dropSources, onDropSource, resolveClipLabel }: StudioTimelineProps) {
   const sectionHintId = useId()
   const durationMs = Math.max(minimumStudioTimelineSelectionMs, Math.round(candidate.durationSeconds * 1_000))
   const positionMs = Math.max(0, Math.min(durationMs, Math.round(positionSeconds * 1_000)))
@@ -77,7 +78,10 @@ export function StudioTimeline({ candidate, sections, selection, positionSeconds
         <div className={styles.playbackContext} aria-live="polite">
           <strong>Playhead · {activeSection?.label ?? "Track"}</strong>
           <span>{formatStudioTimelineTime(positionMs)} / {formatStudioTimelineTime(durationMs)}</span>
-          {onPreviewSelection || onToggleLoopSelection ? <div className={styles.playbackActions}>
+          {onPreviewFromPlayhead || onPreviewSelection || onToggleLoopSelection ? <div className={styles.playbackActions}>
+            {onPreviewFromPlayhead ? <button className={styles.previewSelection} type="button" onClick={onPreviewFromPlayhead} disabled={disabled} aria-pressed={playing} aria-label={playing ? "Pause playback" : "Play from playhead"}>
+              {playing ? <Pause size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" />} {playing ? "Pause" : "Play from playhead"}
+            </button> : null}
             {onPreviewSelection ? <button className={styles.previewSelection} type="button" onClick={onPreviewSelection} disabled={disabled} aria-pressed={previewingSelection}>
               {previewingSelection ? <Pause size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" />} {previewingSelection ? "Pause selection" : "Preview selection"}
             </button> : null}
