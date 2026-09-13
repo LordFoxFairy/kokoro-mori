@@ -1,8 +1,13 @@
 import type { MoriRef } from "@/features/mori/domain"
 
 export type CompositionClip = { clipRef: MoriRef; sourceRef: MoriRef; startMs: number; durationMs: number; offsetMs: number; fadeInMs?: number; fadeOutMs?: number }
-export type CompositionTrack = { trackRef: MoriRef; kind: "vocals" | "instrumental" | "other"; name: string; clips: CompositionClip[] }
+export type CompositionTrackMix = { gain: number; pan: number; muted: boolean }
+export type CompositionTrack = { trackRef: MoriRef; kind: "vocals" | "instrumental" | "other"; name: string; clips: CompositionClip[]; gain?: number; pan?: number; muted?: boolean }
 export type Composition = { tracks: CompositionTrack[] }
+
+export function compositionTrackMix(track: CompositionTrack): CompositionTrackMix {
+  return { gain: track.gain ?? 1, pan: track.pan ?? 0, muted: track.muted ?? false }
+}
 
 /** Generate an opaque identity for a new timeline placement. Existing placements keep their clipRef across edits. */
 export function createCompositionPlacementRef(namespace: string): MoriRef {
@@ -22,6 +27,13 @@ export function insertClip(track: CompositionTrack, clip: CompositionClip): Comp
 export function removeClip(track: CompositionTrack, clipRef: MoriRef): CompositionTrack {
   if (!track.clips.some((clip) => clip.clipRef === clipRef)) throw new Error("composition_clip_not_found")
   return { ...track, clips: track.clips.filter((clip) => clip.clipRef !== clipRef) }
+}
+
+export function setTrackMix(track: CompositionTrack, mix: CompositionTrackMix): CompositionTrack {
+  if (!Number.isFinite(mix.gain) || mix.gain < 0 || mix.gain > 1) throw new Error("composition_gain_invalid")
+  if (!Number.isFinite(mix.pan) || mix.pan < -1 || mix.pan > 1) throw new Error("composition_pan_invalid")
+  if (typeof mix.muted !== "boolean") throw new Error("composition_mute_invalid")
+  return { ...track, gain: mix.gain, pan: mix.pan, muted: mix.muted }
 }
 
 export function moveClip(track: CompositionTrack, clipRef: MoriRef, startMs: number): CompositionTrack {
