@@ -4002,7 +4002,7 @@
   }
 }
 
-@media (max-width: 620px) {
+@media (max-width: 700px) {
   .catalogContent {
     padding: 28px 16px 42px;
   }
@@ -4764,7 +4764,7 @@
 
 .playbackQueueLayer {
   position: fixed;
-  inset: 0 0 90px;
+  inset: 0 0 var(--mori-player-height);
   z-index: 24;
   pointer-events: none;
 }
@@ -4787,7 +4787,7 @@
   z-index: 1;
   display: flex;
   width: min(360px, calc(100vw - 32px));
-  max-height: min(480px, calc(100dvh - 124px));
+  max-height: min(480px, calc(100dvh - var(--mori-player-height) - 34px));
   flex-direction: column;
   overflow: hidden;
   border: 1px solid rgba(221, 215, 228, 0.96);

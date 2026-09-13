@@ -94,6 +94,7 @@
   仍保留可直接访问的 fallback。搜索、键盘 tab 切换、Escape、焦点循环和背景 `inert` 隔离均保持可逆；移动端改为全宽搜索与横向 section navigation，
   交互控件使用 44px touch target。Settings 与 New Project 共用可嵌套的 body lock / shell isolation，成功态会把焦点留在弹窗内。
 - Studio 时间线在窄屏提供横向滚动、键盘焦点和明确的 Swipe hint；短桌面视口的 Export dialog 会避开固定 Player safe area。
+- Mori 的移动断点已统一到 700px：App Shell、Studio AI、Timeline、Composition lane 与 Creative Source library 在同一临界宽度切换，底部 Playback Queue 与 drawer 也统一使用 `--mori-player-height`，避免紧凑播放器时出现遮挡或空隙。
 - Composition 选中 Clip 后的试听、Move、Trim、Split、Crop、Fade、Remove、Duplicate 操作在窄屏自动换行并扩大触控命中区；时间线仍保持横向滚动，不把编辑动作挤出可视区域。
   Studio Header 提供项目级 Generation queue 入口，使用同一浏览器任务摘要展示后台运行、完成和需处理的任务，并可回到对应的 Create 或 Studio 上下文。
 - 移动端 Studio Header 已改为上下文与动作分层：项目路径单独占一行，动作区可换行而不挤压路径；Take Lanes 的 Preview / Use take
