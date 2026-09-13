@@ -12,6 +12,7 @@
 - Studio 固定为工具 / 画布两栏；Arrangement 在宽屏内将 Suno-like Library 作为可开关的右侧 dock 放在时间线旁，窄屏自然回到主内容下方；Project Version history 统一由 Studio 顶部 Versions 动作打开上下文抽屉，不挤压画布或替代 Global Player。
 - Create → Generation Queue → Candidate → Project / Version → Studio → Take Lanes → Current Version 的本地闭环。
 - Create 的 Custom controls 现在提供少量 Suno-like Style starters：点击只把策展方向写入可编辑 Style 字段，仍由用户决定最终文本，不增加第二套 provider 或模型契约。
+- Create 的 Smart 首次提交现在要求先填写 Song idea：空提交停留在当前表单、聚焦输入框并显示就地校验，不再生成一个“开放式新方向”的假计划；Custom 仍保留仅凭 Style / Output controls 直接进入队列的 Suno-like 高级路径。
 - Generation Queue 的成功结果现在提供明确的 `Review directions in Project` 去向；Project Overview 接受 `generation_ref` 深链，只加载该次运行的方向并复用同一试听、Set as current 与 Open Studio 决策链，避免生成完成后把用户留在孤立队列里。
 - Project Review 现在在候选方向原位提供 `Works / Needs work` 反馈；负面反馈可标记 Sound quality、Timing feels off 或 Too many layers，按 Project / Generation / Candidate 保持在当前浏览器会话内，不改 Current、不写入 Taste，也不阻断试听、Set as current 或 Open Studio。
 - Studio Arrangement / Lyrics / Stems / Finish 工作面，以及 Add part、Replace section、Extend、Transform（Restyle / Cover）的一层 AI 意图模型。
@@ -146,7 +147,7 @@ pnpm exec vitest run --maxWorkers=1 src/features/mori/mori-workspace.test.tsx
                                   passed: 1 file / 73 tests
 pnpm exec vitest run --maxWorkers=1 src/features/mori/use-audio-recorder.test.tsx
                                   passed: 1 file / 2 tests
-pnpm test                         passed: 85 files / 690 tests
+pnpm test                         passed: 85 files / 691 tests
 pnpm build                        passed
 ```
 
