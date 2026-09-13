@@ -1,6 +1,6 @@
 "use client"
 
-import { AudioLines, FileAudio, Filter, Mic2, Pause, Play, Search, Sparkles, Square } from "lucide-react"
+import { AudioLines, FileAudio, Filter, LoaderCircle, Mic2, Pause, Play, RefreshCcw, Search, Sparkles, Square } from "lucide-react"
 import { useMemo, useState } from "react"
 import type { MoriCreativeSourceUploadStatus } from "@/lib/mori-api"
 import type { MoriCreativeLibrarySource } from "../creative-assets"
@@ -11,6 +11,7 @@ import styles from "./studio-asset-dock.module.css"
 
 type AudioCreativeSource = Extract<MoriCreativeLibrarySource, { sourceKind: "audio" }>
 type StudioAssetDockFilter = "all" | MoriCreativeLibrarySource["sourceKind"]
+type StudioAssetSourceStatus = "preview" | "loading" | "ready" | "unavailable"
 
 type StudioAssetDockProps = {
   sources?: readonly MoriCreativeLibrarySource[]
@@ -22,6 +23,8 @@ type StudioAssetDockProps = {
   onPreview: (source: AudioCreativeSource) => void
   onInsert: (source: AudioCreativeSource) => void
   onRecordingComplete?: (recording: AudioRecording) => void | Promise<void>
+  sourceStatus?: StudioAssetSourceStatus
+  onRetrySources?: () => void
   recordingUploadStatus?: MoriCreativeSourceUploadStatus | null
   recordingUploadMessage?: string | null
 }
@@ -33,7 +36,7 @@ const filters: readonly { id: StudioAssetDockFilter; label: string }[] = [
   { id: "inspiration", label: "Inspiration" },
 ]
 
-export function StudioAssetDock({ sources, selectedTrackName, selectedRangeLabel, selectedRangeTime, disabled = false, previewingSourceRef = null, onPreview, onInsert, onRecordingComplete, recordingUploadStatus = null, recordingUploadMessage = null }: StudioAssetDockProps) {
+export function StudioAssetDock({ sources, selectedTrackName, selectedRangeLabel, selectedRangeTime, disabled = false, previewingSourceRef = null, onPreview, onInsert, onRecordingComplete, sourceStatus = "preview", onRetrySources, recordingUploadStatus = null, recordingUploadMessage = null }: StudioAssetDockProps) {
   const [filter, setFilter] = useState<StudioAssetDockFilter>("audio")
   const [query, setQuery] = useState("")
   const [recordingError, setRecordingError] = useState<string | null>(null)
@@ -51,7 +54,7 @@ export function StudioAssetDock({ sources, selectedTrackName, selectedRangeLabel
   })
   const recordingActive = recordingStarting || recordingStatus !== "idle"
   const recordingUploadActive = recordingUploadStatus === "creating" || recordingUploadStatus === "uploading" || recordingUploadStatus === "processing"
-  const sourceActionsDisabled = disabled || recordingActive || recordingUploadActive
+  const sourceActionsDisabled = disabled || recordingActive || recordingUploadActive || sourceStatus === "loading" || sourceStatus === "unavailable"
   const visibleSources = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase()
     return sourceCatalog.filter((source) => {
@@ -116,7 +119,16 @@ export function StudioAssetDock({ sources, selectedTrackName, selectedRangeLabel
         {filters.map((item) => <button key={item.id} type="button" aria-pressed={filter === item.id} onClick={() => setFilter(item.id)}>{item.label}</button>)}
       </div>
 
-      {visibleSources.length > 0 ? <div className={styles.sourceList}>
+      {sourceStatus === "loading" ? <div className={styles.sourceState} role="status">
+        <LoaderCircle className={styles.sourceStateIcon} aria-hidden="true" size={16} />
+        <strong>Loading your sources</strong>
+        <small>Mori is bringing this project’s audio, voices, and inspirations into view.</small>
+      </div> : sourceStatus === "unavailable" ? <div className={styles.sourceState} role="status">
+        <span className={styles.sourceStateIcon}><RefreshCcw aria-hidden="true" size={16} /></span>
+        <strong>Sources are unavailable</strong>
+        <small>Your arrangement is safe. Try again to load reusable sources.</small>
+        {onRetrySources ? <button className={styles.sourceRetry} type="button" onClick={onRetrySources}><RefreshCcw aria-hidden="true" size={13} /> Try again</button> : null}
+      </div> : visibleSources.length > 0 ? <div className={styles.sourceList}>
         {visibleSources.map((source) => <SourceCard key={`${source.sourceKind}:${source.ref}`} source={source} disabled={sourceActionsDisabled} canInsert={selectedTrackName !== undefined} previewing={previewingSourceRef === source.ref} onPreview={onPreview} onInsert={onInsert} />)}
       </div> : <div className={styles.emptyState} role="status">
         <span><Search aria-hidden="true" size={15} /></span>

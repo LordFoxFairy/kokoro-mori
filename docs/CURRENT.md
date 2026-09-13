@@ -24,7 +24,7 @@
 - 多 Take 对比现在是 Studio 的可达主路径：当 Version 有多个候选时，顶栏显示带数量的 `Takes` 入口，点击会滚动到 Take Lanes、把焦点交给对比区域，并为固定底部 Player 保留滚动安全区；单候选时不显示无意义入口。
 - Creative Source ingest 的浏览器 foundation 已收紧：live Project 不再把缺失的上传能力伪装成 preview asset；选择文件或完成麦克风录音后都复用同一 Upload Session，上传 command 在首个请求前生成稳定幂等键，同一文件失败重试会复用会话，并持续以退避轮询 processing 状态直到 owner 返回终态；录音中和上传进行中 Generate 都保持禁用。上传中刷新或页面卸载后，会按 project 记录 `upload_ref`、文件身份和幂等键，恢复时显示 Continue / 重新选择同一文件；真实文件字节不写入 localStorage，避免把浏览器临时文件伪装成持久化事实。
 - Creative Source 的身份边界已固定：Audio Source 同时携带 Library/deep-link 使用的 `source_ref` 与可播放、可生成的 `asset_ref`；Create / Studio 只把后者写入 `reference_asset_refs[]`，Voice / Inspiration 不携带 Asset 身份。
-- Studio AI 的 Reference audio 与 Cover voice 不再绑定单一 preview 常量；Studio 默认通过 `/library/sources` 读取 live Creative Source projection，组件接受同一 catalog，加载失败时才使用明确的 preview fallback。
+- Studio AI 的 Reference audio 与 Cover voice 不再绑定单一 preview 常量；Studio 默认通过 `/library/sources` 读取 live Creative Source projection，组件接受同一 catalog；只有 Preview Project 使用明确的 preview catalog，live source 加载中/失败时显示状态与 Retry，绝不把 preview source 当成真实素材。
 - Composition API seam 已固定 Version ref、幂等键与 revisioned input 的分离；`move_clip` 缺省为同轨移动，跨轨时携带可选 `target_track_ref`，并已提供同源 GET/PUT revision client；保存成功后会校验并采用 owner 返回的轨道投影，真实 BFF owner persistence 与 recovery smoke 仍待接入。
 - Studio 重新打开 live Project / Version 时，会从 Workspace 的 `latest_mix_revision` 摘要读取完整 Mix Revision，并严格校验 ref、Version、revision、名称和轨道数后再提供给 Finish / Export；加载中、缺失 reader 或校验失败会明确显示 unavailable，保留 Open Version 路径，不静默使用旧混音。
 - Studio Change 在 Review Plan 后才生成；请求 builder 统一 snake_case、范围、保护项、references 和输出数量，Add vocals / Add instrumental 与 Restyle 统一支持 `1 / 2 / 4` alternatives，并保持当前 Version 非破坏式。
@@ -32,6 +32,7 @@
 - 全局 Player 继续保持 viewport-fixed 的底部 transport；shell 通过同一组 `--mori-player-height` /
   `--mori-player-safe-space` token 预留可滚动安全区，短桌面视口将 dock 收敛到 72px，避免 Studio 的
   AI Changes / Take Lanes 被底部控件过度遮挡，移动端继续保留安全区与底部 sheet 行为。
+- 移动端全局 Player 的 controls 与 seek 已使用父级两行网格：播放控制保持首行右侧，进度条跨满第二行，不再被嵌套布局压缩。
 - 全局 Player 已接入窄化的 same-origin media seam：Candidate 只携带 opaque `audio_asset_ref`，浏览器通过
   `/api/v1/mori/assets/{asset_ref}/content` 获取真实音频；本地 preview ref 仅解析到 `public/audio/` 的可回归 fixture，
   不改变 live asset 路由。Provider 使用可注入的 media controller 同步真实 `play/pause/seek/mute/timeupdate/ended`
@@ -126,7 +127,7 @@ pnpm exec vitest run --maxWorkers=1 src/features/mori/mori-workspace.test.tsx
                                   passed: 1 file / 73 tests
 pnpm exec vitest run --maxWorkers=1 src/features/mori/use-audio-recorder.test.tsx
                                   passed: 1 file / 2 tests
-pnpm test                         passed: 83 files / 650 tests
+pnpm test                         passed: 83 files / 652 tests
 pnpm build                        passed
 ```
 

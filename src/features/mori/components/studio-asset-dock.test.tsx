@@ -164,6 +164,17 @@ describe("StudioAssetDock", () => {
     expect(onRecordingComplete).not.toHaveBeenCalled()
   })
 
+  it("does not expose preview sources when a live source projection is unavailable", () => {
+    const onRetrySources = vi.fn()
+    renderDock({ sources: [], sourceStatus: "unavailable", onRetrySources })
+
+    const dock = screen.getByRole("region", { name: "Studio asset dock" })
+    expect(within(dock).getByText("Sources are unavailable")).toBeInTheDocument()
+    expect(within(dock).queryByText("City Lights demo")).not.toBeInTheDocument()
+    fireEvent.click(within(dock).getByRole("button", { name: "Try again" }))
+    expect(onRetrySources).toHaveBeenCalledOnce()
+  })
+
   it("disables preview, insert, and drag actions while recording", async () => {
     const onPreview = vi.fn()
     const onInsert = vi.fn()

@@ -1193,7 +1193,7 @@ export function MoriWorkspace({ projectRef: requestedProjectRef, generationRef: 
                 <button className={styles.queueButton} type="button" onClick={() => setQueueOpen((value) => !value)} aria-expanded={queueOpen} aria-label={queueOpen ? "Hide generation queue" : "Open generation queue"} title={generationFeedbackLabel(generationFeedback)} data-generation-feedback={generationFeedback}>
                   <span className={styles.generationFeedbackIcon} data-generation-icon={generationFeedback} aria-hidden="true"><GenerationFeedbackIcon status={generationFeedback} /></span>
                   <span>{generationFeedbackLabel(generationFeedback)}</span>
-                  <b>{currentCandidates.length}</b>
+                  <b>{visibleGenerationQueueItems.length}</b>
                 </button>
               </div>
             </header>

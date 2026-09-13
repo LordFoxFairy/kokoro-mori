@@ -6044,9 +6044,13 @@
   }
 
   .playerCenter {
+    display: contents;
+  }
+
+  .playerControls {
     grid-column: 2;
     grid-row: 1;
-    justify-self: end;
+    justify-content: flex-end;
     padding-right: 0;
   }
 
@@ -6068,10 +6072,7 @@
     height: 22px;
   }
 
-  .playerControls {
-    justify-content: flex-end;
-    gap: 4px;
-  }
+  .playerControls { gap: 4px; }
 
   .playerButton {
     width: 28px;

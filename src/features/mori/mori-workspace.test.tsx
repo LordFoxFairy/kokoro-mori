@@ -902,7 +902,7 @@ describe("Mori workspace", () => {
     expect(screen.getByRole("button", { name: "Open generation queue" })).toHaveAttribute("data-generation-feedback", "active")
     expect(screen.getByRole("link", { name: "Quiet piano song for the first train home" })).toHaveAttribute("href", "/projects/project_quiet_train")
     expect(window.location.pathname + window.location.search).toBe("/create?project_ref=project_quiet_train&generation_ref=generation_quiet_train")
-    await waitFor(() => expect(screen.getByRole("link", { name: "New creation" })).toHaveAttribute("href", "/create?project_ref=project_quiet_train"))
+    await waitFor(() => expect(screen.getByRole("link", { name: "New direction" })).toHaveAttribute("href", "/create?project_ref=project_quiet_train"))
     expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/settings?return_to=%2Fcreate%3Fproject_ref%3Dproject_quiet_train%26generation_ref%3Dgeneration_quiet_train")
     window.history.replaceState({}, "", originalUrl)
   })

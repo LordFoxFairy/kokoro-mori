@@ -27,6 +27,7 @@ const navigation = [
 export function MoriRail({ activeKey = "create", collapsed = false, projectRef, onNavigate, onOpenSettings, onToggle, railRef, toggleRef }: MoriRailProps) {
   const [settingsHref, setSettingsHref] = useState("/settings?return_to=%2F")
   const [createHref, setCreateHref] = useState("/create")
+  const newCreationLabel = createHref === "/create" ? "New project" : "New direction"
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -53,9 +54,9 @@ export function MoriRail({ activeKey = "create", collapsed = false, projectRef, 
         {onToggle ? <button ref={toggleRef} className={styles.railToggle} type="button" onClick={onToggle} aria-expanded={!collapsed} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} title={collapsed ? "Expand sidebar" : "Collapse sidebar"}>{collapsed ? <PanelLeftOpen /> : <PanelLeftClose />}</button> : null}
       </div>
 
-      <Link className={styles.newButton} href={createHref} aria-label="New creation" title={collapsed ? "New creation" : undefined} onClick={onNavigate}>
+      <Link className={styles.newButton} href={createHref} aria-label={newCreationLabel} title={collapsed ? newCreationLabel : undefined} onClick={onNavigate}>
         <Plus size={16} strokeWidth={2.4} />
-        <span>New creation</span>
+        <span>{newCreationLabel}</span>
       </Link>
 
       <div className={styles.navGroup}>

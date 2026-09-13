@@ -34,7 +34,7 @@ describe("Mori application navigation", () => {
     expect(screen.getByRole("link", { name: "Library" })).toHaveAttribute("href", "/library")
   })
 
-  it("keeps New creation in the active Project context", async () => {
+  it("keeps New direction in the active Project context", async () => {
     render(
       <MoriAppProvider>
         <MoriCatalogShell activeKey="projects" ariaLabel="Project overview" projectRef="project_live_1">
@@ -43,7 +43,7 @@ describe("Mori application navigation", () => {
       </MoriAppProvider>,
     )
 
-    await waitFor(() => expect(screen.getByRole("link", { name: "New creation" })).toHaveAttribute("href", "/create?project_ref=project_live_1"))
+    await waitFor(() => expect(screen.getByRole("link", { name: "New direction" })).toHaveAttribute("href", "/create?project_ref=project_live_1"))
   })
 
   it("keeps the empty global player quiet until a Version is chosen", () => {
@@ -534,7 +534,7 @@ describe("Mori application navigation", () => {
         </MoriAppProvider>,
       )
 
-      await waitFor(() => expect(screen.getByRole("link", { name: "New creation" })).toHaveAttribute("href", "/create?project_ref=project_live_1"))
+      await waitFor(() => expect(screen.getByRole("link", { name: "New direction" })).toHaveAttribute("href", "/create?project_ref=project_live_1"))
     } finally {
       window.history.pushState({}, "", originalPath)
     }
@@ -553,7 +553,7 @@ describe("Mori application navigation", () => {
         </MoriAppProvider>,
       )
 
-      await waitFor(() => expect(screen.getByRole("link", { name: "New creation" })).toHaveAttribute("href", "/create?project_ref=project_live_1"))
+      await waitFor(() => expect(screen.getByRole("link", { name: "New direction" })).toHaveAttribute("href", "/create?project_ref=project_live_1"))
       expect(screen.getByRole("link", { name: "Create" })).toHaveAttribute("href", "/create?project_ref=project_live_1")
     } finally {
       window.history.pushState({}, "", originalUrl)

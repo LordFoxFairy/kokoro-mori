@@ -282,9 +282,16 @@ export function MoriSettingsPage({ returnTo = "/", onRequestClose }: MoriSetting
 function filterSettingsSections(query: string): typeof sections {
   const normalizedQuery = query.trim().toLocaleLowerCase()
   if (normalizedQuery === "") return sections
-  return sections.filter(({ label, description }) => (
-    `${label} ${description}`.toLocaleLowerCase().includes(normalizedQuery)
+  return sections.filter(({ key, label, description }) => (
+    `${label} ${description} ${settingsSearchTerms[key]}`.toLocaleLowerCase().includes(normalizedQuery)
   ))
+}
+
+const settingsSearchTerms: Record<SettingsSection, string> = {
+  appearance: "theme light gradient desktop sidebar expanded compact reduce motion on off",
+  playback: "autoplay new takes after a track ends stop play next",
+  creation: "default mode smart custom default output lyrics instrumental default duration 2 minutes 3 minutes 4 minutes 5 minutes",
+  account: "workspace plan preview audio ownership workspace library",
 }
 
 function settingsReturnLabel(returnTo: string): string {

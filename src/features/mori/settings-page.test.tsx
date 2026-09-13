@@ -153,6 +153,19 @@ describe("Mori settings", () => {
     expect(screen.queryByRole("tabpanel")).not.toBeInTheDocument()
   })
 
+  it("searches concrete preference names and opens the matching section", () => {
+    renderSettings()
+
+    const search = screen.getByRole("textbox", { name: "Search settings" })
+    fireEvent.change(search, { target: { value: "autoplay" } })
+    expect(screen.getByRole("tab", { name: "Playback" })).toHaveAttribute("aria-selected", "true")
+    expect(screen.getByText("Autoplay new takes")).toBeInTheDocument()
+
+    fireEvent.change(search, { target: { value: "reduce motion" } })
+    expect(screen.getByRole("tab", { name: "Appearance" })).toHaveAttribute("aria-selected", "true")
+    expect(screen.getByText("Reduce motion")).toBeInTheDocument()
+  })
+
   it("makes preference controls visible and reversible", () => {
     renderSettings()
 
