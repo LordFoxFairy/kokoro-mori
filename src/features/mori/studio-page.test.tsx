@@ -1524,6 +1524,17 @@ describe("Mori studio page", () => {
     expect(screen.getByRole("button", { name: "Save arrangement" })).toBeDisabled()
   })
 
+  it("labels a preview baseline plainly when the owner composition is unavailable", async () => {
+    const getCompositionRevision = vi.fn<MoriApi["getCompositionRevision"]>(async () => {
+      throw new Error("composition owner unavailable")
+    })
+
+    renderStudio({ getCompositionRevision })
+
+    expect(await screen.findByText("Preview arrangement · using version baseline")).toBeInTheDocument()
+    expect(within(screen.getByRole("region", { name: "Arrangement editor" })).getByText("Preview only")).toBeInTheDocument()
+  })
+
   it("creates a typed Vocal Cover as two new Takes without replacing Current", async () => {
     let submittedVersionRef = ""
     let submittedInput: StudioChangeGenerationInput | null = null

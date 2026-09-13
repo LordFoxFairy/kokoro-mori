@@ -119,10 +119,10 @@ pnpm exec vitest run --maxWorkers=1 src/features/mori/studio-page.test.tsx
 pnpm exec vitest run --maxWorkers=1 src/features/mori/composition*.test.ts src/features/mori/components/composition-lane.test.tsx src/features/mori/components/studio-asset-dock.test.tsx src/features/mori/components/studio-timeline.test.tsx
                                   passed: 10 files / 50 tests
 pnpm exec vitest run --maxWorkers=1 src/features/mori/mori-workspace.test.tsx
-                                  passed: 1 file / 72 tests
+                                  passed: 1 file / 73 tests
 pnpm exec vitest run --maxWorkers=1 src/features/mori/use-audio-recorder.test.tsx
                                   passed: 1 file / 2 tests
-pnpm test                         passed: 82 files / 632 tests
+pnpm test                         passed: 82 files / 637 tests
 pnpm build                        passed
 ```
 
