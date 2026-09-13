@@ -134,6 +134,88 @@
   background: transparent;
 }
 
+.recordingPanel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 11px 12px;
+  border: 1px solid rgba(196, 121, 90, 0.18);
+  border-radius: 13px;
+  background: rgba(255, 246, 239, 0.72);
+}
+
+.recordingCopy {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.recordingLabel {
+  color: #a76854;
+  font-size: 8px;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.recordingCopy strong {
+  color: var(--mori-foreground);
+  font-size: 11px;
+}
+
+.recordingCopy small {
+  overflow: hidden;
+  color: var(--mori-muted);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recordingButton {
+  display: inline-flex;
+  min-height: 30px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid rgba(196, 121, 90, 0.25);
+  border-radius: 9px;
+  color: #925e4e;
+  font-size: 9px;
+  font-weight: 850;
+  background: rgba(255, 237, 224, 0.92);
+}
+
+.recordingButton:hover:not(:disabled) {
+  border-color: rgba(196, 121, 90, 0.42);
+  background: rgba(255, 231, 214, 0.98);
+}
+
+.recordingButtonStop {
+  color: #9e4e58;
+  border-color: rgba(158, 78, 88, 0.24);
+  background: rgba(255, 231, 234, 0.9);
+}
+
+.recordingButtonStop:hover:not(:disabled) {
+  border-color: rgba(158, 78, 88, 0.4);
+  background: rgba(255, 221, 226, 0.98);
+}
+
+.recordingButton:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.recordingError {
+  margin: -5px 0 0;
+  color: #a14855;
+  font-size: 9px;
+  line-height: 1.4;
+}
+
 .filterBar {
   display: flex;
   align-items: center;
@@ -346,7 +428,8 @@
 .filterBar button:focus-visible,
 .searchField input:focus-visible,
 .previewButton:focus-visible,
-.insertButton:focus-visible {
+.insertButton:focus-visible,
+.recordingButton:focus-visible {
   outline: 3px solid rgba(109, 92, 231, 0.2);
   outline-offset: 2px;
 }
@@ -358,6 +441,15 @@
   }
 
   .searchField {
+    width: 100%;
+  }
+
+  .recordingPanel {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .recordingButton {
     width: 100%;
   }
 

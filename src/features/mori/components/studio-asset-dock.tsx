@@ -1,9 +1,10 @@
 "use client"
 
-import { AudioLines, FileAudio, Filter, Mic2, Pause, Play, Search, Sparkles } from "lucide-react"
+import { AudioLines, FileAudio, Filter, Mic2, Pause, Play, Search, Sparkles, Square } from "lucide-react"
 import { useMemo, useState } from "react"
 import type { MoriCreativeLibrarySource } from "../creative-assets"
 import { previewCreativeSources } from "../creative-assets"
+import { useAudioRecorder, type AudioRecording } from "../use-audio-recorder"
 import { compositionSourceDragMimeType } from "./composition-lane"
 import styles from "./studio-asset-dock.module.css"
 
@@ -19,6 +20,7 @@ type StudioAssetDockProps = {
   previewingSourceRef?: string | null
   onPreview: (source: AudioCreativeSource) => void
   onInsert: (source: AudioCreativeSource) => void
+  onRecordingComplete?: (recording: AudioRecording) => void | Promise<void>
 }
 
 const filters: readonly { id: StudioAssetDockFilter; label: string }[] = [
@@ -28,10 +30,24 @@ const filters: readonly { id: StudioAssetDockFilter; label: string }[] = [
   { id: "inspiration", label: "Inspiration" },
 ]
 
-export function StudioAssetDock({ sources, selectedTrackName, selectedRangeLabel, selectedRangeTime, disabled = false, previewingSourceRef = null, onPreview, onInsert }: StudioAssetDockProps) {
+export function StudioAssetDock({ sources, selectedTrackName, selectedRangeLabel, selectedRangeTime, disabled = false, previewingSourceRef = null, onPreview, onInsert, onRecordingComplete }: StudioAssetDockProps) {
   const [filter, setFilter] = useState<StudioAssetDockFilter>("audio")
   const [query, setQuery] = useState("")
+  const [recordingError, setRecordingError] = useState<string | null>(null)
+  const [recordingStarting, setRecordingStarting] = useState(false)
   const sourceCatalog = sources ?? previewCreativeSources
+  const { elapsedSeconds, start: startRecording, status: recordingStatus, stop: stopRecording } = useAudioRecorder({
+    onComplete: (recording) => {
+      setRecordingStarting(false)
+      return onRecordingComplete?.(recording)
+    },
+    onError: (message) => {
+      setRecordingStarting(false)
+      setRecordingError(message)
+    },
+  })
+  const recordingActive = recordingStarting || recordingStatus !== "idle"
+  const sourceActionsDisabled = disabled || recordingActive
   const visibleSources = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase()
     return sourceCatalog.filter((source) => {
@@ -66,13 +82,35 @@ export function StudioAssetDock({ sources, selectedTrackName, selectedRangeLabel
         </label>
       </div>
 
+      <section className={styles.recordingPanel} aria-label="Record arrangement reference">
+        <div className={styles.recordingCopy}>
+          <span className={styles.recordingLabel}>Reference capture</span>
+          <strong>{recordingActive ? "Recording reference" : "Record a reference"}</strong>
+          <small>{recordingActive ? `${formatRecordingDuration(elapsedSeconds)} · capture a guide for this arrangement` : "Capture a guide without inserting it into the composition."}</small>
+        </div>
+        {recordingStatus !== "idle" ? (
+          <button className={`${styles.recordingButton} ${styles.recordingButtonStop}`} type="button" disabled={recordingStatus === "stopping"} onClick={stopRecording} aria-label={recordingStatus === "stopping" ? "Finishing recording" : "Stop recording"}>
+            <Square aria-hidden="true" size={13} /> {recordingStatus === "stopping" ? "Finishing…" : "Stop recording"}
+          </button>
+        ) : (
+          <button className={styles.recordingButton} type="button" disabled={disabled || recordingStarting} onClick={() => {
+            setRecordingError(null)
+            setRecordingStarting(true)
+            void startRecording()
+          }} aria-label={recordingStarting ? "Preparing microphone" : "Record reference"}>
+            <Mic2 aria-hidden="true" size={14} /> {recordingStarting ? "Preparing…" : "Record reference"}
+          </button>
+        )}
+      </section>
+      {recordingError !== null ? <p className={styles.recordingError} role="alert">{recordingError}</p> : null}
+
       <div className={styles.filterBar} role="toolbar" aria-label="Filter studio assets">
         <Filter aria-hidden="true" size={13} />
         {filters.map((item) => <button key={item.id} type="button" aria-pressed={filter === item.id} onClick={() => setFilter(item.id)}>{item.label}</button>)}
       </div>
 
       {visibleSources.length > 0 ? <div className={styles.sourceList}>
-        {visibleSources.map((source) => <SourceCard key={`${source.sourceKind}:${source.ref}`} source={source} disabled={disabled} canInsert={selectedTrackName !== undefined} previewing={previewingSourceRef === source.ref} onPreview={onPreview} onInsert={onInsert} />)}
+        {visibleSources.map((source) => <SourceCard key={`${source.sourceKind}:${source.ref}`} source={source} disabled={sourceActionsDisabled} canInsert={selectedTrackName !== undefined} previewing={previewingSourceRef === source.ref} onPreview={onPreview} onInsert={onInsert} />)}
       </div> : <div className={styles.emptyState} role="status">
         <span><Search aria-hidden="true" size={15} /></span>
         <strong>No sources match</strong>
@@ -134,4 +172,9 @@ function sourceIcon(kind: MoriCreativeLibrarySource["sourceKind"]) {
 function formatDuration(durationSeconds: number): string {
   const totalSeconds = Math.max(0, Math.round(durationSeconds))
   return `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, "0")}`
+}
+
+function formatRecordingDuration(seconds: number): string {
+  const totalSeconds = Math.max(0, Math.floor(seconds))
+  return `${Math.floor(totalSeconds / 60).toString().padStart(2, "0")}:${String(totalSeconds % 60).padStart(2, "0")}`
 }
