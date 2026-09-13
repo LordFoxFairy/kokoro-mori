@@ -66,6 +66,18 @@ export function MoriAppShell({ activeKey, ariaLabel, projectRef, children }: Mor
     }
   }, [])
 
+  useEffect(() => {
+    const handleSidebarShortcut = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || event.altKey || event.key.toLocaleLowerCase() !== "b") return
+      if (document.querySelector('[aria-modal="true"]') !== null || isTextEntryTarget(event.target)) return
+      event.preventDefault()
+      handleRailToggle()
+    }
+
+    window.addEventListener("keydown", handleSidebarShortcut)
+    return () => window.removeEventListener("keydown", handleSidebarShortcut)
+  }, [handleRailToggle])
+
   const openPlaybackQueue = useCallback(() => {
     if (window.innerWidth <= 700) setViewportState((current) => ({ ...current, mobileRailExpanded: false }))
     setPlaybackQueueOpen(true)
@@ -182,4 +194,8 @@ export function MoriAppShell({ activeKey, ariaLabel, projectRef, children }: Mor
       {settingsReturnTo !== null ? <MoriSettingsPage returnTo={settingsReturnTo} onRequestClose={closeSettings} /> : null}
     </div>
   )
+}
+
+function isTextEntryTarget(target: EventTarget | null): boolean {
+  return target instanceof HTMLElement && (target.isContentEditable || ["BUTTON", "INPUT", "SELECT", "TEXTAREA"].includes(target.tagName))
 }

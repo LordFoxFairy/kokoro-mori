@@ -91,6 +91,34 @@ describe("Mori application navigation", () => {
     }
   })
 
+  it("supports the desktop sidebar shortcut without hijacking text entry", async () => {
+    const originalWidth = window.innerWidth
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 1280 })
+    localStorage.removeItem("mori.rail.v1")
+
+    try {
+      render(
+        <MoriAppProvider>
+          <MoriCatalogShell activeKey="create" ariaLabel="Create">
+            <input aria-label="Song idea" />
+          </MoriCatalogShell>
+        </MoriAppProvider>,
+      )
+
+      await waitFor(() => expect(screen.getByRole("button", { name: "Collapse sidebar" })).toBeInTheDocument())
+      fireEvent.keyDown(window, { key: "b", metaKey: true })
+      await waitFor(() => expect(screen.getByRole("button", { name: "Expand sidebar" })).toBeInTheDocument())
+      fireEvent.keyDown(window, { key: "b", ctrlKey: true })
+      await waitFor(() => expect(screen.getByRole("button", { name: "Collapse sidebar" })).toBeInTheDocument())
+
+      fireEvent.keyDown(screen.getByRole("textbox", { name: "Song idea" }), { key: "b", metaKey: true })
+      expect(screen.getByRole("button", { name: "Collapse sidebar" })).toBeInTheDocument()
+    } finally {
+      localStorage.removeItem("mori.rail.v1")
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: originalWidth })
+    }
+  })
+
   it("supports a spacebar playback shortcut without hijacking text entry", () => {
     render(
       <MoriAppProvider>

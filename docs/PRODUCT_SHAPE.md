@@ -93,6 +93,7 @@ Workspace nav    内容随项目上下文变化                     跨页面保
 ```
 
 - Rail 是应用骨架，不是悬浮卡片；展开/收起不改变内容的语义位置。
+- 桌面 Rail 支持 `⌘/Ctrl+B` 快捷切换，但在输入框、可编辑内容和 Settings 浮层中让出快捷键，避免破坏用户当前动作。
 - Create 的第一主操作只有一个：Smart 先 Review plan、Custom 直接 Generate；Smart 复核时用 Song Plan 替换原始输入面，
   `Back to idea` 再恢复草稿，不让输入、复核和重复说明同时堆叠；Queue 是当前任务的上下文入口。
 - Studio 的工具和版本历史属于项目，不提升到全局 Rail。
