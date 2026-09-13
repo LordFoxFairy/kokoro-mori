@@ -103,7 +103,7 @@
 - Composition 选中 Clip 后的试听、Move、Trim、Split、Crop、Fade、Remove、Duplicate 操作在窄屏自动换行并扩大触控命中区；时间线仍保持横向滚动，不把编辑动作挤出可视区域。
   Studio Header 提供项目级 Generation queue 入口，使用同一浏览器任务摘要展示后台运行、完成和需处理的任务，并可回到对应的 Create 或 Studio 上下文。
 - 移动端 Studio Header 已改为上下文与动作分层：项目路径单独占一行，动作区可换行而不挤压路径；Take Lanes 的 Preview / Use take
-  在窄屏扩展为 44px 命中区，保留“试听 → 对比 → 提交”的主决策链，不让固定 Player 造成误触。
+  在窄屏扩展为 44px 命中区，Copy link、Versions、Takes、Finish、Export 保留可读标签并允许换行，保留“试听 → 对比 → 提交”的主决策链，不让固定 Player 造成误触。
 - Studio 的 Open Version 已成为 canonical route：选择 Take 或成功设为 Current 后会保留现有 surface/intent 并同步地址；
   Copy link 始终根据当前打开的 Version 构造，浏览器历史恢复时也会恢复对应 Open Version，不再出现画布、刷新结果与链接指向不同版本。
 - Lyrics Revision 绑定发起时的 Version 与单调 command epoch；切换 Take 会立即清空旧 Version 的前台写作状态，迟到的 create、snapshot、event 或 cancel

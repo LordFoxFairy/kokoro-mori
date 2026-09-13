@@ -5808,9 +5808,10 @@
     font-size: 0;
   }
 
-  /* Keep the two outcome-changing actions understandable on touch screens.
-     Copy and Versions remain compact icon actions; Finish and Export keep
-     their labels because they change the project or produce a file. */
+  /* Keep every studio action understandable on touch screens. The action row
+     can wrap; hiding labels to force a single row makes the next step unclear. */
+  .studioPage .studioHeaderActions .ghostButton[data-action="copy"],
+  .studioPage .studioHeaderActions .ghostButton[data-action="versions"],
   .studioPage .studioHeaderActions .ghostButton[data-action="finish"],
   .studioPage .studioHeaderActions .ghostButton[data-action="export"] {
     width: auto;
@@ -5818,6 +5819,11 @@
     padding-inline: 9px;
     font-size: 10px;
     white-space: nowrap;
+  }
+
+  .studioPage .studioHeaderActions .ghostButton[data-action="finish"],
+  .studioPage .studioHeaderActions .ghostButton[data-action="export"] {
+    flex: 0 0 auto;
   }
 
   .studioPage .studioHeaderActions .ghostButton[data-action="compare-takes"] {
