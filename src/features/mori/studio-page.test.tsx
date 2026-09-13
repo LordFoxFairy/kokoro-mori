@@ -1668,8 +1668,8 @@ describe("Mori studio page", () => {
     renderStudio({ getCompositionRevision })
     await waitFor(() => expect(getCompositionRevision).toHaveBeenCalledWith("version_preview_first_light_a"))
     const timeline = screen.getByRole("region", { name: "Version timeline" })
-    expect(within(timeline).getByText("Lead vocal")).toBeInTheDocument()
-    expect(within(timeline).getByText("Keys")).toBeInTheDocument()
+    expect(within(timeline).getByRole("button", { name: "Select Lead vocal track" })).toBeInTheDocument()
+    expect(within(timeline).getByRole("button", { name: "Select Keys track" })).toBeInTheDocument()
     expect(within(timeline).getByRole("button", { name: "Keys clip Keys audio · 1:00" })).toBeInTheDocument()
   })
 

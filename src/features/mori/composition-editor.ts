@@ -1,4 +1,4 @@
-import { cropClip, insertClip, moveClip, moveClipToTrack, removeClip, setClipFades, splitClip, trimClip, type Composition, type CompositionTrack } from "./composition"
+import { cropClip, insertClip, moveClip, moveClipToTrack, removeClip, setClipFades, setTrackMix, splitClip, trimClip, type Composition, type CompositionTrack, type CompositionTrackMix } from "./composition"
 import type { CompositionHistory } from "./composition-history"
 import { commitComposition } from "./composition-history"
 
@@ -9,6 +9,7 @@ export type CompositionEdit =
   | { operation: "insert"; trackRef?: string; clip: CompositionTrack["clips"][number] }
   | { operation: "split"; trackRef?: string; clipRef: string; atMs: number }
   | { operation: "fade"; trackRef?: string; clipRef: string; fadeInMs: number; fadeOutMs: number }
+  | { operation: "mix"; trackRef: string; gain: CompositionTrackMix["gain"]; pan: CompositionTrackMix["pan"]; muted: CompositionTrackMix["muted"] }
   | { operation: "remove"; trackRef?: string; clipRef: string }
 
 export function applyCompositionEdit(history: CompositionHistory, edit: CompositionEdit): CompositionHistory {
@@ -25,6 +26,7 @@ export function applyCompositionEdit(history: CompositionHistory, edit: Composit
           : edit.operation === "crop" ? cropClip(track, edit.clipRef, edit.startOffsetMs, edit.endOffsetMs)
             : edit.operation === "insert" ? insertClip(track, edit.clip)
               : edit.operation === "fade" ? setClipFades(track, edit.clipRef, edit.fadeInMs, edit.fadeOutMs)
+                : edit.operation === "mix" ? setTrackMix(track, edit)
                 : removeClip(track, edit.clipRef)
   })
   return commitComposition(history, { tracks })
@@ -43,6 +45,9 @@ export function compositionTrackRefForEdit(composition: Composition, edit: Compo
   if (edit.operation === "insert") {
     if (composition.tracks.length !== 1) throw new Error("composition_track_required")
     return composition.tracks[0]?.trackRef ?? ""
+  }
+  if (edit.operation === "mix") {
+    throw new Error("composition_track_required")
   }
   const matches = composition.tracks.filter((track) => track.clips.some((clip) => clip.clipRef === edit.clipRef))
   if (matches.length !== 1) throw new Error(matches.length === 0 ? "composition_clip_not_found" : "composition_clip_ambiguous")

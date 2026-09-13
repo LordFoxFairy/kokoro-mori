@@ -14,4 +14,9 @@ describe("composition revision client", () => {
   it("rejects an incomplete owner projection", () => expect(() => parseCompositionRevisionResponse({ version_ref: "version_1", revision: 0, tracks: [] })).toThrow("composition_response_invalid"))
   it("rejects an owner projection with incomplete track data", () => expect(() => parseCompositionRevisionResponse({ version_ref: "version_1", revision: 1, tracks: [{ track_ref: "track_1", kind: "vocals", name: "Lead", clips: [{ clip_ref: "clip_1" }] }] })).toThrow("composition_response_invalid"))
   it("rejects duplicate track identities", () => expect(() => parseCompositionRevisionResponse({ version_ref: "version_1", revision: 1, tracks: [{ track_ref: "track_1", kind: "vocals", name: "Lead", clips: [] }, { track_ref: "track_1", kind: "instrumental", name: "Keys", clips: [] }] })).toThrow("composition_response_invalid"))
+  it("keeps optional track mix projection fields and rejects partial mix data", () => {
+    expect(parseCompositionRevisionResponse({ version_ref: "version_1", revision: 1, tracks: [{ track_ref: "track_1", kind: "vocals", name: "Lead", gain: 0.8, pan: 0.2, muted: false, clips: [] }] }).tracks[0]).toMatchObject({ gain: 0.8, pan: 0.2, muted: false })
+    expect(() => parseCompositionRevisionResponse({ version_ref: "version_1", revision: 1, tracks: [{ track_ref: "track_1", kind: "vocals", name: "Lead", gain: 0.8, clips: [] }] })).toThrow("composition_response_invalid")
+    expect(() => parseCompositionRevisionResponse({ version_ref: "version_1", revision: 1, tracks: [{ track_ref: "track_1", kind: "vocals", name: "Lead", gain: 1.2, pan: 0, muted: false, clips: [] }] })).toThrow("composition_response_invalid")
+  })
 })

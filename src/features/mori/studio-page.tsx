@@ -57,7 +57,7 @@ import { Waveform } from "./components/waveform"
 import { previewCandidates, previewProject, previewSongPlan } from "./preview-data"
 import { formatMusicTime } from "./format-music-time"
 import type { StudioEntryIntent, StudioEntrySurface } from "./studio-entry"
-import { createCompositionPlacementRef, type Composition, type CompositionClip, type CompositionTrack } from "./composition"
+import { createCompositionPlacementRef, type Composition, type CompositionClip, type CompositionTrack, type CompositionTrackMix } from "./composition"
 import type { CompositionSaveState } from "./composition-save-state"
 import { useCompositionEditor } from "./use-composition-editor"
 import type { AudioRecording } from "./use-audio-recorder"
@@ -2905,6 +2905,7 @@ function compositionFromOwnerRevision(revision: MoriCompositionRevision): Compos
       trackRef: track.track_ref,
       kind: track.kind,
       name: track.name,
+      ...(track.gain === undefined ? {} : { gain: track.gain, pan: track.pan ?? 0, muted: track.muted ?? false }),
       clips: track.clips.map((clip) => ({
         clipRef: clip.clip_ref,
         sourceRef: clip.source_ref,
@@ -3095,6 +3096,13 @@ function ArrangementEditor({ compositionSave, compositionLoad, compositionRevisi
       setEditOperation(null)
     }
   }
+  const editTrackMix = (trackRef: string, mix: CompositionTrackMix) => {
+    try {
+      compositionEditor.editAndQueue({ operation: "mix", trackRef, ...mix })
+    } catch {
+      // Invalid values are rejected by the shared composition primitive.
+    }
+  }
   const deleteClip = (clipRef: string, trackRef: string) => {
     try {
       compositionEditor.editAndQueue({ operation: "remove", trackRef, clipRef })
@@ -3184,7 +3192,7 @@ function ArrangementEditor({ compositionSave, compositionLoad, compositionRevisi
         onCancel={onCancelStudioChange}
         onReset={onResetStudioChange}
       />
-      <StudioTimeline candidate={candidate} sections={timelineSections} selection={selection} positionSeconds={positionSeconds} playing={playing} disabled={changeActive || compositionEditor.saveState === "saving"} compositionDisabled={compositionBusy} onSeek={onSeekTimeline} onSelect={selectTimelineRange} onPreviewSelection={() => onPreviewSelection(selection)} previewingSelection={previewingSelection} onToggleLoopSelection={() => onToggleLoopSelection(selection)} loopingSelection={loopingSelection} compositionTracks={compositionEditor.composition} selectedClipRef={selectedClipRef} selectedTrackRef={selectedTrackRef} onSelectTrack={(trackRef) => { setSelectedTrackRef(trackRef); setSelectedClipRef(undefined); setEditOperation(null) }} onSelectClip={(clipRef, trackRef) => { setSelectedClipRef(clipRef); setSelectedTrackRef(trackRef) }} onEditClip={(operation, clipRef, trackRef) => { setSelectedClipRef(clipRef); setSelectedTrackRef(trackRef); setEditOperation(operation) }} onMoveClip={moveClip} onDeleteClip={deleteClip} onDuplicateClip={duplicateClip} onPreviewClip={previewCompositionClip} previewingClip={previewingClip} isClipPreviewable={isClipPreviewable} insertSources={insertSources} onInsertClip={insertClip} dropSources={dropSources} onDropSource={(sourceRef, trackRef, startMs) => insertAudioSourceAtPosition(sourceRef, trackRef, startMs)} resolveClipLabel={resolveClipLabel} />
+      <StudioTimeline candidate={candidate} sections={timelineSections} selection={selection} positionSeconds={positionSeconds} playing={playing} disabled={changeActive || compositionEditor.saveState === "saving"} compositionDisabled={compositionBusy} onSeek={onSeekTimeline} onSelect={selectTimelineRange} onPreviewSelection={() => onPreviewSelection(selection)} previewingSelection={previewingSelection} onToggleLoopSelection={() => onToggleLoopSelection(selection)} loopingSelection={loopingSelection} compositionTracks={compositionEditor.composition} selectedClipRef={selectedClipRef} selectedTrackRef={selectedTrackRef} onSelectTrack={(trackRef) => { setSelectedTrackRef(trackRef); setSelectedClipRef(undefined); setEditOperation(null) }} onSelectClip={(clipRef, trackRef) => { setSelectedClipRef(clipRef); setSelectedTrackRef(trackRef) }} onEditClip={(operation, clipRef, trackRef) => { setSelectedClipRef(clipRef); setSelectedTrackRef(trackRef); setEditOperation(operation) }} onMoveClip={moveClip} onDeleteClip={deleteClip} onDuplicateClip={duplicateClip} onEditTrackMix={editTrackMix} onPreviewClip={previewCompositionClip} previewingClip={previewingClip} isClipPreviewable={isClipPreviewable} insertSources={insertSources} onInsertClip={insertClip} dropSources={dropSources} onDropSource={(sourceRef, trackRef, startMs) => insertAudioSourceAtPosition(sourceRef, trackRef, startMs)} resolveClipLabel={resolveClipLabel} />
       <StudioAssetDock sources={creativeSources} sourceStatus={creativeSourceStatus} onRetrySources={onRetryCreativeSources} hasMoreSources={hasMoreCreativeSources} sourcePageLoading={creativeSourcePageLoading} sourcePageError={creativeSourcePageError} onLoadMoreSources={onLoadMoreCreativeSources} selectedTrackName={selectedTrack?.name} selectedRangeLabel={selection.label} selectedRangeTime={`${formatStudioTimelineTime(selection.startMs)}–${formatStudioTimelineTime(selection.endMs)}`} disabled={changeActive || compositionBusy || compositionEditor.saveState === "saving"} previewingSourceRef={previewingSourceRef} onPreview={onPreviewSource} onInsert={insertAudioSource} onRecordingComplete={onRecordingComplete} onRetryRecording={onRetryRecording} onCancelRecordingUpload={onCancelRecordingUpload} recordingUploadCancelPending={recordingUploadCancelPending} recordingUploadStatus={recordingUploadStatus} recordingUploadMessage={recordingUploadMessage} />
       {selectedClipRef !== undefined && selectedTrackRef !== undefined && editOperation !== null ? <CompositionEditPanel clipRef={selectedClipRef} trackRef={selectedTrackRef} trackOptions={compositionEditor.composition.map((track) => ({ trackRef: track.trackRef, name: track.name }))} disabled={changeActive || compositionBusy || compositionEditor.saveState === "saving"} operation={editOperation} onApply={(edit) => { compositionEditor.editAndQueue(edit); setEditOperation(null) }} /> : null}
       <section className={styles.takeLanes} id="mori-take-lanes" aria-label="Take lanes" tabIndex={-1}>

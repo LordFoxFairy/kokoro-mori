@@ -35,6 +35,8 @@ src/features/mori/               Mori 页面、组件、交互状态与 fixture 
                                   Version-bound Lyrics Draft、AI Revision 建议与明确的 workspace / preview / unavailable 状态
   components/studio-workspace-save-status.tsx
                                   Studio 顶栏的 Saving / Saved / Retry 状态；不让旧成功提示覆盖新编辑
+  components/composition-track-mix-panel.tsx
+                                  选中 Composition Track 的 Level / Pan / Mute revision 控件
   components/studio-unsaved-lyrics-dialog.tsx
                                   切换 Version 前的 Keep / Discard / Save guard；保存确认后才允许导航
   *-page.tsx / *-workspace.tsx    页面级组合和 API 状态编排

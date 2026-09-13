@@ -27,6 +27,7 @@
 - Creative Source 的身份边界已固定：Audio Source 同时携带 Library/deep-link 使用的 `source_ref` 与可播放、可生成的 `asset_ref`；Create / Studio 只把后者写入 `reference_asset_refs[]`，Voice / Inspiration 不携带 Asset 身份。
 - Create 与 Studio AI / Add vocals 现在共用 Creative Source availability gate：Studio 默认通过 `/library/sources` 读取 live Creative Source projection，组件接受同一 catalog；只有明确的 Preview Project 或本地新建 preview shell 使用 preview catalog，live source 加载中/失败时显示状态与 Retry、禁用 voice / inspiration picker，绝不把 preview source 当成真实素材。Audio reference 的上传 / 录音入口仍独立可用。
 - Composition API seam 已固定 Version ref、幂等键与 revisioned input 的分离；`move_clip` 缺省为同轨移动，跨轨时携带可选 `target_track_ref`，并已提供同源 GET/PUT revision client；保存成功后会校验并采用 owner 返回的轨道投影，真实 BFF owner persistence 与 recovery smoke 仍待接入。
+- Arrangement 现在在选中 Track 后提供折叠式 Track controls：Level、Pan、Mute 作为同一 Composition history 的 `set_track_mix` command 进入 revisioned save；控件明确标注“应用于后续 arrangement render”，因为浏览器当前没有多轨渲染 owner，不把本地 mix draft 冒充已渲染音频。
 - Studio 重新打开 live Project / Version 时，会从 Workspace 的 `latest_mix_revision` 摘要读取完整 Mix Revision，并严格校验 ref、Version、revision、名称和轨道数后再提供给 Finish / Export；加载中、缺失 reader 或校验失败会明确显示 unavailable，保留 Open Version 路径，不静默使用旧混音。
 - Studio Change 在 Review Plan 后才生成；请求 builder 统一 snake_case、范围、保护项、references 和输出数量，Add vocals / Add instrumental 与 Restyle 统一支持 `1 / 2 / 4` alternatives，并保持当前 Version 非破坏式。
 - Mori API 与公共 Web package 保持本仓边界；未修改 Root、BFF 或 sibling service。

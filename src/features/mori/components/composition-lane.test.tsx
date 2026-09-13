@@ -77,6 +77,15 @@ describe("CompositionLane", () => {
     expect(onSelectTrack).toHaveBeenCalledWith("track_2")
   })
 
+  it("applies controls to the selected track without changing clip selection", () => {
+    const onEditTrackMix = vi.fn()
+    render(<CompositionLane durationMs={10_000} onEditTrackMix={onEditTrackMix} selectedTrackRef="track_1" tracks={[{ trackRef: "track_1", kind: "vocals", name: "Lead", clips: [] }]} />)
+    fireEvent.click(screen.getByText("Track controls"))
+    fireEvent.change(screen.getByRole("slider", { name: "Level Lead" }), { target: { value: "70" } })
+    fireEvent.click(screen.getByRole("button", { name: "Apply track mix" }))
+    expect(onEditTrackMix).toHaveBeenCalledWith("track_1", { gain: 0.7, pan: 0, muted: false })
+  })
+
   it("moves a clip when it is dropped onto its track timeline", () => {
     const onMove = vi.fn()
     const { container } = render(<CompositionLane durationMs={10_000} onMoveClip={onMove} tracks={[{ trackRef: "track_1", kind: "other", name: "Main", clips: [{ clipRef: "clip_1", sourceRef: "asset_1", startMs: 0, durationMs: 4_000, offsetMs: 0 }] }]} />)

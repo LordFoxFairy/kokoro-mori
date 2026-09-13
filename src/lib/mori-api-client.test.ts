@@ -2048,13 +2048,14 @@ describe("Mori same-origin API client", () => {
     const api = createMoriApiClient({
       fetchImpl: async (_input, init) => {
         capturedInit = init
-        return jsonResponse({ data: { version_ref: "version_1", revision: 4, tracks: [{ track_ref: "track_1", kind: "vocals", name: "Lead", clips: [{ clip_ref: "clip_1", source_ref: "asset_1", start_ms: 0, duration_ms: 8_000, offset_ms: 0, fade_in_ms: 150 }] }] }, meta: { request_id: "composition_1" } })
+        return jsonResponse({ data: { version_ref: "version_1", revision: 4, tracks: [{ track_ref: "track_1", kind: "vocals", name: "Lead", gain: 0.75, pan: -0.15, muted: false, clips: [{ clip_ref: "clip_1", source_ref: "asset_1", start_ms: 0, duration_ms: 8_000, offset_ms: 0, fade_in_ms: 150 }] }] }, meta: { request_id: "composition_1" } })
       },
     })
     const response = await api.createCompositionRevision("version_1", { expected_revision: 3, commands: [{ type: "move_clip", track_ref: "track_1", clip_ref: "clip_1", start_ms: 1_000 }] }, "composition-key-1")
     expect(capturedInit?.headers).toMatchObject({ "Idempotency-Key": "composition-key-1" })
     expect(JSON.parse(String(capturedInit?.body))).toEqual({ expected_revision: 3, commands: [{ type: "move_clip", track_ref: "track_1", clip_ref: "clip_1", start_ms: 1_000 }] })
     expect(response.data.tracks[0]?.clips[0]?.fade_in_ms).toBe(150)
+    expect(response.data.tracks[0]).toMatchObject({ gain: 0.75, pan: -0.15, muted: false })
   })
 
   it("loads a version composition projection through the same-origin resource path", async () => {

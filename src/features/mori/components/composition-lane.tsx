@@ -2,7 +2,8 @@
 
 import { Pause, Play, Plus } from "lucide-react"
 import { useState } from "react"
-import type { CompositionClip, CompositionTrack } from "../composition"
+import type { CompositionClip, CompositionTrack, CompositionTrackMix } from "../composition"
+import { CompositionTrackMixPanel } from "./composition-track-mix-panel"
 import styles from "./composition-lane.module.css"
 
 export type CompositionInsertSource = { sourceRef: string; label: string; description: string; durationMs: number }
@@ -19,6 +20,7 @@ type CompositionLaneProps = {
   onMoveClip?: (clipRef: string, sourceTrackRef: string, startMs: number, targetTrackRef?: string) => void
   onDeleteClip?: (clipRef: string, trackRef: string) => void
   onDuplicateClip?: (clipRef: string, trackRef: string) => void
+  onEditTrackMix?: (trackRef: string, mix: CompositionTrackMix) => void
   onPreviewClip?: (clipRef: string, trackRef: string) => void
   previewingClip?: boolean
   isClipPreviewable?: (clip: CompositionClip, track: CompositionTrack) => boolean
@@ -29,7 +31,7 @@ type CompositionLaneProps = {
   resolveClipLabel?: (clip: CompositionClip, track: CompositionTrack) => string
 }
 
-export function CompositionLane({ tracks, durationMs, disabled = false, selectedClipRef, selectedTrackRef, onSelectTrack, onSelectClip, onEditClip, onMoveClip, onDeleteClip, onDuplicateClip, onPreviewClip, previewingClip = false, isClipPreviewable, onInsertClip, insertSources = [], dropSources = [], onDropSource, resolveClipLabel }: CompositionLaneProps) {
+export function CompositionLane({ tracks, durationMs, disabled = false, selectedClipRef, selectedTrackRef, onSelectTrack, onSelectClip, onEditClip, onMoveClip, onDeleteClip, onDuplicateClip, onEditTrackMix, onPreviewClip, previewingClip = false, isClipPreviewable, onInsertClip, insertSources = [], dropSources = [], onDropSource, resolveClipLabel }: CompositionLaneProps) {
   const [insertOpen, setInsertOpen] = useState(false)
   const [dropTrackRef, setDropTrackRef] = useState<string | null>(null)
   const [dropKind, setDropKind] = useState<"clip" | "source" | null>(null)
@@ -148,6 +150,7 @@ export function CompositionLane({ tracks, durationMs, disabled = false, selected
         </div>
       </div>)}
     </div>
+    {selectedTrack !== undefined && onEditTrackMix !== undefined ? <CompositionTrackMixPanel key={`${selectedTrack.trackRef}:${selectedTrack.gain ?? "default"}:${selectedTrack.pan ?? "default"}:${selectedTrack.muted ?? "default"}`} track={selectedTrack} disabled={disabled} onApply={(mix) => onEditTrackMix(selectedTrack.trackRef, mix)} /> : null}
   </section>
 }
 

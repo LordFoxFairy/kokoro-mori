@@ -29,6 +29,10 @@ function parseCompositionTrack(value: unknown): MoriCompositionTrack {
   if (typeof value !== "object" || value === null) throw new Error("composition_response_invalid")
   const candidate = value as Partial<MoriCompositionTrack>
   if (typeof candidate.track_ref !== "string" || candidate.track_ref.trim() === "" || (candidate.kind !== "vocals" && candidate.kind !== "instrumental" && candidate.kind !== "other") || typeof candidate.name !== "string" || candidate.name.trim() === "" || !Array.isArray(candidate.clips)) throw new Error("composition_response_invalid")
+  const hasGain = candidate.gain !== undefined
+  const hasPan = candidate.pan !== undefined
+  const hasMuted = candidate.muted !== undefined
+  if ((hasGain || hasPan || hasMuted) && (typeof candidate.gain !== "number" || !Number.isFinite(candidate.gain) || candidate.gain < 0 || candidate.gain > 1 || typeof candidate.pan !== "number" || !Number.isFinite(candidate.pan) || candidate.pan < -1 || candidate.pan > 1 || typeof candidate.muted !== "boolean")) throw new Error("composition_response_invalid")
   const clips = candidate.clips.map((clip) => {
     if (typeof clip !== "object" || clip === null) throw new Error("composition_response_invalid")
     const parsed = clip as Partial<MoriCompositionClip>
@@ -37,7 +41,7 @@ function parseCompositionTrack(value: unknown): MoriCompositionTrack {
     return { clip_ref: clipRef, source_ref: sourceRef, start_ms: startMs, duration_ms: durationMs, offset_ms: offsetMs, ...(fadeInMs === undefined ? {} : { fade_in_ms: fadeInMs }), ...(fadeOutMs === undefined ? {} : { fade_out_ms: fadeOutMs }) }
   })
   if (new Set(clips.map((clip) => clip.clip_ref)).size !== clips.length) throw new Error("composition_response_invalid")
-  return { track_ref: candidate.track_ref, kind: candidate.kind, name: candidate.name, clips }
+  return { track_ref: candidate.track_ref, kind: candidate.kind, name: candidate.name, clips, ...(hasGain ? { gain: candidate.gain } : {}), ...(hasPan ? { pan: candidate.pan } : {}), ...(hasMuted ? { muted: candidate.muted } : {}) }
 }
 
 export function createCompositionSaveRequest(versionRef: string, revision: number, commands: CompositionRevisionInput["commands"], idempotencyKey: string) {

@@ -70,7 +70,7 @@ Prompt / Upload
 | Advanced Stems 与 mixer | 部分对齐 | Split intent、异步恢复、同步试听、Mute/Solo/Gain/Pan、Mix Revision | 补真实 stem manifest 与 composition placement |
 | 整曲 / 选区 / 多轨 / MIDI 导出 | 部分对齐 | Export 已支持默认 Full song 与 Arrangement 当前 selected time range 的 MP3/WAV；snapshot 严格回显范围 | P1：Multitrack、单 clip、MIDI 与 artifact manifest |
 | Link-only 分享与 Public 发布 | 浏览器已对齐 | Release draft、独立 Share/Publish/Unpublish 命令、Copy share/public link；真实 owner 权限与 URL smoke 待接通 | **P0：完成真实 Share / Publish owner 集成** |
-| MIDI、Effects、Automation、Synth | 缺失 | 无可靠 Composition Revision 承载 | P1 后段；先做最小 track inspector 与 automation lane |
+| MIDI、Effects、Automation、Synth | 缺失 | Track inspector 的 Level / Pan / Mute 与 `set_track_mix` 浏览器基础已存在，但仍无 MIDI、Effects、Automation、Synth 的可靠 Composition Revision 承载 | P1 后段；先接真实 mix render，再做 automation lane / MIDI |
 | AI 自定义插件、Web MIDI controller | 后置 | 不影响核心创作到交付闭环 | 暂不追逐功能数量 |
 | Voices / Personas / Custom Models / Taste | 部分对齐 | Voice source 与 Vocal direction 已分离；尚无创建、验证、训练和版本生命周期 | P2：Creative Identity 与显式 consent |
 | Sounds / Sample / Mashup | 缺失 | 无独立可交付 sample/loop 模型 | P2；复用 Source + Generation + lineage，不增全局工具墙 |

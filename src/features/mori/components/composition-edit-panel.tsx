@@ -4,7 +4,7 @@ import { useState } from "react"
 import type { CompositionEdit } from "../composition-editor"
 import styles from "./composition-edit-panel.module.css"
 
-type CompositionEditPanelProps = { clipRef: string; trackRef: string; trackOptions?: readonly { trackRef: string; name: string }[]; operation: Exclude<CompositionEdit["operation"], "insert">; disabled?: boolean; onApply: (edit: CompositionEdit) => void }
+type CompositionEditPanelProps = { clipRef: string; trackRef: string; trackOptions?: readonly { trackRef: string; name: string }[]; operation: Exclude<CompositionEdit["operation"], "insert" | "mix">; disabled?: boolean; onApply: (edit: CompositionEdit) => void }
 
 export function CompositionEditPanel({ clipRef, trackRef, trackOptions = [], operation, disabled = false, onApply }: CompositionEditPanelProps) {
   const [value, setValue] = useState(0)

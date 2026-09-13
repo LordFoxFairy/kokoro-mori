@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { createCompositionPlacementRef, cropClip, insertClip, moveClip, moveClipToTrack, removeClip, setClipFades, splitClip, trimClip, type CompositionTrack } from "./composition"
+import { compositionTrackMix, createCompositionPlacementRef, cropClip, insertClip, moveClip, moveClipToTrack, removeClip, setClipFades, setTrackMix, splitClip, trimClip, type CompositionTrack } from "./composition"
 
 const track: CompositionTrack = { trackRef: "track_1", kind: "vocals", name: "Lead", clips: [{ clipRef: "clip_1", sourceRef: "asset_1", startMs: 0, durationMs: 10000, offsetMs: 0 }] }
 
@@ -39,6 +39,15 @@ describe("composition primitives", () => {
   it("sets fades without allowing them to consume the clip", () => {
     expect(setClipFades(track, "clip_1", 500, 750).clips[0]).toMatchObject({ fadeInMs: 500, fadeOutMs: 750 })
     expect(() => setClipFades(track, "clip_1", 6000, 5000)).toThrow("composition_fade_exceeds_clip")
+  })
+  it("defaults and updates provider-neutral track mix values", () => {
+    expect(compositionTrackMix(track)).toEqual({ gain: 1, pan: 0, muted: false })
+    expect(setTrackMix(track, { gain: 0.65, pan: -0.3, muted: true })).toMatchObject({ gain: 0.65, pan: -0.3, muted: true })
+  })
+  it("rejects track mix values outside the normalized range", () => {
+    expect(() => setTrackMix(track, { gain: 1.1, pan: 0, muted: false })).toThrow("composition_gain_invalid")
+    expect(() => setTrackMix(track, { gain: 1, pan: -1.1, muted: false })).toThrow("composition_pan_invalid")
+    expect(() => setTrackMix(track, { gain: 1, pan: 0, muted: "yes" as never })).toThrow("composition_mute_invalid")
   })
   it("crops both edges while preserving source offset", () => {
     expect(cropClip(track, "clip_1", 1000, 2000).clips[0]).toMatchObject({ startMs: 1000, offsetMs: 1000, durationMs: 7000 })
