@@ -55,6 +55,16 @@ describe("Mori player media controller", () => {
     expect(createChannelMock).toHaveBeenCalledWith("/audio/mori-preview-first-light-a.mp3")
   })
 
+  it("passes local recording Blob URLs through without treating them as API asset refs", () => {
+    const channel = createChannel()
+    const createChannelMock = vi.fn(() => channel)
+    const controller = createHtmlPlayerMediaController(createCallbacks(), createChannelMock)
+
+    controller.setSource({ ...candidate, audioAssetRef: "blob:http://localhost/mori-recording" })
+
+    expect(createChannelMock).toHaveBeenCalledWith("blob:http://localhost/mori-recording")
+  })
+
   it("releases the previous source and does not retain its event listeners", () => {
     const first = createChannel()
     const second = createChannel()

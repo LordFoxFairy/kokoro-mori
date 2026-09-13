@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { StrictMode } from "react"
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import type { ArtworkGenerationInput, MoriApi, MoriExportInput, MoriProjectWorkspaceProjection, ReleaseDraftInput, StudioChangeGenerationInput, StudioRestyleGenerationSnapshot } from "@/lib/mori-api"
 import { MoriApiRequestError } from "@/lib/mori-api-client"
 import { MoriAppProvider, useMoriApp } from "./components/mori-app-provider"
@@ -18,6 +18,34 @@ const createTestStemPlaybackController: StemPlaybackFactory = () => ({
   seek: () => undefined,
   setMix: () => undefined,
   dispose: () => undefined,
+})
+
+class StudioFakeMediaRecorder {
+  static isTypeSupported = vi.fn(() => true)
+  state: RecordingState = "inactive"
+  mimeType = "audio/webm"
+  ondataavailable: ((event: { data: Blob }) => void) | null = null
+  onerror: (() => void) | null = null
+  onstop: (() => void) | null = null
+
+  constructor(stream: MediaStream, options?: { mimeType?: string }) {
+    void stream
+    void options
+  }
+
+  start() {
+    this.state = "recording"
+    this.ondataavailable?.({ data: new Blob(["studio recording"], { type: "audio/webm" }) })
+  }
+
+  stop() {
+    this.state = "inactive"
+    this.onstop?.()
+  }
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals()
 })
 
 describe("Mori studio page", () => {
@@ -1358,6 +1386,98 @@ describe("Mori studio page", () => {
       expect.objectContaining({
         commands: [expect.objectContaining({ type: "insert_clip", source_ref: "source_preview_city_lights" })],
       }),
+      expect.stringMatching(/^mori-composition-/u),
+    ))
+  })
+
+  it("uploads an Arrangement recording before offering it for explicit placement", async () => {
+    vi.stubGlobal("MediaRecorder", StudioFakeMediaRecorder)
+    Object.defineProperty(navigator, "mediaDevices", { configurable: true, value: { getUserMedia: vi.fn(async () => ({ getTracks: () => [{ stop: vi.fn() }] })) } })
+    const createCreativeSourceUpload = vi.fn<MoriApi["createCreativeSourceUpload"]>(async () => ({
+      data: { upload_ref: "upload_studio_recording", status: "creating", expires_at: "2026-09-12T13:00:00.000Z" },
+      meta: { request_id: "request_studio_recording_create" },
+    }))
+    const uploadCreativeSourceContent = vi.fn<MoriApi["uploadCreativeSourceContent"]>(async () => ({
+      data: {
+        upload_ref: "upload_studio_recording",
+        source_kind: "audio",
+        status: "ready",
+        bytes_received: 16,
+        byte_size: 16,
+        asset_ref: "asset_studio_recording",
+        source_ref: "source_studio_recording",
+        error: null,
+        created_at: "2026-09-12T12:00:00.000Z",
+        updated_at: "2026-09-12T12:00:02.000Z",
+        expires_at: "2026-09-12T13:00:00.000Z",
+      },
+      meta: { request_id: "request_studio_recording_ready" },
+    }))
+    const createCompositionRevision = vi.fn<MoriApi["createCompositionRevision"]>(async (_versionRef, input) => ({
+      data: { version_ref: "version_studio_recording", revision: input.expected_revision + 1, tracks: [] },
+      meta: { request_id: "request_studio_recording_insert" },
+    }))
+
+    render(
+      <MoriAppProvider>
+        <StudioPageContent
+          candidate={previewCandidates[0]}
+          projectRef="project_studio_recording"
+          api={{
+            getProject: async () => ({
+              data: { project_ref: "project_studio_recording", title: "Window Seat", description: "Recorded guide", current_version_ref: "version_studio_recording", candidate_count: 1, last_activity_at: "2026-09-12T12:00:00.000Z" },
+              meta: { request_id: "request_project_studio_recording" },
+            }),
+            listCandidates: async () => ({
+              data: {
+                candidates: [{
+                  candidate_ref: "candidate_studio_recording",
+                  generation_ref: "generation_studio_recording",
+                  version_ref: "version_studio_recording",
+                  project_ref: "project_studio_recording",
+                  title: "Window Seat",
+                  duration_seconds: 140,
+                  audio_asset_ref: "asset_window_seat",
+                  waveform_asset_ref: "waveform_window_seat",
+                  style_tags: ["quiet"],
+                  created_at: "2026-09-12T12:00:00.000Z",
+                }],
+                next_cursor: null,
+              },
+              meta: { request_id: "request_candidates_studio_recording" },
+            }),
+            getCompositionRevision: async () => ({ data: { version_ref: "version_studio_recording", revision: 0, tracks: [] }, meta: { request_id: "request_composition_studio_recording" } }),
+            createCreativeSourceUpload,
+            uploadCreativeSourceContent,
+            createCompositionRevision,
+          }}
+        />
+      </MoriAppProvider>,
+    )
+
+    const arrangement = await screen.findByRole("region", { name: "Arrangement editor" })
+    await waitFor(() => expect(arrangement).toHaveAttribute("aria-busy", "false"))
+    const dock = within(arrangement).getByRole("region", { name: "Studio asset dock" })
+    fireEvent.click(within(dock).getByRole("button", { name: "Record reference" }))
+    await waitFor(() => expect(within(dock).getByRole("button", { name: "Stop recording" })).toBeInTheDocument())
+    fireEvent.click(within(dock).getByRole("button", { name: "Stop recording" }))
+
+    await waitFor(() => expect(createCreativeSourceUpload).toHaveBeenCalledOnce())
+    expect(uploadCreativeSourceContent).toHaveBeenCalledOnce()
+    expect(createCreativeSourceUpload.mock.calls[0]?.[0]).toMatchObject({ source_kind: "audio", project_ref: "project_studio_recording", content_type: "audio/webm" })
+    expect(createCreativeSourceUpload.mock.calls[0]?.[1]).toMatch(/^mori-studio-recording-/u)
+    expect(uploadCreativeSourceContent.mock.calls[0]?.[0]).toBe("upload_studio_recording")
+    const recordedSource = await within(dock).findByText(/mori-recording-/u)
+    const recordedCard = recordedSource.closest("article")
+    expect(recordedCard).toBeInTheDocument()
+    expect(within(screen.getByRole("region", { name: "Version timeline" })).getAllByRole("button", { name: /Main version clip/u })).toHaveLength(1)
+    if (!(recordedCard instanceof HTMLElement)) throw new Error("Expected recorded source card")
+    fireEvent.click(within(recordedCard).getByRole("button", { name: /Insert mori-recording/u }))
+    expect(within(screen.getByRole("region", { name: "Version timeline" })).getAllByRole("button", { name: /clip mori-recording/u })).toHaveLength(1)
+    fireEvent.click(within(arrangement).getByRole("button", { name: "Save arrangement" }))
+    await waitFor(() => expect(createCompositionRevision).toHaveBeenCalledWith(
+      "version_studio_recording",
+      expect.objectContaining({ commands: [expect.objectContaining({ type: "insert_clip", source_ref: "source_studio_recording" })] }),
       expect.stringMatching(/^mori-composition-/u),
     ))
   })

@@ -124,6 +124,7 @@ export function createHtmlPlayerMediaController(
 }
 
 function resolvePlayerAudioUrl(assetRef: string): string {
+  if (assetRef.startsWith("blob:")) return assetRef
   return previewAudioUrls[assetRef] ?? buildMoriAssetContentUrl(assetRef)
 }
 

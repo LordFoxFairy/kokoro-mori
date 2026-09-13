@@ -2,6 +2,7 @@
 
 import { AudioLines, FileAudio, Filter, Mic2, Pause, Play, Search, Sparkles, Square } from "lucide-react"
 import { useMemo, useState } from "react"
+import type { MoriCreativeSourceUploadStatus } from "@/lib/mori-api"
 import type { MoriCreativeLibrarySource } from "../creative-assets"
 import { previewCreativeSources } from "../creative-assets"
 import { useAudioRecorder, type AudioRecording } from "../use-audio-recorder"
@@ -21,6 +22,8 @@ type StudioAssetDockProps = {
   onPreview: (source: AudioCreativeSource) => void
   onInsert: (source: AudioCreativeSource) => void
   onRecordingComplete?: (recording: AudioRecording) => void | Promise<void>
+  recordingUploadStatus?: MoriCreativeSourceUploadStatus | null
+  recordingUploadMessage?: string | null
 }
 
 const filters: readonly { id: StudioAssetDockFilter; label: string }[] = [
@@ -30,7 +33,7 @@ const filters: readonly { id: StudioAssetDockFilter; label: string }[] = [
   { id: "inspiration", label: "Inspiration" },
 ]
 
-export function StudioAssetDock({ sources, selectedTrackName, selectedRangeLabel, selectedRangeTime, disabled = false, previewingSourceRef = null, onPreview, onInsert, onRecordingComplete }: StudioAssetDockProps) {
+export function StudioAssetDock({ sources, selectedTrackName, selectedRangeLabel, selectedRangeTime, disabled = false, previewingSourceRef = null, onPreview, onInsert, onRecordingComplete, recordingUploadStatus = null, recordingUploadMessage = null }: StudioAssetDockProps) {
   const [filter, setFilter] = useState<StudioAssetDockFilter>("audio")
   const [query, setQuery] = useState("")
   const [recordingError, setRecordingError] = useState<string | null>(null)
@@ -47,7 +50,8 @@ export function StudioAssetDock({ sources, selectedTrackName, selectedRangeLabel
     },
   })
   const recordingActive = recordingStarting || recordingStatus !== "idle"
-  const sourceActionsDisabled = disabled || recordingActive
+  const recordingUploadActive = recordingUploadStatus === "creating" || recordingUploadStatus === "uploading" || recordingUploadStatus === "processing"
+  const sourceActionsDisabled = disabled || recordingActive || recordingUploadActive
   const visibleSources = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase()
     return sourceCatalog.filter((source) => {
@@ -85,15 +89,15 @@ export function StudioAssetDock({ sources, selectedTrackName, selectedRangeLabel
       <section className={styles.recordingPanel} aria-label="Record arrangement reference">
         <div className={styles.recordingCopy}>
           <span className={styles.recordingLabel}>Reference capture</span>
-          <strong>{recordingActive ? "Recording reference" : "Record a reference"}</strong>
-          <small>{recordingActive ? `${formatRecordingDuration(elapsedSeconds)} · capture a guide for this arrangement` : "Capture a guide without inserting it into the composition."}</small>
+          <strong>{recordingActive ? "Recording reference" : recordingUploadActive ? "Preparing reference" : "Record a reference"}</strong>
+          <small>{recordingActive ? `${formatRecordingDuration(elapsedSeconds)} · capture a guide for this arrangement` : recordingUploadActive ? "Keep this Studio open while Mori prepares the recording." : recordingUploadStatus === "ready" ? "Ready below · choose Insert to place it in the selected track and range." : "Capture a guide without inserting it into the composition."}</small>
         </div>
         {recordingStatus !== "idle" ? (
           <button className={`${styles.recordingButton} ${styles.recordingButtonStop}`} type="button" disabled={recordingStatus === "stopping"} onClick={stopRecording} aria-label={recordingStatus === "stopping" ? "Finishing recording" : "Stop recording"}>
             <Square aria-hidden="true" size={13} /> {recordingStatus === "stopping" ? "Finishing…" : "Stop recording"}
           </button>
         ) : (
-          <button className={styles.recordingButton} type="button" disabled={disabled || recordingStarting} onClick={() => {
+          <button className={styles.recordingButton} type="button" disabled={disabled || recordingStarting || recordingUploadActive} onClick={() => {
             setRecordingError(null)
             setRecordingStarting(true)
             void startRecording()
@@ -103,6 +107,9 @@ export function StudioAssetDock({ sources, selectedTrackName, selectedRangeLabel
         )}
       </section>
       {recordingError !== null ? <p className={styles.recordingError} role="alert">{recordingError}</p> : null}
+      {recordingUploadStatus === "failed" || recordingUploadStatus === "cancelled" || recordingUploadStatus === "expired" ? recordingUploadMessage !== null ? <p className={styles.recordingError} role="alert">{recordingUploadMessage}</p> : null : null}
+      {recordingUploadStatus === "creating" || recordingUploadStatus === "uploading" || recordingUploadStatus === "processing" ? <p className={styles.recordingNotice} role="status">{recordingUploadStatus === "processing" ? "Mori is preparing the recorded reference…" : "Uploading the recorded reference…"}</p> : null}
+      {recordingUploadStatus === "ready" ? <p className={styles.recordingReady} role="status">Recording ready below. Insert it when you want to place it in the arrangement.</p> : null}
 
       <div className={styles.filterBar} role="toolbar" aria-label="Filter studio assets">
         <Filter aria-hidden="true" size={13} />
