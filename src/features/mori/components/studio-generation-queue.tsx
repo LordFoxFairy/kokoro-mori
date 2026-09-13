@@ -101,6 +101,7 @@ export function StudioGenerationQueue({ projectRef, activeVersionRef }: StudioGe
       aria-expanded={open}
       aria-label={open ? "Close generation queue" : "Open generation queue"}
       data-queue-state={queueStateLabel}
+      data-action="generation-queue"
       onClick={() => setOpen((value) => !value)}
       title={queueButtonTitle(activeCount, attentionCount)}
     >

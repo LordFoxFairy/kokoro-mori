@@ -6026,6 +6026,14 @@
     white-space: nowrap;
   }
 
+  .studioPage .studioHeaderActions [data-action="generation-queue"] {
+    width: auto;
+    min-width: 0;
+    padding-inline: 8px;
+    font-size: 10px;
+    white-space: nowrap;
+  }
+
   .studioPage .studioHeaderActions .ghostButton svg {
     width: 15px;
     height: 15px;

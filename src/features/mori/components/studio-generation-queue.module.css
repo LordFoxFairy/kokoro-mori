@@ -350,7 +350,7 @@
   }
 
   .studioQueueButtonLabel {
-    display: none;
+    display: inline;
   }
 
   .studioQueueLayer {

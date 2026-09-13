@@ -44,7 +44,10 @@ describe("Studio generation queue", () => {
     })
 
     render(<StudioGenerationQueue projectRef="project_queue_studio" activeVersionRef="version_queue_studio" />)
-    fireEvent.click(screen.getByRole("button", { name: "Open generation queue" }))
+    const opener = screen.getByRole("button", { name: "Open generation queue" })
+    expect(opener).toHaveAttribute("data-action", "generation-queue")
+    expect(opener).toHaveTextContent("Runs")
+    fireEvent.click(opener)
 
     const queue = await screen.findByRole("dialog", { name: "Generation queue" })
     expect(queue).toHaveTextContent("2 runs")
