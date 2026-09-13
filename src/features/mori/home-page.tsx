@@ -8,7 +8,6 @@ import { createMoriApiClient } from "@/lib/mori-api-client"
 import type { Candidate, Project } from "./domain"
 import { listAllMoriCandidates } from "./candidate-pagination"
 import { useMoriApp } from "./components/mori-app-provider"
-import { previewCandidates, previewProject } from "./preview-data"
 import { Waveform } from "./components/waveform"
 import { formatMusicTime } from "./format-music-time"
 import styles from "./mori-workspace.module.css"
@@ -18,16 +17,16 @@ type HomePageContentProps = {
 }
 
 type DirectionProjectionStatus = "ready" | "loading" | "unavailable"
-type ProjectProjectionStatus = "preview" | "ready" | "unavailable"
+type ProjectProjectionStatus = "loading" | "ready" | "unavailable"
 
 export function HomePageContent({ api }: HomePageContentProps = {}) {
   const { playerCandidate, playing, selectPlayerCandidate, setPlaying } = useMoriApp()
   const defaultApi = useMemo(() => createMoriApiClient(), [])
   const homeApi = api ?? defaultApi
-  const [featuredProject, setFeaturedProject] = useState<Project | null>(previewProject)
-  const [candidates, setCandidates] = useState<Candidate[]>(previewCandidates)
+  const [featuredProject, setFeaturedProject] = useState<Project | null>(null)
+  const [candidates, setCandidates] = useState<Candidate[]>([])
   const [directionStatus, setDirectionStatus] = useState<DirectionProjectionStatus>("ready")
-  const [projectStatus, setProjectStatus] = useState<ProjectProjectionStatus>("preview")
+  const [projectStatus, setProjectStatus] = useState<ProjectProjectionStatus>("loading")
   const [projectRequestVersion, setProjectRequestVersion] = useState(0)
 
   useEffect(() => {
@@ -117,8 +116,8 @@ export function HomePageContent({ api }: HomePageContentProps = {}) {
         <div className={styles.projectionNotice} role="status">
           <span className={styles.projectionNoticeIcon} aria-hidden="true"><Sparkles size={15} /></span>
           <div className={styles.projectionNoticeCopy}>
-            <strong>{projectStatus === "unavailable" ? "Live workspace is temporarily unavailable" : "Preview workspace"}</strong>
-            <span>{projectStatus === "unavailable" ? "Showing the local preview so you can keep exploring. Retry when the connection is ready." : "This local preview will be replaced by your workspace when it connects."}</span>
+            <strong>{projectStatus === "unavailable" ? "Live workspace is temporarily unavailable" : "Loading your workspace"}</strong>
+            <span>{projectStatus === "unavailable" ? "Your Home is ready to retry. No sample Project is being mixed into your workspace." : "Getting your Projects and recent directions together…"}</span>
           </div>
           {projectStatus === "unavailable" ? <button type="button" onClick={() => setProjectRequestVersion((version) => version + 1)}>Retry</button> : null}
         </div>
@@ -176,12 +175,12 @@ function HomeDirections({ project, candidates, status, playerVersionRef, playing
     return <div className={styles.homeDirectionsState} role="status"><span className={styles.homeDirectionsStateIcon} aria-hidden="true"><Music2 size={16} /></span><div><strong>Directions are temporarily unavailable</strong><span>The Project is safe. Open it to continue from its confirmed state.</span></div><Link href={`/projects/${encodeURIComponent(project.projectRef)}`} aria-label={`Open ${project.title}`}>Open project <ArrowRight size={13} /></Link></div>
   }
 
-  if (candidates.length === 0) {
+  if (project === null || candidates.length === 0) {
     const href = project === null ? "/create" : `/create?project_ref=${encodeURIComponent(project.projectRef)}`
     return <div className={styles.homeDirectionsState}><span className={styles.homeDirectionsStateIcon} aria-hidden="true"><Sparkles size={16} /></span><div><strong>No directions yet</strong><span>Make a first Version, then compare and continue it here.</span></div><Link href={href}>Create a direction <ArrowRight size={13} /></Link></div>
   }
 
-  const projectRef = project?.projectRef ?? previewProject.projectRef
+  const projectRef = project.projectRef
   return <div className={styles.homeTrackList}>
     {candidates.map((candidate, index) => {
       const isPlaying = playerVersionRef === candidate.versionRef && playing

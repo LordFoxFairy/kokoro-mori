@@ -4298,7 +4298,7 @@
   min-height: 100dvh;
   height: 100dvh;
   overflow: visible;
-  padding: 14px 12px 104px;
+  padding: 18px 14px 104px;
   border: 0;
   border-right: 1px solid var(--mori-border);
   border-radius: 0;
@@ -4313,7 +4313,7 @@
   display: flex;
   align-items: center;
   min-height: 40px;
-  margin-bottom: 18px;
+  margin-bottom: 22px;
 }
 
 .brandIdentity {
@@ -4360,11 +4360,11 @@
   margin-left: auto;
   padding: 0;
   place-items: center;
-  border: 0;
+  border: 1px solid var(--mori-border);
   border-radius: 9px;
   color: var(--mori-muted);
-  background: transparent;
-  box-shadow: none;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 4px 12px rgba(62, 45, 86, 0.04);
   transition: color var(--mori-motion-fast) ease, border-color var(--mori-motion-fast) ease, background var(--mori-motion-fast) ease;
 }
 
@@ -4385,12 +4385,13 @@
   justify-content: flex-start;
   gap: 8px;
   width: 100%;
-  min-height: 42px;
-  margin: 0 0 20px;
+  min-height: 44px;
+  margin: 0 0 22px;
   padding: 0 12px;
   border-radius: 11px;
   color: #fff;
   font-size: 14px;
+  font-weight: 700;
   letter-spacing: -0.01em;
   text-decoration: none;
   background: linear-gradient(105deg, #6d5ce7, #9276e7 52%, #e7a17f);
@@ -4404,7 +4405,7 @@
 
 .navGroup {
   display: grid;
-  gap: 3px;
+  gap: 2px;
 }
 
 .navLabel {
@@ -4418,7 +4419,7 @@
   display: flex;
   align-items: center;
   gap: 11px;
-  min-height: 42px;
+  min-height: 44px;
   padding: 0 10px;
   border-radius: 10px;
   font-size: 14px;
@@ -4438,90 +4439,66 @@
 }
 
 .navItemActive {
-  box-shadow: none;
+  box-shadow: inset 3px 0 0 var(--mori-primary);
 }
 
-.currentProjectCard {
+.recentProjectGroup {
   display: grid;
-  gap: 10px;
-  margin: 16px 0 0;
-  padding: 12px;
-  border: 1px solid rgba(109, 92, 231, 0.16);
-  border-radius: 14px;
-  color: var(--mori-foreground);
-  text-decoration: none;
-  background: linear-gradient(145deg, rgba(246, 243, 255, 0.88), rgba(255, 248, 244, 0.84));
-  transition: border-color var(--mori-motion-fast) ease, background var(--mori-motion-fast) ease, transform var(--mori-motion-fast) ease;
+  gap: 6px;
+  margin-top: 20px;
 }
 
-.currentProjectCard:hover {
-  border-color: rgba(109, 92, 231, 0.3);
-  background: linear-gradient(145deg, rgba(241, 237, 255, 0.96), rgba(255, 244, 237, 0.92));
-  transform: translateY(-1px);
-}
-
-.currentProjectCompact {
-  display: none;
-}
-
-.currentProjectHeader,
-.currentProjectBody {
+.recentProjectLink,
+.recentProjectCopy {
   display: flex;
   align-items: center;
 }
 
-.currentProjectHeader {
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.currentProjectHeader > span {
-  color: var(--mori-foreground);
-  font-size: 11px;
-  font-weight: 750;
-}
-
-.currentProjectHeader > strong {
-  color: var(--mori-success);
-  font-size: 10px;
-  font-weight: 750;
-}
-
-.currentProjectBody {
+.recentProjectLink {
   min-width: 0;
   gap: 10px;
+  padding: 8px;
+  border-radius: 10px;
+  color: var(--mori-foreground);
+  text-decoration: none;
+  transition: background var(--mori-motion-fast) ease;
 }
 
-.currentProjectArtwork {
+.recentProjectLink:hover,
+.recentProjectLink:focus-visible {
+  background: #f8f7f6;
+}
+
+.recentProjectArtwork {
   display: grid;
-  width: 42px;
-  height: 42px;
-  flex: 0 0 42px;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
   place-items: center;
-  border-radius: 12px;
+  border-radius: 10px;
   color: #40388c;
   background: linear-gradient(145deg, #d5c9ff, #f5c1a9);
   box-shadow: 0 7px 15px rgba(109, 92, 231, 0.12);
 }
 
-.currentProjectCopy {
+.recentProjectCopy {
   display: grid;
   min-width: 0;
   gap: 3px;
 }
 
-.currentProjectCopy strong,
-.currentProjectCopy span {
+.recentProjectCopy strong,
+.recentProjectCopy span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.currentProjectCopy strong {
+.recentProjectCopy strong {
   font-size: 12px;
 }
 
-.currentProjectCopy span {
+.recentProjectCopy span {
   color: var(--mori-muted);
   font-size: 10px;
 }
@@ -4557,6 +4534,7 @@
 
 .railToggle:focus-visible,
 .navItem:focus-visible,
+.recentProjectLink:focus-visible,
 .railFooterLink:focus-visible,
 .newButton:focus-visible,
 .playerButton:focus-visible,
@@ -4566,10 +4544,8 @@
 }
 
 .railCollapsed .brandRow {
-  flex-direction: column;
-  gap: 8px;
   justify-content: center;
-  margin-bottom: 16px;
+  margin-bottom: 22px;
 }
 
 .railCollapsed .brandIdentity {
@@ -4578,12 +4554,15 @@
 }
 
 .railCollapsed .railToggle {
-  position: static;
-  width: 40px;
-  height: 40px;
+  position: absolute;
+  top: 0;
+  right: -12px;
+  width: 28px;
+  height: 28px;
   margin: 0;
-  border-radius: 10px;
-  background: transparent;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 4px 12px rgba(62, 45, 86, 0.08);
 }
 
 .railCollapsed .brandName,
@@ -4634,33 +4613,27 @@
   background: rgba(237, 233, 254, 0.9);
 }
 
-.railCollapsed .currentProjectCard {
-  display: none;
+.railCollapsed .recentProjectGroup {
+  margin-top: 16px;
 }
 
-.railCollapsed .currentProjectCompact {
-  display: grid;
+.railCollapsed .recentProjectLink {
+  justify-content: center;
+  width: 40px;
+  min-height: 40px;
+  margin-inline: auto;
+  padding: 0;
+}
+
+.railCollapsed .recentProjectArtwork {
   width: 40px;
   height: 40px;
-  margin: 16px auto 0;
-  place-items: center;
-  border: 1px solid rgba(109, 92, 231, 0.16);
+  flex-basis: 40px;
   border-radius: 11px;
-  color: #40388c;
-  text-decoration: none;
-  background: linear-gradient(145deg, rgba(246, 243, 255, 0.9), rgba(255, 248, 244, 0.88));
-  box-shadow: 0 7px 15px rgba(109, 92, 231, 0.09);
 }
 
-.railCollapsed .currentProjectCompact:hover,
-.railCollapsed .currentProjectCompact:focus-visible {
-  border-color: rgba(109, 92, 231, 0.34);
-  background: linear-gradient(145deg, rgba(241, 237, 255, 0.98), rgba(255, 244, 237, 0.94));
-}
-
-.railCollapsed .currentProjectCompact:focus-visible {
-  outline: 3px solid rgba(109, 92, 231, 0.2);
-  outline-offset: 2px;
+.railCollapsed .recentProjectCopy {
+  display: none;
 }
 
 .railCollapsed .railFooterLinkActive {

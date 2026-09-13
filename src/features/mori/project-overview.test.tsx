@@ -140,7 +140,7 @@ describe("Mori project overview", () => {
 
     await waitFor(() => expect(screen.getByRole("heading", { name: "Window Seat" })).toBeInTheDocument())
     expect(screen.getByText("A quiet, forward-moving sketch.")).toBeInTheDocument()
-    const currentProjectLink = screen.getByRole("link", { name: "Open current project Window Seat" })
+    const currentProjectLink = screen.getByRole("link", { name: "Open recent project Window Seat" })
     expect(currentProjectLink).toHaveTextContent("1 directions")
     expect(screen.getByRole("link", { name: "Open Studio" })).toHaveAttribute("href", "/projects/project_live_1/studio/version_live_1")
     expect(screen.queryByText("Warm · hopeful")).not.toBeInTheDocument()

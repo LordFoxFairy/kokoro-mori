@@ -34,7 +34,7 @@ describe("Mori application navigation", () => {
     expect(screen.getByRole("link", { name: "Library" })).toHaveAttribute("href", "/library")
   })
 
-  it("keeps New direction in the active Project context", async () => {
+  it("keeps the primary creation CTA stable while browsing an active Project", async () => {
     render(
       <MoriAppProvider>
         <MoriCatalogShell activeKey="projects" ariaLabel="Project overview" projectRef="project_live_1">
@@ -43,7 +43,44 @@ describe("Mori application navigation", () => {
       </MoriAppProvider>,
     )
 
-    await waitFor(() => expect(screen.getByRole("link", { name: "New direction" })).toHaveAttribute("href", "/create?project_ref=project_live_1"))
+    await waitFor(() => expect(screen.getByRole("link", { name: "New song" })).toHaveAttribute("href", "/create"))
+    expect(screen.queryByRole("link", { name: "New direction" })).not.toBeInTheDocument()
+  })
+
+  it("presents the active Project as recent context instead of an active status card", () => {
+    render(
+      <MoriAppProvider>
+        <MoriCatalogShell activeKey="projects" ariaLabel="Project overview" projectRef="project_live_1" projectTitle="Window Seat" projectMeta="2 directions">
+          <div>Project overview</div>
+        </MoriCatalogShell>
+      </MoriAppProvider>,
+    )
+
+    const recent = screen.getByRole("group", { name: "Recent project" })
+    expect(within(recent).getByRole("link", { name: "Open recent project Window Seat" })).toHaveAttribute("href", "/projects/project_live_1")
+    expect(recent).toHaveTextContent("Window Seat")
+    expect(recent).toHaveTextContent("2 directions")
+    expect(recent).not.toHaveTextContent("Active")
+  })
+
+  it("restores the latest Project as recent context on global surfaces", async () => {
+    localStorage.setItem("mori.recent-project.v1", JSON.stringify({ projectRef: "project_recent_1", title: "Window Seat", meta: "2 directions" }))
+
+    try {
+      render(
+        <MoriAppProvider>
+          <MoriCatalogShell activeKey="home" ariaLabel="Home">
+            <div>Home content</div>
+          </MoriCatalogShell>
+        </MoriAppProvider>,
+      )
+
+      const recent = await screen.findByRole("link", { name: "Open recent project Window Seat" })
+      expect(recent).toHaveAttribute("href", "/projects/project_recent_1")
+      expect(recent).toHaveAttribute("data-project-context", "recent")
+    } finally {
+      localStorage.removeItem("mori.recent-project.v1")
+    }
   })
 
   it("keeps the active Project visible in the expanded rail", () => {
@@ -55,11 +92,9 @@ describe("Mori application navigation", () => {
       </MoriAppProvider>,
     )
 
-    const projectLink = screen.getByRole("link", { name: "Open current project Window Seat" })
+    const projectLink = screen.getByRole("link", { name: "Open recent project Window Seat" })
     expect(projectLink).toHaveAttribute("href", "/projects/project_live_1")
-    expect(projectLink).toHaveTextContent("Current project")
     expect(projectLink).toHaveTextContent("Window Seat")
-    expect(projectLink).toHaveTextContent("Active")
     expect(projectLink).toHaveTextContent("2 directions")
   })
 
@@ -80,7 +115,7 @@ describe("Mori application navigation", () => {
       await waitFor(() => expect(screen.getByRole("button", { name: "Collapse sidebar" })).toBeInTheDocument())
       fireEvent.click(screen.getByRole("button", { name: "Collapse sidebar" }))
 
-      const projectLink = await screen.findByRole("link", { name: "Open current project Window Seat" })
+      const projectLink = await screen.findByRole("link", { name: "Open recent project Window Seat" })
       expect(projectLink).toHaveAttribute("data-project-context", "compact")
       expect(projectLink).toHaveAttribute("title", expect.stringContaining("2 directions"))
     } finally {
@@ -596,7 +631,7 @@ describe("Mori application navigation", () => {
     }
   })
 
-  it("keeps new creation inside the current project context", async () => {
+  it("keeps the primary creation CTA independent from the current Project", async () => {
     const originalPath = window.location.pathname
     window.history.pushState({}, "", "/projects/project_live_1/studio/version_live_1")
 
@@ -609,7 +644,7 @@ describe("Mori application navigation", () => {
         </MoriAppProvider>,
       )
 
-      await waitFor(() => expect(screen.getByRole("link", { name: "New direction" })).toHaveAttribute("href", "/create?project_ref=project_live_1"))
+      await waitFor(() => expect(screen.getByRole("link", { name: "New song" })).toHaveAttribute("href", "/create"))
     } finally {
       window.history.pushState({}, "", originalPath)
     }
@@ -628,8 +663,8 @@ describe("Mori application navigation", () => {
         </MoriAppProvider>,
       )
 
-      await waitFor(() => expect(screen.getByRole("link", { name: "New direction" })).toHaveAttribute("href", "/create?project_ref=project_live_1"))
-      expect(screen.getByRole("link", { name: "Create" })).toHaveAttribute("href", "/create?project_ref=project_live_1")
+      await waitFor(() => expect(screen.getByRole("link", { name: "New song" })).toHaveAttribute("href", "/create"))
+      expect(screen.getByRole("link", { name: "Create" })).toHaveAttribute("href", "/create")
     } finally {
       window.history.pushState({}, "", originalUrl)
     }

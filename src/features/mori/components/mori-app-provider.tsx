@@ -21,6 +21,7 @@ export type MoriProjectContext = {
 
 const preferencesStorageKey = "mori.preferences.v1"
 const railStorageKey = "mori.rail.v1"
+const recentProjectStorageKey = "mori.recent-project.v1"
 
 const defaultPreferences: MoriPreferences = {
   reduceMotion: false,
@@ -57,6 +58,7 @@ type MoriAppContextValue = {
   preferences: MoriPreferences
   updatePreferences: (patch: Partial<MoriPreferences>) => void
   projectContext: MoriProjectContext | null
+  recentProjectContext: MoriProjectContext | null
   setProjectContext: (context: MoriProjectContext) => void
   clearProjectContext: (projectRef: string) => void
 }
@@ -79,6 +81,8 @@ export function MoriAppProvider({ children, mediaFactory = createHtmlPlayerMedia
   const [preferences, setPreferences] = useState<MoriPreferences>(defaultPreferences)
   const [preferencesLoaded, setPreferencesLoaded] = useState(false)
   const [projectContext, setProjectContext] = useState<MoriProjectContext | null>(null)
+  const [recentProjectContext, setRecentProjectContext] = useState<MoriProjectContext | null>(null)
+  const [recentProjectLoaded, setRecentProjectLoaded] = useState(false)
   // Browsing a surface does not start playback or build a queue. A Studio
   // surface may prime its open Version into the paused transport so the
   // player has an obvious subject without stealing listening intent.
@@ -136,11 +140,14 @@ export function MoriAppProvider({ children, mediaFactory = createHtmlPlayerMedia
     setPreferences((current) => ({ ...current, ...patch }))
   }, [])
   const setProjectContextForApp = useCallback((context: MoriProjectContext) => {
-    setProjectContext({
+    const normalizedContext = {
       ...context,
       projectRef: context.projectRef.trim(),
       title: context.title.trim() || "Project",
-    })
+    }
+    if (normalizedContext.projectRef.length === 0) return
+    setProjectContext(normalizedContext)
+    setRecentProjectContext(normalizedContext)
   }, [])
   const clearProjectContext = useCallback((projectRef: string) => {
     const normalizedProjectRef = projectRef.trim()
@@ -204,6 +211,24 @@ export function MoriAppProvider({ children, mediaFactory = createHtmlPlayerMedia
       // Preference state remains available for the current session when storage is unavailable.
     }
   }, [preferences, preferencesLoaded])
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const storedContext = readStoredProjectContext()
+      setRecentProjectContext((current) => current ?? storedContext)
+      setRecentProjectLoaded(true)
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [])
+
+  useEffect(() => {
+    if (!recentProjectLoaded || recentProjectContext === null) return
+    try {
+      window.localStorage.setItem(recentProjectStorageKey, JSON.stringify(recentProjectContext))
+    } catch {
+      // Recent navigation remains available for the current session when storage is unavailable.
+    }
+  }, [recentProjectContext, recentProjectLoaded])
 
   const selectPlayerCandidate = useCallback((candidate: Candidate, initialPositionSeconds = 0, auditionScope: PlayerAuditionScope | null = null) => {
     const normalizedScope = normalizeAuditionScope(auditionScope, candidate.durationSeconds)
@@ -424,9 +449,10 @@ export function MoriAppProvider({ children, mediaFactory = createHtmlPlayerMedia
     preferences,
     updatePreferences,
     projectContext,
+    recentProjectContext,
     setProjectContext: setProjectContextForApp,
     clearProjectContext,
-  }), [clearProjectContext, muted, nextPlayerCandidate, playbackQueue, playerAuditionLooping, playerAuditionScope, playerCandidate, playerMediaMessage, playerMediaStatus, playing, positionSeconds, preferences, previousPlayerCandidate, primePlayerCandidate, projectContext, railCollapsed, retryPlayerPlayback, seekPlayer, selectPlayerCandidate, setAuditionLoop, setPlayingForApp, setProjectContextForApp, setRailCollapsed, toggleMuted, togglePlaying, toggleRail, updatePreferences])
+  }), [clearProjectContext, muted, nextPlayerCandidate, playbackQueue, playerAuditionLooping, playerAuditionScope, playerCandidate, playerMediaMessage, playerMediaStatus, playing, positionSeconds, preferences, previousPlayerCandidate, primePlayerCandidate, projectContext, railCollapsed, recentProjectContext, retryPlayerPlayback, seekPlayer, selectPlayerCandidate, setAuditionLoop, setPlayingForApp, setProjectContextForApp, setRailCollapsed, toggleMuted, togglePlaying, toggleRail, updatePreferences])
 
   return <MoriAppContext.Provider value={value}>{children}</MoriAppContext.Provider>
 }
@@ -495,6 +521,22 @@ function readStoredRailState(): boolean | null {
     return null
   }
   return null
+}
+
+function readStoredProjectContext(): MoriProjectContext | null {
+  try {
+    const raw = window.localStorage.getItem(recentProjectStorageKey)
+    if (raw === null) return null
+    const parsed: unknown = JSON.parse(raw)
+    if (!isRecord(parsed) || typeof parsed.projectRef !== "string" || parsed.projectRef.trim().length === 0 || typeof parsed.title !== "string") return null
+    return {
+      projectRef: parsed.projectRef.trim(),
+      title: parsed.title.trim() || "Project",
+      meta: typeof parsed.meta === "string" && parsed.meta.trim().length > 0 ? parsed.meta.trim() : null,
+    }
+  } catch {
+    return null
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

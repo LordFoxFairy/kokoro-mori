@@ -59,7 +59,8 @@ Idea / Reference
 - MV 属于 Finish / Release，等歌曲完成后再出现。
 - TTS 只有在形成明确的音乐创作 Job 时才进入，例如 spoken vocal 或 guide voice；不做孤立工具页。
 
-这样既保留 Tad 的能力广度，又避免用户先理解一堆工具名才能开始创作。
+这样既保留 Tad 的能力广度，又避免用户先理解一堆工具名才能开始创作。Rail 只提供稳定的 `New song`，活动作品以轻量
+Recent 项目入口记忆；它不会根据当前 Project 偷换成 `New direction`，作品内的继续创作动作留在 Project / Studio。
 
 ### Project Overview 的能力编排
 

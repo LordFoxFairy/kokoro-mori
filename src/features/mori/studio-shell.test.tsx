@@ -17,7 +17,7 @@ const activeListen: Candidate = {
 }
 
 describe("Mori studio shell", () => {
-  it("keeps New direction in the active Project context", async () => {
+  it("keeps the primary creation CTA stable in Studio", async () => {
     render(
       <MoriAppProvider>
         <MoriStudioShell projectRef="project_live_1">
@@ -26,7 +26,7 @@ describe("Mori studio shell", () => {
       </MoriAppProvider>,
     )
 
-    await waitFor(() => expect(screen.getByRole("link", { name: "New direction" })).toHaveAttribute("href", "/create?project_ref=project_live_1"))
+    await waitFor(() => expect(screen.getByRole("link", { name: "New song" })).toHaveAttribute("href", "/create"))
   })
 
   it("keeps Studio inside the global navigation and player shell", () => {

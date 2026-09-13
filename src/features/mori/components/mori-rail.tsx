@@ -28,8 +28,6 @@ const navigation = [
 
 export function MoriRail({ activeKey = "create", collapsed = false, projectRef, projectTitle, projectMeta, onNavigate, onOpenSettings, onToggle, railRef, toggleRef }: MoriRailProps) {
   const [settingsHref, setSettingsHref] = useState("/settings?return_to=%2F")
-  const [createHref, setCreateHref] = useState("/create")
-  const newCreationLabel = createHref === "/create" ? "New project" : "New direction"
   const activeProjectRef = projectRef?.trim() || null
   const activeProjectTitle = projectTitle?.trim() || "Project"
   const activeProjectMeta = projectMeta?.trim() || "Open project overview"
@@ -38,16 +36,12 @@ export function MoriRail({ activeKey = "create", collapsed = false, projectRef, 
     const timer = window.setTimeout(() => {
       const currentPath = window.location.pathname
       const currentLocation = `${currentPath}${window.location.search}`
-      const pathProjectRef = currentPath.match(/^\/projects\/([^/]+)/u)?.[1]
-      const queryProjectRef = new URLSearchParams(window.location.search).get("project_ref")
-      const activeProjectRef = projectRef === undefined ? pathProjectRef ?? queryProjectRef ?? undefined : projectRef ?? undefined
       if (currentPath !== "/settings" && currentLocation.startsWith("/")) {
         setSettingsHref(`/settings?return_to=${encodeURIComponent(currentLocation)}`)
       }
-      setCreateHref(activeProjectRef === undefined ? "/create" : `/create?project_ref=${encodeURIComponent(activeProjectRef)}`)
     }, 0)
     return () => window.clearTimeout(timer)
-  }, [projectRef])
+  }, [])
 
   return (
     <nav ref={railRef} className={`${styles.rail} ${collapsed ? styles.railCollapsed : ""}`} aria-label="Mori" data-mori-shell-region="true" data-rail-state={collapsed ? "collapsed" : "expanded"}>
@@ -59,42 +53,35 @@ export function MoriRail({ activeKey = "create", collapsed = false, projectRef, 
         {onToggle ? <button ref={toggleRef} className={styles.railToggle} type="button" onClick={onToggle} aria-expanded={!collapsed} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} title={collapsed ? "Expand sidebar" : "Collapse sidebar"}>{collapsed ? <PanelLeftOpen /> : <PanelLeftClose />}</button> : null}
       </div>
 
-      <Link className={styles.newButton} href={createHref} aria-label={newCreationLabel} title={collapsed ? newCreationLabel : undefined} onClick={onNavigate}>
+      <Link className={styles.newButton} href="/create" aria-label="New song" title={collapsed ? "New song" : undefined} onClick={onNavigate}>
         <Plus size={16} strokeWidth={2.4} />
-        <span>{newCreationLabel}</span>
+        <span>New song</span>
       </Link>
 
       <div className={styles.navGroup}>
         <div className={styles.navLabel}>Workspace</div>
         {navigation.map(({ key, label, href, icon: Icon }) => (
-          <Link className={`${styles.navItem} ${activeKey === key ? styles.navItemActive : ""}`} href={key === "create" ? createHref : href} key={key} aria-current={activeKey === key ? "page" : undefined} title={collapsed ? label : undefined} onClick={onNavigate}>
+          <Link className={`${styles.navItem} ${activeKey === key ? styles.navItemActive : ""}`} href={href} key={key} aria-current={activeKey === key ? "page" : undefined} title={collapsed ? label : undefined} onClick={onNavigate}>
             <Icon />
             <span>{label}</span>
           </Link>
         ))}
       </div>
 
-      {activeProjectRef !== null ? collapsed ? <Link
-        className={styles.currentProjectCompact}
-        href={`/projects/${encodeURIComponent(activeProjectRef)}`}
-        aria-label={`Open current project ${activeProjectTitle}`}
-        title={`${activeProjectTitle} · ${activeProjectMeta}`}
-        data-project-context="compact"
-        onClick={onNavigate}
-      >
-        <span className={styles.currentProjectCompactArtwork} aria-hidden="true"><AudioLines size={17} /></span>
-      </Link> : <Link
-        className={styles.currentProjectCard}
-        href={`/projects/${encodeURIComponent(activeProjectRef)}`}
-        aria-label={`Open current project ${activeProjectTitle}`}
-        onClick={onNavigate}
-      >
-        <span className={styles.currentProjectHeader}><span>Current project</span><strong>Active</strong></span>
-        <span className={styles.currentProjectBody}>
-          <span className={styles.currentProjectArtwork} aria-hidden="true"><AudioLines size={18} /></span>
-          <span className={styles.currentProjectCopy}><strong>{activeProjectTitle}</strong><span>{activeProjectMeta}</span></span>
-        </span>
-      </Link> : null}
+      {activeProjectRef !== null ? <div className={styles.recentProjectGroup} role="group" aria-label="Recent project">
+        <div className={styles.navLabel}>Recent</div>
+        <Link
+          className={styles.recentProjectLink}
+          href={`/projects/${encodeURIComponent(activeProjectRef)}`}
+          aria-label={`Open recent project ${activeProjectTitle}`}
+          title={collapsed ? `${activeProjectTitle} · ${activeProjectMeta}` : undefined}
+          data-project-context={collapsed ? "compact" : "recent"}
+          onClick={onNavigate}
+        >
+          <span className={styles.recentProjectArtwork} aria-hidden="true"><AudioLines size={collapsed ? 16 : 17} /></span>
+          <span className={styles.recentProjectCopy}><strong>{activeProjectTitle}</strong><span>{activeProjectMeta}</span></span>
+        </Link>
+      </div> : null}
 
       <div className={styles.railBottom}>
         <Link className={`${styles.railFooterLink} ${activeKey === "settings" ? styles.railFooterLinkActive : ""}`} href={settingsHref} aria-label="Settings" aria-current={activeKey === "settings" ? "page" : undefined} title={collapsed ? "Settings" : undefined} onClick={(event: ReactMouseEvent<HTMLAnchorElement>) => {

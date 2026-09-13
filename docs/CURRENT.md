@@ -63,8 +63,9 @@
   Audio / Voice / Inspiration 使用 discriminated union。Source API 成功后不再把 preview Sources 混入 live 响应；
   未配置 API 或所有 projection 都不可用时保留 preview fallback，单个 Source projection 失败则清空该区域并明确显示 unavailable，
   避免把过期 fixture 当成真实数据；Library 会消费 `next_cursor` 提供 Load more / Try again，Create deep link 会优先解析 live Source detail。
-- Home / Projects 在 live projection 失败时会明确标注当前展示的是 Preview workspace，并提供 Retry；恢复后自动切回真实投影，
-  不把本地 fixture 静默伪装成用户数据。Projects 与 Library Versions 均消费 opaque cursor，分页追加按资源引用去重。
+- Projects 在 live projection 失败时会明确标注当前展示的是 Preview workspace，并提供 Retry；恢复后自动切回真实投影，
+  不把本地 fixture 静默伪装成用户数据。Home 首次进入保持真正的空工作区，只展示一句话起点和连接状态，不把 First Light
+  之类的 preview Project 注入用户的 Recent/Current 语境；Projects 与 Library Versions 均消费 opaque cursor，分页追加按资源引用去重。
 - Project Overview 将 Candidate projection 的 `loading`、`ready` 与 `unavailable` 分开建模；请求失败时保留 Project
   返回的已保存数量并提供 Retry，不再把服务暂时不可用误报成 `No directions yet`，也不会诱导用户重复创建方向。
 - Project Overview 现在也区分 Project projection 的 `loading`、`ready` 与 `unavailable`：连接未确认前不显示 Active、Current
@@ -72,8 +73,9 @@
 - Project Overview 的非 Current Candidate 提供明确 `Set as current`：它复用 Project-scoped、带幂等键与
   `expected_current_version_ref` 的 CAS command，等待 owner 精确确认后才更新 Current、`Open Studio` 与
   `Continue making`；瞬时失败允许重试，冲突引导刷新 Project，过程中不抢占 Global Player。
-- Project Overview 与 Studio 会把当前 `project_ref` 传给全局 Rail；从作品上下文点击 `New creation` 会回到同一 Project
-  创建新方向，不再意外丢失 Project-first 上下文；Home、Library 等无项目上下文的入口仍从全新 Project 开始。
+- Project Overview 与 Studio 会把当前 `project_ref` 传给全局 Rail；Rail 只提供稳定的 `New song` 主入口，当前作品以轻量
+  `Recent` 上下文显示，不再用 `Current project / Active` 卡片制造第二套状态导航；Project 内的 `New direction` 仍由作品页
+  自己承载，Home、Library 等无项目上下文的入口从全新 Project 开始。
 - P0.1 Durable Project Memory 已落地浏览器 foundation：Project Workspace 以同源、完整 projection 恢复
   Current Song Plan、用户 Open Version、该 Version 的 Lyrics Draft、最新 Mix 摘要与活动任务；Song Plan、Lyrics
   Draft、Open Version 的写入分别携带 revision 与 `Idempotency-Key`，只在完整返回投影精确确认下一 revision 后
@@ -124,9 +126,10 @@
 - 移动端全局 Player 保留上一首、播放、下一首、静音、Up next 和 seek 进度，不再把核心听音控制隐藏在窄屏；dock 使用独立的两行安全区，
   Playback queue portal 与 Generation drawer 统一继承全局 Player 高度契约，不覆盖页面底部内容。移动端抽屉开合状态与桌面侧边栏偏好已分离，
   窗口跨断点切换不会改写用户的桌面折叠偏好。
-- 桌面侧边栏折叠后仍保留 Mori brand mark，展开控制与品牌标识垂直分组；移动端折叠态恢复水平顶栏，避免窄栏只剩孤立的控制图标。
+- 桌面侧边栏折叠后仍保留 Mori brand mark，展开控制固定在 Rail 边缘而不是与品牌标识堆叠；移动端折叠态恢复水平顶栏，避免窄栏只剩孤立的控制图标。
 - 桌面侧边栏支持 `⌘/Ctrl+B` 快捷切换，输入框、可编辑区域和 Settings 浮层中不会抢占用户的文字或弹窗交互。
-- 有活动 Project 上下文时，展开 Rail 在 Workspace 导航下显示可点击的 Current project 卡片；标题和方向/版本摘要从当前工作面更新，异步 Project projection 到达后也会同步到 Rail，缺失时只显示中性的 Project，不暴露内部 ref，收起 Rail 和无项目的全局入口不增加噪声。
+- 有活动 Project 上下文时，展开 Rail 在 Workspace 导航下显示可点击的 Recent 项目入口；标题和方向/版本摘要从当前工作面更新，
+  异步 Project projection 到达后也会同步到 Rail，不显示误导性的 Active 状态，不暴露内部 ref，收起 Rail 和无项目的全局入口不增加噪声。
 
 ## 验证证据
 
@@ -143,7 +146,7 @@ pnpm exec vitest run --maxWorkers=1 src/features/mori/mori-workspace.test.tsx
                                   passed: 1 file / 73 tests
 pnpm exec vitest run --maxWorkers=1 src/features/mori/use-audio-recorder.test.tsx
                                   passed: 1 file / 2 tests
-pnpm test                         passed: 85 files / 687 tests
+pnpm test                         passed: 85 files / 690 tests
 pnpm build                        passed
 ```
 

@@ -6,7 +6,7 @@ import { MoriCatalogShell } from "./components/mori-catalog-shell"
 import { HomePageContent } from "./home-page"
 
 describe("Mori home page", () => {
-  it("labels the preview when the workspace projection is unavailable and retries it", async () => {
+  it("labels the workspace as unavailable and retries it without a preview project", async () => {
     const listProjects = vi.fn<MoriApi["listProjects"]>()
       .mockRejectedValueOnce(new Error("workspace unavailable"))
       .mockResolvedValueOnce({
@@ -32,11 +32,12 @@ describe("Mori home page", () => {
       </MoriAppProvider>,
     )
 
-    expect(screen.getByText("Preview workspace")).toBeInTheDocument()
+    expect(await screen.findByText("Live workspace is temporarily unavailable")).toBeInTheDocument()
+    expect(screen.queryByRole("heading", { name: "First Light" })).not.toBeInTheDocument()
     fireEvent.click(await screen.findByRole("button", { name: "Retry" }))
 
     await waitFor(() => expect(screen.getByRole("heading", { name: "Recovered Light" })).toBeInTheDocument())
-    expect(screen.queryByText("Preview workspace")).not.toBeInTheDocument()
+    expect(screen.queryByText("Live workspace is temporarily unavailable")).not.toBeInTheDocument()
     expect(listProjects).toHaveBeenCalledTimes(2)
   })
 
@@ -56,22 +57,34 @@ describe("Mori home page", () => {
     expect(within(quickStart).getByRole("button", { name: "Shape this idea" })).toHaveAttribute("type", "submit")
   })
 
-  it("shows playable controls when a preview direction is selected", () => {
+  it("does not present a preview project as the user's Home workspace", () => {
     render(
       <MoriAppProvider>
         <MoriCatalogShell activeKey="home" ariaLabel="Home">
-          <HomePageContent />
+          <HomePageContent api={{ listProjects: async () => ({ data: { projects: [], next_cursor: null }, meta: { request_id: "request_home_empty" } }), listCandidates: async () => ({ data: { candidates: [], next_cursor: null }, meta: { request_id: "request_home_empty_candidates" } }) }} />
         </MoriCatalogShell>
       </MoriAppProvider>,
     )
 
-    fireEvent.click(screen.getByRole("button", { name: "Play First Light" }))
+    expect(screen.getByRole("heading", { name: "Start with one sentence." })).toBeInTheDocument()
+    expect(screen.queryByRole("heading", { name: "First Light" })).not.toBeInTheDocument()
+    expect(screen.queryByText("First Light · Afterglow")).not.toBeInTheDocument()
+  })
+
+  it("keeps the empty global player quiet before a live Version is selected", async () => {
+    render(
+      <MoriAppProvider>
+        <MoriCatalogShell activeKey="home" ariaLabel="Home">
+          <HomePageContent api={{ listProjects: async () => ({ data: { projects: [], next_cursor: null }, meta: { request_id: "request_home_player_empty" } }), listCandidates: async () => ({ data: { candidates: [], next_cursor: null }, meta: { request_id: "request_home_player_empty_candidates" } }) }} />
+        </MoriCatalogShell>
+      </MoriAppProvider>,
+    )
 
     const player = screen.getByRole("region", { name: "Global player" })
-    expect(player).not.toHaveAttribute("data-player-state", "unavailable")
-    expect(player).toHaveTextContent("First Light")
-    expect(player).not.toHaveTextContent("Preview audio is unavailable")
-    expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument()
+    expect(player).toHaveAttribute("data-player-state", "empty")
+    expect(player).toHaveTextContent("Choose a version")
+    expect(screen.queryByRole("button", { name: "Play First Light" })).not.toBeInTheDocument()
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Start with one sentence." })).toBeInTheDocument())
   })
 
   it("continues the latest live project from its confirmed Current Version", async () => {

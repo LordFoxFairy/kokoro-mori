@@ -97,7 +97,8 @@ Workspace nav    内容随项目上下文变化                     跨页面保
 
 - Rail 是应用骨架，不是悬浮卡片；展开/收起不改变内容的语义位置。
 - 桌面 Rail 支持 `⌘/Ctrl+B` 快捷切换，但在输入框、可编辑内容和 Settings 浮层中让出快捷键，避免破坏用户当前动作。
-- 有活动 Project 上下文时，Rail 在 Workspace 导航下提供带方向/版本摘要的 Current project 卡片，异步 projection 到达后同步更新，直接回到 Project overview；它是上下文记忆，不是第二套导航，收起 Rail 或全局入口不显示。
+- 有活动 Project 上下文时，Rail 在 Workspace 导航下提供轻量 Recent 项目入口，带方向/版本摘要并可直接回到 Project overview；它是上下文记忆，不是第二套导航，不显示误导性的 Active 状态，收起 Rail 或全局入口不显示。
+- Rail 的主创建动作始终是 `New song` 并回到无隐式 Project scope 的 Create；Project 内的 `New direction` 属于作品页动作，避免同一个侧边栏 CTA 在不同页面悄悄改变语义。
 - Create 的第一主操作只有一个：Smart 先 Review plan、Custom 直接 Generate；Smart 复核时用 Song Plan 替换原始输入面，
   `Back to idea` 再恢复草稿，不让输入、复核和重复说明同时堆叠；Queue 是当前任务的上下文入口。
 - Studio 的工具和版本历史属于项目，不提升到全局 Rail。

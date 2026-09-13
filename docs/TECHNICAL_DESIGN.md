@@ -28,7 +28,8 @@ Create -> Generation Queue -> Candidate -> Project/Version -> Studio -> Take Lan
 
 ## 3. 当前模块
 
-- `mori-app-shell`：桌面固定 Rail、内容面、移动抽屉与 viewport-fixed Player。
+- `mori-app-shell`：桌面固定 Rail、内容面、移动抽屉与 viewport-fixed Player；Rail 的 `New song` 保持稳定语义，最近访问的
+  Project 只作为浏览器侧导航记忆恢复，不改变 Project owner 事实或 Create scope。
 - `mori-workspace`：跨页面路由、Project/Create/Library/Settings 组合与投影恢复。
 - `studio-page`：Version 上下文、Studio Change、Lyrics、Stems、Export、Release 与 Composition 交互编排。
 - `StudioAiComposer`：Arrangement 上下文 AI command bar；compact 模式将一级意图、Scope、输入与 Review 放在时间线后，

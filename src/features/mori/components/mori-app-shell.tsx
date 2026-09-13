@@ -25,7 +25,7 @@ type MoriAppShellProps = {
 }
 
 export function MoriAppShell({ activeKey, ariaLabel, projectRef, projectTitle, projectMeta, children }: MoriAppShellProps) {
-  const { railCollapsed, toggleRail, playerCandidate, playbackQueue, playerAuditionScope, playerAuditionLooping, playing, playerMediaStatus, playerMediaMessage, muted, positionSeconds, togglePlaying, retryPlayerPlayback, toggleMuted, setPlaying, setAuditionLoop, seekPlayer, selectPlayerCandidate, previousPlayerCandidate, nextPlayerCandidate, preferences, projectContext } = useMoriApp()
+  const { railCollapsed, toggleRail, playerCandidate, playbackQueue, playerAuditionScope, playerAuditionLooping, playing, playerMediaStatus, playerMediaMessage, muted, positionSeconds, togglePlaying, retryPlayerPlayback, toggleMuted, setPlaying, setAuditionLoop, seekPlayer, selectPlayerCandidate, previousPlayerCandidate, nextPlayerCandidate, preferences, projectContext, recentProjectContext } = useMoriApp()
   const [playbackQueueOpen, setPlaybackQueueOpen] = useState(false)
   const [settingsReturnTo, setSettingsReturnTo] = useState<string | null>(null)
   const [{ isMobileViewport, mobileRailExpanded }, setViewportState] = useState({
@@ -55,6 +55,15 @@ export function MoriAppShell({ activeKey, ariaLabel, projectRef, projectTitle, p
   const effectiveRailCollapsed = isMobileViewport === true ? !mobileRailExpanded : railCollapsed
   const normalizedProjectRef = projectRef?.trim() || null
   const matchingProjectContext = projectContext?.projectRef === normalizedProjectRef ? projectContext : null
+  const railProjectContext = projectRef === undefined
+    ? projectContext ?? recentProjectContext
+    : normalizedProjectRef === null
+      ? null
+      : {
+          projectRef: normalizedProjectRef,
+          title: projectTitle ?? matchingProjectContext?.title ?? "Project",
+          meta: projectMeta ?? matchingProjectContext?.meta ?? null,
+        }
 
   const handleRailToggle = useCallback(() => {
     const isMobile = window.innerWidth <= 700
@@ -156,9 +165,9 @@ export function MoriAppShell({ activeKey, ariaLabel, projectRef, projectTitle, p
       <MoriRail
         activeKey={activeKey}
         collapsed={effectiveRailCollapsed}
-        projectRef={projectRef}
-        projectTitle={projectTitle ?? matchingProjectContext?.title}
-        projectMeta={projectMeta ?? matchingProjectContext?.meta}
+        projectRef={railProjectContext?.projectRef}
+        projectTitle={railProjectContext?.title}
+        projectMeta={railProjectContext?.meta}
         onNavigate={handleRailNavigation}
         onOpenSettings={activeKey === "settings" ? undefined : openSettings}
         onToggle={handleRailToggle}
