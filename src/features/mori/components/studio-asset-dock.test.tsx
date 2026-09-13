@@ -186,6 +186,22 @@ describe("StudioAssetDock", () => {
     expect(within(dock).getByText("Load more sources")).toBeInTheDocument()
   })
 
+  it("keeps an in-flight recording upload cancellable and failed uploads retryable", () => {
+    const onCancelRecordingUpload = vi.fn(async () => undefined)
+    const onRetryRecording = vi.fn()
+    const { unmount } = renderDock({ recordingUploadStatus: "processing", onCancelRecordingUpload })
+
+    const activeDock = screen.getByRole("region", { name: "Studio asset dock" })
+    fireEvent.click(within(activeDock).getByRole("button", { name: "Cancel upload" }))
+    expect(onCancelRecordingUpload).toHaveBeenCalledOnce()
+    unmount()
+
+    renderDock({ recordingUploadStatus: "failed", recordingUploadMessage: "Upload failed", onRetryRecording })
+    const failedDock = screen.getByRole("region", { name: "Studio asset dock" })
+    fireEvent.click(within(failedDock).getByRole("button", { name: "Try upload again" }))
+    expect(onRetryRecording).toHaveBeenCalledOnce()
+  })
+
   it("disables preview, insert, and drag actions while recording", async () => {
     const onPreview = vi.fn()
     const onInsert = vi.fn()

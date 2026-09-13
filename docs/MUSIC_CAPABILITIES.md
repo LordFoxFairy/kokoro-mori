@@ -627,7 +627,7 @@ Composition 的第一组 provider-neutral 纯函数已落地到 `composition.ts`
 - Add Vocal、Add Instrumental 已落地为 Stems 内的 whole-Version `add_part` 图层工作流：意图选择、结构化输入、
   单步 Review、进度/取消/重试与 Take Lanes 去向均复用既有 Generation lifecycle，不新增全局工具或第二套任务状态机。
 - Create 已建立 Audio / Voice / Inspiration 的统一选择位，并把 `voice_ref` 与 Vocal direction 分离；Library
-  已加入同源 preview 素材架、类型筛选、搜索、Arrangement 内 Record a reference 与 `Use in Create` 上下文恢复。录音 ready 后仍需用户明确 Insert，不自动写入 Composition；下一步由 storage/music owner
+  已加入同源 preview 素材架、类型筛选、搜索、Arrangement 内 Record a reference 与 `Use in Create` 上下文恢复。录音上传中支持取消，失败支持复用当前录音重试；ready 后仍需用户明确 Insert，不自动写入 Composition；下一步由 storage/music owner
   adapter 提供正式 Audio、Voice、Persona、Style preset 与 Reference projection，替换当前 preview 目录。
 - Studio Asset Dock v1 已把 Library 素材带回 Arrangement 上下文：搜索与类型筛选不离开 Studio，Audio 使用同一个全局
   Player 试听，既可点击插入当前 `track_ref` / 选区，也可直接拖到任意 Track / 时间位置（100ms 对齐并按版本边界裁剪），

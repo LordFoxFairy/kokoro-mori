@@ -23,6 +23,9 @@ type StudioAssetDockProps = {
   onPreview: (source: AudioCreativeSource) => void
   onInsert: (source: AudioCreativeSource) => void
   onRecordingComplete?: (recording: AudioRecording) => void | Promise<void>
+  onRetryRecording?: () => void
+  onCancelRecordingUpload?: () => void | Promise<void>
+  recordingUploadCancelPending?: boolean
   sourceStatus?: StudioAssetSourceStatus
   onRetrySources?: () => void
   hasMoreSources?: boolean
@@ -40,7 +43,7 @@ const filters: readonly { id: StudioAssetDockFilter; label: string }[] = [
   { id: "inspiration", label: "Inspiration" },
 ]
 
-export function StudioAssetDock({ sources, selectedTrackName, selectedRangeLabel, selectedRangeTime, disabled = false, previewingSourceRef = null, onPreview, onInsert, onRecordingComplete, sourceStatus = "preview", onRetrySources, hasMoreSources = false, sourcePageLoading = false, sourcePageError = false, onLoadMoreSources, recordingUploadStatus = null, recordingUploadMessage = null }: StudioAssetDockProps) {
+export function StudioAssetDock({ sources, selectedTrackName, selectedRangeLabel, selectedRangeTime, disabled = false, previewingSourceRef = null, onPreview, onInsert, onRecordingComplete, onRetryRecording, onCancelRecordingUpload, recordingUploadCancelPending = false, sourceStatus = "preview", onRetrySources, hasMoreSources = false, sourcePageLoading = false, sourcePageError = false, onLoadMoreSources, recordingUploadStatus = null, recordingUploadMessage = null }: StudioAssetDockProps) {
   const [filter, setFilter] = useState<StudioAssetDockFilter>("audio")
   const [query, setQuery] = useState("")
   const [recordingError, setRecordingError] = useState<string | null>(null)
@@ -96,7 +99,7 @@ export function StudioAssetDock({ sources, selectedTrackName, selectedRangeLabel
       <section className={styles.recordingPanel} aria-label="Record arrangement reference">
         <div className={styles.recordingCopy}>
           <span className={styles.recordingLabel}>Reference capture</span>
-          <strong>{recordingActive ? "Recording reference" : recordingUploadActive ? "Preparing reference" : "Record a reference"}</strong>
+          <strong>{recordingActive ? "Recording reference" : recordingUploadCancelPending ? "Cancelling reference" : recordingUploadActive ? "Preparing reference" : "Record a reference"}</strong>
           <small>{recordingActive ? `${formatRecordingDuration(elapsedSeconds)} · capture a guide for this arrangement` : recordingUploadActive ? "Keep this Studio open while Mori prepares the recording." : recordingUploadStatus === "ready" ? "Ready below · choose Insert to place it in the selected track and range." : "Capture a guide without inserting it into the composition."}</small>
         </div>
         {recordingStatus !== "idle" ? (
@@ -114,8 +117,14 @@ export function StudioAssetDock({ sources, selectedTrackName, selectedRangeLabel
         )}
       </section>
       {recordingError !== null ? <p className={styles.recordingError} role="alert">{recordingError}</p> : null}
-      {recordingUploadStatus === "failed" || recordingUploadStatus === "cancelled" || recordingUploadStatus === "expired" ? recordingUploadMessage !== null ? <p className={styles.recordingError} role="alert">{recordingUploadMessage}</p> : null : null}
-      {recordingUploadStatus === "creating" || recordingUploadStatus === "uploading" || recordingUploadStatus === "processing" ? <p className={styles.recordingNotice} role="status">{recordingUploadStatus === "processing" ? "Mori is preparing the recorded reference…" : "Uploading the recorded reference…"}</p> : null}
+      {recordingUploadStatus === "failed" || recordingUploadStatus === "cancelled" || recordingUploadStatus === "expired" ? <div className={styles.recordingTerminal}>
+        {recordingUploadMessage !== null ? <p className={styles.recordingError} role="alert">{recordingUploadMessage}</p> : null}
+        {onRetryRecording ? <button className={styles.recordingRetry} type="button" onClick={onRetryRecording}><RefreshCcw aria-hidden="true" size={13} /> Try upload again</button> : null}
+      </div> : null}
+      {recordingUploadStatus === "creating" || recordingUploadStatus === "uploading" || recordingUploadStatus === "processing" ? <div className={styles.recordingUploadRow}>
+        <p className={styles.recordingNotice} role="status">{recordingUploadCancelPending ? "Cancelling the recorded reference…" : recordingUploadStatus === "processing" ? "Mori is preparing the recorded reference…" : "Uploading the recorded reference…"}</p>
+        {onCancelRecordingUpload ? <button className={styles.recordingCancel} type="button" disabled={recordingUploadCancelPending} onClick={() => { void onCancelRecordingUpload() }}>{recordingUploadCancelPending ? "Cancelling…" : "Cancel upload"}</button> : null}
+      </div> : null}
       {recordingUploadStatus === "ready" ? <p className={styles.recordingReady} role="status">Recording ready below. Insert it when you want to place it in the arrangement.</p> : null}
 
       <div className={styles.filterBar} role="toolbar" aria-label="Filter studio assets">
