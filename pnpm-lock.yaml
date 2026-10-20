@@ -9,11 +9,11 @@ importers:
   .:
     dependencies:
       '@kokoro/i18n':
-        specifier: file:../kokoro-web-shared/packages/i18n
-        version: file:../kokoro-web-shared/packages/i18n
+        specifier: file:../../libs/kokoro-web-shared/packages/i18n
+        version: file:../../libs/kokoro-web-shared/packages/i18n
       '@kokoro/web-core':
-        specifier: file:../kokoro-web-shared/packages/web-core
-        version: file:../kokoro-web-shared/packages/web-core
+        specifier: file:../../libs/kokoro-web-shared/packages/web-core
+        version: file:../../libs/kokoro-web-shared/packages/web-core
       lucide-react:
         specifier: 1.33.0
         version: 1.33.0(react@19.2.4)
@@ -28,8 +28,8 @@ importers:
         version: 19.2.4(react@19.2.4)
     devDependencies:
       '@kokoro/tsconfig':
-        specifier: file:../kokoro-web-shared/packages/tsconfig
-        version: file:../kokoro-web-shared/packages/tsconfig
+        specifier: file:../../libs/kokoro-web-shared/packages/tsconfig
+        version: file:../../libs/kokoro-web-shared/packages/tsconfig
       '@tailwindcss/postcss':
         specifier: 4.3.3
         version: 4.3.3
@@ -468,14 +468,14 @@ packages:
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
 
-  '@kokoro/i18n@file:../kokoro-web-shared/packages/i18n':
-    resolution: {directory: ../kokoro-web-shared/packages/i18n, type: directory}
+  '@kokoro/i18n@file:../../libs/kokoro-web-shared/packages/i18n':
+    resolution: {directory: ../../libs/kokoro-web-shared/packages/i18n, type: directory}
 
-  '@kokoro/tsconfig@file:../kokoro-web-shared/packages/tsconfig':
-    resolution: {directory: ../kokoro-web-shared/packages/tsconfig, type: directory}
+  '@kokoro/tsconfig@file:../../libs/kokoro-web-shared/packages/tsconfig':
+    resolution: {directory: ../../libs/kokoro-web-shared/packages/tsconfig, type: directory}
 
-  '@kokoro/web-core@file:../kokoro-web-shared/packages/web-core':
-    resolution: {directory: ../kokoro-web-shared/packages/web-core, type: directory}
+  '@kokoro/web-core@file:../../libs/kokoro-web-shared/packages/web-core':
+    resolution: {directory: ../../libs/kokoro-web-shared/packages/web-core, type: directory}
 
   '@napi-rs/wasm-runtime@1.2.3':
     resolution: {integrity: sha512-UMduMbqO5s5zF2NkNacMT/yK5Y5QiKvWr2+50bzIIxFDwVJ2h49b+oyjaCGPhJxd2/gC2x39EHv/gHVuu36x2Q==}
@@ -3038,11 +3038,11 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.6.0
 
-  '@kokoro/i18n@file:../kokoro-web-shared/packages/i18n': {}
+  '@kokoro/i18n@file:../../libs/kokoro-web-shared/packages/i18n': {}
 
-  '@kokoro/tsconfig@file:../kokoro-web-shared/packages/tsconfig': {}
+  '@kokoro/tsconfig@file:../../libs/kokoro-web-shared/packages/tsconfig': {}
 
-  '@kokoro/web-core@file:../kokoro-web-shared/packages/web-core': {}
+  '@kokoro/web-core@file:../../libs/kokoro-web-shared/packages/web-core': {}
 
   '@napi-rs/wasm-runtime@1.2.3(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)':
     dependencies:

@@ -16,15 +16,15 @@
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build"
   },
   "dependencies": {
-    "@kokoro/i18n": "file:../kokoro-web-shared/packages/i18n",
-    "@kokoro/web-core": "file:../kokoro-web-shared/packages/web-core",
+    "@kokoro/i18n": "file:../../libs/kokoro-web-shared/packages/i18n",
+    "@kokoro/web-core": "file:../../libs/kokoro-web-shared/packages/web-core",
     "lucide-react": "1.33.0",
     "next": "16.2.6",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },
   "devDependencies": {
-    "@kokoro/tsconfig": "file:../kokoro-web-shared/packages/tsconfig",
+    "@kokoro/tsconfig": "file:../../libs/kokoro-web-shared/packages/tsconfig",
     "@testing-library/jest-dom": "6.10.0",
     "@testing-library/react": "16.3.2",
     "@types/node": "^20",
