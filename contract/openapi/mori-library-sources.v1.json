@@ -11,7 +11,7 @@
         "operationId": "listMoriCreativeSources",
         "summary": "List reusable Creative Sources",
         "description": "Returns only ready-to-use sources visible in the current session. Source pagination is independent from the playable Version Library.",
-        "security": [{ "moriSession": [] }],
+        "security": [{ "productSession": [] }, { "productSecureSession": [] }],
         "parameters": [
           {
             "name": "source_kind",
@@ -58,7 +58,7 @@
         "operationId": "getMoriCreativeSource",
         "summary": "Read one reusable Creative Source",
         "description": "Resolves a source for a Create deep link without requiring it to appear on the first list page.",
-        "security": [{ "moriSession": [] }],
+        "security": [{ "productSession": [] }, { "productSecureSession": [] }],
         "parameters": [
           {
             "name": "source_kind",
@@ -92,7 +92,7 @@
   },
   "components": {
     "securitySchemes": {
-      "moriSession": { "type": "apiKey", "in": "cookie", "name": "kokoro_session" }
+      "productSession": { "type": "apiKey", "in": "cookie", "name": "kokoro-issuer.session_token" }, "productSecureSession": { "type": "apiKey", "in": "cookie", "name": "__Secure-kokoro-issuer.session_token" }
     },
     "schemas": {
       "MoriAudioCreativeSource": {

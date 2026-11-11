@@ -9,7 +9,7 @@
     "/api/v1/mori/versions/{version_ref}/share": {
       "post": {
         "operationId": "createMoriShare",
-        "security": [{ "moriSession": [] }],
+        "security": [{ "productSession": [] }, { "productSecureSession": [] }],
         "parameters": [
           { "$ref": "#/components/parameters/VersionRef" },
           { "$ref": "#/components/parameters/IdempotencyKey" }
@@ -39,7 +39,7 @@
       "parameters": [{ "$ref": "#/components/parameters/ShareRef" }],
       "get": {
         "operationId": "getMoriShare",
-        "security": [{ "moriSession": [] }],
+        "security": [{ "productSession": [] }, { "productSecureSession": [] }],
         "responses": {
           "200": {
             "description": "Share projection",
@@ -57,7 +57,7 @@
       "parameters": [{ "$ref": "#/components/parameters/ShareRef" }],
       "post": {
         "operationId": "revokeMoriShare",
-        "security": [{ "moriSession": [] }],
+        "security": [{ "productSession": [] }, { "productSecureSession": [] }],
         "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
         "responses": {
           "200": {
@@ -75,10 +75,15 @@
   },
   "components": {
     "securitySchemes": {
-      "moriSession": {
+      "productSession": {
         "type": "apiKey",
         "in": "cookie",
-        "name": "kokoro_session"
+        "name": "kokoro-issuer.session_token"
+      },
+      "productSecureSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "__Secure-kokoro-issuer.session_token"
       }
     },
     "parameters": {

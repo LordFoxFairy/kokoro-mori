@@ -13,7 +13,10 @@
         "description": "Resolves an opaque asset reference inside the trusted service context. The browser never receives a storage location or provider URL.",
         "security": [
           {
-            "moriSession": []
+            "productSession": []
+          },
+          {
+            "productSecureSession": []
           }
         ],
         "parameters": [
@@ -187,10 +190,15 @@
   },
   "components": {
     "securitySchemes": {
-      "moriSession": {
+      "productSession": {
         "type": "apiKey",
         "in": "cookie",
-        "name": "kokoro_session"
+        "name": "kokoro-issuer.session_token"
+      },
+      "productSecureSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "__Secure-kokoro-issuer.session_token"
       }
     },
     "schemas": {
