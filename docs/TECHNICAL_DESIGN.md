@@ -14,9 +14,24 @@ Browser -> Mori same-origin adapter -> BFF/owner contract
 
 跨仓只消费版本化契约；不 import 别仓业务 DTO、ORM 类型或 provider SDK。
 
-同源 adapter 透传 `kokoro_session` Cookie，并为 BFF 固定 `x-kokoro-request-id`；不接受浏览器自报的 principal、tenant 或
-service identity。内部 secret / namespace 仅从服务端环境读取，非 loopback BFF 缺少配置时 fail closed；response 继续返回
-`x-request-id` 供追踪。loopback 默认值只服务本地 fixture，不代表生产身份。
+### R-05 局部决定（2026-11-11）
+
+本轮只收敛同源 adapter 的 Product 原生会话、传输资源与 fixture 边界；API 路径、业务 owner、业务字段与数据 Schema 不变。
+用户先在 Product 建立原生会话，Mori 消费已有会话，不增加独立登录、换票、Session store 或身份服务；独立冷登录未做。
+
+服务端配置只使用 `KOKORO_BFF_BASE_URL`、`KOKORO_INTERNAL_SECRET_WEB_BFF`、`KOKORO_WEB_ORIGIN`。
+缺配置即 fail closed，loopback 也不注入 fixture secret、namespace 或固定 principal。测试必须显式注入自己的配置与 HTTP peer。
+adapter 只透传 Product issuer 的六个 regular／secure Cookie；固定服务端 Origin、`web-bff` 与服务凭据，不采信浏览器
+自报的 principal、tenant 或 service identity。request ID 只用于追踪，response 保留 `x-request-id`。
+
+普通 body 最多 1 MiB、读取最多 5 秒，普通请求从入口到响应体完成最多 30 秒；只有
+`PUT creative-source-uploads/{upload_ref}/content` 使用 50 MiB／120 秒有界读取，随后 JSON 回执阶段最多 30 秒。
+媒体／SSE 首部最多等待 30 秒，其后等待上游读取的空闲期限为 60 秒，不套普通请求的短总期限，也不把下游背压当上游卡死。
+取消贯穿入站读取、upstream fetch 与响应流；完成、失败或下游取消后释放 timer／listener／reader。
+写入超时不表示 owner 回滚，结果仍可能未知；不自动重发，保留原幂等身份。Range、If-Range、Last-Event-ID 与原字节保持。
+
+50 MiB 是 Mori adapter 的既有上传 seam 传输能力，不表示当前 BFF 已提供上传／媒体 owner 映射。
+preview 明确保留；真实媒体、上传、持久化和跨服务恢复仍按 owner 接线与独立证据验收，不以本轮局部检查冒充完整产品链。
 
 ## 2. 产品工作流
 

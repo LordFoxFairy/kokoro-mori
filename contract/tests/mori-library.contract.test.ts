@@ -51,7 +51,7 @@ describe("Mori library OpenAPI contract", () => {
   it("keeps the projection provider-neutral and exposes only authenticated reads", () => {
     const document = readContract()
     const get = recordValue(recordValue(document.paths, "paths")["/api/v1/mori/library"], "library path").get
-    expect(arrayValue(recordValue(get, "library GET").security, "security")).toEqual([{ moriSession: [] }])
+    expect(arrayValue(recordValue(get, "library GET").security, "security")).toEqual([{ productSession: [] }, { productSecureSession: [] }])
     const keys = collectPropertyKeys(document)
     expect(keys.filter((key) => /[A-Z]/u.test(key))).toEqual([])
     expect(keys.filter((key) => /provider|tenant|subject|actor|bucket|signed_url/u.test(key))).toEqual([])

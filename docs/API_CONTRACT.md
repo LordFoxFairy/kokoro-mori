@@ -32,12 +32,25 @@ contract -> contract test -> browser type/client -> component seam -> integratio
 
 ## 同源 Adapter 信任边界
 
-- `/api/v1/mori/*` 只把浏览器请求转发到配置的 BFF；认证使用同源请求携带的 `kokoro_session` Cookie，浏览器提交的
-  principal / tenant / service header 不会被采信。
-- Adapter 为每次请求透传或生成 `x-kokoro-request-id`，并在响应中返回 `x-request-id`；该 ID 只用于链路追踪，不承载身份。
-- `KOKORO_BFF_SHARED_SECRET` 与 `KOKORO_BFF_NAMESPACE` 是服务端配置。未配置时仅允许 loopback 本地 fixture 使用本地默认值；
-  非本地 BFF 缺少信任配置会 fail closed，并返回 `mori_bff_misconfigured`。
-- `KOKORO_BFF_PRINCIPAL_ID` 只有服务端显式配置时才会成为内部 header，默认不合成固定 principal。
+### R-05 局部决定（2026-11-11）
+
+本次只更新认证描述与 adapter 的传输边界，既有 API／业务 owner、业务字段与数据 Schema 不变。
+用户先在 Product 建立原生会话；Mori 不新增独立登录／换票，独立冷登录未做。
+
+- 七份已有会话声明的机器契约以 `productSession`／`productSecureSession` 两个可替代 cookie scheme 表达
+  `kokoro-issuer.session_token` 或 `__Secure-kokoro-issuer.session_token`，不是两者同时必需；不建立 Mori 专属会话。
+- adapter 仅转发 issuer 的 regular／secure `session_token`、`session_data`、`dont_remember` 六个 cookie；
+  不采信浏览器提交的 principal／tenant／service 身份。Origin 与服务凭据由服务端配置固定，不从请求伪造。
+- 唯一三配置是 `KOKORO_BFF_BASE_URL`、`KOKORO_INTERNAL_SECRET_WEB_BFF`、`KOKORO_WEB_ORIGIN`。
+  缺失即 fail closed；不按 loopback 自动启用 fixture，不发送旧 namespace／环境 principal。
+- Adapter 透传或生成 request ID，在响应中返回 `x-request-id`，不把它用作身份。
+- 普通 body 上限 1 MiB／读取 5 秒，普通调用含响应体总期限 30 秒；仅 creative-source content PUT 保留
+  50 MiB／读取 120 秒，之后 JSON 回执阶段 30 秒。媒体／SSE 首部 30 秒、等待上游读取时空闲 60 秒，不设普通短总期限。
+- 取消沿读取／fetch／响应流传播；Range、If-Range、Last-Event-ID、原字节、状态和幂等键保持。
+  写入超时仍可能是未知结果，不自动重试或生成新幂等身份。
+
+50 MiB 只描述 Mori 上传 seam 的传输上限；当前 BFF 没有相应上传／媒体映射，不据此宣称已启用真实 owner 链。
+preview 不改为伪造的用户事实，fixture 由测试显式配置，生产不提供隐式 fixture 默认值。
 
 ## 版本与验收
 

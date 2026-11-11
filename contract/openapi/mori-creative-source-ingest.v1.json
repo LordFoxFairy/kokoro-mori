@@ -5,7 +5,7 @@
     "/api/v1/mori/creative-source-uploads": {
       "post": {
         "operationId": "createMoriCreativeSourceUpload",
-        "security": [{ "moriSession": [] }],
+        "security": [{ "productSession": [] }, { "productSecureSession": [] }],
         "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
         "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateUpload" } } } },
         "responses": { "202": { "description": "Upload session created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiUploadReceipt" } } } }, "400": { "$ref": "#/components/responses/ApiError" }, "401": { "$ref": "#/components/responses/ApiError" } }
@@ -13,19 +13,19 @@
     },
     "/api/v1/mori/creative-source-uploads/{upload_ref}": {
       "parameters": [{ "$ref": "#/components/parameters/UploadRef" }],
-      "get": { "operationId": "getMoriCreativeSourceUpload", "security": [{ "moriSession": [] }], "responses": { "200": { "description": "Upload state", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiUpload" } } } }, "404": { "$ref": "#/components/responses/ApiError" } } }
+      "get": { "operationId": "getMoriCreativeSourceUpload", "security": [{ "productSession": [] }, { "productSecureSession": [] }], "responses": { "200": { "description": "Upload state", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiUpload" } } } }, "404": { "$ref": "#/components/responses/ApiError" } } }
     },
     "/api/v1/mori/creative-source-uploads/{upload_ref}/content": {
       "parameters": [{ "$ref": "#/components/parameters/UploadRef" }],
-      "put": { "operationId": "uploadMoriCreativeSourceContent", "security": [{ "moriSession": [] }], "requestBody": { "required": true, "content": { "audio/*": { "schema": { "type": "string", "format": "binary" } } } }, "responses": { "200": { "description": "Upload state", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiUpload" } } } }, "409": { "$ref": "#/components/responses/ApiError" } } }
+      "put": { "operationId": "uploadMoriCreativeSourceContent", "security": [{ "productSession": [] }, { "productSecureSession": [] }], "requestBody": { "required": true, "content": { "audio/*": { "schema": { "type": "string", "format": "binary" } } } }, "responses": { "200": { "description": "Upload state", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiUpload" } } } }, "409": { "$ref": "#/components/responses/ApiError" } } }
     },
     "/api/v1/mori/creative-source-uploads/{upload_ref}/cancel": {
       "parameters": [{ "$ref": "#/components/parameters/UploadRef" }],
-      "post": { "operationId": "cancelMoriCreativeSourceUpload", "security": [{ "moriSession": [] }], "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }], "responses": { "200": { "description": "Cancelled upload", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiUpload" } } } }, "409": { "$ref": "#/components/responses/ApiError" } } }
+      "post": { "operationId": "cancelMoriCreativeSourceUpload", "security": [{ "productSession": [] }, { "productSecureSession": [] }], "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }], "responses": { "200": { "description": "Cancelled upload", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiUpload" } } } }, "409": { "$ref": "#/components/responses/ApiError" } } }
     }
   },
   "components": {
-    "securitySchemes": { "moriSession": { "type": "apiKey", "in": "cookie", "name": "kokoro_session" } },
+    "securitySchemes": { "productSession": { "type": "apiKey", "in": "cookie", "name": "kokoro-issuer.session_token" }, "productSecureSession": { "type": "apiKey", "in": "cookie", "name": "__Secure-kokoro-issuer.session_token" } },
     "parameters": {
       "UploadRef": { "name": "upload_ref", "in": "path", "required": true, "schema": { "type": "string", "minLength": 1, "maxLength": 500 } },
       "IdempotencyKey": { "name": "Idempotency-Key", "in": "header", "required": true, "schema": { "type": "string", "minLength": 1, "maxLength": 200 } }

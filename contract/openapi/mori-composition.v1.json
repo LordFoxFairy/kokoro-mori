@@ -6,12 +6,12 @@
       "parameters": [{ "$ref": "#/components/parameters/VersionRef" }],
       "get": {
         "operationId": "getMoriCompositionRevision",
-        "security": [{ "moriSession": [] }],
+        "security": [{ "productSession": [] }, { "productSecureSession": [] }],
         "responses": { "200": { "description": "Current composition projection", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiCompositionRevision" } } } }, "404": { "$ref": "#/components/responses/ApiError" } }
       },
       "put": {
         "operationId": "applyMoriCompositionRevision",
-        "security": [{ "moriSession": [] }],
+        "security": [{ "productSession": [] }, { "productSecureSession": [] }],
         "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
         "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CompositionRevisionInput" } } } },
         "responses": { "200": { "description": "Composition revision applied", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiCompositionRevision" } } } }, "409": { "$ref": "#/components/responses/ApiError" } }
@@ -19,7 +19,7 @@
     }
   },
   "components": {
-    "securitySchemes": { "moriSession": { "type": "apiKey", "in": "cookie", "name": "kokoro_session" } },
+    "securitySchemes": { "productSession": { "type": "apiKey", "in": "cookie", "name": "kokoro-issuer.session_token" }, "productSecureSession": { "type": "apiKey", "in": "cookie", "name": "__Secure-kokoro-issuer.session_token" } },
     "parameters": {
       "VersionRef": { "name": "version_ref", "in": "path", "required": true, "schema": { "type": "string", "minLength": 1 } },
       "IdempotencyKey": { "name": "Idempotency-Key", "in": "header", "required": true, "schema": { "type": "string", "minLength": 1, "maxLength": 200 } }

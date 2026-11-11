@@ -1,6 +1,14 @@
 # Mori 当前状态
 
-> 更新：2026-09-13
+## R-05 adapter 验收（2026-11-11）
+
+本轮仅修 Product 已建立会话到 BFF 的同源 adapter，不新增 Mori 登录或业务 owner。主控 Node22.23.4／pnpm11.2.2 一次完整 `pnpm check` 的 lint、类型、739项测试与生产 build 通过，270个 tracked／新增输入摘要验证前后不变；冻结实现独立审查 CLEAR。七份已有认证契约仅改原生 Cookie scheme，业务内容和成员顺序不变。
+
+独占端口的生产 Next HTTP→现 BFF Music 入口接线通过：公开 Host／Origin 与内部 Next URL分离，筛原生Cookie并保多Set-Cookie；同会话再次准入撤权返回401且不再访问owner，跨源和旧Cookie在adapter拒绝。IAM准入与Music owner为明确测试替身，不称真实IAM冷登录／音乐播放；所有亲建测试进程与socket已关闭。首轮HTTP夹具因Node fetch未发送指定Host返回403，改测试使用真实http.request后通过，未放宽生产Host校验。
+
+设计预算与未接业务边界见 `TECHNICAL_DESIGN.md`／`API_CONTRACT.md`；preview继续保留，不以本轮adapter验收宣称独立冷登录、上传／媒体owner或完整音乐产品已接通。
+
+> 产品 preview 基线：2026-09-13；R-05 局部最新验收见上。
 > 范围：本地 preview 产品壳、Create、Library、Project、Studio 与 Finish 工作面。
 
 ## 已实现
@@ -45,7 +53,14 @@
 - Studio 重新打开 live Project / Version 时，会从 Workspace 的 `latest_mix_revision` 摘要读取完整 Mix Revision，并严格校验 ref、Version、revision、名称和轨道数后再提供给 Finish / Export；加载中、缺失 reader 或校验失败会明确显示 unavailable，保留 Open Version 路径，不静默使用旧混音。
 - Studio Change 在 Review Plan 后才生成；请求 builder 统一 snake_case、范围、保护项、references 和输出数量，Add vocals / Add instrumental 与 Restyle 统一支持 `1 / 2 / 4` alternatives，并保持当前 Version 非破坏式。
 - Mori API 与公共 Web package 保持本仓边界；未修改 Root、BFF 或 sibling service。
-- 同源 adapter 现在透传 `kokoro_session` Cookie、固定 request ID，并拒绝浏览器自报 principal；非 loopback BFF 缺少服务端 trust 配置时 fail closed，避免 live 请求落到固定本地用户。
+- 同源 adapter 的 R-05 局部切片改为消费 Product 已建立的原生会话：regular／secure session token 二选一，
+  只转发 issuer 六个 cookie，固定服务端 Origin／service identity；不新增独立登录，独立冷登录未做。
+  唯一三配置为 `KOKORO_BFF_BASE_URL`、`KOKORO_INTERNAL_SECRET_WEB_BFF`、`KOKORO_WEB_ORIGIN`，缺失 fail closed，
+  loopback 也不再合成 fixture secret／namespace／principal。测试 fixture 必须显式配置。
+- 本轮传输决定：普通 body 1 MiB／读取 5 秒，普通请求含响应体 30 秒；仅 creative-source content PUT 保留 50 MiB／读取 120 秒，
+  随后 JSON 回执阶段 30 秒。媒体／SSE 首部 30 秒、等待上游读取时空闲 60 秒，不套普通短总期限；取消贯穿读取与响应流。
+  Range／If-Range／Last-Event-ID、幂等身份和原字节保持；写超时不表示 owner 回滚，不自动重试。
+  50 MiB 不证明当前 BFF 已有上传／媒体 owner 映射；本轮局部切片的最终停写验收由主控另记，不以旧 preview 或历史测试收据替代。
 - 全局 Player 继续保持 viewport-fixed 的底部 transport；shell 通过同一组 `--mori-player-height` /
   `--mori-player-safe-space` token 预留可滚动安全区，短桌面视口将 dock 收敛到 72px，避免 Studio 的
   AI Changes / Take Lanes 被底部控件过度遮挡，移动端继续保留安全区与底部 sheet 行为。

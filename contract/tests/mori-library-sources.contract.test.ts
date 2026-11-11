@@ -50,7 +50,7 @@ describe("Mori Library Sources OpenAPI contract", () => {
     const paths = recordValue(document.paths, "paths")
     for (const path of Object.values(paths)) {
       const get = recordValue(recordValue(path, "source path").get, "source GET")
-      expect(arrayValue(get.security, "security")).toEqual([{ moriSession: [] }])
+      expect(arrayValue(get.security, "security")).toEqual([{ productSession: [] }, { productSecureSession: [] }])
     }
     const keys = collectPropertyKeys(document)
     expect(keys.filter((key) => /[A-Z]/u.test(key))).toEqual([])
